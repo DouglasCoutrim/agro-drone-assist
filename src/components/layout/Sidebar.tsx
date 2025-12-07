@@ -7,50 +7,12 @@ import {
   DollarSign, 
   Settings, 
   Users,
-  Wrench,
   Battery,
   Plane
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation, Link } from "react-router-dom";
-
-const menuItems = [
-  {
-    title: "Dashboard",
-    icon: LayoutDashboard,
-    href: "/",
-  },
-  {
-    title: "Ordens de Serviço",
-    icon: FileText,
-    href: "/ordens-servico",
-  },
-  {
-    title: "Estoque",
-    icon: Package,
-    href: "/estoque",
-  },
-  {
-    title: "Relatórios",
-    icon: BarChart3,
-    href: "/relatorios",
-  },
-  {
-    title: "Financeiro",
-    icon: DollarSign,
-    href: "/financeiro",
-  },
-  {
-    title: "Clientes",
-    icon: Users,
-    href: "/clientes",
-  },
-  {
-    title: "Configurações",
-    icon: Settings,
-    href: "/configuracoes",
-  },
-];
+import { useAuth } from "@/hooks/useAuth";
 
 interface SidebarProps {
   className?: string;
@@ -58,6 +20,56 @@ interface SidebarProps {
 
 export function Sidebar({ className }: SidebarProps) {
   const location = useLocation();
+  const { role, isAdmin, isTecnico } = useAuth();
+
+  const menuItems = [
+    {
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      href: "/",
+      roles: ['admin', 'tecnico', 'consulta'],
+    },
+    {
+      title: "Ordens de Serviço",
+      icon: FileText,
+      href: "/ordens-servico",
+      roles: ['admin', 'tecnico', 'consulta'],
+    },
+    {
+      title: "Estoque",
+      icon: Package,
+      href: "/estoque",
+      roles: ['admin', 'tecnico', 'consulta'],
+    },
+    {
+      title: "Relatórios",
+      icon: BarChart3,
+      href: "/relatorios",
+      roles: ['admin', 'tecnico', 'consulta'],
+    },
+    {
+      title: "Financeiro",
+      icon: DollarSign,
+      href: "/financeiro",
+      roles: ['admin', 'tecnico'],
+    },
+    {
+      title: "Clientes",
+      icon: Users,
+      href: "/clientes",
+      roles: ['admin', 'tecnico', 'consulta'],
+    },
+    {
+      title: "Configurações",
+      icon: Settings,
+      href: "/configuracoes",
+      roles: ['admin'],
+    },
+  ];
+
+  const filteredMenuItems = menuItems.filter(item => 
+    role && item.roles.includes(role)
+  );
 
   return (
     <div className={cn(
@@ -77,7 +89,7 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 p-4">
-        {menuItems.map((item) => {
+        {filteredMenuItems.map((item) => {
           const isActive = location.pathname === item.href;
           const Icon = item.icon;
           
