@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,50 +12,103 @@ import {
   Shield, 
   Palette,
   Database,
-  Mail,
-  Smartphone,
   Globe,
   Save,
   Key,
   Users,
-  AlertTriangle,
-  Info
+  Info,
+  Zap,
+  Loader2
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+import { Tables } from "@/integrations/supabase/types";
+
+type Profile = Tables<"profiles">;
 
 export default function Configuracoes() {
-  const usuarios = [
-    {
-      id: 1,
-      nome: "Admin Sistema",
-      email: "admin@djiservice.com.br",
-      perfil: "Administrador",
-      status: "Ativo",
-      ultimoAcesso: "15/01/2024 14:30"
-    },
-    {
-      id: 2,
-      nome: "Carlos Silva",
-      email: "carlos@djiservice.com.br", 
-      perfil: "Técnico",
-      status: "Ativo",
-      ultimoAcesso: "15/01/2024 13:45"
-    },
-    {
-      id: 3,
-      nome: "Ana Santos",
-      email: "ana@djiservice.com.br",
-      perfil: "Técnico",
-      status: "Ativo",
-      ultimoAcesso: "15/01/2024 12:15"
-    }
-  ];
+  const { user, role } = useAuth();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    nome: "",
+    email: "",
+    telefone: ""
+  });
 
-  const getPerfilVariant = (perfil: string) => {
-    switch(perfil) {
-      case "Administrador": return "default";
-      case "Técnico": return "secondary";
-      case "Consulta": return "outline";
-      default: return "outline";
+  // Settings state
+  const [settings, setSettings] = useState({
+    alertasEstoque: true,
+    notificacoesEmail: true,
+    smsUrgentes: false,
+    modoEscuro: false
+  });
+
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+    }
+  }, [user]);
+
+  const fetchProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        setProfile(data);
+        setProfileForm({
+          nome: data.nome,
+          email: data.email,
+          telefone: data.telefone || ""
+        });
+      }
+    } catch (error: any) {
+      console.error('Error fetching profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setSaving(true);
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          nome: profileForm.nome,
+          telefone: profileForm.telefone || null
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      toast.success('Perfil atualizado com sucesso!');
+      fetchProfile();
+    } catch (error: any) {
+      toast.error('Erro ao atualizar perfil: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const getRoleBadge = () => {
+    switch (role) {
+      case 'admin':
+        return <Badge className="bg-primary text-primary-foreground">Administrador</Badge>;
+      case 'tecnico':
+        return <Badge variant="secondary">Técnico</Badge>;
+      case 'consulta':
+        return <Badge variant="outline">Consulta</Badge>;
+      default:
+        return null;
     }
   };
 
@@ -64,150 +118,92 @@ export default function Configuracoes() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Configurações</h1>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Settings className="h-8 w-8 text-primary" />
+              Configurações
+            </h1>
             <p className="text-muted-foreground">
-              Gerencie as configurações do sistema e usuários
+              Gerencie as configurações do sistema e seu perfil
             </p>
           </div>
-          <Button className="gradient-primary shadow-medium">
-            <Save className="mr-2 h-4 w-4" />
-            Salvar Alterações
-          </Button>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* System Settings */}
+          {/* Profile Settings */}
           <Card className="lg:col-span-2 shadow-soft">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Configurações do Sistema
+                <User className="h-5 w-5 text-primary" />
+                Meu Perfil
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Company Info */}
-              <div className="space-y-4">
-                <h4 className="font-medium flex items-center gap-2">
-                  <Info className="h-4 w-4" />
-                  Informações da Empresa
-                </h4>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Nome da Empresa</label>
-                    <Input defaultValue="DJI Service - Oficina Autorizada" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">CNPJ</label>
-                    <Input defaultValue="12.345.678/0001-90" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Telefone</label>
-                    <Input defaultValue="(11) 99999-0000" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">E-mail</label>
-                    <Input defaultValue="contato@djiservice.com.br" />
-                  </div>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Endereço</label>
-                  <Input defaultValue="Rua das Oficinas, 123 - Centro - São Paulo - SP" />
-                </div>
-              </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
+                    <div className="h-16 w-16 rounded-full bg-primary/20 flex items-center justify-center">
+                      <User className="h-8 w-8 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg">{profile?.nome}</h3>
+                      <p className="text-sm text-muted-foreground">{profile?.email}</p>
+                      <div className="mt-1">{getRoleBadge()}</div>
+                    </div>
+                  </div>
 
-              {/* Notifications */}
-              <div className="space-y-4">
-                <h4 className="font-medium flex items-center gap-2">
-                  <Bell className="h-4 w-4" />
-                  Notificações
-                </h4>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="font-medium">Alertas de Estoque Baixo</p>
-                      <p className="text-sm text-muted-foreground">Receber notificações quando itens atingirem o nível mínimo</p>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Nome</label>
+                      <Input
+                        value={profileForm.nome}
+                        onChange={(e) => setProfileForm({ ...profileForm, nome: e.target.value })}
+                      />
                     </div>
-                    <Switch defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="font-medium">Notificações por E-mail</p>
-                      <p className="text-sm text-muted-foreground">Enviar resumos diários por e-mail</p>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">E-mail</label>
+                      <Input
+                        value={profileForm.email}
+                        disabled
+                        className="bg-muted"
+                      />
                     </div>
-                    <Switch defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="font-medium">SMS de OS Urgentes</p>
-                      <p className="text-sm text-muted-foreground">Enviar SMS para OS com prioridade alta</p>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Telefone</label>
+                      <Input
+                        value={profileForm.telefone}
+                        onChange={(e) => setProfileForm({ ...profileForm, telefone: e.target.value })}
+                        placeholder="(00) 00000-0000"
+                      />
                     </div>
-                    <Switch />
                   </div>
-                </div>
-              </div>
 
-              {/* Theme */}
-              <div className="space-y-4">
-                <h4 className="font-medium flex items-center gap-2">
-                  <Palette className="h-4 w-4" />
-                  Aparência
-                </h4>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="font-medium">Modo Escuro</p>
-                      <p className="text-sm text-muted-foreground">Ativar tema escuro automaticamente</p>
-                    </div>
-                    <Switch />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Idioma do Sistema</label>
-                    <select className="w-full p-2 border border-border rounded-md">
-                      <option value="pt-br">Português (Brasil)</option>
-                      <option value="en-us">English (US)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Integration */}
-              <div className="space-y-4">
-                <h4 className="font-medium flex items-center gap-2">
-                  <Database className="h-4 w-4" />
-                  Integrações
-                </h4>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Globe className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="font-medium">API REST</p>
-                        <p className="text-sm text-muted-foreground">Acesso à API para integrações externas</p>
-                      </div>
-                    </div>
-                    <Badge variant="default">Ativa</Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Mail className="h-5 w-5 text-warning" />
-                      <div>
-                        <p className="font-medium">n8n Webhook</p>
-                        <p className="text-sm text-muted-foreground">Automação de processos</p>
-                      </div>
-                    </div>
-                    <Badge variant="secondary">Configurar</Badge>
-                  </div>
-                </div>
-              </div>
+                  <Button 
+                    className="gradient-primary shadow-medium"
+                    onClick={handleSaveProfile}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    Salvar Alterações
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
 
-          {/* Quick Actions */}
+          {/* Quick Info */}
           <div className="space-y-6">
             <Card className="shadow-soft">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
+                  <Shield className="h-5 w-5 text-primary" />
                   Segurança
                 </CardTitle>
               </CardHeader>
@@ -218,87 +214,115 @@ export default function Configuracoes() {
                 </Button>
                 <Button variant="outline" className="w-full justify-start">
                   <Shield className="mr-2 h-4 w-4" />
-                  Backup do Sistema
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Database className="mr-2 h-4 w-4" />
-                  Logs do Sistema
+                  Sessões Ativas
                 </Button>
               </CardContent>
             </Card>
 
             <Card className="shadow-soft">
               <CardHeader>
-                <CardTitle>Informações do Sistema</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-primary" />
+                  Sistema
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span>Versão</span>
-                  <span className="font-medium">v1.0.0</span>
+                  <span className="font-medium">VoltControl v1.0.0</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Último Backup</span>
-                  <span className="font-medium">14/01/2024</span>
+                  <span>Status</span>
+                  <Badge className="bg-success text-success-foreground">Online</Badge>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Status do Banco</span>
-                  <Badge variant="default" className="text-xs">Online</Badge>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Usuários Ativos</span>
-                  <span className="font-medium">3</span>
+                  <span>Seu Perfil</span>
+                  {getRoleBadge()}
                 </div>
               </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* User Management */}
+        {/* Notifications Settings */}
         <Card className="shadow-soft">
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Gerenciamento de Usuários
+              <Bell className="h-5 w-5 text-primary" />
+              Notificações
             </CardTitle>
-            <Button size="sm" className="gradient-primary">
-              <User className="mr-2 h-4 w-4" />
-              Novo Usuário
-            </Button>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {usuarios.map((usuario) => (
-                <div key={usuario.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 rounded-full bg-primary/10">
-                      <User className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="space-y-1">
-                      <p className="font-medium">{usuario.nome}</p>
-                      <p className="text-sm text-muted-foreground">{usuario.email}</p>
-                      <p className="text-xs text-muted-foreground">Último acesso: {usuario.ultimoAcesso}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant={getPerfilVariant(usuario.perfil)}>
-                      {usuario.perfil}
-                    </Badge>
-                    <Badge variant={usuario.status === "Ativo" ? "default" : "secondary"}>
-                      {usuario.status}
-                    </Badge>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline">
-                        Editar
-                      </Button>
-                      {usuario.perfil !== "Administrador" && (
-                        <Button size="sm" variant="outline">
-                          <AlertTriangle className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="font-medium">Alertas de Estoque Baixo</p>
+                <p className="text-sm text-muted-foreground">
+                  Receber notificações quando itens atingirem o nível mínimo
+                </p>
+              </div>
+              <Switch
+                checked={settings.alertasEstoque}
+                onCheckedChange={(checked) => setSettings({ ...settings, alertasEstoque: checked })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="font-medium">Notificações por E-mail</p>
+                <p className="text-sm text-muted-foreground">
+                  Enviar resumos diários por e-mail
+                </p>
+              </div>
+              <Switch
+                checked={settings.notificacoesEmail}
+                onCheckedChange={(checked) => setSettings({ ...settings, notificacoesEmail: checked })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="font-medium">SMS de OS Urgentes</p>
+                <p className="text-sm text-muted-foreground">
+                  Enviar SMS para OS com prioridade alta
+                </p>
+              </div>
+              <Switch
+                checked={settings.smsUrgentes}
+                onCheckedChange={(checked) => setSettings({ ...settings, smsUrgentes: checked })}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Integrations */}
+        <Card className="shadow-soft">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5 text-primary" />
+              Integrações
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex items-center gap-3">
+                <Globe className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="font-medium">API REST</p>
+                  <p className="text-sm text-muted-foreground">
+                    Acesso à API para integrações externas (n8n, sistemas externos)
+                  </p>
                 </div>
-              ))}
+              </div>
+              <Badge className="bg-success text-success-foreground">Ativa</Badge>
+            </div>
+            <div className="p-4 border rounded-lg bg-muted/30">
+              <div className="flex items-start gap-3">
+                <Info className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    A API REST está disponível para integração com sistemas externos como n8n.
+                    Consulte a documentação para mais detalhes sobre os endpoints disponíveis.
+                  </p>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

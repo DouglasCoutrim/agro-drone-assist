@@ -1,94 +1,168 @@
+import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { 
   Users, 
   Search, 
-  Filter, 
   Plus, 
   Phone, 
   Mail, 
   MapPin,
   User,
   Building,
-  Calendar,
-  FileText
+  Edit,
+  Trash2,
+  Loader2
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Tables } from "@/integrations/supabase/types";
+
+type Cliente = Tables<"clientes">;
 
 export default function Clientes() {
-  const clientes = [
-    {
-      id: 1,
-      nome: "Fazenda São João",
-      tipo: "Pessoa Jurídica",
-      documento: "12.345.678/0001-90",
-      telefone: "(11) 99999-1234",
-      email: "contato@fazendaosjoao.com.br",
-      endereco: "Rua das Culturas, 123 - Rural",
-      cidade: "Ribeirão Preto - SP",
-      totalOS: 12,
-      ultimaOS: "15/01/2024",
-      status: "Ativo",
-      categoria: "Premium"
-    },
-    {
-      id: 2,
-      nome: "João Silva",
-      tipo: "Pessoa Física",
-      documento: "123.456.789-00",
-      telefone: "(11) 98888-5678",
-      email: "joao.silva@email.com",
-      endereco: "Av. Principal, 456 - Centro",
-      cidade: "São Paulo - SP",
-      totalOS: 3,
-      ultimaOS: "14/01/2024",
-      status: "Ativo",
-      categoria: "Regular"
-    },
-    {
-      id: 3,
-      nome: "Agro Tech Ltda",
-      tipo: "Pessoa Jurídica",
-      documento: "98.765.432/0001-10",
-      telefone: "(11) 97777-9012",
-      email: "suporte@agrotech.com.br",
-      endereco: "Rod. Industrial, km 15",
-      cidade: "Campinas - SP",
-      totalOS: 25,
-      ultimaOS: "13/01/2024",
-      status: "Ativo",
-      categoria: "VIP"
-    },
-    {
-      id: 4,
-      nome: "Maria Santos",
-      tipo: "Pessoa Física",
-      documento: "987.654.321-00",
-      telefone: "(11) 96666-3456",
-      email: "maria.santos@email.com",
-      endereco: "Rua das Flores, 789",
-      cidade: "Sorocaba - SP",
-      totalOS: 1,
-      ultimaOS: "10/12/2023",
-      status: "Inativo",
-      categoria: "Regular"
-    }
-  ];
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
+  const [formLoading, setFormLoading] = useState(false);
 
-  const getCategoriaVariant = (categoria: string) => {
-    switch(categoria) {
-      case "VIP": return "default";
-      case "Premium": return "secondary";
-      case "Regular": return "outline";
-      default: return "outline";
+  // Form state
+  const [formData, setFormData] = useState({
+    nome: "",
+    telefone: "",
+    email: "",
+    cpf_cnpj: "",
+    endereco: "",
+    cidade: "",
+    estado: "",
+    cep: "",
+    observacoes: ""
+  });
+
+  useEffect(() => {
+    fetchClientes();
+  }, []);
+
+  const fetchClientes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .order('nome');
+
+      if (error) throw error;
+      setClientes(data || []);
+    } catch (error: any) {
+      console.error('Error fetching clientes:', error);
+      toast.error('Erro ao carregar clientes');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getStatusVariant = (status: string) => {
-    return status === "Ativo" ? "default" : "secondary";
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormLoading(true);
+
+    try {
+      if (editingCliente) {
+        const { error } = await supabase
+          .from('clientes')
+          .update(formData)
+          .eq('id', editingCliente.id);
+
+        if (error) throw error;
+        toast.success('Cliente atualizado com sucesso!');
+      } else {
+        const { error } = await supabase
+          .from('clientes')
+          .insert(formData);
+
+        if (error) throw error;
+        toast.success('Cliente criado com sucesso!');
+      }
+
+      setDialogOpen(false);
+      resetForm();
+      fetchClientes();
+    } catch (error: any) {
+      console.error('Error saving cliente:', error);
+      toast.error('Erro ao salvar cliente: ' + error.message);
+    } finally {
+      setFormLoading(false);
+    }
   };
+
+  const handleEdit = (cliente: Cliente) => {
+    setEditingCliente(cliente);
+    setFormData({
+      nome: cliente.nome,
+      telefone: cliente.telefone,
+      email: cliente.email || "",
+      cpf_cnpj: cliente.cpf_cnpj || "",
+      endereco: cliente.endereco || "",
+      cidade: cliente.cidade || "",
+      estado: cliente.estado || "",
+      cep: cliente.cep || "",
+      observacoes: cliente.observacoes || ""
+    });
+    setDialogOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este cliente?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('clientes')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      toast.success('Cliente excluído com sucesso!');
+      fetchClientes();
+    } catch (error: any) {
+      console.error('Error deleting cliente:', error);
+      toast.error('Erro ao excluir cliente: ' + error.message);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      nome: "",
+      telefone: "",
+      email: "",
+      cpf_cnpj: "",
+      endereco: "",
+      cidade: "",
+      estado: "",
+      cep: "",
+      observacoes: ""
+    });
+    setEditingCliente(null);
+  };
+
+  const filteredClientes = clientes.filter(cliente =>
+    cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cliente.telefone.includes(searchTerm) ||
+    cliente.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cliente.cpf_cnpj?.includes(searchTerm)
+  );
 
   return (
     <MainLayout>
@@ -96,71 +170,168 @@ export default function Clientes() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Clientes</h1>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Users className="h-8 w-8 text-primary" />
+              Clientes
+            </h1>
             <p className="text-muted-foreground">
-              Gerencie o cadastro de clientes da oficina
+              Gerencie o cadastro de clientes
             </p>
           </div>
-          <Button className="gradient-primary shadow-medium">
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Cliente
-          </Button>
+          <Dialog open={dialogOpen} onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) resetForm();
+          }}>
+            <DialogTrigger asChild>
+              <Button className="gradient-primary shadow-medium">
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Cliente
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingCliente ? 'Editar Cliente' : 'Novo Cliente'}
+                </DialogTitle>
+                <DialogDescription>
+                  Preencha os dados do cliente
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="nome">Nome *</Label>
+                    <Input
+                      id="nome"
+                      value={formData.nome}
+                      onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="telefone">Telefone *</Label>
+                    <Input
+                      id="telefone"
+                      value={formData.telefone}
+                      onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">E-mail</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cpf_cnpj">CPF/CNPJ</Label>
+                    <Input
+                      id="cpf_cnpj"
+                      value={formData.cpf_cnpj}
+                      onChange={(e) => setFormData({ ...formData, cpf_cnpj: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cep">CEP</Label>
+                    <Input
+                      id="cep"
+                      value={formData.cep}
+                      onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="endereco">Endereço</Label>
+                    <Input
+                      id="endereco"
+                      value={formData.endereco}
+                      onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cidade">Cidade</Label>
+                    <Input
+                      id="cidade"
+                      value={formData.cidade}
+                      onChange={(e) => setFormData({ ...formData, cidade: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="estado">Estado</Label>
+                    <Input
+                      id="estado"
+                      value={formData.estado}
+                      onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="observacoes">Observações</Label>
+                    <Textarea
+                      id="observacoes"
+                      value={formData.observacoes}
+                      onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+                      rows={3}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" className="gradient-primary" disabled={formLoading}>
+                    {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {editingCliente ? 'Salvar' : 'Criar'}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
 
-        {/* Filters */}
-        <Card className="shadow-soft">
-          <CardContent className="p-4">
-            <div className="flex gap-4 items-center">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nome, documento ou e-mail..."
-                  className="pl-10"
-                />
-              </div>
-              <Button variant="outline">
-                <Filter className="mr-2 h-4 w-4" />
-                Filtros
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card className="shadow-soft">
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card className="shadow-soft card-hover">
             <CardContent className="p-4">
               <div className="text-center">
-                <p className="text-2xl font-bold text-primary">127</p>
+                <p className="text-2xl font-bold text-primary">{clientes.length}</p>
                 <p className="text-sm text-muted-foreground">Total de Clientes</p>
               </div>
             </CardContent>
           </Card>
-          <Card className="shadow-soft">
+          <Card className="shadow-soft card-hover">
             <CardContent className="p-4">
               <div className="text-center">
-                <p className="text-2xl font-bold text-success">113</p>
-                <p className="text-sm text-muted-foreground">Clientes Ativos</p>
+                <p className="text-2xl font-bold text-success">{clientes.filter(c => c.email).length}</p>
+                <p className="text-sm text-muted-foreground">Com E-mail</p>
               </div>
             </CardContent>
           </Card>
-          <Card className="shadow-soft">
+          <Card className="shadow-soft card-hover">
             <CardContent className="p-4">
               <div className="text-center">
-                <p className="text-2xl font-bold text-warning">8</p>
-                <p className="text-sm text-muted-foreground">Novos este Mês</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="shadow-soft">
-            <CardContent className="p-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-secondary">89%</p>
-                <p className="text-sm text-muted-foreground">Taxa Retenção</p>
+                <p className="text-2xl font-bold text-warning">{clientes.filter(c => c.cpf_cnpj).length}</p>
+                <p className="text-sm text-muted-foreground">Com CPF/CNPJ</p>
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Search */}
+        <Card className="shadow-soft">
+          <CardContent className="p-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome, telefone, e-mail ou documento..."
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Clients List */}
         <Card className="shadow-soft">
@@ -168,148 +339,72 @@ export default function Clientes() {
             <CardTitle>Lista de Clientes</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {clientes.map((cliente) => (
-                <div key={cliente.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
-                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <div className="p-1 rounded-full bg-primary/10">
-                          {cliente.tipo === "Pessoa Jurídica" ? 
-                            <Building className="h-4 w-4 text-primary" /> : 
-                            <User className="h-4 w-4 text-primary" />
-                          }
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : filteredClientes.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhum cliente encontrado</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredClientes.map((cliente) => (
+                  <div key={cliente.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1 rounded-full bg-primary/10">
+                            {cliente.cpf_cnpj && cliente.cpf_cnpj.length > 14 ? 
+                              <Building className="h-4 w-4 text-primary" /> : 
+                              <User className="h-4 w-4 text-primary" />
+                            }
+                          </div>
+                          <div>
+                            <p className="font-bold">{cliente.nome}</p>
+                            <p className="text-xs text-muted-foreground">{cliente.cpf_cnpj || 'Sem documento'}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-bold">{cliente.nome}</p>
-                          <p className="text-xs text-muted-foreground">{cliente.documento}</p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <span>{cliente.telefone}</span>
                         </div>
+                        {cliente.email && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Mail className="h-4 w-4 text-muted-foreground" />
+                            <span className="truncate">{cliente.email}</span>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex gap-2">
-                        <Badge variant={getCategoriaVariant(cliente.categoria)}>
-                          {cliente.categoria}
-                        </Badge>
-                        <Badge variant={getStatusVariant(cliente.status)}>
-                          {cliente.status}
-                        </Badge>
+                      
+                      <div className="space-y-2">
+                        {cliente.cidade && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            <span>{cliente.cidade}{cliente.estado ? ` - ${cliente.estado}` : ''}</span>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <span>{cliente.telefone}</span>
+                      
+                      <div className="flex gap-2 justify-end">
+                        <Button size="sm" variant="outline" onClick={() => handleEdit(cliente)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleDelete(cliente.id)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        <span className="truncate">{cliente.email}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span className="truncate">{cliente.cidade}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span>{cliente.totalOS} OS realizadas</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>Última OS: {cliente.ultimaOS}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-col gap-2">
-                      <Button size="sm" variant="outline">
-                        Ver Perfil
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        Editar
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        Histórico OS
-                      </Button>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
-
-        {/* Quick Stats */}
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card className="shadow-soft">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Clientes por Categoria
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-sm">VIP</span>
-                  <span className="font-medium">12 clientes</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm">Premium</span>
-                  <span className="font-medium">35 clientes</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm">Regular</span>
-                  <span className="font-medium">80 clientes</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-soft">
-            <CardHeader>
-              <CardTitle>Top Clientes (OS)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-sm">Agro Tech Ltda</span>
-                  <span className="font-medium">25 OS</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm">Fazenda São João</span>
-                  <span className="font-medium">12 OS</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm">Rural Drones SA</span>
-                  <span className="font-medium">8 OS</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-soft">
-            <CardHeader>
-              <CardTitle>Análise Geográfica</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-sm">São Paulo - SP</span>
-                  <span className="font-medium">45 clientes</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm">Ribeirão Preto - SP</span>
-                  <span className="font-medium">28 clientes</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm">Campinas - SP</span>
-                  <span className="font-medium">21 clientes</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </MainLayout>
   );
