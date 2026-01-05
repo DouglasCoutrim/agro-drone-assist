@@ -1,72 +1,208 @@
+import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { 
   DollarSign, 
   TrendingUp, 
   TrendingDown, 
-  Calendar, 
-  Download,
   Plus,
   CreditCard,
   Wallet,
-  PiggyBank,
-  Receipt
+  Receipt,
+  Loader2,
+  Edit,
+  Trash2
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Tables, Enums } from "@/integrations/supabase/types";
+import { useAuth } from "@/hooks/useAuth";
+
+type Transacao = Tables<"financeiro">;
 
 export default function Financeiro() {
-  const transacoes = [
-    {
-      id: 1,
-      tipo: "Receita",
-      descricao: "OS-2024-001 - Reparo DJI Agras T40",
-      valor: 1200.00,
-      data: "15/01/2024",
-      categoria: "Serviços",
-      status: "Pago"
-    },
-    {
-      id: 2,
-      tipo: "Despesa",
-      descricao: "Compra Bateria TB65",
-      valor: -450.00,
-      data: "14/01/2024",
-      categoria: "Estoque",
-      status: "Pago"
-    },
-    {
-      id: 3,
-      tipo: "Receita",
-      descricao: "OS-2024-002 - Calibração Câmera",
-      valor: 350.00,
-      data: "13/01/2024",
-      categoria: "Serviços",
-      status: "Pendente"
-    }
-  ];
+  const { user } = useAuth();
+  const [transacoes, setTransacoes] = useState<Transacao[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingTransacao, setEditingTransacao] = useState<Transacao | null>(null);
+  const [formLoading, setFormLoading] = useState(false);
 
-  const comissoes = [
-    {
-      tecnico: "Carlos Silva",
-      osAtendidas: 8,
-      valorComissao: 640.00,
-      percentual: 8
-    },
-    {
-      tecnico: "Ana Santos", 
-      osAtendidas: 6,
-      valorComissao: 450.00,
-      percentual: 7.5
-    },
-    {
-      tecnico: "Marco Oliveira",
-      osAtendidas: 5,
-      valorComissao: 375.00,
-      percentual: 7.5
+  const [formData, setFormData] = useState({
+    tipo: "receita" as Enums<"tipo_transacao">,
+    descricao: "",
+    valor: 0,
+    categoria: "",
+    data_transacao: new Date().toISOString().split('T')[0],
+    observacoes: ""
+  });
+
+  useEffect(() => {
+    fetchTransacoes();
+  }, []);
+
+  const fetchTransacoes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('financeiro')
+        .select('*')
+        .order('data_transacao', { ascending: false });
+
+      if (error) throw error;
+      setTransacoes(data || []);
+    } catch (error: any) {
+      console.error('Error fetching transacoes:', error);
+      toast.error('Erro ao carregar transações');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) {
+      toast.error('Usuário não autenticado');
+      return;
+    }
+    setFormLoading(true);
+
+    try {
+      const transacaoData = {
+        ...formData,
+        usuario_id: user.id,
+        observacoes: formData.observacoes || null,
+        categoria: formData.categoria || null
+      };
+
+      if (editingTransacao) {
+        const { error } = await supabase
+          .from('financeiro')
+          .update(transacaoData)
+          .eq('id', editingTransacao.id);
+
+        if (error) throw error;
+        toast.success('Transação atualizada com sucesso!');
+      } else {
+        const { error } = await supabase
+          .from('financeiro')
+          .insert(transacaoData);
+
+        if (error) throw error;
+        toast.success('Transação criada com sucesso!');
+      }
+
+      setDialogOpen(false);
+      resetForm();
+      fetchTransacoes();
+    } catch (error: any) {
+      console.error('Error saving transacao:', error);
+      toast.error('Erro ao salvar transação: ' + error.message);
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleEdit = (transacao: Transacao) => {
+    setEditingTransacao(transacao);
+    setFormData({
+      tipo: transacao.tipo,
+      descricao: transacao.descricao,
+      valor: transacao.valor,
+      categoria: transacao.categoria || "",
+      data_transacao: transacao.data_transacao.split('T')[0],
+      observacoes: transacao.observacoes || ""
+    });
+    setDialogOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta transação?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('financeiro')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      toast.success('Transação excluída com sucesso!');
+      fetchTransacoes();
+    } catch (error: any) {
+      toast.error('Erro ao excluir transação: ' + error.message);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      tipo: "receita",
+      descricao: "",
+      valor: 0,
+      categoria: "",
+      data_transacao: new Date().toISOString().split('T')[0],
+      observacoes: ""
+    });
+    setEditingTransacao(null);
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  // Calculate stats
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const thisMonthTransacoes = transacoes.filter(t => 
+    new Date(t.data_transacao) >= startOfMonth
+  );
+
+  const receitaMensal = thisMonthTransacoes
+    .filter(t => t.tipo === 'receita')
+    .reduce((acc, t) => acc + Number(t.valor), 0);
+
+  const despesaMensal = thisMonthTransacoes
+    .filter(t => t.tipo === 'despesa' || t.tipo === 'salario')
+    .reduce((acc, t) => acc + Number(t.valor), 0);
+
+  const comissoesMensal = thisMonthTransacoes
+    .filter(t => t.tipo === 'comissao')
+    .reduce((acc, t) => acc + Number(t.valor), 0);
+
+  const lucroLiquido = receitaMensal - despesaMensal - comissoesMensal;
+
+  const getTipoConfig = (tipo: string) => {
+    const config: Record<string, { label: string; color: string }> = {
+      'receita': { label: 'Receita', color: 'text-success' },
+      'despesa': { label: 'Despesa', color: 'text-destructive' },
+      'salario': { label: 'Salário', color: 'text-warning' },
+      'comissao': { label: 'Comissão', color: 'text-primary' }
+    };
+    return config[tipo] || { label: tipo, color: 'text-foreground' };
+  };
 
   return (
     <MainLayout>
@@ -74,44 +210,137 @@ export default function Financeiro() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Financeiro</h1>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <DollarSign className="h-8 w-8 text-primary" />
+              Financeiro
+            </h1>
             <p className="text-muted-foreground">
-              Controle financeiro e comissões da oficina
+              Controle financeiro e transações
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Exportar
-            </Button>
-            <Button className="gradient-primary shadow-medium">
-              <Plus className="mr-2 h-4 w-4" />
-              Nova Transação
-            </Button>
-          </div>
+          <Dialog open={dialogOpen} onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) resetForm();
+          }}>
+            <DialogTrigger asChild>
+              <Button className="gradient-primary shadow-medium">
+                <Plus className="mr-2 h-4 w-4" />
+                Nova Transação
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingTransacao ? 'Editar Transação' : 'Nova Transação'}
+                </DialogTitle>
+                <DialogDescription>
+                  Registre uma nova transação financeira
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="tipo">Tipo *</Label>
+                    <Select
+                      value={formData.tipo}
+                      onValueChange={(value: Enums<"tipo_transacao">) => setFormData({ ...formData, tipo: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="receita">Receita</SelectItem>
+                        <SelectItem value="despesa">Despesa</SelectItem>
+                        <SelectItem value="salario">Salário</SelectItem>
+                        <SelectItem value="comissao">Comissão</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="valor">Valor (R$) *</Label>
+                    <Input
+                      id="valor"
+                      type="number"
+                      step="0.01"
+                      value={formData.valor}
+                      onChange={(e) => setFormData({ ...formData, valor: Number(e.target.value) })}
+                      required
+                    />
+                  </div>
+
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="descricao">Descrição *</Label>
+                    <Input
+                      id="descricao"
+                      value={formData.descricao}
+                      onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="categoria">Categoria</Label>
+                    <Input
+                      id="categoria"
+                      value={formData.categoria}
+                      onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
+                      placeholder="Ex: Serviços, Estoque, Operacional"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="data_transacao">Data *</Label>
+                    <Input
+                      id="data_transacao"
+                      type="date"
+                      value={formData.data_transacao}
+                      onChange={(e) => setFormData({ ...formData, data_transacao: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="observacoes">Observações</Label>
+                    <Textarea
+                      id="observacoes"
+                      value={formData.observacoes}
+                      onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+                      rows={2}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" className="gradient-primary" disabled={formLoading}>
+                    {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {editingTransacao ? 'Salvar' : 'Criar'}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Financial Stats */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="shadow-soft">
+          <Card className="shadow-soft card-hover">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-success/10">
-                  <DollarSign className="h-5 w-5 text-success" />
+                  <TrendingUp className="h-5 w-5 text-success" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Receita Mensal</p>
-                  <p className="text-2xl font-bold text-success">R$ 18.450</p>
-                  <div className="flex items-center gap-1 text-xs">
-                    <TrendingUp className="h-3 w-3 text-success" />
-                    <span className="text-success">+15%</span>
-                  </div>
+                  <p className="text-2xl font-bold text-success">{formatCurrency(receitaMensal)}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="shadow-soft">
+          <Card className="shadow-soft card-hover">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-destructive/10">
@@ -119,17 +348,13 @@ export default function Financeiro() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Despesas</p>
-                  <p className="text-2xl font-bold text-destructive">R$ 6.780</p>
-                  <div className="flex items-center gap-1 text-xs">
-                    <TrendingDown className="h-3 w-3 text-destructive" />
-                    <span className="text-destructive">+8%</span>
-                  </div>
+                  <p className="text-2xl font-bold text-destructive">{formatCurrency(despesaMensal)}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="shadow-soft">
+          <Card className="shadow-soft card-hover">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10">
@@ -137,166 +362,87 @@ export default function Financeiro() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Lucro Líquido</p>
-                  <p className="text-2xl font-bold text-primary">R$ 11.670</p>
-                  <div className="flex items-center gap-1 text-xs">
-                    <TrendingUp className="h-3 w-3 text-success" />
-                    <span className="text-success">+18%</span>
-                  </div>
+                  <p className={`text-2xl font-bold ${lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    {formatCurrency(lucroLiquido)}
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="shadow-soft">
+          <Card className="shadow-soft card-hover">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-warning/10">
-                  <PiggyBank className="h-5 w-5 text-warning" />
+                  <DollarSign className="h-5 w-5 text-warning" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Comissões</p>
-                  <p className="text-2xl font-bold text-warning">R$ 1.465</p>
-                  <div className="flex items-center gap-1 text-xs">
-                    <TrendingUp className="h-3 w-3 text-success" />
-                    <span className="text-success">+5%</span>
-                  </div>
+                  <p className="text-2xl font-bold text-warning">{formatCurrency(comissoesMensal)}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Recent Transactions */}
-          <Card className="lg:col-span-2 shadow-soft">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Receipt className="h-5 w-5" />
-                Transações Recentes
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {transacoes.map((transacao) => (
-                  <div key={transacao.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="space-y-1">
-                      <p className="font-medium">{transacao.descricao}</p>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          {transacao.categoria}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">{transacao.data}</span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className={`font-bold ${
-                        transacao.tipo === "Receita" ? "text-success" : "text-destructive"
-                      }`}>
-                        {transacao.tipo === "Receita" ? "+" : ""}R$ {Math.abs(transacao.valor).toFixed(2)}
-                      </p>
-                      <Badge 
-                        variant={transacao.status === "Pago" ? "default" : "secondary"}
-                        className="text-xs"
-                      >
-                        {transacao.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Commissions */}
-          <Card className="shadow-soft">
-            <CardHeader>
-              <CardTitle>Comissões do Mês</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {comissoes.map((comissao, index) => (
-                  <div key={index} className="p-4 border rounded-lg">
-                    <div className="space-y-2">
-                      <p className="font-medium">{comissao.tecnico}</p>
-                      <div className="text-sm text-muted-foreground space-y-1">
-                        <p>OS Atendidas: {comissao.osAtendidas}</p>
-                        <p>Percentual: {comissao.percentual}%</p>
-                      </div>
-                      <p className="font-bold text-primary">
-                        R$ {comissao.valorComissao.toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Monthly Summary */}
+        {/* Transactions List */}
         <Card className="shadow-soft">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Resumo Mensal
+              <Receipt className="h-5 w-5 text-primary" />
+              Transações Recentes
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-6 md:grid-cols-3">
-              <div className="space-y-4">
-                <h4 className="font-medium text-success">Receitas por Categoria</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Serviços</span>
-                    <span className="font-medium">R$ 15.200</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Vendas de Peças</span>
-                    <span className="font-medium">R$ 2.800</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Outros</span>
-                    <span className="font-medium">R$ 450</span>
-                  </div>
-                </div>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
-
-              <div className="space-y-4">
-                <h4 className="font-medium text-destructive">Despesas por Categoria</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Estoque</span>
-                    <span className="font-medium">R$ 4.200</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Salários</span>
-                    <span className="font-medium">R$ 2.100</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Operacionais</span>
-                    <span className="font-medium">R$ 480</span>
-                  </div>
-                </div>
+            ) : transacoes.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhuma transação encontrada</p>
               </div>
-
+            ) : (
               <div className="space-y-4">
-                <h4 className="font-medium text-primary">Indicadores</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Margem Bruta</span>
-                    <span className="font-medium">63.2%</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Ticket Médio</span>
-                    <span className="font-medium">R$ 384</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>ROI</span>
-                    <span className="font-medium">172%</span>
-                  </div>
-                </div>
+                {transacoes.slice(0, 20).map((transacao) => {
+                  const tipoConfig = getTipoConfig(transacao.tipo);
+                  return (
+                    <div key={transacao.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="space-y-1">
+                        <p className="font-medium">{transacao.descricao}</p>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {tipoConfig.label}
+                          </Badge>
+                          {transacao.categoria && (
+                            <Badge variant="secondary" className="text-xs">
+                              {transacao.categoria}
+                            </Badge>
+                          )}
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(transacao.data_transacao).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <p className={`font-bold ${tipoConfig.color}`}>
+                          {transacao.tipo === 'receita' ? '+' : '-'}{formatCurrency(transacao.valor)}
+                        </p>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => handleEdit(transacao)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => handleDelete(transacao.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>

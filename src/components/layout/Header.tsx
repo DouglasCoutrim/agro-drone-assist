@@ -1,4 +1,4 @@
-import { Bell, User, Search, Menu, LogOut } from "lucide-react";
+import { Bell, User, Search, Menu, LogOut, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +29,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
   const getRoleBadge = () => {
     switch (role) {
       case 'admin':
-        return <Badge variant="default">Administrador</Badge>;
+        return <Badge className="bg-primary text-primary-foreground">Administrador</Badge>;
       case 'tecnico':
         return <Badge variant="secondary">Técnico</Badge>;
       case 'consulta':
@@ -51,7 +51,13 @@ export function Header({ onMenuToggle }: HeaderProps) {
           <Menu className="h-5 w-5" />
         </Button>
         
-        <div className="relative">
+        {/* Mobile Logo */}
+        <div className="flex items-center gap-2 md:hidden">
+          <Zap className="h-6 w-6 text-primary" />
+          <span className="font-bold text-primary">VoltControl</span>
+        </div>
+        
+        <div className="relative hidden md:block">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar OS, cliente, equipamento..."
@@ -65,7 +71,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
           <Bell className="h-5 w-5" />
           <Badge 
             variant="destructive" 
-            className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-xs"
+            className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
           >
             3
           </Badge>
@@ -74,19 +80,21 @@ export function Header({ onMenuToggle }: HeaderProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="gap-2">
-              <User className="h-5 w-5" />
+              <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
+                <User className="h-4 w-4 text-primary" />
+              </div>
               <span className="hidden md:inline">{user?.email?.split('@')[0] || 'Usuário'}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
-              <div className="flex flex-col gap-1">
-                <span>{user?.email}</span>
+              <div className="flex flex-col gap-2">
+                <span className="text-sm">{user?.email}</span>
                 {getRoleBadge()}
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+            <DropdownMenuItem onClick={handleSignOut} className="text-destructive cursor-pointer">
               <LogOut className="mr-2 h-4 w-4" />
               Sair
             </DropdownMenuItem>

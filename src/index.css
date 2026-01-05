@@ -2,105 +2,108 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Sistema de Design para Oficina DJI - Profissional e Moderno */
+/* VoltControl - Sistema de Gestão de Baterias de Alta Performance */
+/* Design baseado na identidade visual: Verde elétrico, Cinza escuro, Prata */
 
 @layer base {
   :root {
-    /* Core Colors - Azul Corporativo e Neutros */
-    --background: 0 0% 100%;
-    --foreground: 215 28% 17%;
+    /* Core Colors - Tema escuro moderno */
+    --background: 0 0% 98%;
+    --foreground: 0 0% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 28% 17%;
+    --card-foreground: 0 0% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 28% 17%;
+    --popover-foreground: 0 0% 12%;
 
-    /* Primary - Azul DJI Corporativo */
-    --primary: 214 84% 56%;
-    --primary-foreground: 0 0% 100%;
-    --primary-light: 214 84% 66%;
-    --primary-dark: 214 84% 46%;
+    /* Primary - Verde Elétrico VoltControl */
+    --primary: 100 80% 45%;
+    --primary-foreground: 0 0% 5%;
+    --primary-light: 100 80% 55%;
+    --primary-dark: 100 80% 35%;
 
-    /* Secondary - Cinza Profissional */
-    --secondary: 215 16% 92%;
-    --secondary-foreground: 215 28% 17%;
+    /* Secondary - Cinza Metálico */
+    --secondary: 0 0% 85%;
+    --secondary-foreground: 0 0% 15%;
 
-    --muted: 215 16% 96%;
-    --muted-foreground: 215 16% 46%;
+    --muted: 0 0% 92%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 215 16% 92%;
-    --accent-foreground: 215 28% 17%;
+    --accent: 100 60% 90%;
+    --accent-foreground: 100 80% 25%;
 
     /* Status Colors */
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
+    --warning-foreground: 0 0% 5%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
     /* Interface */
-    --border: 215 16% 88%;
-    --input: 215 16% 88%;
-    --ring: 214 84% 56%;
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+    --ring: 100 80% 45%;
 
     --radius: 0.75rem;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-light)));
-    --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--muted)));
+    --gradient-primary: linear-gradient(135deg, hsl(100 80% 45%), hsl(100 80% 55%));
+    --gradient-secondary: linear-gradient(135deg, hsl(0 0% 30%), hsl(0 0% 20%));
+    --gradient-dark: linear-gradient(180deg, hsl(0 0% 18%), hsl(0 0% 12%));
     
     /* Shadows */
-    --shadow-soft: 0 2px 10px hsl(var(--primary) / 0.1);
-    --shadow-medium: 0 4px 20px hsl(var(--primary) / 0.15);
-    --shadow-strong: 0 8px 30px hsl(var(--primary) / 0.2);
+    --shadow-soft: 0 2px 10px hsl(100 80% 45% / 0.1);
+    --shadow-medium: 0 4px 20px hsl(100 80% 45% / 0.15);
+    --shadow-strong: 0 8px 30px hsl(100 80% 45% / 0.2);
+    --shadow-glow: 0 0 20px hsl(100 80% 45% / 0.3);
 
-    /* Sidebar */
-    --sidebar-background: 215 28% 17%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 214 84% 56%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 28% 22%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 215 28% 22%;
-    --sidebar-ring: 214 84% 56%;
+    /* Sidebar - Tema escuro inspirado na logo */
+    --sidebar-background: 0 0% 12%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 100 80% 50%;
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 0 0% 18%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 100 80% 50%;
   }
 
   .dark {
-    --background: 215 28% 17%;
-    --foreground: 0 0% 100%;
+    --background: 0 0% 8%;
+    --foreground: 0 0% 95%;
 
-    --card: 215 28% 17%;
-    --card-foreground: 0 0% 100%;
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 215 28% 17%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 214 84% 66%;
-    --primary-foreground: 215 28% 17%;
+    --primary: 100 80% 50%;
+    --primary-foreground: 0 0% 5%;
 
-    --secondary: 215 28% 22%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 0 0% 20%;
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 215 28% 22%;
-    --muted-foreground: 215 16% 65%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 60%;
 
-    --accent: 215 28% 22%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 0 0% 20%;
+    --accent-foreground: 100 80% 50%;
 
-    --border: 215 28% 22%;
-    --input: 215 28% 22%;
-    --ring: 214 84% 66%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 100 80% 50%;
 
-    --sidebar-background: 215 28% 13%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 214 84% 66%;
-    --sidebar-primary-foreground: 215 28% 17%;
-    --sidebar-accent: 215 28% 18%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 215 28% 18%;
-    --sidebar-ring: 214 84% 66%;
+    --sidebar-background: 0 0% 6%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 100 80% 50%;
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 100 80% 50%;
   }
 }
 
@@ -122,10 +125,15 @@
   /* Utility Classes */
   .gradient-primary {
     background: var(--gradient-primary);
+    @apply text-primary-foreground;
   }
   
   .gradient-secondary {
     background: var(--gradient-secondary);
+  }
+
+  .gradient-dark {
+    background: var(--gradient-dark);
   }
   
   .shadow-soft {
@@ -138,6 +146,15 @@
   
   .shadow-strong {
     box-shadow: var(--shadow-strong);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  /* Glow effect for primary elements */
+  .glow-primary {
+    box-shadow: 0 0 20px hsl(100 80% 45% / 0.4);
   }
 
   /* Status Badge Styles */
@@ -159,5 +176,30 @@
 
   .status-cancelada {
     @apply bg-destructive/10 text-destructive border border-destructive/20;
+  }
+
+  /* Card hover effect */
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-medium hover:-translate-y-0.5;
+  }
+
+  /* Electric border animation */
+  .electric-border {
+    @apply relative overflow-hidden;
+  }
+
+  .electric-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, hsl(100 80% 50%), transparent 50%);
+    -webkit-mask: 
+      linear-gradient(#fff 0 0) content-box, 
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
   }
 }
