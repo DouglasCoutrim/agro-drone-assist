@@ -7,7 +7,8 @@ import {
   DollarSign, 
   Settings, 
   Users,
-  Zap
+  Plane,
+  CreditCard
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation, Link } from "react-router-dom";
@@ -23,48 +24,14 @@ export function Sidebar({ className }: SidebarProps) {
   const { role } = useAuth();
 
   const menuItems = [
-    {
-      title: "Dashboard",
-      icon: LayoutDashboard,
-      href: "/",
-      roles: ['admin', 'tecnico', 'consulta'],
-    },
-    {
-      title: "Ordens de Serviço",
-      icon: FileText,
-      href: "/ordens-servico",
-      roles: ['admin', 'tecnico', 'consulta'],
-    },
-    {
-      title: "Estoque",
-      icon: Package,
-      href: "/estoque",
-      roles: ['admin', 'tecnico', 'consulta'],
-    },
-    {
-      title: "Relatórios",
-      icon: BarChart3,
-      href: "/relatorios",
-      roles: ['admin', 'tecnico', 'consulta'],
-    },
-    {
-      title: "Financeiro",
-      icon: DollarSign,
-      href: "/financeiro",
-      roles: ['admin', 'tecnico'],
-    },
-    {
-      title: "Clientes",
-      icon: Users,
-      href: "/clientes",
-      roles: ['admin', 'tecnico', 'consulta'],
-    },
-    {
-      title: "Configurações",
-      icon: Settings,
-      href: "/configuracoes",
-      roles: ['admin'],
-    },
+    { title: "Dashboard", icon: LayoutDashboard, href: "/", roles: ['admin', 'tecnico', 'consulta'] },
+    { title: "Ordens de Serviço", icon: FileText, href: "/ordens-servico", roles: ['admin', 'tecnico', 'consulta'] },
+    { title: "Estoque", icon: Package, href: "/estoque", roles: ['admin', 'tecnico', 'consulta'] },
+    { title: "Relatórios", icon: BarChart3, href: "/relatorios", roles: ['admin', 'tecnico', 'consulta'] },
+    { title: "Financeiro", icon: DollarSign, href: "/financeiro", roles: ['admin', 'tecnico'] },
+    { title: "Cobranças Asaas", icon: CreditCard, href: "/cobrancas", roles: ['admin', 'tecnico'] },
+    { title: "Clientes", icon: Users, href: "/clientes", roles: ['admin', 'tecnico', 'consulta'] },
+    { title: "Configurações", icon: Settings, href: "/configuracoes", roles: ['admin'] },
   ];
 
   const filteredMenuItems = menuItems.filter(item => 
@@ -76,21 +43,18 @@ export function Sidebar({ className }: SidebarProps) {
       "flex h-full w-64 flex-col bg-sidebar text-sidebar-foreground",
       className
     )}>
-      {/* Logo/Header */}
       <div className="flex items-center gap-3 border-b border-sidebar-border p-4">
-        <img src={logo} alt="VoltControl" className="h-10 w-auto" />
+        <img src={logo} alt="Ares Agrotec" className="h-10 w-auto" />
         <div>
-          <h2 className="text-lg font-bold text-primary">VoltControl</h2>
-          <p className="text-xs text-sidebar-foreground/60">Gestão de Baterias</p>
+          <h2 className="text-lg font-bold text-primary">Ares Agrotec</h2>
+          <p className="text-xs text-sidebar-foreground/60">Gestão de Oficina</p>
         </div>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 space-y-1 p-4">
         {filteredMenuItems.map((item) => {
           const isActive = location.pathname === item.href;
           const Icon = item.icon;
-          
           return (
             <Button
               key={item.href}
@@ -110,11 +74,10 @@ export function Sidebar({ className }: SidebarProps) {
         })}
       </nav>
 
-      {/* Footer */}
       <div className="border-t border-sidebar-border p-4">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-primary/20">
-            <Zap className="h-4 w-4 text-primary" />
+            <Plane className="h-4 w-4 text-primary" />
           </div>
           <div className="text-sm">
             <p className="font-medium text-sidebar-foreground">Sistema Online</p>

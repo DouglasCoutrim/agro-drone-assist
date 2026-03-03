@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Loader2, Zap, Mail, Lock, User } from 'lucide-react';
+import { Loader2, Mail, Lock, User, Plane } from 'lucide-react';
 import { z } from 'zod';
 import logo from '@/assets/logo.png';
 
@@ -21,17 +21,13 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
 
-  // Login form state
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-
-  // Signup form state
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupNome, setSignupNome] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
 
-  // Redirect if already logged in
   if (user) {
     navigate('/');
     return null;
@@ -101,15 +97,15 @@ export default function Auth() {
       <Card className="w-full max-w-md shadow-strong relative z-10 border-primary/20">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
-            <img src={logo} alt="VoltControl" className="h-16 w-auto" />
+            <img src={logo} alt="Ares Agrotec" className="h-16 w-auto" />
           </div>
           <div>
             <CardTitle className="text-2xl flex items-center justify-center gap-2">
-              <Zap className="h-6 w-6 text-primary" />
-              VoltControl
+              <Plane className="h-6 w-6 text-primary" />
+              Ares Agrotec
             </CardTitle>
             <CardDescription>
-              Sistema de Gestão de Baterias de Alta Performance
+              Gestão de Oficina - Drones, Baterias e Equipamentos
             </CardDescription>
           </div>
         </CardHeader>
@@ -126,45 +122,18 @@ export default function Auth() {
                   <Label htmlFor="login-email">Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="login-email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={loginEmail}
-                      onChange={(e) => setLoginEmail(e.target.value)}
-                      className="pl-10"
-                      required
-                    />
+                    <Input id="login-email" type="email" placeholder="seu@email.com" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="pl-10" required />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="login-password">Senha</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="login-password"
-                      type="password"
-                      placeholder="••••••"
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      className="pl-10"
-                      required
-                    />
+                    <Input id="login-password" type="password" placeholder="••••••" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="pl-10" required />
                   </div>
                 </div>
-                <Button
-                  type="submit"
-                  className="w-full gradient-primary shadow-medium"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Entrando...
-                    </>
-                  ) : (
-                    'Entrar'
-                  )}
+                <Button type="submit" className="w-full gradient-primary shadow-medium" disabled={loading}>
+                  {loading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Entrando...</>) : 'Entrar'}
                 </Button>
               </form>
             </TabsContent>
@@ -175,75 +144,32 @@ export default function Auth() {
                   <Label htmlFor="signup-nome">Nome</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="signup-nome"
-                      type="text"
-                      placeholder="Seu nome completo"
-                      value={signupNome}
-                      onChange={(e) => setSignupNome(e.target.value)}
-                      className="pl-10"
-                      required
-                    />
+                    <Input id="signup-nome" type="text" placeholder="Seu nome completo" value={signupNome} onChange={(e) => setSignupNome(e.target.value)} className="pl-10" required />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={signupEmail}
-                      onChange={(e) => setSignupEmail(e.target.value)}
-                      className="pl-10"
-                      required
-                    />
+                    <Input id="signup-email" type="email" placeholder="seu@email.com" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} className="pl-10" required />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Senha</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      placeholder="••••••"
-                      value={signupPassword}
-                      onChange={(e) => setSignupPassword(e.target.value)}
-                      className="pl-10"
-                      required
-                    />
+                    <Input id="signup-password" type="password" placeholder="••••••" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} className="pl-10" required />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-confirm-password">Confirmar Senha</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="signup-confirm-password"
-                      type="password"
-                      placeholder="••••••"
-                      value={signupConfirmPassword}
-                      onChange={(e) => setSignupConfirmPassword(e.target.value)}
-                      className="pl-10"
-                      required
-                    />
+                    <Input id="signup-confirm-password" type="password" placeholder="••••••" value={signupConfirmPassword} onChange={(e) => setSignupConfirmPassword(e.target.value)} className="pl-10" required />
                   </div>
                 </div>
-                <Button
-                  type="submit"
-                  className="w-full gradient-primary shadow-medium"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Criando conta...
-                    </>
-                  ) : (
-                    'Criar Conta'
-                  )}
+                <Button type="submit" className="w-full gradient-primary shadow-medium" disabled={loading}>
+                  {loading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Criando conta...</>) : 'Criar Conta'}
                 </Button>
               </form>
             </TabsContent>
