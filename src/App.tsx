@@ -13,6 +13,7 @@ import Relatorios from "./pages/Relatorios";
 import Financeiro from "./pages/Financeiro";
 import Clientes from "./pages/Clientes";
 import Configuracoes from "./pages/Configuracoes";
+import Cobrancas from "./pages/Cobrancas";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,62 +27,14 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Index />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/ordens-servico"
-              element={
-                <ProtectedRoute>
-                  <OrdensServico />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/estoque"
-              element={
-                <ProtectedRoute>
-                  <Estoque />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/relatorios"
-              element={
-                <ProtectedRoute>
-                  <Relatorios />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/financeiro"
-              element={
-                <ProtectedRoute requiredRole="tecnico">
-                  <Financeiro />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/clientes"
-              element={
-                <ProtectedRoute>
-                  <Clientes />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/configuracoes"
-              element={
-                <ProtectedRoute requiredRole="admin">
-                  <Configuracoes />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+            <Route path="/ordens-servico" element={<ProtectedRoute><OrdensServico /></ProtectedRoute>} />
+            <Route path="/estoque" element={<ProtectedRoute><Estoque /></ProtectedRoute>} />
+            <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
+            <Route path="/financeiro" element={<ProtectedRoute requiredRole="tecnico"><Financeiro /></ProtectedRoute>} />
+            <Route path="/cobrancas" element={<ProtectedRoute requiredRole="tecnico"><Cobrancas /></ProtectedRoute>} />
+            <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+            <Route path="/configuracoes" element={<ProtectedRoute requiredRole="admin"><Configuracoes /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

@@ -180,7 +180,7 @@ export default function Estoque() {
               Controle de Estoque
             </h1>
             <p className="text-muted-foreground">
-              Gerencie peças, componentes e produtos
+              Gerencie peças para drones, baterias, geradores e carregadores
             </p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(open) => {
@@ -219,7 +219,7 @@ export default function Estoque() {
                       id="categoria"
                       value={formData.categoria}
                       onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
-                      placeholder="Ex: Baterias, Hélices, Motores"
+                      placeholder="Ex: Baterias, Hélices, Motores, Carregadores, Geradores"
                       required
                     />
                   </div>
