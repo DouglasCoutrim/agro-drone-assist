@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
-  FileText, Package, DollarSign, AlertTriangle, TrendingUp, Clock, CheckCircle, Users, Plus, Plane
+  FileText, Package, DollarSign, AlertTriangle, TrendingUp, Clock, CheckCircle, Users, Plus, Zap
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -67,11 +67,11 @@ const Index = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Plane className="h-8 w-8 text-primary" />
-              Dashboard
-            </h1>
-            <p className="text-muted-foreground">Bem-vindo ao Ares Agrotec - Gestão de Oficina</p>
+             <h1 className="text-3xl font-bold flex items-center gap-2">
+               <Zap className="h-8 w-8 text-primary" />
+               Dashboard
+             </h1>
+             <p className="text-muted-foreground">Bem-vindo ao Volt Control - Gestão de Oficina</p>
           </div>
           <Button className="gradient-primary shadow-medium" onClick={() => navigate('/ordens-servico')}>
             <Plus className="mr-2 h-4 w-4" />Nova OS
