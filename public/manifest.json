@@ -1,7 +1,7 @@
 {
-  "name": "Ares Agrotec - Gestão de Oficina",
-  "short_name": "Ares Agrotec",
-  "description": "Sistema completo de gestão para oficina de drones e equipamentos agrícolas",
+  "name": "Volt Control - Gestão de Oficina",
+  "short_name": "Volt Control",
+  "description": "Sistema completo de gestão para oficina de drones e equipamentos",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",

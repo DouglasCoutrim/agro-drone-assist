@@ -1,4 +1,4 @@
-import { Bell, User, Search, Menu, LogOut, Plane } from "lucide-react";
+import { Bell, User, Search, Menu, LogOut, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -7,19 +7,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
-interface HeaderProps {
-  onMenuToggle?: () => void;
-}
+interface HeaderProps { onMenuToggle?: () => void; }
 
 export function Header({ onMenuToggle }: HeaderProps) {
   const { user, role, signOut } = useAuth();
   const navigate = useNavigate();
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/auth');
-  };
+  const handleSignOut = async () => { await signOut(); navigate('/auth'); };
 
   const getRoleBadge = () => {
     switch (role) {
@@ -37,15 +33,16 @@ export function Header({ onMenuToggle }: HeaderProps) {
           <Menu className="h-5 w-5" />
         </Button>
         <div className="flex items-center gap-2 md:hidden">
-          <Plane className="h-6 w-6 text-primary" />
-          <span className="font-bold text-primary">Ares Agrotec</span>
+          <Zap className="h-6 w-6 text-primary" />
+          <span className="font-bold text-primary">Volt Control</span>
         </div>
         <div className="relative hidden md:block">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Buscar OS, cliente, equipamento..." className="w-80 pl-10" />
         </div>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        <ThemeToggle />
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           <Badge variant="destructive" className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center">3</Badge>
@@ -68,8 +65,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut} className="text-destructive cursor-pointer">
-              <LogOut className="mr-2 h-4 w-4" />
-              Sair
+              <LogOut className="mr-2 h-4 w-4" />Sair
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
