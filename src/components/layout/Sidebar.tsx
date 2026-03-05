@@ -23,6 +23,7 @@ export function Sidebar({ className }: SidebarProps) {
     { title: "Deslocamentos", icon: MapPin, href: "/deslocamentos", roles: ['admin', 'tecnico'] },
     { title: "Clientes", icon: Users, href: "/clientes", roles: ['admin', 'tecnico', 'consulta'] },
     { title: "Equipe", icon: UsersRound, href: "/equipe", roles: ['admin'] },
+    { title: "Empresa", icon: Building2, href: "/empresa", roles: ['admin'] },
     { title: "Configurações", icon: Settings, href: "/configuracoes", roles: ['admin'] },
   ];
 
