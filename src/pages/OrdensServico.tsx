@@ -21,6 +21,7 @@ type Cliente = Tables<"clientes">;
 
 export default function OrdensServico() {
   const { user } = useAuth();
+  const { config: empresa } = useEmpresaConfig();
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
