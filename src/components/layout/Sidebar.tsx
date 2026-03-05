@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { 
-  LayoutDashboard, FileText, Package, BarChart3, DollarSign, Settings, Users, Zap, CreditCard, MapPin, UsersRound
+  LayoutDashboard, FileText, Package, BarChart3, DollarSign, Settings, Users, Zap, CreditCard, MapPin, UsersRound, Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation, Link } from "react-router-dom";
