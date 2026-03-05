@@ -59,6 +59,42 @@ export type Database = {
         }
         Relationships: []
       }
+      empresa_config: {
+        Row: {
+          cnpj: string | null
+          created_at: string
+          endereco: string | null
+          id: string
+          logo_url: string | null
+          nome_empresa: string
+          responsavel: string | null
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          cnpj?: string | null
+          created_at?: string
+          endereco?: string | null
+          id?: string
+          logo_url?: string | null
+          nome_empresa?: string
+          responsavel?: string | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cnpj?: string | null
+          created_at?: string
+          endereco?: string | null
+          id?: string
+          logo_url?: string | null
+          nome_empresa?: string
+          responsavel?: string | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       financeiro: {
         Row: {
           categoria: string | null
