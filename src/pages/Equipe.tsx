@@ -96,33 +96,25 @@ export default function Equipe() {
   };
 
   const handleAddMember = async () => {
-    if (!newMember.nome.trim() || !newMember.email.trim()) {
-      toast.error('Nome e Email são obrigatórios');
+    if (!newMember.nome.trim() || !newMember.email.trim() || !newMember.senha.trim()) {
+      toast.error('Nome, Email e Senha são obrigatórios');
       return;
     }
     setAddLoading(true);
     try {
-      // Insert directly into profiles table (auth credentials managed separately)
-      const newId = crypto.randomUUID();
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: newId,
-        nome: newMember.nome,
-        email: newMember.email,
-      } as any);
-      if (profileError) throw profileError;
-
-      const { error: roleError } = await supabase.from('user_roles').insert({
-        user_id: newId,
-        role: newMember.role as any,
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: {
+          nome: newMember.nome,
+          email: newMember.email,
+          senha: newMember.senha,
+          role: newMember.role,
+        },
       });
-      if (roleError) throw roleError;
 
-      const { error: permError } = await supabase.from('user_permissions').insert({
-        user_id: newId,
-      } as any);
-      if (permError) throw permError;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      toast.success('Usuário adicionado à equipe. A criação de credenciais de Auth será processada pelo backend.');
+      toast.success('Membro adicionado com sucesso! Ele já pode fazer login.');
       setAddDialogOpen(false);
       setNewMember({ nome: "", email: "", senha: "", role: "consulta" });
       fetchUsers();
