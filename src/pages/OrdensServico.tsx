@@ -161,7 +161,7 @@ export default function OrdensServico() {
     
     const texto = `Olá, *${viewingOS.clientes?.nome || 'Cliente'}*! 👋
 
-Aqui é da *Volt Control - Oficina*.
+Aqui é da *${empresa.nome_empresa || 'Volt Control'}*.
 
 Sua Ordem de Serviço está atualizada:
 
