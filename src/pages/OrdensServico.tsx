@@ -6,9 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Search, Edit, FileText, Loader2 } from "lucide-react";
+import { Plus, Search, Edit, FileText, Loader2, Eye, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
@@ -24,6 +25,8 @@ export default function OrdensServico() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewingOS, setViewingOS] = useState<OrdemServico | null>(null);
   const [editingOS, setEditingOS] = useState<OrdemServico | null>(null);
   const [formLoading, setFormLoading] = useState(false);
 
@@ -73,6 +76,73 @@ export default function OrdensServico() {
     setDialogOpen(true);
   };
 
+  const handleView = (os: OrdemServico) => {
+    setViewingOS(os);
+    setViewDialogOpen(true);
+  };
+
+  const handlePrintOS = () => {
+    if (!viewingOS) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) { toast.error('Popup bloqueado. Permita popups para imprimir.'); return; }
+    
+    const formatCurrency = (v: number | null) => v != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v) : '-';
+    const formatDate = (d: string | null) => d ? new Date(d).toLocaleDateString('pt-BR') : '-';
+
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>OS ${viewingOS.numero}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; padding: 40px; color: #333; max-width: 210mm; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #4CAF50; padding-bottom: 16px; margin-bottom: 24px; }
+        .header h1 { font-size: 24px; color: #4CAF50; }
+        .header .os-number { font-size: 20px; font-weight: bold; color: #333; }
+        .section { margin-bottom: 20px; }
+        .section-title { font-size: 14px; font-weight: bold; color: #4CAF50; text-transform: uppercase; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-bottom: 12px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
+        .field { margin-bottom: 8px; }
+        .field-label { font-size: 11px; color: #888; text-transform: uppercase; }
+        .field-value { font-size: 14px; font-weight: 500; }
+        .full-width { grid-column: 1 / -1; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; background: #E8F5E9; color: #2E7D32; }
+        .footer { margin-top: 40px; border-top: 1px solid #ddd; padding-top: 16px; display: flex; justify-content: space-between; }
+        .signature { width: 200px; text-align: center; border-top: 1px solid #333; padding-top: 8px; font-size: 12px; }
+        @media print { body { padding: 20px; } }
+      </style>
+    </head><body>
+      <div class="header">
+        <div><h1>Volt Control</h1><p style="font-size:12px;color:#888">Gestão de Oficina</p></div>
+        <div style="text-align:right"><div class="os-number">OS ${viewingOS.numero}</div><div class="status-badge">${getStatusLabel(viewingOS.status)}</div></div>
+      </div>
+      <div class="section"><div class="section-title">Dados do Cliente</div><div class="grid">
+        <div class="field"><div class="field-label">Nome</div><div class="field-value">${viewingOS.clientes?.nome || '-'}</div></div>
+      </div></div>
+      <div class="section"><div class="section-title">Equipamento</div><div class="grid">
+        <div class="field"><div class="field-label">Tipo</div><div class="field-value">${getTipoEquipamento(viewingOS.tipo_equipamento)}</div></div>
+        <div class="field"><div class="field-label">Modelo</div><div class="field-value">${viewingOS.modelo_equipamento || '-'}</div></div>
+        <div class="field"><div class="field-label">Nº Série</div><div class="field-value">${viewingOS.numero_serie || '-'}</div></div>
+        <div class="field"><div class="field-label">Prioridade</div><div class="field-value">${viewingOS.prioridade}</div></div>
+      </div></div>
+      <div class="section"><div class="section-title">Problema / Diagnóstico</div><div class="grid">
+        <div class="field full-width"><div class="field-label">Descrição do Problema</div><div class="field-value">${viewingOS.descricao_problema}</div></div>
+        <div class="field full-width"><div class="field-label">Diagnóstico</div><div class="field-value">${viewingOS.diagnostico || '-'}</div></div>
+        <div class="field full-width"><div class="field-label">Solução</div><div class="field-value">${viewingOS.solucao || '-'}</div></div>
+      </div></div>
+      <div class="section"><div class="section-title">Valores e Datas</div><div class="grid">
+        <div class="field"><div class="field-label">Valor Orçamento</div><div class="field-value">${formatCurrency(viewingOS.valor_orcamento)}</div></div>
+        <div class="field"><div class="field-label">Valor Final</div><div class="field-value">${formatCurrency(viewingOS.valor_final)}</div></div>
+        <div class="field"><div class="field-label">Data Entrada</div><div class="field-value">${formatDate(viewingOS.data_entrada)}</div></div>
+        <div class="field"><div class="field-label">Previsão</div><div class="field-value">${formatDate(viewingOS.data_previsao)}</div></div>
+        <div class="field"><div class="field-label">Conclusão</div><div class="field-value">${formatDate(viewingOS.data_conclusao)}</div></div>
+        <div class="field"><div class="field-label">Entrega</div><div class="field-value">${formatDate(viewingOS.data_entrega)}</div></div>
+      </div></div>
+      ${viewingOS.observacoes ? `<div class="section"><div class="section-title">Observações</div><p style="font-size:14px">${viewingOS.observacoes}</p></div>` : ''}
+      <div class="footer"><div class="signature">Técnico Responsável</div><div class="signature">Cliente</div></div>
+    </body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
   const handleStatusChange = async (osId: string, newStatus: Enums<"status_os">) => {
     try {
       const updateData: any = { status: newStatus };
@@ -88,6 +158,14 @@ export default function OrdensServico() {
   const resetForm = () => {
     setFormData({ cliente_id: "", tipo_equipamento: "bateria", modelo_equipamento: "", numero_serie: "", descricao_problema: "", prioridade: "media", data_previsao: "", valor_orcamento: 0, observacoes: "" });
     setEditingOS(null);
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      'aberta': 'Aberta', 'em_andamento': 'Em Andamento', 'aguardando_peca': 'Aguardando Peça',
+      'concluida': 'Concluída', 'entregue': 'Entregue', 'cancelada': 'Cancelada',
+    };
+    return labels[status] || status;
   };
 
   const getStatusBadge = (status: string) => {
@@ -107,6 +185,9 @@ export default function OrdensServico() {
     };
     return tipos[tipo] || tipo;
   };
+
+  const formatCurrency = (v: number | null) => v != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v) : '-';
+  const formatDate = (d: string | null) => d ? new Date(d).toLocaleDateString('pt-BR') : '-';
 
   const filteredOrdens = ordens.filter(os =>
     os.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -219,7 +300,12 @@ export default function OrdensServico() {
                       <div><p className="text-sm text-muted-foreground">Status</p>{getStatusBadge(os.status)}</div>
                       <div><p className="text-sm text-muted-foreground">Entrada</p><p className="text-sm">{new Date(os.data_entrada).toLocaleDateString('pt-BR')}</p></div>
                       <div className="flex gap-2 items-start justify-end">
-                        <Button size="sm" variant="outline" onClick={() => handleEdit(os)}><Edit className="h-4 w-4" /></Button>
+                        <Button size="sm" variant="outline" onClick={() => handleView(os)} title="Visualizar">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleEdit(os)} title="Editar">
+                          <Edit className="h-4 w-4" />
+                        </Button>
                         <Select onValueChange={(v: Enums<"status_os">) => handleStatusChange(os.id, v)}>
                           <SelectTrigger className="w-32 h-9"><SelectValue placeholder="Ação" /></SelectTrigger>
                           <SelectContent>
@@ -238,6 +324,64 @@ export default function OrdensServico() {
             )}
           </CardContent>
         </Card>
+
+        {/* View OS Dialog (Read-only) */}
+        <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center justify-between">
+                <span>OS {viewingOS?.numero}</span>
+                {viewingOS && getStatusBadge(viewingOS.status)}
+              </DialogTitle>
+              <DialogDescription>Visualização da ordem de serviço</DialogDescription>
+            </DialogHeader>
+            {viewingOS && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-semibold text-primary uppercase mb-3">Dados do Cliente</h3>
+                  <p className="font-medium">{viewingOS.clientes?.nome || '-'}</p>
+                </div>
+                <Separator />
+                <div>
+                  <h3 className="text-sm font-semibold text-primary uppercase mb-3">Equipamento</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><p className="text-xs text-muted-foreground">Tipo</p><p className="font-medium">{getTipoEquipamento(viewingOS.tipo_equipamento)}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Modelo</p><p className="font-medium">{viewingOS.modelo_equipamento || '-'}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Nº Série</p><p className="font-medium">{viewingOS.numero_serie || '-'}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Prioridade</p><p className="font-medium capitalize">{viewingOS.prioridade}</p></div>
+                  </div>
+                </div>
+                <Separator />
+                <div>
+                  <h3 className="text-sm font-semibold text-primary uppercase mb-3">Problema e Solução</h3>
+                  <div className="space-y-3">
+                    <div><p className="text-xs text-muted-foreground">Descrição do Problema</p><p className="text-sm">{viewingOS.descricao_problema}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Diagnóstico</p><p className="text-sm">{viewingOS.diagnostico || '-'}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Solução</p><p className="text-sm">{viewingOS.solucao || '-'}</p></div>
+                  </div>
+                </div>
+                <Separator />
+                <div>
+                  <h3 className="text-sm font-semibold text-primary uppercase mb-3">Valores e Datas</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><p className="text-xs text-muted-foreground">Valor Orçamento</p><p className="font-medium">{formatCurrency(viewingOS.valor_orcamento)}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Valor Final</p><p className="font-medium">{formatCurrency(viewingOS.valor_final)}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Data Entrada</p><p className="text-sm">{formatDate(viewingOS.data_entrada)}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Previsão</p><p className="text-sm">{formatDate(viewingOS.data_previsao)}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Conclusão</p><p className="text-sm">{formatDate(viewingOS.data_conclusao)}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Entrega</p><p className="text-sm">{formatDate(viewingOS.data_entrega)}</p></div>
+                  </div>
+                </div>
+                {viewingOS.observacoes && (<><Separator /><div><p className="text-xs text-muted-foreground">Observações</p><p className="text-sm">{viewingOS.observacoes}</p></div></>)}
+                <div className="flex justify-end pt-4">
+                  <Button onClick={handlePrintOS} className="gradient-primary">
+                    <Printer className="mr-2 h-4 w-4" />Exportar / Imprimir PDF
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </MainLayout>
   );

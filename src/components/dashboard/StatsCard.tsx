@@ -11,6 +11,7 @@ interface StatsCardProps {
   };
   icon: LucideIcon;
   variant?: "default" | "success" | "warning" | "destructive";
+  onClick?: () => void;
 }
 
 export function StatsCard({ 
@@ -18,10 +19,17 @@ export function StatsCard({
   value, 
   change, 
   icon: Icon, 
-  variant = "default" 
+  variant = "default",
+  onClick
 }: StatsCardProps) {
   return (
-    <Card className="relative overflow-hidden shadow-soft hover:shadow-medium transition-shadow">
+    <Card 
+      className={cn(
+        "relative overflow-hidden shadow-soft hover:shadow-medium transition-all",
+        onClick && "cursor-pointer hover:-translate-y-0.5"
+      )}
+      onClick={onClick}
+    >
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div>

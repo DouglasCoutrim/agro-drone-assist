@@ -79,10 +79,10 @@ const Index = () => {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <StatsCard title="OS Abertas" value={stats.osAbertas.toString()} icon={FileText} variant="warning" />
-          <StatsCard title="OS Concluídas" value={stats.osConcluidas.toString()} icon={CheckCircle} variant="success" />
-          <StatsCard title="Itens Baixo Estoque" value={stats.itensEstoqueBaixo.toString()} icon={AlertTriangle} variant="destructive" />
-          <StatsCard title="Faturamento (Mês)" value={formatCurrency(stats.faturamentoMes)} icon={DollarSign} variant="success" />
+          <StatsCard title="OS Abertas" value={stats.osAbertas.toString()} icon={FileText} variant="warning" onClick={() => navigate('/ordens-servico')} />
+          <StatsCard title="OS Concluídas" value={stats.osConcluidas.toString()} icon={CheckCircle} variant="success" onClick={() => navigate('/ordens-servico')} />
+          <StatsCard title="Itens Baixo Estoque" value={stats.itensEstoqueBaixo.toString()} icon={AlertTriangle} variant="destructive" onClick={() => navigate('/estoque')} />
+          <StatsCard title="Faturamento (Mês)" value={formatCurrency(stats.faturamentoMes)} icon={DollarSign} variant="success" onClick={() => navigate('/financeiro')} />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
@@ -99,7 +99,7 @@ const Index = () => {
               ) : (
                 <div className="space-y-4">
                   {recentOS.map((os) => (
-                    <div key={os.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <div key={os.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate('/ordens-servico')}>
                       <div className="space-y-1">
                         <p className="font-medium text-primary">{os.numero}</p>
                         <p className="text-sm text-muted-foreground">{os.clientes?.nome}</p>
@@ -118,13 +118,13 @@ const Index = () => {
             <CardContent>
               <div className="space-y-4">
                 {stats.itensEstoqueBaixo > 0 && (
-                  <div className="rounded-lg border-l-4 border-l-warning bg-warning/5 p-4">
+                  <div className="rounded-lg border-l-4 border-l-warning bg-warning/5 p-4 cursor-pointer hover:bg-warning/10 transition-colors" onClick={() => navigate('/estoque')}>
                     <p className="font-medium text-warning">Estoque Baixo</p>
                     <p className="text-sm text-muted-foreground">{stats.itensEstoqueBaixo} itens abaixo do nível mínimo</p>
                   </div>
                 )}
                 {stats.osAbertas > 0 && (
-                  <div className="rounded-lg border-l-4 border-l-primary bg-primary/5 p-4">
+                  <div className="rounded-lg border-l-4 border-l-primary bg-primary/5 p-4 cursor-pointer hover:bg-primary/10 transition-colors" onClick={() => navigate('/ordens-servico')}>
                     <p className="font-medium text-primary">OS Pendentes</p>
                     <p className="text-sm text-muted-foreground">{stats.osAbertas} OS aguardando atendimento</p>
                   </div>
@@ -139,7 +139,7 @@ const Index = () => {
         </div>
 
         <div className="grid gap-6 md:grid-cols-3">
-          <Card className="shadow-soft card-hover">
+          <Card className="shadow-soft card-hover cursor-pointer" onClick={() => navigate('/financeiro')}>
             <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" />Performance</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -149,21 +149,21 @@ const Index = () => {
               </div>
             </CardContent>
           </Card>
-          <Card className="shadow-soft card-hover">
+          <Card className="shadow-soft card-hover cursor-pointer" onClick={() => navigate('/estoque')}>
             <CardHeader><CardTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-primary" />Estoque Rápido</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <div className="flex justify-between"><span className="text-sm">Itens em Alerta</span><span className="font-medium text-destructive">{stats.itensEstoqueBaixo}</span></div>
-                <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => navigate('/estoque')}>Ver Estoque Completo</Button>
+                <Button variant="outline" size="sm" className="w-full mt-2" onClick={(e) => { e.stopPropagation(); navigate('/estoque'); }}>Ver Estoque Completo</Button>
               </div>
             </CardContent>
           </Card>
-          <Card className="shadow-soft card-hover">
+          <Card className="shadow-soft card-hover cursor-pointer" onClick={() => navigate('/clientes')}>
             <CardHeader><CardTitle className="flex items-center gap-2"><Users className="h-5 w-5 text-primary" />Clientes</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <div className="flex justify-between"><span className="text-sm">Total de Clientes</span><span className="font-medium">{stats.totalClientes}</span></div>
-                <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => navigate('/clientes')}>Ver Clientes</Button>
+                <Button variant="outline" size="sm" className="w-full mt-2" onClick={(e) => { e.stopPropagation(); navigate('/clientes'); }}>Ver Clientes</Button>
               </div>
             </CardContent>
           </Card>
