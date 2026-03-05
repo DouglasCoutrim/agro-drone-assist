@@ -32,6 +32,9 @@ export default function Equipe() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const [newMember, setNewMember] = useState({ nome: "", email: "", senha: "", role: "consulta" });
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editUser, setEditUser] = useState<UserWithRoleAndPerms | null>(null);
+  const [editForm, setEditForm] = useState({ nome: "", email: "" });
 
   useEffect(() => { fetchUsers(); }, []);
 
