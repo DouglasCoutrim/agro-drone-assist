@@ -205,29 +205,37 @@ export default function Equipe() {
               <div className="space-y-6">
                 {users.map((u) => (
                   <div key={u.id} className="border rounded-lg p-5 hover:bg-muted/30 transition-colors space-y-4">
-                    <div className="flex items-center justify-between">
+                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                        <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
                           <User className="h-5 w-5 text-primary" />
                         </div>
-                        <div>
-                          <p className="font-medium">{u.nome}</p>
-                          <p className="text-sm text-muted-foreground">{u.email}</p>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{u.nome}</p>
+                          <p className="text-sm text-muted-foreground truncate">{u.email}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Select value={u.role} onValueChange={(v) => handleChangeRole(u.id, v)}>
-                          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="admin">Administrador</SelectItem>
-                            <SelectItem value="tecnico">Técnico</SelectItem>
-                            <SelectItem value="consulta">Atendimento</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {u.id !== user?.id && (
-                          <Button size="sm" variant="ghost" onClick={() => handleDeleteUser(u.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {isAdmin && (
+                          <Select value={u.role} onValueChange={(v) => handleChangeRole(u.id, v)}>
+                            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="admin">Administrador</SelectItem>
+                              <SelectItem value="tecnico">Técnico</SelectItem>
+                              <SelectItem value="consulta">Atendimento</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                        {!isAdmin && getRoleBadge(u.role)}
+                        {isAdmin && u.id !== user?.id && (
+                          <>
+                            <Button size="sm" variant="outline" onClick={() => openEditDialog(u)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleDeleteUser(u.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
