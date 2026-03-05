@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { 
-  LayoutDashboard, FileText, Package, BarChart3, DollarSign, Settings, Users, Zap, CreditCard, MapPin
+  LayoutDashboard, FileText, Package, BarChart3, DollarSign, Settings, Users, Zap, CreditCard, MapPin, UsersRound
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation, Link } from "react-router-dom";
@@ -22,6 +22,7 @@ export function Sidebar({ className }: SidebarProps) {
     { title: "Cobranças Asaas", icon: CreditCard, href: "/cobrancas", roles: ['admin', 'tecnico'] },
     { title: "Deslocamentos", icon: MapPin, href: "/deslocamentos", roles: ['admin', 'tecnico'] },
     { title: "Clientes", icon: Users, href: "/clientes", roles: ['admin', 'tecnico', 'consulta'] },
+    { title: "Equipe", icon: UsersRound, href: "/equipe", roles: ['admin'] },
     { title: "Configurações", icon: Settings, href: "/configuracoes", roles: ['admin'] },
   ];
 

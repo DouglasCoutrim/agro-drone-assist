@@ -382,6 +382,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_permissions: {
+        Row: {
+          acesso_estoque: boolean
+          acesso_financeiro: boolean
+          acesso_os: boolean
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          acesso_estoque?: boolean
+          acesso_financeiro?: boolean
+          acesso_os?: boolean
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          acesso_estoque?: boolean
+          acesso_financeiro?: boolean
+          acesso_os?: boolean
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
