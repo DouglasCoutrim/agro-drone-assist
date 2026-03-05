@@ -112,7 +112,8 @@ export default function OrdensServico() {
       </style>
     </head><body>
       <div class="header">
-        <div><h1>Volt Control</h1><p style="font-size:12px;color:#888">Gestão de Oficina</p></div>
+        ${empresa.logo_url ? `<img src="${empresa.logo_url}" alt="Logo" style="max-height:50px;margin-right:12px" />` : ''}
+        <div><h1>${empresa.nome_empresa || 'Volt Control'}</h1><p style="font-size:12px;color:#888">${empresa.cnpj ? 'CNPJ: ' + empresa.cnpj : ''} ${empresa.telefone ? '| Tel: ' + empresa.telefone : ''}</p>${empresa.endereco ? `<p style="font-size:11px;color:#888">${empresa.endereco}</p>` : ''}</div>
         <div style="text-align:right"><div class="os-number">OS ${viewingOS.numero}</div><div class="status-badge">${getStatusLabel(viewingOS.status)}</div></div>
       </div>
       <div class="section"><div class="section-title">Dados do Cliente</div><div class="grid">
