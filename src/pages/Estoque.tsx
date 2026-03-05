@@ -111,31 +111,54 @@ export default function Estoque() {
     setEditingItem(null); setMlLink("");
   };
 
+  const extractMLId = (url: string): string | null => {
+    const match = url.match(/MLB[-]?\d+/i);
+    if (!match) return null;
+    return match[0].replace(/-/g, '').toUpperCase();
+  };
+
   const handleMLImport = async () => {
     if (!mlLink.trim()) { toast.error('Cole o link do anúncio do Mercado Livre'); return; }
+    const itemId = extractMLId(mlLink);
+    if (!itemId) { toast.error('Link inválido. Use um link de produto do Mercado Livre (ex: MLB-123456789).'); return; }
+
     setMlLoading(true);
-    try {
-      // Extrair ID do item do link do ML
-      const match = mlLink.match(/MLB-?(\d+)/i) || mlLink.match(/\/p\/MLB(\d+)/i);
-      if (!match) { toast.error('Link inválido. Use um link de produto do Mercado Livre.'); setMlLoading(false); return; }
-      const itemId = `MLB${match[1]}`;
-      
-      const res = await fetch(`https://api.mercadolibre.com/items/${itemId}`);
-      if (!res.ok) throw new Error('Item não encontrado');
-      const data = await res.json();
-      
+    const loadingToast = toast.loading('Buscando dados do Mercado Livre...');
+
+    const applyData = (data: any) => {
+      const price = data.price || 0;
+      const imageUrl = data.pictures?.[0]?.secure_url || data.thumbnail || '';
       setFormData(prev => ({
         ...prev,
         descricao: data.title || prev.descricao,
-        custo_unitario: data.price || prev.custo_unitario,
-        preco_venda: Number(((data.price || 0) * (1 + margemLucro / 100)).toFixed(2)),
+        custo_unitario: price,
+        preco_venda: Number((price * (1 + margemLucro / 100)).toFixed(2)),
       }));
-      toast.success('Dados importados do Mercado Livre!');
-    } catch (error: any) {
-      if (error.message?.includes('Failed to fetch') || error.name === 'TypeError') {
-        toast.error('Erro de CORS: Necessário proxy para buscar dados. Preencha manualmente.');
-      } else {
-        toast.error('Erro ao buscar dados: ' + error.message);
+      toast.dismiss(loadingToast);
+      toast.success(`Produto importado: ${data.title}`);
+      if (imageUrl) {
+        toast.info('Imagem disponível: ' + imageUrl.substring(0, 60) + '...');
+      }
+    };
+
+    try {
+      const res = await fetch(`https://api.mercadolibre.com/items/${itemId}`);
+      if (!res.ok) throw new Error('CORS_OR_NOT_FOUND');
+      const data = await res.json();
+      if (data.error || data.status === 404) throw new Error('CORS_OR_NOT_FOUND');
+      applyData(data);
+    } catch {
+      // Fallback via CORS proxy
+      try {
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://api.mercadolibre.com/items/${itemId}`)}`;
+        const proxyRes = await fetch(proxyUrl);
+        if (!proxyRes.ok) throw new Error('Produto não encontrado na API do Mercado Livre.');
+        const data = await proxyRes.json();
+        if (data.error || !data.title) throw new Error('Produto não encontrado ou dados indisponíveis.');
+        applyData(data);
+      } catch (proxyError: any) {
+        toast.dismiss(loadingToast);
+        toast.error(proxyError.message || 'Não foi possível buscar os dados. Verifique o link e tente novamente.');
       }
     } finally { setMlLoading(false); }
   };
