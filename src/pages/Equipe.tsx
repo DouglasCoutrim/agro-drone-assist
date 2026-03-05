@@ -4,8 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, User, Shield, Loader2, Trash2, FileText, Package, DollarSign } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Users, User, Shield, Loader2, Trash2, FileText, Package, DollarSign, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -23,9 +26,12 @@ interface UserWithRoleAndPerms extends Profile {
 }
 
 export default function Equipe() {
-  const { user, role } = useAuth();
+  const { user, role, isAdmin } = useAuth();
   const [users, setUsers] = useState<UserWithRoleAndPerms[]>([]);
   const [loading, setLoading] = useState(true);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [addLoading, setAddLoading] = useState(false);
+  const [newMember, setNewMember] = useState({ nome: "", email: "", senha: "", role: "consulta" });
 
   useEffect(() => { fetchUsers(); }, []);
 
@@ -70,7 +76,6 @@ export default function Equipe() {
     try {
       const { error } = await supabase.from('user_permissions').update({ [field]: value } as any).eq('user_id', userId);
       if (error) throw error;
-      // Update local state immediately
       setUsers(prev => prev.map(u => u.id === userId ? {
         ...u, permissions: { ...u.permissions!, [field]: value }
       } : u));
@@ -90,6 +95,44 @@ export default function Equipe() {
     } catch (error: any) { toast.error('Erro: ' + error.message); }
   };
 
+  const handleAddMember = async () => {
+    if (!newMember.nome.trim() || !newMember.email.trim()) {
+      toast.error('Nome e Email são obrigatórios');
+      return;
+    }
+    setAddLoading(true);
+    try {
+      // Insert directly into profiles table (auth credentials managed separately)
+      const newId = crypto.randomUUID();
+      const { error: profileError } = await supabase.from('profiles').insert({
+        id: newId,
+        nome: newMember.nome,
+        email: newMember.email,
+      } as any);
+      if (profileError) throw profileError;
+
+      const { error: roleError } = await supabase.from('user_roles').insert({
+        user_id: newId,
+        role: newMember.role as any,
+      });
+      if (roleError) throw roleError;
+
+      const { error: permError } = await supabase.from('user_permissions').insert({
+        user_id: newId,
+      } as any);
+      if (permError) throw permError;
+
+      toast.success('Usuário adicionado à equipe. A criação de credenciais de Auth será processada pelo backend.');
+      setAddDialogOpen(false);
+      setNewMember({ nome: "", email: "", senha: "", role: "consulta" });
+      fetchUsers();
+    } catch (error: any) {
+      toast.error('Erro ao adicionar membro: ' + error.message);
+    } finally {
+      setAddLoading(false);
+    }
+  };
+
   const getRoleBadge = (r?: string) => {
     switch (r) {
       case 'admin': return <Badge className="bg-primary text-primary-foreground">Admin</Badge>;
@@ -101,11 +144,58 @@ export default function Equipe() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Users className="h-8 w-8 text-primary" />Gerenciamento de Equipe
-          </h1>
-          <p className="text-muted-foreground">Gerencie membros da equipe e suas permissões de acesso</p>
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Users className="h-8 w-8 text-primary" />Gerenciamento de Equipe
+            </h1>
+            <p className="text-muted-foreground">Gerencie membros da equipe e suas permissões de acesso</p>
+          </div>
+
+          {isAdmin && (
+            <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gradient-primary shadow-medium">
+                  <UserPlus className="mr-2 h-4 w-4" />Adicionar Membro
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Novo Membro da Equipe</DialogTitle>
+                  <DialogDescription>Adicione um novo membro ao sistema</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Nome Completo *</Label>
+                    <Input value={newMember.nome} onChange={(e) => setNewMember({ ...newMember, nome: e.target.value })} placeholder="Nome do membro" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Email *</Label>
+                    <Input type="email" value={newMember.email} onChange={(e) => setNewMember({ ...newMember, email: e.target.value })} placeholder="email@exemplo.com" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Senha</Label>
+                    <Input type="password" value={newMember.senha} onChange={(e) => setNewMember({ ...newMember, senha: e.target.value })} placeholder="Senha inicial" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Função</Label>
+                    <Select value={newMember.role} onValueChange={(v) => setNewMember({ ...newMember, role: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Administrador</SelectItem>
+                        <SelectItem value="tecnico">Técnico</SelectItem>
+                        <SelectItem value="consulta">Atendimento</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button className="w-full gradient-primary" onClick={handleAddMember} disabled={addLoading}>
+                    {addLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                    Adicionar à Equipe
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         <Card className="shadow-soft">
@@ -123,7 +213,6 @@ export default function Equipe() {
               <div className="space-y-6">
                 {users.map((u) => (
                   <div key={u.id} className="border rounded-lg p-5 hover:bg-muted/30 transition-colors space-y-4">
-                    {/* User info row */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
@@ -140,7 +229,7 @@ export default function Equipe() {
                           <SelectContent>
                             <SelectItem value="admin">Administrador</SelectItem>
                             <SelectItem value="tecnico">Técnico</SelectItem>
-                            <SelectItem value="consulta">Consulta</SelectItem>
+                            <SelectItem value="consulta">Atendimento</SelectItem>
                           </SelectContent>
                         </Select>
                         {u.id !== user?.id && (
@@ -151,7 +240,6 @@ export default function Equipe() {
                       </div>
                     </div>
 
-                    {/* Permissions row */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pl-13">
                       <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                         <div className="flex items-center gap-2">
