@@ -9,13 +9,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Search, Edit, FileText, Loader2, Eye, Printer } from "lucide-react";
+import { Plus, Search, Edit, FileText, Loader2, Eye, Printer, MessageCircle, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 
-type OrdemServico = Tables<"ordens_servico"> & { clientes: { nome: string } | null };
+type OrdemServico = Tables<"ordens_servico"> & { clientes: { nome: string; telefone?: string } | null };
 type Cliente = Tables<"clientes">;
 
 export default function OrdensServico() {
@@ -41,7 +41,7 @@ export default function OrdensServico() {
   const fetchData = async () => {
     try {
       const [ordensRes, clientesRes] = await Promise.all([
-        supabase.from('ordens_servico').select('*, clientes(nome)').order('created_at', { ascending: false }),
+        supabase.from('ordens_servico').select('*, clientes(nome, telefone)').order('created_at', { ascending: false }),
         supabase.from('clientes').select('*').order('nome')
       ]);
       if (ordensRes.error) throw ordensRes.error;
@@ -86,8 +86,8 @@ export default function OrdensServico() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) { toast.error('Popup bloqueado. Permita popups para imprimir.'); return; }
     
-    const formatCurrency = (v: number | null) => v != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v) : '-';
-    const formatDate = (d: string | null) => d ? new Date(d).toLocaleDateString('pt-BR') : '-';
+    const fmtCur = (v: number | null) => v != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v) : '-';
+    const fmtDt = (d: string | null) => d ? new Date(d).toLocaleDateString('pt-BR') : '-';
 
     printWindow.document.write(`<!DOCTYPE html><html><head><title>OS ${viewingOS.numero}</title>
       <style>
@@ -128,12 +128,12 @@ export default function OrdensServico() {
         <div class="field full-width"><div class="field-label">Solução</div><div class="field-value">${viewingOS.solucao || '-'}</div></div>
       </div></div>
       <div class="section"><div class="section-title">Valores e Datas</div><div class="grid">
-        <div class="field"><div class="field-label">Valor Orçamento</div><div class="field-value">${formatCurrency(viewingOS.valor_orcamento)}</div></div>
-        <div class="field"><div class="field-label">Valor Final</div><div class="field-value">${formatCurrency(viewingOS.valor_final)}</div></div>
-        <div class="field"><div class="field-label">Data Entrada</div><div class="field-value">${formatDate(viewingOS.data_entrada)}</div></div>
-        <div class="field"><div class="field-label">Previsão</div><div class="field-value">${formatDate(viewingOS.data_previsao)}</div></div>
-        <div class="field"><div class="field-label">Conclusão</div><div class="field-value">${formatDate(viewingOS.data_conclusao)}</div></div>
-        <div class="field"><div class="field-label">Entrega</div><div class="field-value">${formatDate(viewingOS.data_entrega)}</div></div>
+        <div class="field"><div class="field-label">Valor Orçamento</div><div class="field-value">${fmtCur(viewingOS.valor_orcamento)}</div></div>
+        <div class="field"><div class="field-label">Valor Final</div><div class="field-value">${fmtCur(viewingOS.valor_final)}</div></div>
+        <div class="field"><div class="field-label">Data Entrada</div><div class="field-value">${fmtDt(viewingOS.data_entrada)}</div></div>
+        <div class="field"><div class="field-label">Previsão</div><div class="field-value">${fmtDt(viewingOS.data_previsao)}</div></div>
+        <div class="field"><div class="field-label">Conclusão</div><div class="field-value">${fmtDt(viewingOS.data_conclusao)}</div></div>
+        <div class="field"><div class="field-label">Entrega</div><div class="field-value">${fmtDt(viewingOS.data_entrega)}</div></div>
       </div></div>
       ${viewingOS.observacoes ? `<div class="section"><div class="section-title">Observações</div><p style="font-size:14px">${viewingOS.observacoes}</p></div>` : ''}
       <div class="footer"><div class="signature">Técnico Responsável</div><div class="signature">Cliente</div></div>
@@ -141,6 +141,38 @@ export default function OrdensServico() {
     printWindow.document.close();
     printWindow.focus();
     setTimeout(() => printWindow.print(), 300);
+  };
+
+  const handleWhatsApp = () => {
+    if (!viewingOS) return;
+    
+    // Get client phone from the related clientes table
+    const cliente = clientes.find(c => c.id === viewingOS.cliente_id);
+    const telefone = cliente?.telefone || '';
+    
+    // Clean phone number - keep only digits
+    const cleanPhone = telefone.replace(/\D/g, '');
+    const phone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+    
+    const fmtCur = (v: number | null) => v != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v) : 'A definir';
+    
+    const texto = `Olá, *${viewingOS.clientes?.nome || 'Cliente'}*! 👋
+
+Aqui é da *Volt Control - Oficina*.
+
+Sua Ordem de Serviço está atualizada:
+
+📋 *OS:* ${viewingOS.numero}
+🔧 *Equipamento:* ${getTipoEquipamento(viewingOS.tipo_equipamento)}${viewingOS.modelo_equipamento ? ` - ${viewingOS.modelo_equipamento}` : ''}
+📌 *Status:* ${getStatusLabel(viewingOS.status)}
+💰 *Valor:* ${fmtCur(viewingOS.valor_orcamento)}
+
+${viewingOS.diagnostico ? `🔍 *Diagnóstico:* ${viewingOS.diagnostico}\n` : ''}${viewingOS.observacoes ? `📝 *Obs:* ${viewingOS.observacoes}\n` : ''}
+Qualquer dúvida, estamos à disposição!`;
+    
+    const encoded = encodeURIComponent(texto);
+    const url = `https://wa.me/${phone}?text=${encoded}`;
+    window.open(url, '_blank');
   };
 
   const handleStatusChange = async (osId: string, newStatus: Enums<"status_os">) => {
@@ -373,9 +405,15 @@ export default function OrdensServico() {
                   </div>
                 </div>
                 {viewingOS.observacoes && (<><Separator /><div><p className="text-xs text-muted-foreground">Observações</p><p className="text-sm">{viewingOS.observacoes}</p></div></>)}
-                <div className="flex justify-end pt-4">
-                  <Button onClick={handlePrintOS} className="gradient-primary">
-                    <Printer className="mr-2 h-4 w-4" />Exportar / Imprimir PDF
+                
+                {/* Action Buttons */}
+                <Separator />
+                <div className="flex flex-wrap gap-3 justify-end pt-2">
+                  <Button variant="outline" onClick={handlePrintOS}>
+                    <Download className="mr-2 h-4 w-4" />Baixar PDF
+                  </Button>
+                  <Button onClick={handleWhatsApp} className="bg-[hsl(142,70%,45%)] hover:bg-[hsl(142,70%,38%)] text-white">
+                    <MessageCircle className="mr-2 h-4 w-4" />Enviar WhatsApp
                   </Button>
                 </div>
               </div>

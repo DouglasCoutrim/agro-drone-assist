@@ -16,6 +16,7 @@ import Clientes from "./pages/Clientes";
 import Configuracoes from "./pages/Configuracoes";
 import Cobrancas from "./pages/Cobrancas";
 import Deslocamentos from "./pages/Deslocamentos";
+import Equipe from "./pages/Equipe";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,14 +32,15 @@ const App = () => (
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-              <Route path="/ordens-servico" element={<ProtectedRoute><OrdensServico /></ProtectedRoute>} />
-              <Route path="/estoque" element={<ProtectedRoute><Estoque /></ProtectedRoute>} />
+              <Route path="/ordens-servico" element={<ProtectedRoute requiredPermission="acesso_os"><OrdensServico /></ProtectedRoute>} />
+              <Route path="/estoque" element={<ProtectedRoute requiredPermission="acesso_estoque"><Estoque /></ProtectedRoute>} />
               <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
-              <Route path="/financeiro" element={<ProtectedRoute requiredRole="tecnico"><Financeiro /></ProtectedRoute>} />
-              <Route path="/cobrancas" element={<ProtectedRoute requiredRole="tecnico"><Cobrancas /></ProtectedRoute>} />
+              <Route path="/financeiro" element={<ProtectedRoute requiredPermission="acesso_financeiro"><Financeiro /></ProtectedRoute>} />
+              <Route path="/cobrancas" element={<ProtectedRoute requiredPermission="acesso_financeiro"><Cobrancas /></ProtectedRoute>} />
               <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
-              <Route path="/deslocamentos" element={<ProtectedRoute requiredRole="tecnico"><Deslocamentos /></ProtectedRoute>} />
+              <Route path="/deslocamentos" element={<ProtectedRoute requiredPermission="acesso_os"><Deslocamentos /></ProtectedRoute>} />
               <Route path="/configuracoes" element={<ProtectedRoute requiredRole="admin"><Configuracoes /></ProtectedRoute>} />
+              <Route path="/equipe" element={<ProtectedRoute requiredRole="admin"><Equipe /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
