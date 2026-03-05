@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Users, User, Shield, Loader2, Trash2, FileText, Package, DollarSign, UserPlus } from "lucide-react";
+import { Users, User, Shield, Loader2, Trash2, FileText, Package, DollarSign, UserPlus, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -32,6 +32,9 @@ export default function Equipe() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const [newMember, setNewMember] = useState({ nome: "", email: "", senha: "", role: "consulta" });
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editUser, setEditUser] = useState<UserWithRoleAndPerms | null>(null);
+  const [editForm, setEditForm] = useState({ nome: "", email: "" });
 
   useEffect(() => { fetchUsers(); }, []);
 
@@ -125,6 +128,23 @@ export default function Equipe() {
     }
   };
 
+  const openEditDialog = (u: UserWithRoleAndPerms) => {
+    setEditUser(u);
+    setEditForm({ nome: u.nome, email: u.email });
+    setEditDialogOpen(true);
+  };
+
+  const handleEditUser = async () => {
+    if (!editUser || !editForm.nome.trim()) { toast.error('Nome é obrigatório'); return; }
+    try {
+      const { error } = await supabase.from('profiles').update({ nome: editForm.nome }).eq('id', editUser.id);
+      if (error) throw error;
+      toast.success('Dados atualizados!');
+      setEditDialogOpen(false);
+      fetchUsers();
+    } catch (error: any) { toast.error('Erro: ' + error.message); }
+  };
+
   const getRoleBadge = (r?: string) => {
     switch (r) {
       case 'admin': return <Badge className="bg-primary text-primary-foreground">Admin</Badge>;
@@ -205,29 +225,37 @@ export default function Equipe() {
               <div className="space-y-6">
                 {users.map((u) => (
                   <div key={u.id} className="border rounded-lg p-5 hover:bg-muted/30 transition-colors space-y-4">
-                    <div className="flex items-center justify-between">
+                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                        <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
                           <User className="h-5 w-5 text-primary" />
                         </div>
-                        <div>
-                          <p className="font-medium">{u.nome}</p>
-                          <p className="text-sm text-muted-foreground">{u.email}</p>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{u.nome}</p>
+                          <p className="text-sm text-muted-foreground truncate">{u.email}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Select value={u.role} onValueChange={(v) => handleChangeRole(u.id, v)}>
-                          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="admin">Administrador</SelectItem>
-                            <SelectItem value="tecnico">Técnico</SelectItem>
-                            <SelectItem value="consulta">Atendimento</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {u.id !== user?.id && (
-                          <Button size="sm" variant="ghost" onClick={() => handleDeleteUser(u.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {isAdmin && (
+                          <Select value={u.role} onValueChange={(v) => handleChangeRole(u.id, v)}>
+                            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="admin">Administrador</SelectItem>
+                              <SelectItem value="tecnico">Técnico</SelectItem>
+                              <SelectItem value="consulta">Atendimento</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                        {!isAdmin && getRoleBadge(u.role)}
+                        {isAdmin && u.id !== user?.id && (
+                          <>
+                            <Button size="sm" variant="outline" onClick={() => openEditDialog(u)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleDeleteUser(u.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -270,6 +298,30 @@ export default function Equipe() {
             )}
           </CardContent>
         </Card>
+
+        {/* Edit User Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Membro</DialogTitle>
+              <DialogDescription>Altere os dados do membro da equipe</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Nome Completo</Label>
+                <Input value={editForm.nome} onChange={(e) => setEditForm({ ...editForm, nome: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input value={editForm.email} disabled className="opacity-60" />
+                <p className="text-xs text-muted-foreground">O email não pode ser alterado</p>
+              </div>
+              <Button className="w-full gradient-primary" onClick={handleEditUser}>
+                <Pencil className="mr-2 h-4 w-4" />Salvar Alterações
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </MainLayout>
   );

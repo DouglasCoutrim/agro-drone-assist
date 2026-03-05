@@ -121,6 +121,15 @@
   }
 }
 
+/* Fix Leaflet map z-index overlapping sidebar/dropdowns */
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom,
+.leaflet-control {
+  z-index: 1 !important;
+}
+
+
 @layer components {
   /* Utility Classes */
   .gradient-primary {

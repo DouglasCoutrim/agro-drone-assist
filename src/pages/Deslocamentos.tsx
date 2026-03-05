@@ -221,7 +221,7 @@ export default function Deslocamentos() {
         <Card className="shadow-soft">
           <CardHeader><CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5 text-primary" />Mapa</CardTitle></CardHeader>
           <CardContent>
-            <div ref={mapRef} className="h-[300px] rounded-lg border" />
+            <div ref={mapRef} className="h-[300px] rounded-lg border relative z-0" style={{ zIndex: 0 }} />
           </CardContent>
         </Card>
 
