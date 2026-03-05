@@ -128,6 +128,23 @@ export default function Equipe() {
     }
   };
 
+  const openEditDialog = (u: UserWithRoleAndPerms) => {
+    setEditUser(u);
+    setEditForm({ nome: u.nome, email: u.email });
+    setEditDialogOpen(true);
+  };
+
+  const handleEditUser = async () => {
+    if (!editUser || !editForm.nome.trim()) { toast.error('Nome é obrigatório'); return; }
+    try {
+      const { error } = await supabase.from('profiles').update({ nome: editForm.nome }).eq('id', editUser.id);
+      if (error) throw error;
+      toast.success('Dados atualizados!');
+      setEditDialogOpen(false);
+      fetchUsers();
+    } catch (error: any) { toast.error('Erro: ' + error.message); }
+  };
+
   const getRoleBadge = (r?: string) => {
     switch (r) {
       case 'admin': return <Badge className="bg-primary text-primary-foreground">Admin</Badge>;
