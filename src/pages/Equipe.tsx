@@ -298,6 +298,30 @@ export default function Equipe() {
             )}
           </CardContent>
         </Card>
+
+        {/* Edit User Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Membro</DialogTitle>
+              <DialogDescription>Altere os dados do membro da equipe</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Nome Completo</Label>
+                <Input value={editForm.nome} onChange={(e) => setEditForm({ ...editForm, nome: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input value={editForm.email} disabled className="opacity-60" />
+                <p className="text-xs text-muted-foreground">O email não pode ser alterado</p>
+              </div>
+              <Button className="w-full gradient-primary" onClick={handleEditUser}>
+                <Pencil className="mr-2 h-4 w-4" />Salvar Alterações
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </MainLayout>
   );
