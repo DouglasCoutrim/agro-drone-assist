@@ -48,11 +48,6 @@ export default function Cobrancas() {
   const fetchPayments = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('asaas', {
-        body: null,
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
 
       // Use query params approach
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
