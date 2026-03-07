@@ -123,7 +123,20 @@ export default function Configuracoes() {
               ) : (
                 <>
                   <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
-                    <div className="h-16 w-16 rounded-full bg-primary/20 flex items-center justify-center"><User className="h-8 w-8 text-primary" /></div>
+                    <div className="relative group">
+                      <Avatar className="h-16 w-16">
+                        {profile?.avatar_url ? (
+                          <AvatarImage src={profile.avatar_url} alt={profile.nome} />
+                        ) : null}
+                        <AvatarFallback className="bg-primary/20 text-primary text-xl">
+                          {profile?.nome?.charAt(0)?.toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                        {uploadingAvatar ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <Camera className="h-5 w-5 text-white" />}
+                        <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
+                      </label>
+                    </div>
                     <div>
                       <h3 className="font-semibold text-lg">{profile?.nome}</h3>
                       <p className="text-sm text-muted-foreground">{profile?.email}</p>
