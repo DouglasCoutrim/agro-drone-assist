@@ -30,6 +30,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
+import { useViaCep } from "@/hooks/useViaCep";
+import { UF_LIST } from "@/lib/constants";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Cliente = Tables<"clientes">;
 
