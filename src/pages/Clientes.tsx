@@ -240,11 +240,25 @@ export default function Clientes() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cep">CEP</Label>
-                    <Input
-                      id="cep"
-                      value={formData.cep}
-                      onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="cep"
+                        value={formData.cep}
+                        onChange={async (e) => {
+                          const val = e.target.value;
+                          setFormData({ ...formData, cep: val });
+                          const clean = val.replace(/\D/g, "");
+                          if (clean.length === 8) {
+                            const result = await fetchCep(clean);
+                            if (result) {
+                              setFormData(f => ({ ...f, cep: val, endereco: result.logradouro, cidade: result.localidade, estado: result.uf }));
+                            }
+                          }
+                        }}
+                        placeholder="00000-000"
+                      />
+                      {cepLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+                    </div>
                   </div>
                   <div className="col-span-2 space-y-2">
                     <Label htmlFor="endereco">Endereço</Label>
