@@ -29,6 +29,7 @@ export default function Configuracoes() {
   const [saving, setSaving] = useState(false);
   const [profileForm, setProfileForm] = useState({ nome: "", email: "", telefone: "" });
   const [settings, setSettings] = useState({ alertasEstoque: true, notificacoesEmail: true, smsUrgentes: false });
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   
   // User management
   const [users, setUsers] = useState<UserWithRole[]>([]);
