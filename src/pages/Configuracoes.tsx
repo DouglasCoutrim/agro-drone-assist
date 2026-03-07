@@ -6,9 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, User, Bell, Shield, Database, Globe, Save, Key, Info, Zap, Loader2, Users, Trash2, UserPlus, CreditCard } from "lucide-react";
+import { Settings, User, Bell, Shield, Database, Globe, Save, Key, Info, Zap, Loader2, Users, Trash2, UserPlus, CreditCard, Camera } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -28,6 +29,7 @@ export default function Configuracoes() {
   const [saving, setSaving] = useState(false);
   const [profileForm, setProfileForm] = useState({ nome: "", email: "", telefone: "" });
   const [settings, setSettings] = useState({ alertasEstoque: true, notificacoesEmail: true, smsUrgentes: false });
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   
   // User management
   const [users, setUsers] = useState<UserWithRole[]>([]);
@@ -59,6 +61,31 @@ export default function Configuracoes() {
       }));
       setUsers(usersWithRoles);
     } catch (error: any) { console.error('Error fetching users:', error); } finally { setUsersLoading(false); }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (!file.type.startsWith('image/')) { toast.error('Selecione um arquivo de imagem'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Imagem deve ter no máximo 5MB'); return; }
+
+    setUploadingAvatar(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `${user.id}/avatar.${ext}`;
+
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const avatarUrl = `${publicUrl}?t=${Date.now()}`;
+
+      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: avatarUrl } as any).eq('id', user.id);
+      if (updateError) throw updateError;
+
+      toast.success('Foto de perfil atualizada!');
+      fetchProfile();
+    } catch (error: any) { toast.error('Erro ao enviar foto: ' + error.message); } finally { setUploadingAvatar(false); }
   };
 
   const handleSaveProfile = async () => {
@@ -121,7 +148,20 @@ export default function Configuracoes() {
               ) : (
                 <>
                   <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
-                    <div className="h-16 w-16 rounded-full bg-primary/20 flex items-center justify-center"><User className="h-8 w-8 text-primary" /></div>
+                    <div className="relative group">
+                      <Avatar className="h-16 w-16">
+                        {profile?.avatar_url ? (
+                          <AvatarImage src={profile.avatar_url} alt={profile.nome} />
+                        ) : null}
+                        <AvatarFallback className="bg-primary/20 text-primary text-xl">
+                          {profile?.nome?.charAt(0)?.toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                        {uploadingAvatar ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <Camera className="h-5 w-5 text-white" />}
+                        <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
+                      </label>
+                    </div>
                     <div>
                       <h3 className="font-semibold text-lg">{profile?.nome}</h3>
                       <p className="text-sm text-muted-foreground">{profile?.email}</p>
@@ -175,7 +215,10 @@ export default function Configuracoes() {
                 {users.map((u) => (
                   <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center"><User className="h-5 w-5 text-primary" /></div>
+                      <Avatar className="h-10 w-10">
+                        {(u as any).avatar_url ? <AvatarImage src={(u as any).avatar_url} alt={u.nome} /> : null}
+                        <AvatarFallback className="bg-primary/20 text-primary">{u.nome?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+                      </Avatar>
                       <div>
                         <p className="font-medium">{u.nome}</p>
                         <p className="text-sm text-muted-foreground">{u.email}</p>

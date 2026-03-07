@@ -1,19 +1,30 @@
+import { useState, useEffect } from "react";
 import { Bell, User, Search, Menu, LogOut, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { supabase } from "@/integrations/supabase/client";
 
 interface HeaderProps { onMenuToggle?: () => void; }
 
 export function Header({ onMenuToggle }: HeaderProps) {
   const { user, role, signOut } = useAuth();
   const navigate = useNavigate();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      supabase.from('profiles').select('avatar_url').eq('id', user.id).maybeSingle()
+        .then(({ data }) => { if (data?.avatar_url) setAvatarUrl(data.avatar_url); });
+    }
+  }, [user]);
 
   const handleSignOut = async () => { await signOut(); navigate('/auth'); };
 
@@ -50,9 +61,10 @@ export function Header({ onMenuToggle }: HeaderProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="gap-2">
-              <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
-                <User className="h-4 w-4 text-primary" />
-              </div>
+              <Avatar className="h-8 w-8">
+                {avatarUrl ? <AvatarImage src={avatarUrl} alt="avatar" /> : null}
+                <AvatarFallback className="bg-primary/20 text-primary text-xs">{user?.email?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+              </Avatar>
               <span className="hidden md:inline">{user?.email?.split('@')[0] || 'Usuário'}</span>
             </Button>
           </DropdownMenuTrigger>

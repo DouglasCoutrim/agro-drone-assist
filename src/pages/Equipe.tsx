@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Users, User, Shield, Loader2, Trash2, FileText, Package, DollarSign, UserPlus, Pencil } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -227,9 +228,10 @@ export default function Equipe() {
                   <div key={u.id} className="border rounded-lg p-5 hover:bg-muted/30 transition-colors space-y-4">
                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                          <User className="h-5 w-5 text-primary" />
-                        </div>
+                        <Avatar className="h-10 w-10 shrink-0">
+                          {(u as any).avatar_url ? <AvatarImage src={(u as any).avatar_url} alt={u.nome} /> : null}
+                          <AvatarFallback className="bg-primary/20 text-primary">{u.nome?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+                        </Avatar>
                         <div className="min-w-0">
                           <p className="font-medium truncate">{u.nome}</p>
                           <p className="text-sm text-muted-foreground truncate">{u.email}</p>
