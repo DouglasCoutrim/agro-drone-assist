@@ -17,6 +17,14 @@ interface HeaderProps { onMenuToggle?: () => void; }
 export function Header({ onMenuToggle }: HeaderProps) {
   const { user, role, signOut } = useAuth();
   const navigate = useNavigate();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      supabase.from('profiles').select('avatar_url').eq('id', user.id).maybeSingle()
+        .then(({ data }) => { if (data?.avatar_url) setAvatarUrl(data.avatar_url); });
+    }
+  }, [user]);
 
   const handleSignOut = async () => { await signOut(); navigate('/auth'); };
 
