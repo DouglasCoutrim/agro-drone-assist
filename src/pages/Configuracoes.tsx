@@ -63,6 +63,31 @@ export default function Configuracoes() {
     } catch (error: any) { console.error('Error fetching users:', error); } finally { setUsersLoading(false); }
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (!file.type.startsWith('image/')) { toast.error('Selecione um arquivo de imagem'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Imagem deve ter no máximo 5MB'); return; }
+
+    setUploadingAvatar(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `${user.id}/avatar.${ext}`;
+
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const avatarUrl = `${publicUrl}?t=${Date.now()}`;
+
+      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: avatarUrl } as any).eq('id', user.id);
+      if (updateError) throw updateError;
+
+      toast.success('Foto de perfil atualizada!');
+      fetchProfile();
+    } catch (error: any) { toast.error('Erro ao enviar foto: ' + error.message); } finally { setUploadingAvatar(false); }
+  };
+
   const handleSaveProfile = async () => {
     if (!user) return;
     setSaving(true);
