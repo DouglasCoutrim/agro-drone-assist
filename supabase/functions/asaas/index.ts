@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 serve(async (req) => {
@@ -10,12 +11,57 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // --- AUTHENTICATION & AUTHORIZATION ---
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+
+  if (claimsError || !claimsData?.claims) {
+    return new Response(JSON.stringify({ error: 'Invalid token' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  const userId = claimsData.claims.sub as string;
+
+  // Check role using service role client to bypass RLS
+  const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
+  const { data: roleData } = await serviceClient
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .single();
+
+  const userRole = roleData?.role;
+  if (!userRole || !['admin', 'tecnico'].includes(userRole)) {
+    return new Response(JSON.stringify({ error: 'Forbidden: insufficient permissions' }), {
+      status: 403,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  // --- ASAAS API ---
   const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY');
   if (!ASAAS_API_KEY) {
     return new Response(JSON.stringify({ error: 'ASAAS_API_KEY not configured' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 
-  // Determine environment from key prefix
   const baseUrl = ASAAS_API_KEY.startsWith('$aact_') 
     ? 'https://api.asaas.com/v3' 
     : 'https://sandbox.asaas.com/api/v3';
@@ -29,7 +75,6 @@ serve(async (req) => {
   };
 
   try {
-    // CREATE CUSTOMER
     if (action === 'create_customer' && req.method === 'POST') {
       const body = await req.json();
       const res = await fetch(`${baseUrl}/customers`, {
@@ -50,17 +95,13 @@ serve(async (req) => {
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: res.status });
     }
 
-    // LIST CUSTOMERS
     if (action === 'list_customers' && req.method === 'GET') {
       const search = url.searchParams.get('search') || '';
-      const res = await fetch(`${baseUrl}/customers?name=${encodeURIComponent(search)}&limit=50`, {
-        headers: asaasHeaders,
-      });
+      const res = await fetch(`${baseUrl}/customers?name=${encodeURIComponent(search)}&limit=50`, { headers: asaasHeaders });
       const data = await res.json();
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // CREATE PAYMENT (charge)
     if (action === 'create_payment' && req.method === 'POST') {
       const body = await req.json();
       const res = await fetch(`${baseUrl}/payments`, {
@@ -68,7 +109,7 @@ serve(async (req) => {
         headers: asaasHeaders,
         body: JSON.stringify({
           customer: body.customer,
-          billingType: body.billingType, // BOLETO, CREDIT_CARD, PIX
+          billingType: body.billingType,
           value: body.value,
           dueDate: body.dueDate,
           description: body.description || undefined,
@@ -79,20 +120,17 @@ serve(async (req) => {
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: res.status });
     }
 
-    // LIST PAYMENTS
     if (action === 'list_payments' && req.method === 'GET') {
       const status = url.searchParams.get('status') || '';
       const offset = url.searchParams.get('offset') || '0';
       const limit = url.searchParams.get('limit') || '50';
       let fetchUrl = `${baseUrl}/payments?offset=${offset}&limit=${limit}`;
       if (status) fetchUrl += `&status=${status}`;
-      
       const res = await fetch(fetchUrl, { headers: asaasHeaders });
       const data = await res.json();
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // GET PAYMENT BY ID
     if (action === 'get_payment' && req.method === 'GET') {
       const paymentId = url.searchParams.get('id');
       if (!paymentId) {
@@ -103,7 +141,6 @@ serve(async (req) => {
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // GET PIX QR CODE
     if (action === 'pix_qrcode' && req.method === 'GET') {
       const paymentId = url.searchParams.get('id');
       if (!paymentId) {
@@ -114,7 +151,6 @@ serve(async (req) => {
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // DELETE / CANCEL PAYMENT
     if (action === 'delete_payment' && req.method === 'DELETE') {
       const paymentId = url.searchParams.get('id');
       if (!paymentId) {
@@ -125,7 +161,6 @@ serve(async (req) => {
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: res.status });
     }
 
-    // GET PAYMENT LINK (invoice URL)
     if (action === 'payment_link' && req.method === 'GET') {
       const paymentId = url.searchParams.get('id');
       if (!paymentId) {
@@ -136,13 +171,13 @@ serve(async (req) => {
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    return new Response(JSON.stringify({ error: 'Invalid action. Supported: create_customer, list_customers, create_payment, list_payments, get_payment, pix_qrcode, delete_payment, payment_link' }), {
+    return new Response(JSON.stringify({ error: 'Invalid action' }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
