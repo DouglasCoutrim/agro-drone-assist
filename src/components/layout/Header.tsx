@@ -61,9 +61,10 @@ export function Header({ onMenuToggle }: HeaderProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="gap-2">
-              <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
-                <User className="h-4 w-4 text-primary" />
-              </div>
+              <Avatar className="h-8 w-8">
+                {avatarUrl ? <AvatarImage src={avatarUrl} alt="avatar" /> : null}
+                <AvatarFallback className="bg-primary/20 text-primary text-xs">{user?.email?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+              </Avatar>
               <span className="hidden md:inline">{user?.email?.split('@')[0] || 'Usuário'}</span>
             </Button>
           </DropdownMenuTrigger>
