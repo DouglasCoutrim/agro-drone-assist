@@ -237,8 +237,17 @@ export type Database = {
       }
       ordens_servico: {
         Row: {
+          checklist_bateria: boolean | null
+          checklist_cabos: boolean | null
+          checklist_carregador: boolean | null
+          checklist_controle: boolean | null
+          checklist_helices: boolean | null
+          checklist_outros: boolean | null
           cliente_id: string
+          condicao_visual: string | null
           created_at: string
+          custo_mao_obra: number | null
+          custo_pecas: number | null
           data_conclusao: string | null
           data_entrada: string
           data_entrega: string | null
@@ -246,6 +255,7 @@ export type Database = {
           descricao_problema: string
           diagnostico: string | null
           id: string
+          marca: string | null
           modelo_equipamento: string | null
           numero: string
           numero_serie: string | null
@@ -260,8 +270,17 @@ export type Database = {
           valor_orcamento: number | null
         }
         Insert: {
+          checklist_bateria?: boolean | null
+          checklist_cabos?: boolean | null
+          checklist_carregador?: boolean | null
+          checklist_controle?: boolean | null
+          checklist_helices?: boolean | null
+          checklist_outros?: boolean | null
           cliente_id: string
+          condicao_visual?: string | null
           created_at?: string
+          custo_mao_obra?: number | null
+          custo_pecas?: number | null
           data_conclusao?: string | null
           data_entrada?: string
           data_entrega?: string | null
@@ -269,6 +288,7 @@ export type Database = {
           descricao_problema: string
           diagnostico?: string | null
           id?: string
+          marca?: string | null
           modelo_equipamento?: string | null
           numero: string
           numero_serie?: string | null
@@ -283,8 +303,17 @@ export type Database = {
           valor_orcamento?: number | null
         }
         Update: {
+          checklist_bateria?: boolean | null
+          checklist_cabos?: boolean | null
+          checklist_carregador?: boolean | null
+          checklist_controle?: boolean | null
+          checklist_helices?: boolean | null
+          checklist_outros?: boolean | null
           cliente_id?: string
+          condicao_visual?: string | null
           created_at?: string
+          custo_mao_obra?: number | null
+          custo_pecas?: number | null
           data_conclusao?: string | null
           data_entrada?: string
           data_entrega?: string | null
@@ -292,6 +321,7 @@ export type Database = {
           descricao_problema?: string
           diagnostico?: string | null
           id?: string
+          marca?: string | null
           modelo_equipamento?: string | null
           numero?: string
           numero_serie?: string | null
@@ -496,6 +526,13 @@ export type Database = {
         | "concluida"
         | "entregue"
         | "cancelada"
+        | "recebido"
+        | "aguardando_diagnostico"
+        | "aguardando_aprovacao"
+        | "aprovado"
+        | "em_reparo"
+        | "em_testes"
+        | "pronto_retirada"
       tipo_equipamento:
         | "drone_agricola"
         | "drone_convencional"
@@ -638,6 +675,13 @@ export const Constants = {
         "concluida",
         "entregue",
         "cancelada",
+        "recebido",
+        "aguardando_diagnostico",
+        "aguardando_aprovacao",
+        "aprovado",
+        "em_reparo",
+        "em_testes",
+        "pronto_retirada",
       ],
       tipo_equipamento: [
         "drone_agricola",

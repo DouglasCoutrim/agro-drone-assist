@@ -30,12 +30,16 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
+import { useViaCep } from "@/hooks/useViaCep";
+import { UF_LIST } from "@/lib/constants";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Cliente = Tables<"clientes">;
 
 export default function Clientes() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
+  const { fetchCep, loading: cepLoading } = useViaCep();
   const [searchTerm, setSearchTerm] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
@@ -236,11 +240,25 @@ export default function Clientes() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cep">CEP</Label>
-                    <Input
-                      id="cep"
-                      value={formData.cep}
-                      onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="cep"
+                        value={formData.cep}
+                        onChange={async (e) => {
+                          const val = e.target.value;
+                          setFormData({ ...formData, cep: val });
+                          const clean = val.replace(/\D/g, "");
+                          if (clean.length === 8) {
+                            const result = await fetchCep(clean);
+                            if (result) {
+                              setFormData(f => ({ ...f, cep: val, endereco: result.logradouro, cidade: result.localidade, estado: result.uf }));
+                            }
+                          }
+                        }}
+                        placeholder="00000-000"
+                      />
+                      {cepLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+                    </div>
                   </div>
                   <div className="col-span-2 space-y-2">
                     <Label htmlFor="endereco">Endereço</Label>
@@ -260,11 +278,12 @@ export default function Clientes() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="estado">Estado</Label>
-                    <Input
-                      id="estado"
-                      value={formData.estado}
-                      onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
-                    />
+                    <Select value={formData.estado} onValueChange={v => setFormData({ ...formData, estado: v })}>
+                      <SelectTrigger><SelectValue placeholder="UF" /></SelectTrigger>
+                      <SelectContent>
+                        {UF_LIST.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="col-span-2 space-y-2">
                     <Label htmlFor="observacoes">Observações</Label>
