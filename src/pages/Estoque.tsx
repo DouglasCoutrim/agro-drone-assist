@@ -253,7 +253,7 @@ export default function Estoque() {
                         <span className="text-xs text-muted-foreground">(+{margemLucro}%)</span>
                       </Label>
                       <Input type="number" step="0.01" value={formData.preco_venda}
-                        onChange={(e) => setFormData({ ...formData, preco_venda: Number(e.target.value) })} />
+                        disabled className="bg-muted font-semibold" />
                     </div>
                     <div className="space-y-2"><Label>Fornecedor</Label><Input value={formData.fornecedor} onChange={(e) => setFormData({ ...formData, fornecedor: e.target.value })} /></div>
                     <div className="space-y-2"><Label>Localização</Label><Input value={formData.localizacao} onChange={(e) => setFormData({ ...formData, localizacao: e.target.value })} placeholder="Ex: Prateleira A1" /></div>
