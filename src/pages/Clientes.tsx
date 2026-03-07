@@ -278,11 +278,12 @@ export default function Clientes() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="estado">Estado</Label>
-                    <Input
-                      id="estado"
-                      value={formData.estado}
-                      onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
-                    />
+                    <Select value={formData.estado} onValueChange={v => setFormData({ ...formData, estado: v })}>
+                      <SelectTrigger><SelectValue placeholder="UF" /></SelectTrigger>
+                      <SelectContent>
+                        {UF_LIST.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="col-span-2 space-y-2">
                     <Label htmlFor="observacoes">Observações</Label>
