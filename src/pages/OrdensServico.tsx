@@ -295,6 +295,7 @@ export default function OrdensServico() {
       custo_pecas: 0, custo_mao_obra: 0, valor_orcamento: 0, observacoes: "",
       checklist_bateria: false, checklist_carregador: false, checklist_controle: false,
       checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "",
+      ciclos_carga_entrada: 0, ciclos_carga_saida: 0,
     });
     setEditingOS(null);
   };
