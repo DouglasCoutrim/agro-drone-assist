@@ -4,12 +4,35 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { 
-  FileText, Package, DollarSign, AlertTriangle, TrendingUp, Clock, CheckCircle, Users, Plus, Zap
+  FileText, Package, DollarSign, AlertTriangle, TrendingUp, Clock, CheckCircle, Users, Plus, Zap, Eye
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+
+const TIPO_EQUIPAMENTO: Record<string, string> = {
+  drone_agricola: "Drone Agrícola", drone_convencional: "Drone de Consumo",
+  controle: "Controle", bateria: "Bateria", outro: "Outro",
+};
+
+const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
+  recebido: { label: "Recebido", variant: "outline" },
+  aguardando_diagnostico: { label: "Aguard. Diagnóstico", variant: "secondary" },
+  aguardando_aprovacao: { label: "Aguard. Aprovação", variant: "secondary" },
+  aprovado: { label: "Aprovado", variant: "default" },
+  em_reparo: { label: "Em Reparo", variant: "default" },
+  em_testes: { label: "Em Testes", variant: "default" },
+  pronto_retirada: { label: "Pronto p/ Retirada", variant: "default" },
+  entregue: { label: "Entregue", variant: "default" },
+  cancelada: { label: "Cancelado", variant: "destructive" },
+  aberta: { label: "Aberta", variant: "outline" },
+  em_andamento: { label: "Em Andamento", variant: "default" },
+  aguardando_peca: { label: "Aguardando Peça", variant: "secondary" },
+  concluida: { label: "Concluída", variant: "default" },
+};
 
 const Index = () => {
   const navigate = useNavigate();
@@ -17,13 +40,14 @@ const Index = () => {
   const [stats, setStats] = useState({ osAbertas: 0, osConcluidas: 0, itensEstoqueBaixo: 0, totalClientes: 0, faturamentoMes: 0 });
   const [recentOS, setRecentOS] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewingOS, setViewingOS] = useState<any | null>(null);
 
   useEffect(() => { if (user) fetchDashboardData(); }, [user]);
 
   const fetchDashboardData = async () => {
     try {
-      const { data: osAbertas } = await supabase.from('ordens_servico').select('id', { count: 'exact' }).in('status', ['aberta', 'em_andamento', 'aguardando_peca']);
-      const { data: osConcluidas } = await supabase.from('ordens_servico').select('id', { count: 'exact' }).eq('status', 'concluida');
+      const { data: osAbertas } = await supabase.from('ordens_servico').select('id', { count: 'exact' }).in('status', ['aberta', 'em_andamento', 'aguardando_peca', 'recebido', 'aguardando_diagnostico', 'aguardando_aprovacao']);
+      const { data: osConcluidas } = await supabase.from('ordens_servico').select('id', { count: 'exact' }).in('status', ['concluida', 'pronto_retirada', 'entregue']);
       const { data: itensEstoque } = await supabase.from('itens_estoque').select('*');
       const itensEstoqueBaixo = itensEstoque?.filter(item => item.quantidade <= item.estoque_minimo).length || 0;
       const { count: totalClientes } = await supabase.from('clientes').select('*', { count: 'exact', head: true });
@@ -37,12 +61,7 @@ const Index = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
-      'aberta': { label: 'Aberta', variant: 'outline' }, 'em_andamento': { label: 'Em Andamento', variant: 'default' },
-      'aguardando_peca': { label: 'Aguardando Peça', variant: 'secondary' }, 'concluida': { label: 'Concluída', variant: 'default' },
-      'entregue': { label: 'Entregue', variant: 'default' }, 'cancelada': { label: 'Cancelada', variant: 'destructive' },
-    };
-    const config = statusConfig[status] || { label: status, variant: 'outline' as const };
+    const config = STATUS_CONFIG[status] || { label: status, variant: 'outline' as const };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
@@ -53,14 +72,7 @@ const Index = () => {
   };
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-
-  const getTipoEquipamento = (tipo: string) => {
-    const tipos: Record<string, string> = {
-      'drone_agricola': 'Drone Agrícola', 'drone_convencional': 'Drone de Consumo',
-      'controle': 'Controle', 'bateria': 'Bateria', 'outro': 'Outro'
-    };
-    return tipos[tipo] || tipo;
-  };
+  const formatDate = (d: string | null) => d ? new Date(d).toLocaleDateString('pt-BR') : '-';
 
   return (
     <MainLayout>
@@ -68,8 +80,7 @@ const Index = () => {
         <div className="flex items-center justify-between">
           <div>
              <h1 className="text-3xl font-bold flex items-center gap-2">
-               <Zap className="h-8 w-8 text-primary" />
-               Dashboard
+               <Zap className="h-8 w-8 text-primary" />Dashboard
              </h1>
              <p className="text-muted-foreground">Bem-vindo ao Volt Control - Gestão de Oficina</p>
           </div>
@@ -99,11 +110,11 @@ const Index = () => {
               ) : (
                 <div className="space-y-4">
                   {recentOS.map((os) => (
-                    <div key={os.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate('/ordens-servico')}>
+                    <div key={os.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setViewingOS(os)}>
                       <div className="space-y-1">
                         <p className="font-medium text-primary">{os.numero}</p>
                         <p className="text-sm text-muted-foreground">{os.clientes?.nome}</p>
-                        <p className="text-xs text-muted-foreground">{getTipoEquipamento(os.tipo_equipamento)}</p>
+                        <p className="text-xs text-muted-foreground">{TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento}</p>
                       </div>
                       <div className="flex flex-col items-end gap-2">{getStatusBadge(os.status)}{getPrioridadeBadge(os.prioridade)}</div>
                     </div>
@@ -168,6 +179,38 @@ const Index = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* View OS Dialog */}
+        <Dialog open={!!viewingOS} onOpenChange={(open) => { if (!open) setViewingOS(null); }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center justify-between">
+                <span>OS {viewingOS?.numero}</span>
+                {viewingOS && getStatusBadge(viewingOS.status)}
+              </DialogTitle>
+              <DialogDescription>Visualização rápida da OS</DialogDescription>
+            </DialogHeader>
+            {viewingOS && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div><p className="text-xs text-muted-foreground">Cliente</p><p className="font-medium">{viewingOS.clientes?.nome || "-"}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Equipamento</p><p className="font-medium">{TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Modelo</p><p className="font-medium">{viewingOS.modelo_equipamento || "-"}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Prioridade</p>{getPrioridadeBadge(viewingOS.prioridade)}</div>
+                  <div><p className="text-xs text-muted-foreground">Entrada</p><p className="text-sm">{formatDate(viewingOS.data_entrada)}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Orçamento</p><p className="font-medium text-primary">{viewingOS.valor_orcamento ? formatCurrency(viewingOS.valor_orcamento) : "-"}</p></div>
+                  <div className="col-span-2"><p className="text-xs text-muted-foreground">Defeito Relatado</p><p className="text-sm">{viewingOS.descricao_problema}</p></div>
+                </div>
+                <Separator />
+                <div className="flex justify-end">
+                  <Button variant="outline" onClick={() => { setViewingOS(null); navigate('/ordens-servico'); }}>
+                    <Eye className="mr-2 h-4 w-4" />Ver Completa
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </MainLayout>
   );
