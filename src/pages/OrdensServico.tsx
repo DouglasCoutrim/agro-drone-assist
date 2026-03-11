@@ -85,7 +85,13 @@ export default function OrdensServico() {
     checklist_helices: false,
     checklist_outros: false,
     condicao_visual: "",
+    // Battery-specific
+    ciclos_carga_entrada: 0,
+    ciclos_carga_saida: 0,
   });
+
+  const isBateria = formData.tipo_equipamento === "bateria" || 
+    formData.modelo_equipamento?.toLowerCase().includes("bateria");
 
   useEffect(() => { fetchData(); }, []);
 
