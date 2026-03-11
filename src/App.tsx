@@ -19,6 +19,8 @@ import Cobrancas from "./pages/Cobrancas";
 import Deslocamentos from "./pages/Deslocamentos";
 import Equipe from "./pages/Equipe";
 import EmpresaConfig from "./pages/EmpresaConfig";
+import Orcamentos from "./pages/Orcamentos";
+import Rotas from "./pages/Rotas";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
