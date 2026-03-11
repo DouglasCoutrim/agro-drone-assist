@@ -390,6 +390,23 @@ export default function OrdensServico() {
                             <Input value={formData.numero_serie} onChange={(e) => setFormData({ ...formData, numero_serie: e.target.value })} />
                           </div>
                         </div>
+                        {/* Battery conditional fields */}
+                        {isBateria && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 rounded-lg border border-dashed border-primary/30 bg-primary/5">
+                            <div className="space-y-2">
+                              <Label>Ciclos de Carga (Entrada)</Label>
+                              <Input type="number" min="0" value={formData.ciclos_carga_entrada}
+                                onChange={(e) => setFormData({ ...formData, ciclos_carga_entrada: Number(e.target.value) })}
+                                placeholder="Ex: 150" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Ciclos de Carga (Saída)</Label>
+                              <Input type="number" min="0" value={formData.ciclos_carga_saida}
+                                onChange={(e) => setFormData({ ...formData, ciclos_carga_saida: Number(e.target.value) })}
+                                placeholder="Ex: 155" />
+                            </div>
+                          </div>
+                        )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label>Prioridade</Label>
