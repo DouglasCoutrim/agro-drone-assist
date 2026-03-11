@@ -176,6 +176,8 @@ export default function OrdensServico() {
       checklist_helices: (os as any).checklist_helices || false,
       checklist_outros: (os as any).checklist_outros || false,
       condicao_visual: (os as any).condicao_visual || "",
+      ciclos_carga_entrada: (os as any).ciclos_carga_entrada || 0,
+      ciclos_carga_saida: (os as any).ciclos_carga_saida || 0,
     });
     setDialogOpen(true);
   };
