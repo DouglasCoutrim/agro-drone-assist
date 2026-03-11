@@ -235,6 +235,60 @@ export type Database = {
           },
         ]
       }
+      orcamentos: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          descricao: string
+          equipamento: string
+          id: string
+          ordem_servico_id: string | null
+          status: string
+          updated_at: string
+          validade: string
+          valor: number
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          descricao?: string
+          equipamento?: string
+          id?: string
+          ordem_servico_id?: string | null
+          status?: string
+          updated_at?: string
+          validade?: string
+          valor?: number
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          descricao?: string
+          equipamento?: string
+          id?: string
+          ordem_servico_id?: string | null
+          status?: string
+          updated_at?: string
+          validade?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamentos_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ordens_servico: {
         Row: {
           checklist_bateria: boolean | null
@@ -243,6 +297,8 @@ export type Database = {
           checklist_controle: boolean | null
           checklist_helices: boolean | null
           checklist_outros: boolean | null
+          ciclos_carga_entrada: number | null
+          ciclos_carga_saida: number | null
           cliente_id: string
           condicao_visual: string | null
           created_at: string
@@ -276,6 +332,8 @@ export type Database = {
           checklist_controle?: boolean | null
           checklist_helices?: boolean | null
           checklist_outros?: boolean | null
+          ciclos_carga_entrada?: number | null
+          ciclos_carga_saida?: number | null
           cliente_id: string
           condicao_visual?: string | null
           created_at?: string
@@ -309,6 +367,8 @@ export type Database = {
           checklist_controle?: boolean | null
           checklist_helices?: boolean | null
           checklist_outros?: boolean | null
+          ciclos_carga_entrada?: number | null
+          ciclos_carga_saida?: number | null
           cliente_id?: string
           condicao_visual?: string | null
           created_at?: string
@@ -450,6 +510,50 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      rotas: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          custo_rota: number
+          destino: string
+          distancia_km: number
+          id: string
+          observacoes: string | null
+          origem: string
+          updated_at: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          custo_rota?: number
+          destino?: string
+          distancia_km?: number
+          id?: string
+          observacoes?: string | null
+          origem?: string
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          custo_rota?: number
+          destino?: string
+          distancia_km?: number
+          id?: string
+          observacoes?: string | null
+          origem?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rotas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_permissions: {
         Row: {
