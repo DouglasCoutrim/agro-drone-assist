@@ -120,11 +120,14 @@ export default function OrdensServico() {
     if (!user) { toast.error("Usuário não autenticado"); return; }
     setFormLoading(true);
     try {
-      const osData = {
-        ...formData,
+      const { ciclos_carga_entrada, ciclos_carga_saida, ...restForm } = formData;
+      const osData: any = {
+        ...restForm,
         valor_orcamento: totalOrcamento || null,
         data_previsao: formData.data_previsao || null,
         diagnostico: formData.diagnostico || null,
+        ciclos_carga_entrada: isBateria ? ciclos_carga_entrada || null : null,
+        ciclos_carga_saida: isBateria ? ciclos_carga_saida || null : null,
       };
       if (editingOS) {
         const { error } = await supabase.from("ordens_servico").update(osData).eq("id", editingOS.id);
