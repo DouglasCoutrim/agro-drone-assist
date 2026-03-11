@@ -85,7 +85,13 @@ export default function OrdensServico() {
     checklist_helices: false,
     checklist_outros: false,
     condicao_visual: "",
+    // Battery-specific
+    ciclos_carga_entrada: 0,
+    ciclos_carga_saida: 0,
   });
+
+  const isBateria = formData.tipo_equipamento === "bateria" || 
+    formData.modelo_equipamento?.toLowerCase().includes("bateria");
 
   useEffect(() => { fetchData(); }, []);
 
@@ -114,11 +120,14 @@ export default function OrdensServico() {
     if (!user) { toast.error("Usuário não autenticado"); return; }
     setFormLoading(true);
     try {
-      const osData = {
-        ...formData,
+      const { ciclos_carga_entrada, ciclos_carga_saida, ...restForm } = formData;
+      const osData: any = {
+        ...restForm,
         valor_orcamento: totalOrcamento || null,
         data_previsao: formData.data_previsao || null,
         diagnostico: formData.diagnostico || null,
+        ciclos_carga_entrada: isBateria ? ciclos_carga_entrada || null : null,
+        ciclos_carga_saida: isBateria ? ciclos_carga_saida || null : null,
       };
       if (editingOS) {
         const { error } = await supabase.from("ordens_servico").update(osData).eq("id", editingOS.id);
@@ -167,6 +176,8 @@ export default function OrdensServico() {
       checklist_helices: (os as any).checklist_helices || false,
       checklist_outros: (os as any).checklist_outros || false,
       condicao_visual: (os as any).condicao_visual || "",
+      ciclos_carga_entrada: (os as any).ciclos_carga_entrada || 0,
+      ciclos_carga_saida: (os as any).ciclos_carga_saida || 0,
     });
     setDialogOpen(true);
   };
@@ -286,6 +297,7 @@ export default function OrdensServico() {
       custo_pecas: 0, custo_mao_obra: 0, valor_orcamento: 0, observacoes: "",
       checklist_bateria: false, checklist_carregador: false, checklist_controle: false,
       checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "",
+      ciclos_carga_entrada: 0, ciclos_carga_saida: 0,
     });
     setEditingOS(null);
   };
@@ -380,6 +392,23 @@ export default function OrdensServico() {
                             <Input value={formData.numero_serie} onChange={(e) => setFormData({ ...formData, numero_serie: e.target.value })} />
                           </div>
                         </div>
+                        {/* Battery conditional fields */}
+                        {isBateria && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 rounded-lg border border-dashed border-primary/30 bg-primary/5">
+                            <div className="space-y-2">
+                              <Label>Ciclos de Carga (Entrada)</Label>
+                              <Input type="number" min="0" value={formData.ciclos_carga_entrada}
+                                onChange={(e) => setFormData({ ...formData, ciclos_carga_entrada: Number(e.target.value) })}
+                                placeholder="Ex: 150" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Ciclos de Carga (Saída)</Label>
+                              <Input type="number" min="0" value={formData.ciclos_carga_saida}
+                                onChange={(e) => setFormData({ ...formData, ciclos_carga_saida: Number(e.target.value) })}
+                                placeholder="Ex: 155" />
+                            </div>
+                          </div>
+                        )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label>Prioridade</Label>

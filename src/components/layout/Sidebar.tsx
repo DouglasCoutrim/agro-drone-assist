@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { 
-  LayoutDashboard, FileText, Package, BarChart3, DollarSign, Settings, Users, Zap, CreditCard, MapPin, UsersRound, Building2
+  LayoutDashboard, FileText, Package, BarChart3, DollarSign, Settings, Users, Zap, CreditCard, MapPin, UsersRound, Building2, ClipboardList, Route
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation, Link } from "react-router-dom";
@@ -16,11 +16,12 @@ export function Sidebar({ className }: SidebarProps) {
   const menuItems = [
     { title: "Dashboard", icon: LayoutDashboard, href: "/", roles: ['admin', 'tecnico', 'consulta'] },
     { title: "Ordens de Serviço", icon: FileText, href: "/ordens-servico", roles: ['admin', 'tecnico', 'consulta'] },
+    { title: "Orçamentos", icon: ClipboardList, href: "/orcamentos", roles: ['admin', 'tecnico'] },
     { title: "Estoque", icon: Package, href: "/estoque", roles: ['admin', 'tecnico', 'consulta'] },
     { title: "Relatórios", icon: BarChart3, href: "/relatorios", roles: ['admin', 'tecnico', 'consulta'] },
     { title: "Financeiro", icon: DollarSign, href: "/financeiro", roles: ['admin', 'tecnico'] },
     { title: "Cobranças Asaas", icon: CreditCard, href: "/cobrancas", roles: ['admin', 'tecnico'] },
-    { title: "Deslocamentos", icon: MapPin, href: "/deslocamentos", roles: ['admin', 'tecnico'] },
+    { title: "Rotas", icon: Route, href: "/rotas", roles: ['admin', 'tecnico'] },
     { title: "Clientes", icon: Users, href: "/clientes", roles: ['admin', 'tecnico', 'consulta'] },
     { title: "Equipe", icon: UsersRound, href: "/equipe", roles: ['admin'] },
     { title: "Empresa", icon: Building2, href: "/empresa", roles: ['admin'] },

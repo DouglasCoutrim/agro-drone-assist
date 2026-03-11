@@ -13,8 +13,12 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger
 } from "@/components/ui/dialog";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
+} from "@/components/ui/alert-dialog";
+import {
   Plus, Search, AlertTriangle, Package, TrendingDown, TrendingUp,
-  Edit, Trash2, Loader2, Link as LinkIcon, ImageIcon
+  Edit, Trash2, Loader2, Link as LinkIcon, ImageIcon, Eye, RefreshCw
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -22,7 +26,7 @@ import { Tables } from "@/integrations/supabase/types";
 
 type ItemEstoque = Tables<"itens_estoque">;
 
-const DEFAULT_MARGIN = 30; // Margem de lucro padrão (%)
+const DEFAULT_MARGIN = 30;
 
 export default function Estoque() {
   const [itens, setItens] = useState<ItemEstoque[]>([]);
@@ -34,6 +38,8 @@ export default function Estoque() {
   const [margemLucro, setMargemLucro] = useState(DEFAULT_MARGIN);
   const [mlLoading, setMlLoading] = useState(false);
   const [mlLink, setMlLink] = useState("");
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [viewingItem, setViewingItem] = useState<ItemEstoque | null>(null);
 
   const [formData, setFormData] = useState({
     codigo: "", descricao: "", categoria: "", quantidade: 0,
@@ -66,6 +72,28 @@ export default function Estoque() {
     if (formData.custo_unitario > 0) {
       const preco_venda = Number((formData.custo_unitario * (1 + newMargin / 100)).toFixed(2));
       setFormData(prev => ({ ...prev, preco_venda }));
+    }
+  };
+
+  const handleBulkApplyMargin = async () => {
+    setBulkLoading(true);
+    try {
+      const { data, error } = await supabase.from('itens_estoque').select('id, custo_unitario');
+      if (error) throw error;
+      if (!data || data.length === 0) { toast.info('Nenhum produto no estoque'); return; }
+
+      let updated = 0;
+      for (const item of data) {
+        const newPrice = Number((item.custo_unitario * (1 + margemLucro / 100)).toFixed(2));
+        const { error: upErr } = await supabase.from('itens_estoque').update({ preco_venda: newPrice }).eq('id', item.id);
+        if (!upErr) updated++;
+      }
+      toast.success(`Margem de ${margemLucro}% aplicada a ${updated} produtos!`);
+      fetchItens();
+    } catch (err: any) {
+      toast.error('Erro ao atualizar preços: ' + err.message);
+    } finally {
+      setBulkLoading(false);
     }
   };
 
@@ -114,7 +142,7 @@ export default function Estoque() {
   const extractMLId = (url: string): string | null => {
     const match = url.match(/(MLB)\s*[-]?\s*(\d+)/i);
     if (!match) return null;
-    return match[2]; // Return only the numeric part
+    return match[2];
   };
 
   const handleMLImport = async () => {
@@ -132,7 +160,6 @@ export default function Estoque() {
         return;
       }
       const price = data.price || 0;
-      const imageUrl = data.pictures?.[0]?.secure_url || data.thumbnail || '';
       setFormData(prev => ({
         ...prev,
         descricao: data.title || prev.descricao,
@@ -141,9 +168,6 @@ export default function Estoque() {
       }));
       toast.dismiss(loadingToast);
       toast.success(`Produto importado: ${data.title}`);
-      if (imageUrl) {
-        toast.info('Imagem disponível: ' + imageUrl.substring(0, 60) + '...');
-      }
     };
 
     try {
@@ -153,19 +177,14 @@ export default function Estoque() {
       if (data.error) throw new Error('CORS_OR_NOT_FOUND');
       applyData(data);
     } catch {
-      // Fallback via corsproxy.io
       try {
         const proxyRes = await fetch(`https://corsproxy.io/?url=https://api.mercadolibre.com/items/MLB${idNumerico}`);
-        if (!proxyRes.ok) {
-          toast.dismiss(loadingToast);
-          toast.error('Produto não encontrado no Mercado Livre. Verifique o link.');
-          return;
-        }
+        if (!proxyRes.ok) { toast.dismiss(loadingToast); toast.error('Produto não encontrado.'); return; }
         const data = await proxyRes.json();
         applyData(data);
-      } catch (proxyError: any) {
+      } catch {
         toast.dismiss(loadingToast);
-        toast.error('Não foi possível buscar os dados. Verifique o link e tente novamente.');
+        toast.error('Não foi possível buscar os dados.');
       }
     } finally { setMlLoading(false); }
   };
@@ -197,12 +216,36 @@ export default function Estoque() {
             </h1>
             <p className="text-muted-foreground">Peças para drones, baterias, geradores e carregadores</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
               <Label className="text-xs text-muted-foreground whitespace-nowrap">Margem Padrão</Label>
               <Input type="number" className="w-16 h-7 text-sm text-center" value={margemLucro}
                 onChange={(e) => handleMargemChange(Number(e.target.value))} min={0} max={500} />
               <span className="text-xs text-muted-foreground">%</span>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1" disabled={bulkLoading}>
+                    {bulkLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                    Aplicar a todos
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Atualizar todos os preços?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Isso irá recalcular o preço de venda de <strong>todos os {itens.length} produtos</strong> do estoque
+                      usando a margem de <strong>{margemLucro}%</strong> sobre o custo unitário atual de cada item.
+                      Esta ação não pode ser desfeita.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleBulkApplyMargin}>
+                      Sim, aplicar a todos
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
             <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
               <DialogTrigger asChild>
@@ -214,7 +257,6 @@ export default function Estoque() {
                   <DialogDescription>Preencha os dados do item de estoque</DialogDescription>
                 </DialogHeader>
 
-                {/* Mercado Livre Import */}
                 {!editingItem && (
                   <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-4 space-y-3">
                     <div className="flex items-center gap-2">
@@ -295,7 +337,6 @@ export default function Estoque() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-10">Foto</TableHead>
                       <TableHead>Nome</TableHead>
                       <TableHead>Categoria</TableHead>
                       <TableHead className="text-center">Qtd</TableHead>
@@ -310,12 +351,7 @@ export default function Estoque() {
                       const statusInfo = getStatusInfo(item);
                       const StatusIcon = statusInfo.icon;
                       return (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
-                              <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                          </TableCell>
+                        <TableRow key={item.id} className="cursor-pointer" onClick={() => setViewingItem(item)}>
                           <TableCell>
                             <div>
                               <p className="font-medium">{item.descricao}</p>
@@ -335,7 +371,8 @@ export default function Estoque() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex gap-1 justify-end">
+                            <div className="flex gap-1 justify-end" onClick={(e) => e.stopPropagation()}>
+                              <Button size="sm" variant="ghost" onClick={() => setViewingItem(item)}><Eye className="h-4 w-4" /></Button>
                               <Button size="sm" variant="ghost" onClick={() => handleEdit(item)}><Edit className="h-4 w-4" /></Button>
                               <Button size="sm" variant="ghost" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                             </div>
@@ -350,6 +387,36 @@ export default function Estoque() {
           </CardContent>
         </Card>
 
+        {/* View Item Dialog */}
+        <Dialog open={!!viewingItem} onOpenChange={(open) => { if (!open) setViewingItem(null); }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Detalhes do Item</DialogTitle>
+            </DialogHeader>
+            {viewingItem && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div><p className="text-xs text-muted-foreground">Código</p><p className="font-medium">{viewingItem.codigo}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Categoria</p><Badge variant="outline">{viewingItem.categoria}</Badge></div>
+                  <div className="col-span-2"><p className="text-xs text-muted-foreground">Descrição</p><p className="font-medium">{viewingItem.descricao}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Quantidade</p><p className="font-bold text-lg">{viewingItem.quantidade}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Estoque Mínimo</p><p className="font-medium">{viewingItem.estoque_minimo}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Custo Unitário</p><p className="font-medium">{formatCurrency(viewingItem.custo_unitario)}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Preço de Venda</p><p className="font-medium text-success">{formatCurrency(viewingItem.preco_venda)}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Fornecedor</p><p className="font-medium">{viewingItem.fornecedor || "-"}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Localização</p><p className="font-medium">{viewingItem.localizacao || "-"}</p></div>
+                </div>
+                <Separator />
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => { handleEdit(viewingItem); setViewingItem(null); }}>
+                    <Edit className="mr-2 h-4 w-4" />Editar
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
         {/* Low Stock Alerts */}
         {itensEstoqueBaixo.length > 0 && (
           <Card className="shadow-soft border-l-4 border-l-destructive">
@@ -357,7 +424,7 @@ export default function Estoque() {
             <CardContent>
               <div className="space-y-2">
                 {itensEstoqueBaixo.map(item => (
-                  <div key={item.id} className="flex items-center justify-between p-3 bg-destructive/5 rounded-lg">
+                  <div key={item.id} className="flex items-center justify-between p-3 bg-destructive/5 rounded-lg cursor-pointer hover:bg-destructive/10 transition-colors" onClick={() => setViewingItem(item)}>
                     <div>
                       <p className="font-medium">{item.descricao}</p>
                       <p className="text-sm text-muted-foreground">{item.codigo} · {item.categoria}</p>
