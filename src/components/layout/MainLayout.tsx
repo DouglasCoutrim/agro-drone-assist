@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { cn } from "@/lib/utils";
-import { useInactivityLogout } from "@/hooks/useInactivityLogout";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -10,7 +9,6 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  useInactivityLogout();
 
   return (
     <div className="flex h-screen overflow-hidden">
