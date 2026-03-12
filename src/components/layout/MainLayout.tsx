@@ -10,6 +10,7 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  useInactivityLogout();
 
   return (
     <div className="flex h-screen overflow-hidden">
