@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { cn } from "@/lib/utils";
+import { useInactivityLogout } from "@/hooks/useInactivityLogout";
 
 interface MainLayoutProps {
   children: React.ReactNode;
