@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -18,9 +17,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+import { ClientCombobox } from "@/components/shared/ClientCombobox";
+import { CostFieldArray, CostLine } from "@/components/shared/CostFieldArray";
 
 type Cliente = Tables<"clientes">;
+type ItemEstoque = Tables<"itens_estoque">;
 
 interface Orcamento {
   id: string;
@@ -37,9 +38,9 @@ interface Orcamento {
 
 export default function Orcamentos() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [itensEstoque, setItensEstoque] = useState<ItemEstoque[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingOrc, setEditingOrc] = useState<Orcamento | null>(null);
@@ -48,26 +49,31 @@ export default function Orcamentos() {
   const [convertId, setConvertId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
+  const [costLines, setCostLines] = useState<CostLine[]>([]);
+
   const [formData, setFormData] = useState({
     cliente_id: "",
     equipamento: "",
     descricao: "",
-    valor: 0,
     validade: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
   });
+
+  const totalValor = costLines.reduce((s, l) => s + l.subtotal, 0);
 
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
-      const [orcRes, cliRes] = await Promise.all([
+      const [orcRes, cliRes, itensRes] = await Promise.all([
         supabase.from("orcamentos").select("*, clientes(nome)").order("created_at", { ascending: false }),
         supabase.from("clientes").select("*").order("nome"),
+        supabase.from("itens_estoque").select("*").order("descricao"),
       ]);
       if (orcRes.error) throw orcRes.error;
       if (cliRes.error) throw cliRes.error;
       setOrcamentos(orcRes.data || []);
       setClientes(cliRes.data || []);
+      if (!itensRes.error) setItensEstoque(itensRes.data || []);
     } catch { toast.error("Erro ao carregar dados"); } finally { setLoading(false); }
   };
 
@@ -75,12 +81,13 @@ export default function Orcamentos() {
     e.preventDefault();
     setFormLoading(true);
     try {
+      const payload = { ...formData, valor: totalValor };
       if (editingOrc) {
-        const { error } = await supabase.from("orcamentos").update(formData).eq("id", editingOrc.id);
+        const { error } = await supabase.from("orcamentos").update(payload).eq("id", editingOrc.id);
         if (error) throw error;
         toast.success("Orçamento atualizado!");
       } else {
-        const { error } = await supabase.from("orcamentos").insert(formData);
+        const { error } = await supabase.from("orcamentos").insert(payload);
         if (error) throw error;
         toast.success("Orçamento criado!");
       }
@@ -92,9 +99,10 @@ export default function Orcamentos() {
     setEditingOrc(orc);
     setFormData({
       cliente_id: orc.cliente_id, equipamento: orc.equipamento,
-      descricao: orc.descricao, valor: orc.valor,
+      descricao: orc.descricao,
       validade: orc.validade?.split("T")[0] || "",
     });
+    setCostLines(orc.valor > 0 ? [{ id: "legacy", item_id: "", descricao: "Valor (importado)", quantidade: 1, valor_unitario: orc.valor, subtotal: orc.valor }] : []);
     setDialogOpen(true);
   };
 
@@ -123,7 +131,6 @@ export default function Orcamentos() {
         prioridade: "media",
       }).select("id").single();
       if (osErr) throw osErr;
-
       await supabase.from("orcamentos").update({ status: "convertido", ordem_servico_id: osData.id }).eq("id", orc.id);
       toast.success("Orçamento convertido em OS aprovada!");
       setConvertId(null);
@@ -133,7 +140,8 @@ export default function Orcamentos() {
   };
 
   const resetForm = () => {
-    setFormData({ cliente_id: "", equipamento: "", descricao: "", valor: 0, validade: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0] });
+    setFormData({ cliente_id: "", equipamento: "", descricao: "", validade: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0] });
+    setCostLines([]);
     setEditingOrc(null);
   };
 
@@ -164,7 +172,7 @@ export default function Orcamentos() {
             <DialogTrigger asChild>
               <Button className="gradient-primary shadow-medium"><Plus className="mr-2 h-4 w-4" />Novo Orçamento</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingOrc ? "Editar Orçamento" : "Novo Orçamento"}</DialogTitle>
                 <DialogDescription>Preencha os dados do orçamento</DialogDescription>
@@ -172,10 +180,12 @@ export default function Orcamentos() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Cliente *</Label>
-                  <Select value={formData.cliente_id} onValueChange={(v) => setFormData({ ...formData, cliente_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
-                    <SelectContent>{clientes.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <ClientCombobox
+                    value={formData.cliente_id}
+                    onValueChange={(v) => setFormData({ ...formData, cliente_id: v })}
+                    clientes={clientes}
+                    onClientesChange={fetchData}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Equipamento *</Label>
@@ -185,14 +195,22 @@ export default function Orcamentos() {
                   <Label>Descrição *</Label>
                   <Textarea value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} rows={3} required placeholder="Descreva o serviço a ser orçado..." />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Valor (R$) *</Label>
-                    <Input type="number" step="0.01" value={formData.valor} onChange={(e) => setFormData({ ...formData, valor: Number(e.target.value) })} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Validade *</Label>
-                    <Input type="date" value={formData.validade} onChange={(e) => setFormData({ ...formData, validade: e.target.value })} required />
+                <div className="space-y-2">
+                  <Label>Validade *</Label>
+                  <Input type="date" value={formData.validade} onChange={(e) => setFormData({ ...formData, validade: e.target.value })} required />
+                </div>
+                <Separator />
+                <CostFieldArray
+                  label="Itens do Orçamento"
+                  lines={costLines}
+                  onChange={setCostLines}
+                  items={itensEstoque}
+                  onItemsChange={fetchData}
+                />
+                <div className="flex justify-end">
+                  <div className="text-right p-3 rounded-lg bg-primary/5 border border-primary/20">
+                    <span className="text-sm text-muted-foreground">TOTAL: </span>
+                    <span className="text-2xl font-bold text-primary">R$ {totalValor.toFixed(2)}</span>
                   </div>
                 </div>
                 <div className="flex justify-end gap-2">
@@ -274,27 +292,23 @@ export default function Orcamentos() {
                 <Separator />
                 <div className="flex gap-2 justify-end">
                   {viewingOrc.status === "pendente" && (
-                    <>
-                      <AlertDialog open={convertId === viewingOrc.id} onOpenChange={(open) => setConvertId(open ? viewingOrc.id : null)}>
-                        <Button variant="default" className="gradient-primary gap-2" onClick={() => setConvertId(viewingOrc.id)}>
-                          <ArrowRight className="h-4 w-4" />Converter em OS
-                        </Button>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Converter em Ordem de Serviço?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Uma nova OS será criada com status "Aprovado" usando os dados deste orçamento. O orçamento será marcado como convertido.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleConvertToOS(viewingOrc)} disabled={formLoading}>
-                              {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Confirmar
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </>
+                    <AlertDialog open={convertId === viewingOrc.id} onOpenChange={(open) => setConvertId(open ? viewingOrc.id : null)}>
+                      <Button variant="default" className="gradient-primary gap-2" onClick={() => setConvertId(viewingOrc.id)}>
+                        <ArrowRight className="h-4 w-4" />Converter em OS
+                      </Button>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Converter em Ordem de Serviço?</AlertDialogTitle>
+                          <AlertDialogDescription>Uma nova OS será criada com status "Aprovado" usando os dados deste orçamento.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleConvertToOS(viewingOrc)} disabled={formLoading}>
+                            {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Confirmar
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   )}
                   <Button variant="outline" onClick={() => { handleEdit(viewingOrc); setViewingOrc(null); }}>
                     <Edit className="mr-2 h-4 w-4" />Editar
