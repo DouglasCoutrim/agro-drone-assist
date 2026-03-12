@@ -11,19 +11,20 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download, UserPlus } from "lucide-react";
+import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
-import { QuickClientModal } from "@/components/os/QuickClientModal";
+import { ClientCombobox } from "@/components/shared/ClientCombobox";
+import { CostFieldArray, CostLine } from "@/components/shared/CostFieldArray";
 import { LegalTermsFooter, getLegalTermsHTML } from "@/components/os/LegalTermsFooter";
 
 type OrdemServico = Tables<"ordens_servico"> & { clientes: { nome: string; telefone?: string } | null };
 type Cliente = Tables<"clientes">;
+type ItemEstoque = Tables<"itens_estoque">;
 
-// New professional status mapping (DB enum -> UI label)
 const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
   recebido: { label: "Recebido", variant: "outline" },
   aguardando_diagnostico: { label: "Aguard. Diagnóstico", variant: "secondary" },
@@ -34,7 +35,6 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secon
   pronto_retirada: { label: "Pronto p/ Retirada", variant: "default" },
   entregue: { label: "Entregue", variant: "default" },
   cancelada: { label: "Cancelado", variant: "destructive" },
-  // Legacy mappings
   aberta: { label: "Recebido", variant: "outline" },
   em_andamento: { label: "Em Reparo", variant: "default" },
   aguardando_peca: { label: "Aguard. Aprovação", variant: "secondary" },
@@ -54,6 +54,7 @@ export default function OrdensServico() {
   const { config: empresa } = useEmpresaConfig();
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [itensEstoque, setItensEstoque] = useState<ItemEstoque[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -61,7 +62,10 @@ export default function OrdensServico() {
   const [viewingOS, setViewingOS] = useState<OrdemServico | null>(null);
   const [editingOS, setEditingOS] = useState<OrdemServico | null>(null);
   const [formLoading, setFormLoading] = useState(false);
-  const [quickClientOpen, setQuickClientOpen] = useState(false);
+
+  // Cost lines (field array)
+  const [pecasLines, setPecasLines] = useState<CostLine[]>([]);
+  const [servicosLines, setServicosLines] = useState<CostLine[]>([]);
 
   const [formData, setFormData] = useState({
     cliente_id: "",
@@ -73,11 +77,7 @@ export default function OrdensServico() {
     diagnostico: "",
     prioridade: "media",
     data_previsao: "",
-    custo_pecas: 0,
-    custo_mao_obra: 0,
-    valor_orcamento: 0,
     observacoes: "",
-    // Checklist
     checklist_bateria: false,
     checklist_carregador: false,
     checklist_controle: false,
@@ -85,29 +85,31 @@ export default function OrdensServico() {
     checklist_helices: false,
     checklist_outros: false,
     condicao_visual: "",
-    // Battery-specific
     ciclos_carga_entrada: 0,
     ciclos_carga_saida: 0,
   });
 
-  const isBateria = formData.tipo_equipamento === "bateria" || 
+  const isBateria = formData.tipo_equipamento === "bateria" ||
     formData.modelo_equipamento?.toLowerCase().includes("bateria");
+
+  const totalPecas = pecasLines.reduce((s, l) => s + l.subtotal, 0);
+  const totalServicos = servicosLines.reduce((s, l) => s + l.subtotal, 0);
+  const totalOrcamento = totalPecas + totalServicos;
 
   useEffect(() => { fetchData(); }, []);
 
-  // Auto-calculate total
-  const totalOrcamento = (formData.custo_pecas || 0) + (formData.custo_mao_obra || 0);
-
   const fetchData = async () => {
     try {
-      const [ordensRes, clientesRes] = await Promise.all([
+      const [ordensRes, clientesRes, itensRes] = await Promise.all([
         supabase.from("ordens_servico").select("*, clientes(nome, telefone)").order("created_at", { ascending: false }),
         supabase.from("clientes").select("*").order("nome"),
+        supabase.from("itens_estoque").select("*").order("descricao"),
       ]);
       if (ordensRes.error) throw ordensRes.error;
       if (clientesRes.error) throw clientesRes.error;
       setOrdens(ordensRes.data || []);
       setClientes(clientesRes.data || []);
+      if (!itensRes.error) setItensEstoque(itensRes.data || []);
     } catch {
       toast.error("Erro ao carregar dados");
     } finally {
@@ -123,6 +125,8 @@ export default function OrdensServico() {
       const { ciclos_carga_entrada, ciclos_carga_saida, ...restForm } = formData;
       const osData: any = {
         ...restForm,
+        custo_pecas: totalPecas,
+        custo_mao_obra: totalServicos,
         valor_orcamento: totalOrcamento || null,
         data_previsao: formData.data_previsao || null,
         diagnostico: formData.diagnostico || null,
@@ -165,9 +169,6 @@ export default function OrdensServico() {
       diagnostico: os.diagnostico || "",
       prioridade: os.prioridade,
       data_previsao: os.data_previsao || "",
-      custo_pecas: (os as any).custo_pecas || 0,
-      custo_mao_obra: (os as any).custo_mao_obra || 0,
-      valor_orcamento: os.valor_orcamento || 0,
       observacoes: os.observacoes || "",
       checklist_bateria: (os as any).checklist_bateria || false,
       checklist_carregador: (os as any).checklist_carregador || false,
@@ -179,6 +180,11 @@ export default function OrdensServico() {
       ciclos_carga_entrada: (os as any).ciclos_carga_entrada || 0,
       ciclos_carga_saida: (os as any).ciclos_carga_saida || 0,
     });
+    // Populate cost lines from existing values (single line each for legacy)
+    const cp = Number((os as any).custo_pecas) || 0;
+    const cm = Number((os as any).custo_mao_obra) || 0;
+    setPecasLines(cp > 0 ? [{ id: "legacy-p", item_id: "", descricao: "Peças (importado)", quantidade: 1, valor_unitario: cp, subtotal: cp }] : []);
+    setServicosLines(cm > 0 ? [{ id: "legacy-s", item_id: "", descricao: "Mão de obra (importado)", quantidade: 1, valor_unitario: cm, subtotal: cm }] : []);
     setDialogOpen(true);
   };
 
@@ -191,12 +197,10 @@ export default function OrdensServico() {
     if (!viewingOS) return;
     const printWindow = window.open("", "_blank");
     if (!printWindow) { toast.error("Popup bloqueado. Permita popups para imprimir."); return; }
-
     const fmtCur = (v: number | null) => v != null ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v) : "-";
     const fmtDt = (d: string | null) => d ? new Date(d).toLocaleDateString("pt-BR") : "-";
     const os = viewingOS as any;
-
-    const checklistItems = [];
+    const checklistItems: string[] = [];
     if (os.checklist_bateria) checklistItems.push("Bateria");
     if (os.checklist_carregador) checklistItems.push("Carregador");
     if (os.checklist_controle) checklistItems.push("Controle");
@@ -271,7 +275,6 @@ export default function OrdensServico() {
     const cleanPhone = telefone.replace(/\D/g, "");
     const phone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
     const fmtCur = (v: number | null) => v != null ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v) : "A definir";
-
     const texto = `Olá, *${viewingOS.clientes?.nome || "Cliente"}*! 👋\n\nAqui é da *${empresa.nome_empresa || "Volt Control"}*.\n\nSua Ordem de Serviço está atualizada:\n\n📋 *OS:* ${viewingOS.numero}\n🔧 *Equipamento:* ${TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento}${viewingOS.modelo_equipamento ? ` - ${viewingOS.modelo_equipamento}` : ""}\n📌 *Status:* ${getStatusLabel(viewingOS.status)}\n💰 *Valor:* ${fmtCur(viewingOS.valor_orcamento)}\n\n${viewingOS.diagnostico ? `🔍 *Diagnóstico:* ${viewingOS.diagnostico}\n` : ""}${viewingOS.observacoes ? `📝 *Obs:* ${viewingOS.observacoes}\n` : ""}\nQualquer dúvida, estamos à disposição!`;
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(texto)}`, "_blank");
   };
@@ -294,11 +297,13 @@ export default function OrdensServico() {
     setFormData({
       cliente_id: "", tipo_equipamento: "bateria", marca: "", modelo_equipamento: "", numero_serie: "",
       descricao_problema: "", diagnostico: "", prioridade: "media", data_previsao: "",
-      custo_pecas: 0, custo_mao_obra: 0, valor_orcamento: 0, observacoes: "",
+      observacoes: "",
       checklist_bateria: false, checklist_carregador: false, checklist_controle: false,
       checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "",
       ciclos_carga_entrada: 0, ciclos_carga_saida: 0,
     });
+    setPecasLines([]);
+    setServicosLines([]);
     setEditingOS(null);
   };
 
@@ -355,15 +360,12 @@ export default function OrdensServico() {
                       <CardContent className="space-y-4">
                         <div className="space-y-2">
                           <Label>Cliente *</Label>
-                          <div className="flex gap-2">
-                            <Select value={formData.cliente_id} onValueChange={(v) => setFormData({ ...formData, cliente_id: v })}>
-                              <SelectTrigger className="flex-1"><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
-                              <SelectContent>{clientes.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
-                            </Select>
-                            <Button type="button" variant="outline" size="icon" onClick={() => setQuickClientOpen(true)} title="Cadastro rápido de cliente">
-                              <UserPlus className="h-4 w-4" />
-                            </Button>
-                          </div>
+                          <ClientCombobox
+                            value={formData.cliente_id}
+                            onValueChange={(v) => setFormData({ ...formData, cliente_id: v })}
+                            clientes={clientes}
+                            onClientesChange={fetchData}
+                          />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
@@ -392,20 +394,17 @@ export default function OrdensServico() {
                             <Input value={formData.numero_serie} onChange={(e) => setFormData({ ...formData, numero_serie: e.target.value })} />
                           </div>
                         </div>
-                        {/* Battery conditional fields */}
                         {isBateria && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 rounded-lg border border-dashed border-primary/30 bg-primary/5">
                             <div className="space-y-2">
                               <Label>Ciclos de Carga (Entrada)</Label>
                               <Input type="number" min="0" value={formData.ciclos_carga_entrada}
-                                onChange={(e) => setFormData({ ...formData, ciclos_carga_entrada: Number(e.target.value) })}
-                                placeholder="Ex: 150" />
+                                onChange={(e) => setFormData({ ...formData, ciclos_carga_entrada: Number(e.target.value) })} placeholder="Ex: 150" />
                             </div>
                             <div className="space-y-2">
                               <Label>Ciclos de Carga (Saída)</Label>
                               <Input type="number" min="0" value={formData.ciclos_carga_saida}
-                                onChange={(e) => setFormData({ ...formData, ciclos_carga_saida: Number(e.target.value) })}
-                                placeholder="Ex: 155" />
+                                onChange={(e) => setFormData({ ...formData, ciclos_carga_saida: Number(e.target.value) })} placeholder="Ex: 155" />
                             </div>
                           </div>
                         )}
@@ -430,7 +429,7 @@ export default function OrdensServico() {
                     </Card>
                   </TabsContent>
 
-                  {/* TAB 2 - CHECKLIST DE ENTRADA */}
+                  {/* TAB 2 - CHECKLIST */}
                   <TabsContent value="checklist" className="space-y-4 mt-4">
                     <Card>
                       <CardHeader className="pb-3"><CardTitle className="text-base">Checklist de Entrada</CardTitle></CardHeader>
@@ -446,11 +445,7 @@ export default function OrdensServico() {
                             ["checklist_outros", "Outros"],
                           ] as const).map(([key, label]) => (
                             <div key={key} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={key}
-                                checked={(formData as any)[key]}
-                                onCheckedChange={(checked) => setFormData({ ...formData, [key]: !!checked })}
-                              />
+                              <Checkbox id={key} checked={(formData as any)[key]} onCheckedChange={(checked) => setFormData({ ...formData, [key]: !!checked })} />
                               <Label htmlFor={key} className="cursor-pointer">{label}</Label>
                             </div>
                           ))}
@@ -458,74 +453,51 @@ export default function OrdensServico() {
                         <Separator />
                         <div className="space-y-2">
                           <Label>Condição Visual (Riscos, amassados, lacres)</Label>
-                          <Textarea
-                            value={formData.condicao_visual}
-                            onChange={(e) => setFormData({ ...formData, condicao_visual: e.target.value })}
-                            rows={3}
-                            placeholder="Descreva a condição visual do equipamento na entrada..."
-                          />
+                          <Textarea value={formData.condicao_visual} onChange={(e) => setFormData({ ...formData, condicao_visual: e.target.value })} rows={3} placeholder="Descreva a condição visual do equipamento na entrada..." />
                         </div>
                       </CardContent>
                     </Card>
                   </TabsContent>
 
-                  {/* TAB 3 - DIAGNÓSTICO E ORÇAMENTO */}
+                  {/* TAB 3 - DIAGNÓSTICO */}
                   <TabsContent value="diagnostico" className="space-y-4 mt-4">
                     <Card>
                       <CardHeader className="pb-3"><CardTitle className="text-base">Diagnóstico e Orçamento</CardTitle></CardHeader>
                       <CardContent className="space-y-4">
                         <div className="space-y-2">
                           <Label>Defeito Relatado *</Label>
-                          <Textarea
-                            value={formData.descricao_problema}
-                            onChange={(e) => setFormData({ ...formData, descricao_problema: e.target.value })}
-                            rows={3}
-                            required
-                            placeholder="Descreva o defeito relatado pelo cliente..."
-                          />
+                          <Textarea value={formData.descricao_problema} onChange={(e) => setFormData({ ...formData, descricao_problema: e.target.value })} rows={3} required placeholder="Descreva o defeito relatado pelo cliente..." />
                         </div>
                         <div className="space-y-2">
                           <Label>Diagnóstico Técnico</Label>
-                          <Textarea
-                            value={formData.diagnostico}
-                            onChange={(e) => setFormData({ ...formData, diagnostico: e.target.value })}
-                            rows={3}
-                            placeholder="Resultado da análise técnica..."
-                          />
+                          <Textarea value={formData.diagnostico} onChange={(e) => setFormData({ ...formData, diagnostico: e.target.value })} rows={3} placeholder="Resultado da análise técnica..." />
                         </div>
                         <Separator />
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          <div className="space-y-2">
-                            <Label>Custo de Peças (R$)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={formData.custo_pecas}
-                              onChange={(e) => setFormData({ ...formData, custo_pecas: Number(e.target.value) })}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Custo Mão de Obra (R$)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={formData.custo_mao_obra}
-                              onChange={(e) => setFormData({ ...formData, custo_mao_obra: Number(e.target.value) })}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Total (R$)</Label>
-                            <Input
-                              type="number"
-                              value={totalOrcamento.toFixed(2)}
-                              readOnly
-                              disabled
-                              className="font-bold text-primary"
-                            />
+
+                        {/* Dynamic cost lines */}
+                        <CostFieldArray
+                          label="Peças e Materiais"
+                          lines={pecasLines}
+                          onChange={setPecasLines}
+                          items={itensEstoque}
+                          onItemsChange={fetchData}
+                        />
+                        <Separator />
+                        <CostFieldArray
+                          label="Serviços / Mão de Obra"
+                          lines={servicosLines}
+                          onChange={setServicosLines}
+                          items={itensEstoque}
+                          onItemsChange={fetchData}
+                        />
+                        <Separator />
+                        <div className="flex justify-end">
+                          <div className="text-right p-3 rounded-lg bg-primary/5 border border-primary/20">
+                            <span className="text-sm text-muted-foreground">TOTAL GERAL: </span>
+                            <span className="text-2xl font-bold text-primary">R$ {totalOrcamento.toFixed(2)}</span>
                           </div>
                         </div>
+
                         <div className="space-y-2">
                           <Label>Observações</Label>
                           <Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} />
@@ -635,10 +607,9 @@ export default function OrdensServico() {
                   </div>
                 </div>
                 <Separator />
-                {/* Checklist section */}
                 {(() => {
                   const os = viewingOS as any;
-                  const items = [];
+                  const items: string[] = [];
                   if (os.checklist_bateria) items.push("Bateria");
                   if (os.checklist_carregador) items.push("Carregador");
                   if (os.checklist_controle) items.push("Controle");
@@ -650,14 +621,8 @@ export default function OrdensServico() {
                     <>
                       <div>
                         <h3 className="text-sm font-semibold text-primary uppercase mb-3">Checklist de Entrada</h3>
-                        {items.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mb-2">
-                            {items.map(i => <Badge key={i} variant="secondary">{i}</Badge>)}
-                          </div>
-                        )}
-                        {os.condicao_visual && (
-                          <div><p className="text-xs text-muted-foreground">Condição Visual</p><p className="text-sm">{os.condicao_visual}</p></div>
-                        )}
+                        {items.length > 0 && <div className="flex flex-wrap gap-2 mb-2">{items.map(i => <Badge key={i} variant="secondary">{i}</Badge>)}</div>}
+                        {os.condicao_visual && <div><p className="text-xs text-muted-foreground">Condição Visual</p><p className="text-sm">{os.condicao_visual}</p></div>}
                       </div>
                       <Separator />
                     </>
@@ -686,33 +651,15 @@ export default function OrdensServico() {
                   </div>
                 </div>
                 {viewingOS.observacoes && (<><Separator /><div><p className="text-xs text-muted-foreground">Observações</p><p className="text-sm">{viewingOS.observacoes}</p></div></>)}
-
-                {/* Legal Terms */}
                 <LegalTermsFooter />
-
-                {/* Action Buttons */}
                 <div className="flex flex-wrap gap-3 justify-end pt-2">
-                  <Button variant="outline" onClick={handlePrintOS}>
-                    <Download className="mr-2 h-4 w-4" />Baixar PDF
-                  </Button>
-                  <Button onClick={handleWhatsApp} className="bg-[hsl(142,70%,45%)] hover:bg-[hsl(142,70%,38%)] text-white">
-                    <MessageCircle className="mr-2 h-4 w-4" />Enviar WhatsApp
-                  </Button>
+                  <Button variant="outline" onClick={handlePrintOS}><Download className="mr-2 h-4 w-4" />Baixar PDF</Button>
+                  <Button onClick={handleWhatsApp} className="bg-[hsl(142,70%,45%)] hover:bg-[hsl(142,70%,38%)] text-white"><MessageCircle className="mr-2 h-4 w-4" />Enviar WhatsApp</Button>
                 </div>
               </div>
             )}
           </DialogContent>
         </Dialog>
-
-        {/* Quick Client Modal */}
-        <QuickClientModal
-          open={quickClientOpen}
-          onOpenChange={setQuickClientOpen}
-          onClientCreated={(id) => {
-            setFormData(f => ({ ...f, cliente_id: id }));
-            fetchData();
-          }}
-        />
       </div>
     </MainLayout>
   );

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,12 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, MapPin, Loader2, Edit, Trash2, Eye, MessageCircle, Navigation, DollarSign, Search, Route } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
+import { ClientCombobox } from "@/components/shared/ClientCombobox";
 
 type Cliente = Tables<"clientes">;
 
@@ -44,9 +45,17 @@ export default function Rotas() {
     origem: "",
     destino: "",
     distancia_km: 0,
-    custo_rota: 0,
+    consumo_veiculo: 10, // km/L
+    preco_combustivel: 6.0, // R$/L
+    custo_pedagio: 0,
+    ida_volta: false,
     observacoes: "",
   });
+
+  // Auto-calc
+  const distanciaEfetiva = formData.ida_volta ? formData.distancia_km * 2 : formData.distancia_km;
+  const custoCombustivel = formData.consumo_veiculo > 0 ? (distanciaEfetiva / formData.consumo_veiculo) * formData.preco_combustivel : 0;
+  const custoTotal = custoCombustivel + formData.custo_pedagio;
 
   useEffect(() => { fetchData(); }, []);
 
@@ -86,7 +95,14 @@ export default function Rotas() {
     e.preventDefault();
     setFormLoading(true);
     try {
-      const payload = { ...formData, observacoes: formData.observacoes || null };
+      const payload = {
+        cliente_id: formData.cliente_id,
+        origem: formData.origem,
+        destino: formData.destino,
+        distancia_km: formData.distancia_km,
+        custo_rota: custoTotal,
+        observacoes: formData.observacoes || null,
+      };
       if (editingRota) {
         const { error } = await supabase.from("rotas").update(payload).eq("id", editingRota.id);
         if (error) throw error;
@@ -104,7 +120,8 @@ export default function Rotas() {
     setEditingRota(rota);
     setFormData({
       cliente_id: rota.cliente_id, origem: rota.origem, destino: rota.destino,
-      distancia_km: rota.distancia_km, custo_rota: rota.custo_rota, observacoes: rota.observacoes || "",
+      distancia_km: rota.distancia_km, consumo_veiculo: 10, preco_combustivel: 6.0,
+      custo_pedagio: 0, ida_volta: false, observacoes: rota.observacoes || "",
     });
     setDialogOpen(true);
   };
@@ -122,12 +139,13 @@ export default function Rotas() {
     const telefone = rota.clientes?.telefone || "";
     const cleanPhone = telefone.replace(/\D/g, "");
     const phone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
-    const texto = `Olá, *${rota.clientes?.nome || "Cliente"}*! 🚗\n\nSegue o detalhamento da rota:\n\n📍 *Origem:* ${rota.origem}\n📍 *Destino:* ${rota.destino}\n📏 *Distância:* ${rota.distancia_km} km\n💰 *Custo da Rota:* ${formatCurrency(rota.custo_rota)}\n${rota.observacoes ? `\n📝 *Obs:* ${rota.observacoes}` : ""}\n\nQualquer dúvida, estamos à disposição!`;
+    const fmtCur = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+    const texto = `Olá, *${rota.clientes?.nome || "Cliente"}*! 🚗\n\nSegue o detalhamento da rota de deslocamento:\n\n📍 *Origem:* ${rota.origem}\n📍 *Destino:* ${rota.destino}\n📏 *Distância:* ${rota.distancia_km} km\n💰 *Custo Total da Rota:* ${fmtCur(rota.custo_rota)}\n${rota.observacoes ? `\n📝 *Obs:* ${rota.observacoes}` : ""}\n\nQualquer dúvida, estamos à disposição!`;
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(texto)}`, "_blank");
   };
 
   const resetForm = () => {
-    setFormData({ cliente_id: "", origem: "", destino: "", distancia_km: 0, custo_rota: 0, observacoes: "" });
+    setFormData({ cliente_id: "", origem: "", destino: "", distancia_km: 0, consumo_veiculo: 10, preco_combustivel: 6.0, custo_pedagio: 0, ida_volta: false, observacoes: "" });
     setEditingRota(null);
   };
 
@@ -154,7 +172,7 @@ export default function Rotas() {
             <DialogTrigger asChild>
               <Button className="gradient-primary shadow-medium"><Plus className="mr-2 h-4 w-4" />Nova Rota</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingRota ? "Editar Rota" : "Nova Rota"}</DialogTitle>
                 <DialogDescription>Preencha os dados da rota</DialogDescription>
@@ -162,33 +180,79 @@ export default function Rotas() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Cliente *</Label>
-                  <Select value={formData.cliente_id} onValueChange={(v) => setFormData({ ...formData, cliente_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
-                    <SelectContent>{clientes.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <ClientCombobox
+                    value={formData.cliente_id}
+                    onValueChange={(v) => setFormData({ ...formData, cliente_id: v })}
+                    clientes={clientes}
+                    onClientesChange={fetchData}
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label>Origem *</Label>
-                  <Input value={formData.origem} onChange={(e) => setFormData({ ...formData, origem: e.target.value })} placeholder="Ex: Goiânia, GO" required />
-                </div>
-                <div className="space-y-2">
-                  <Label>Destino *</Label>
-                  <Input value={formData.destino} onChange={(e) => setFormData({ ...formData, destino: e.target.value })} placeholder="Ex: Rio Verde, GO" required />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Origem *</Label>
+                    <Input value={formData.origem} onChange={(e) => setFormData({ ...formData, origem: e.target.value })} placeholder="Ex: Goiânia, GO" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Destino *</Label>
+                    <Input value={formData.destino} onChange={(e) => setFormData({ ...formData, destino: e.target.value })} placeholder="Ex: Rio Verde, GO" required />
+                  </div>
                 </div>
                 <Button type="button" variant="outline" className="w-full" onClick={handleCalcRoute} disabled={calculando}>
                   {calculando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Route className="mr-2 h-4 w-4" />}
                   Calcular Distância (OSRM)
                 </Button>
-                <div className="grid grid-cols-2 gap-4">
+
+                <div className="space-y-2">
+                  <Label>Distância (km)</Label>
+                  <Input type="number" value={formData.distancia_km} onChange={(e) => setFormData({ ...formData, distancia_km: Number(e.target.value) })} />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                  <Label htmlFor="ida-volta" className="cursor-pointer">Calcular Ida e Volta</Label>
+                  <Switch id="ida-volta" checked={formData.ida_volta} onCheckedChange={(checked) => setFormData({ ...formData, ida_volta: checked })} />
+                </div>
+
+                <Separator />
+                <p className="text-sm font-semibold text-primary">Custos do Veículo</p>
+                <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-2">
-                    <Label>Distância (km)</Label>
-                    <Input type="number" value={formData.distancia_km} onChange={(e) => setFormData({ ...formData, distancia_km: Number(e.target.value) })} />
+                    <Label className="text-xs">Consumo (km/L)</Label>
+                    <Input type="number" step="0.1" min="0.1" value={formData.consumo_veiculo}
+                      onChange={(e) => setFormData({ ...formData, consumo_veiculo: Number(e.target.value) })} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Custo da Rota (R$) *</Label>
-                    <Input type="number" step="0.01" value={formData.custo_rota} onChange={(e) => setFormData({ ...formData, custo_rota: Number(e.target.value) })} required />
+                    <Label className="text-xs">Preço Combustível (R$/L)</Label>
+                    <Input type="number" step="0.01" value={formData.preco_combustivel}
+                      onChange={(e) => setFormData({ ...formData, preco_combustivel: Number(e.target.value) })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Pedágio (R$)</Label>
+                    <Input type="number" step="0.01" value={formData.custo_pedagio}
+                      onChange={(e) => setFormData({ ...formData, custo_pedagio: Number(e.target.value) })} />
                   </div>
                 </div>
+
+                {/* Summary */}
+                <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Distância efetiva</span>
+                    <span className="font-medium">{distanciaEfetiva} km {formData.ida_volta ? "(ida+volta)" : "(somente ida)"}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Combustível</span>
+                    <span className="font-medium">{formatCurrency(custoCombustivel)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Pedágio</span>
+                    <span className="font-medium">{formatCurrency(formData.custo_pedagio)}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between">
+                    <span className="font-semibold">Custo Total</span>
+                    <span className="text-xl font-bold text-primary">{formatCurrency(custoTotal)}</span>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label>Observações</Label>
                   <Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} />
@@ -264,7 +328,7 @@ export default function Rotas() {
                   <div><p className="text-xs text-muted-foreground">Origem</p><p className="font-medium">{viewingRota.origem}</p></div>
                   <div><p className="text-xs text-muted-foreground">Destino</p><p className="font-medium">{viewingRota.destino}</p></div>
                   <div><p className="text-xs text-muted-foreground">Distância</p><p className="font-bold text-lg">{viewingRota.distancia_km} km</p></div>
-                  <div><p className="text-xs text-muted-foreground">Custo da Rota</p><p className="font-bold text-primary text-lg">{formatCurrency(viewingRota.custo_rota)}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Custo Total</p><p className="font-bold text-primary text-lg">{formatCurrency(viewingRota.custo_rota)}</p></div>
                   {viewingRota.observacoes && <div className="col-span-2"><p className="text-xs text-muted-foreground">Observações</p><p className="text-sm">{viewingRota.observacoes}</p></div>}
                 </div>
                 <Separator />
