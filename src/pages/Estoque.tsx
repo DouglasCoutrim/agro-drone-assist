@@ -18,11 +18,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Plus, Search, AlertTriangle, Package, TrendingDown, TrendingUp,
-  Edit, Trash2, Loader2, Link as LinkIcon, ImageIcon, Eye, RefreshCw
+  Edit, Trash2, Loader2, Link as LinkIcon, Eye, RefreshCw
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
+import { SearchableInput } from "@/components/ui/searchable-input";
 
 type ItemEstoque = Tables<"itens_estoque">;
 
@@ -59,6 +60,22 @@ export default function Estoque() {
       if (error) throw error;
       setItens(data || []);
     } catch (error: any) { toast.error('Erro ao carregar estoque'); } finally { setLoading(false); }
+  };
+
+  // Auto-generate code for new items
+  const generateCode = async () => {
+    try {
+      const { data } = await supabase.from('itens_estoque').select('codigo').order('codigo', { ascending: false });
+      const codes = (data || []).map(i => i.codigo).filter(c => /^P-\d+$/.test(c));
+      let nextNum = 1;
+      if (codes.length > 0) {
+        const maxNum = Math.max(...codes.map(c => parseInt(c.replace('P-', ''), 10)));
+        nextNum = maxNum + 1;
+      }
+      return `P-${String(nextNum).padStart(5, '0')}`;
+    } catch {
+      return `P-${String(Date.now()).slice(-5)}`;
+    }
   };
 
   const handleCustoChange = (custo: number) => {
@@ -139,53 +156,54 @@ export default function Estoque() {
     setEditingItem(null); setMlLink("");
   };
 
+  const handleOpenNewDialog = async () => {
+    resetForm();
+    const code = await generateCode();
+    setFormData(prev => ({ ...prev, codigo: code }));
+    setDialogOpen(true);
+  };
+
   const extractMLId = (url: string): string | null => {
-    const match = url.match(/(MLB)\s*[-]?\s*(\d+)/i);
-    if (!match) return null;
-    return match[2];
+    const match = url.match(/MLB[-\s]?(\d+)/i);
+    if (match) return `MLB${match[1]}`;
+    // Also try just the ID without prefix
+    const idOnly = url.match(/^(\d{10,13})$/);
+    if (idOnly) return `MLB${idOnly[1]}`;
+    return null;
   };
 
   const handleMLImport = async () => {
-    if (!mlLink.trim()) { toast.error('Cole o link do anúncio do Mercado Livre'); return; }
-    const idNumerico = extractMLId(mlLink);
-    if (!idNumerico) { toast.error('Link inválido. Use um link de produto do Mercado Livre (ex: MLB-123456789).'); return; }
+    if (!mlLink.trim()) { toast.error('Cole o link ou ID do anúncio do Mercado Livre'); return; }
+    const mlId = extractMLId(mlLink.trim());
+    if (!mlId) { toast.error('Link ou ID inválido. Use um link do Mercado Livre ou ID (ex: MLB6104761844).'); return; }
 
     setMlLoading(true);
     const loadingToast = toast.loading('Buscando dados do Mercado Livre...');
 
-    const applyData = (data: any) => {
-      if (data.error === 'not_found' || !data.title) {
-        toast.dismiss(loadingToast);
-        toast.error('Produto não encontrado no Mercado Livre. Verifique o link.');
+    try {
+      const { data, error } = await supabase.functions.invoke('mercadolivre', {
+        body: { mlId },
+      });
+
+      toast.dismiss(loadingToast);
+
+      if (error || data?.error) {
+        toast.error(data?.error || 'Produto não encontrado no Mercado Livre. Verifique o link.');
         return;
       }
+
       const price = data.price || 0;
       setFormData(prev => ({
         ...prev,
         descricao: data.title || prev.descricao,
         custo_unitario: price,
         preco_venda: Number((price * (1 + margemLucro / 100)).toFixed(2)),
+        categoria: data.category_id || prev.categoria,
       }));
-      toast.dismiss(loadingToast);
       toast.success(`Produto importado: ${data.title}`);
-    };
-
-    try {
-      const res = await fetch(`https://api.mercadolibre.com/items/MLB${idNumerico}`);
-      if (!res.ok) throw new Error('CORS_OR_NOT_FOUND');
-      const data = await res.json();
-      if (data.error) throw new Error('CORS_OR_NOT_FOUND');
-      applyData(data);
     } catch {
-      try {
-        const proxyRes = await fetch(`https://corsproxy.io/?url=https://api.mercadolibre.com/items/MLB${idNumerico}`);
-        if (!proxyRes.ok) { toast.dismiss(loadingToast); toast.error('Produto não encontrado.'); return; }
-        const data = await proxyRes.json();
-        applyData(data);
-      } catch {
-        toast.dismiss(loadingToast);
-        toast.error('Não foi possível buscar os dados.');
-      }
+      toast.dismiss(loadingToast);
+      toast.error('Não foi possível buscar os dados do Mercado Livre.');
     } finally { setMlLoading(false); }
   };
 
@@ -205,6 +223,10 @@ export default function Estoque() {
   const itensEstoqueBaixo = itens.filter(item => item.quantidade <= item.estoque_minimo);
   const valorTotal = itens.reduce((acc, item) => acc + (item.quantidade * item.custo_unitario), 0);
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
+  // Get unique categories for SearchableInput
+  const categorias = [...new Set(itens.map(i => i.categoria).filter(Boolean))];
+  const fornecedores = [...new Set(itens.map(i => i.fornecedor).filter(Boolean) as string[])];
 
   return (
     <MainLayout>
@@ -247,10 +269,10 @@ export default function Estoque() {
                 </AlertDialogContent>
               </AlertDialog>
             </div>
-            <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-              <DialogTrigger asChild>
-                <Button className="gradient-primary shadow-medium"><Plus className="mr-2 h-4 w-4" />Novo Item</Button>
-              </DialogTrigger>
+            <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); resetForm(); } }}>
+              <Button className="gradient-primary shadow-medium" onClick={handleOpenNewDialog}>
+                <Plus className="mr-2 h-4 w-4" />Novo Item
+              </Button>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingItem ? 'Editar Item' : 'Novo Item'}</DialogTitle>
@@ -264,14 +286,14 @@ export default function Estoque() {
                       <span className="font-medium text-sm">Importar do Mercado Livre</span>
                     </div>
                     <div className="flex gap-2">
-                      <Input placeholder="Cole o link do anúncio aqui..." value={mlLink}
+                      <Input placeholder="Cole o link ou ID (ex: MLB6104761844)..." value={mlLink}
                         onChange={(e) => setMlLink(e.target.value)} className="flex-1" />
                       <Button type="button" variant="outline" onClick={handleMLImport} disabled={mlLoading}>
                         {mlLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                         <span className="ml-1">Buscar</span>
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground">Preenche automaticamente nome e preço do produto.</p>
+                    <p className="text-xs text-muted-foreground">Preenche automaticamente nome, preço e categoria do produto.</p>
                   </div>
                 )}
 
@@ -279,8 +301,23 @@ export default function Estoque() {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label>Código *</Label><Input value={formData.codigo} onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} required /></div>
-                    <div className="space-y-2"><Label>Categoria *</Label><Input value={formData.categoria} onChange={(e) => setFormData({ ...formData, categoria: e.target.value })} placeholder="Ex: Baterias, Hélices, Motores" required /></div>
+                    <div className="space-y-2">
+                      <Label>Código *</Label>
+                      <Input value={formData.codigo} onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} required className="bg-muted" readOnly={!editingItem} />
+                      {!editingItem && <p className="text-xs text-muted-foreground">Gerado automaticamente</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Categoria *</Label>
+                      <SearchableInput
+                        value={formData.categoria}
+                        onChange={(v) => setFormData({ ...formData, categoria: v })}
+                        suggestions={categorias}
+                        placeholder="Digite ou selecione..."
+                        onAddNew={(v) => setFormData({ ...formData, categoria: v })}
+                        addNewLabel="Criar categoria"
+                        required
+                      />
+                    </div>
                     <div className="col-span-2 space-y-2"><Label>Descrição *</Label><Input value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} required /></div>
                     <div className="space-y-2"><Label>Quantidade</Label><Input type="number" value={formData.quantidade} onChange={(e) => setFormData({ ...formData, quantidade: Number(e.target.value) })} /></div>
                     <div className="space-y-2"><Label>Estoque Mínimo</Label><Input type="number" value={formData.estoque_minimo} onChange={(e) => setFormData({ ...formData, estoque_minimo: Number(e.target.value) })} /></div>
@@ -297,7 +334,17 @@ export default function Estoque() {
                       <Input type="number" step="0.01" value={formData.preco_venda}
                         disabled className="bg-muted font-semibold" />
                     </div>
-                    <div className="space-y-2"><Label>Fornecedor</Label><Input value={formData.fornecedor} onChange={(e) => setFormData({ ...formData, fornecedor: e.target.value })} /></div>
+                    <div className="space-y-2">
+                      <Label>Fornecedor</Label>
+                      <SearchableInput
+                        value={formData.fornecedor}
+                        onChange={(v) => setFormData({ ...formData, fornecedor: v })}
+                        suggestions={fornecedores}
+                        placeholder="Digite ou selecione..."
+                        onAddNew={(v) => setFormData({ ...formData, fornecedor: v })}
+                        addNewLabel="Adicionar fornecedor"
+                      />
+                    </div>
                     <div className="space-y-2"><Label>Localização</Label><Input value={formData.localizacao} onChange={(e) => setFormData({ ...formData, localizacao: e.target.value })} placeholder="Ex: Prateleira A1" /></div>
                   </div>
                   <div className="flex justify-end gap-2">
