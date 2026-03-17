@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,6 +42,48 @@ export default function Clientes() {
     } catch { toast.error('Erro ao carregar clientes'); } finally { setLoading(false); }
   };
 
+  const createAsaasCustomer = async (clienteData: typeof formData, clienteId: string) => {
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (!token) return;
+
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/asaas?action=create_customer`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'apikey': anonKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: clienteData.nome,
+            email: clienteData.email || undefined,
+            phone: clienteData.telefone || undefined,
+            cpfCnpj: clienteData.cpf_cnpj || undefined,
+            postalCode: clienteData.cep?.replace(/\D/g, '') || undefined,
+            address: clienteData.endereco || undefined,
+            province: clienteData.cidade || undefined,
+          }),
+        }
+      );
+      const result = await res.json();
+      if (result.id) {
+        // Save Asaas ID to the client record
+        await supabase.from('clientes').update({ asaas_id: result.id } as any).eq('id', clienteId);
+        toast.success('Cliente sincronizado com Asaas: ' + result.id);
+      } else if (result.errors) {
+        console.warn('Asaas customer creation warning:', result.errors);
+        toast.warning('Cliente criado, mas não foi possível sincronizar com Asaas.');
+      }
+    } catch (err) {
+      console.warn('Asaas sync failed:', err);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormLoading(true);
@@ -52,9 +93,13 @@ export default function Clientes() {
         if (error) throw error;
         toast.success('Cliente atualizado!');
       } else {
-        const { error } = await supabase.from('clientes').insert(formData);
+        const { data, error } = await supabase.from('clientes').insert(formData).select('id').single();
         if (error) throw error;
         toast.success('Cliente criado!');
+        // Auto-create Asaas customer
+        if (data?.id) {
+          createAsaasCustomer(formData, data.id);
+        }
       }
       setDialogOpen(false); resetForm(); fetchClientes();
     } catch (error: any) { toast.error('Erro: ' + error.message); } finally { setFormLoading(false); }
@@ -221,6 +266,7 @@ export default function Clientes() {
                   <div className="col-span-2"><p className="text-xs text-muted-foreground">Endereço</p><p className="font-medium">{viewingCliente.endereco || "-"}</p></div>
                   <div><p className="text-xs text-muted-foreground">Cidade</p><p className="font-medium">{viewingCliente.cidade || "-"}</p></div>
                   <div><p className="text-xs text-muted-foreground">Estado</p><p className="font-medium">{viewingCliente.estado || "-"}</p></div>
+                  {(viewingCliente as any).asaas_id && <div className="col-span-2"><p className="text-xs text-muted-foreground">ID Asaas</p><p className="font-medium text-primary">{(viewingCliente as any).asaas_id}</p></div>}
                   {viewingCliente.observacoes && <div className="col-span-2"><p className="text-xs text-muted-foreground">Observações</p><p className="text-sm">{viewingCliente.observacoes}</p></div>}
                 </div>
                 <Separator />

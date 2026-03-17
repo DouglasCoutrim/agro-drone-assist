@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       clientes: {
         Row: {
+          asaas_id: string | null
           cep: string | null
           cidade: string | null
           cpf_cnpj: string | null
@@ -30,6 +31,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          asaas_id?: string | null
           cep?: string | null
           cidade?: string | null
           cpf_cnpj?: string | null
@@ -44,6 +46,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          asaas_id?: string | null
           cep?: string | null
           cidade?: string | null
           cpf_cnpj?: string | null

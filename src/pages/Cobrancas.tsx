@@ -11,6 +11,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { CreditCard, Plus, Search, DollarSign, Clock, CheckCircle, XCircle, AlertTriangle, Send, Eye, Copy, Loader2, ExternalLink, Receipt, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Tables } from "@/integrations/supabase/types";
+
+type Cliente = Tables<"clientes">;
 
 interface AsaasPayment {
   id: string;
@@ -28,14 +31,16 @@ interface AsaasPayment {
 
 export default function Cobrancas() {
   const [payments, setPayments] = useState<AsaasPayment[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailDialog, setDetailDialog] = useState<AsaasPayment | null>(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [clienteSearch, setClienteSearch] = useState("");
 
   const [formData, setFormData] = useState({
-    customerId: "",
+    clienteId: "",
     valor: 0,
     vencimento: "",
     tipo: "PIX",
@@ -43,13 +48,22 @@ export default function Cobrancas() {
     externalReference: ""
   });
 
-  useEffect(() => { fetchPayments(); }, []);
+  useEffect(() => {
+    fetchPayments();
+    fetchClientes();
+  }, []);
+
+  const fetchClientes = async () => {
+    try {
+      const { data, error } = await supabase.from('clientes').select('*').order('nome');
+      if (error) throw error;
+      setClientes(data || []);
+    } catch { /* silent */ }
+  };
 
   const fetchPayments = async () => {
     setLoading(true);
     try {
-
-      // Use query params approach
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const session = await supabase.auth.getSession();
@@ -79,6 +93,16 @@ export default function Cobrancas() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Get the Asaas ID from the selected client
+    const selectedCliente = clientes.find(c => c.id === formData.clienteId);
+    const asaasId = (selectedCliente as any)?.asaas_id;
+    
+    if (!asaasId) {
+      toast.error('Este cliente não possui ID Asaas. Recadastre o cliente para sincronizar.');
+      return;
+    }
+
     setFormLoading(true);
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
@@ -96,7 +120,7 @@ export default function Cobrancas() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            customer: formData.customerId,
+            customer: asaasId,
             billingType: formData.tipo,
             value: formData.valor,
             dueDate: formData.vencimento,
@@ -109,7 +133,7 @@ export default function Cobrancas() {
       if (result.id) {
         toast.success('Cobrança criada com sucesso!');
         setDialogOpen(false);
-        setFormData({ customerId: "", valor: 0, vencimento: "", tipo: "PIX", descricao: "", externalReference: "" });
+        setFormData({ clienteId: "", valor: 0, vencimento: "", tipo: "PIX", descricao: "", externalReference: "" });
         fetchPayments();
       } else {
         toast.error('Erro: ' + JSON.stringify(result.errors || result));
@@ -147,6 +171,12 @@ export default function Cobrancas() {
     (p.customerName || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Filter clients with Asaas ID for the select
+  const clientesComAsaas = clientes.filter(c => (c as any).asaas_id);
+  const filteredClientesForSelect = clienteSearch
+    ? clientes.filter(c => c.nome.toLowerCase().includes(clienteSearch.toLowerCase()))
+    : clientes;
+
   const totalPendente = payments.filter(p => p.status === 'PENDING' || p.status === 'OVERDUE').reduce((a, p) => a + p.value, 0);
   const totalRecebido = payments.filter(p => p.status === 'RECEIVED' || p.status === 'CONFIRMED' || p.status === 'RECEIVED_IN_CASH').reduce((a, p) => a + p.value, 0);
   const totalVencido = payments.filter(p => p.status === 'OVERDUE').reduce((a, p) => a + p.value, 0);
@@ -170,14 +200,32 @@ export default function Cobrancas() {
               <DialogContent className="max-w-lg">
                 <DialogHeader>
                   <DialogTitle>Nova Cobrança Asaas</DialogTitle>
-                  <DialogDescription>Gere uma cobrança via Pix, Boleto ou Cartão de Crédito</DialogDescription>
+                  <DialogDescription>Selecione o cliente e defina os dados da cobrança</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="col-span-2 space-y-2">
-                      <Label>ID do Cliente Asaas *</Label>
-                      <Input value={formData.customerId} onChange={(e) => setFormData({ ...formData, customerId: e.target.value })} placeholder="cus_XXXXXX" required />
-                      <p className="text-xs text-muted-foreground">Crie o cliente no Asaas primeiro ou use o ID existente</p>
+                      <Label>Cliente *</Label>
+                      <Select value={formData.clienteId} onValueChange={(v) => setFormData({ ...formData, clienteId: v })}>
+                        <SelectTrigger><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
+                        <SelectContent>
+                          {clientes.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              <div className="flex items-center gap-2">
+                                <span>{c.nome}</span>
+                                {(c as any).asaas_id ? (
+                                  <span className="text-xs text-primary">✓ Asaas</span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">Sem Asaas</span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {formData.clienteId && !(clientes.find(c => c.id === formData.clienteId) as any)?.asaas_id && (
+                        <p className="text-xs text-destructive">⚠️ Este cliente não está sincronizado com Asaas. Edite e salve o cliente para sincronizar.</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label>Valor (R$) *</Label>
