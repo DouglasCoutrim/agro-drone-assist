@@ -39,6 +39,8 @@ const Index = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState({ osAbertas: 0, osConcluidas: 0, itensEstoqueBaixo: 0, totalClientes: 0, faturamentoMes: 0 });
   const [recentOS, setRecentOS] = useState<any[]>([]);
+  const [overdueOS, setOverdueOS] = useState<any[]>([]);
+  const [overduePayments, setOverduePayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewingOS, setViewingOS] = useState<any | null>(null);
 
@@ -51,12 +53,41 @@ const Index = () => {
       const { data: itensEstoque } = await supabase.from('itens_estoque').select('*');
       const itensEstoqueBaixo = itensEstoque?.filter(item => item.quantidade <= item.estoque_minimo).length || 0;
       const { count: totalClientes } = await supabase.from('clientes').select('*', { count: 'exact', head: true });
-      const { data: recentOSData } = await supabase.from('ordens_servico').select('*, clientes (nome)').order('created_at', { ascending: false }).limit(5);
+      const { data: recentOSData } = await supabase.from('ordens_servico').select('*, clientes (nome, telefone)').order('created_at', { ascending: false }).limit(5);
       const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
       const { data: receitas } = await supabase.from('financeiro').select('valor').eq('tipo', 'receita').gte('data_transacao', startOfMonth.toISOString());
       const faturamentoMes = receitas?.reduce((acc, r) => acc + Number(r.valor), 0) || 0;
+
+      // Fetch overdue OS (past data_previsao, not completed)
+      const today = new Date().toISOString();
+      const { data: overdueOSData } = await supabase
+        .from('ordens_servico')
+        .select('*, clientes (nome, telefone)')
+        .not('data_previsao', 'is', null)
+        .lt('data_previsao', today)
+        .not('status', 'in', '("entregue","cancelada","pronto_retirada","concluida")')
+        .order('data_previsao', { ascending: true })
+        .limit(10);
+
+      // Fetch overdue Asaas payments
+      try {
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+        if (token) {
+          const res = await fetch(
+            `https://${projectId}.supabase.co/functions/v1/asaas?action=list_payments&status=OVERDUE`,
+            { headers: { 'Authorization': `Bearer ${token}`, 'apikey': anonKey } }
+          );
+          const result = await res.json();
+          setOverduePayments(result.data || []);
+        }
+      } catch { /* silent */ }
+
       setStats({ osAbertas: osAbertas?.length || 0, osConcluidas: osConcluidas?.length || 0, itensEstoqueBaixo, totalClientes: totalClientes || 0, faturamentoMes });
       setRecentOS(recentOSData || []);
+      setOverdueOS(overdueOSData || []);
     } catch (error) { console.error('Error fetching dashboard data:', error); } finally { setLoading(false); }
   };
 
@@ -128,6 +159,29 @@ const Index = () => {
             <CardHeader><CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-warning" />Alertas do Sistema</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-4">
+                {overdueOS.length > 0 && (
+                  <div className="rounded-lg border-l-4 border-l-destructive bg-destructive/5 p-4 cursor-pointer hover:bg-destructive/10 transition-colors" onClick={() => navigate('/ordens-servico')}>
+                    <p className="font-medium text-destructive">🔴 OS em Atraso</p>
+                    <p className="text-sm text-muted-foreground">{overdueOS.length} OS ultrapassaram a previsão de entrega</p>
+                    <div className="mt-2 space-y-1">
+                      {overdueOS.slice(0, 3).map(os => (
+                        <p key={os.id} className="text-xs text-muted-foreground">
+                          • {os.numero} - {os.clientes?.nome} (prev: {new Date(os.data_previsao).toLocaleDateString('pt-BR')})
+                        </p>
+                      ))}
+                      {overdueOS.length > 3 && <p className="text-xs text-muted-foreground">... e mais {overdueOS.length - 3}</p>}
+                    </div>
+                  </div>
+                )}
+                {overduePayments.length > 0 && (
+                  <div className="rounded-lg border-l-4 border-l-destructive bg-destructive/5 p-4 cursor-pointer hover:bg-destructive/10 transition-colors" onClick={() => navigate('/cobrancas')}>
+                    <p className="font-medium text-destructive">💰 Cobranças Vencidas</p>
+                    <p className="text-sm text-muted-foreground">{overduePayments.length} cobranças vencidas no Asaas</p>
+                    <p className="text-xs font-medium text-destructive mt-1">
+                      Total: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(overduePayments.reduce((a: number, p: any) => a + p.value, 0))}
+                    </p>
+                  </div>
+                )}
                 {stats.itensEstoqueBaixo > 0 && (
                   <div className="rounded-lg border-l-4 border-l-warning bg-warning/5 p-4 cursor-pointer hover:bg-warning/10 transition-colors" onClick={() => navigate('/estoque')}>
                     <p className="font-medium text-warning">Estoque Baixo</p>
@@ -140,10 +194,12 @@ const Index = () => {
                     <p className="text-sm text-muted-foreground">{stats.osAbertas} OS aguardando atendimento</p>
                   </div>
                 )}
-                <div className="rounded-lg border-l-4 border-l-success bg-success/5 p-4">
-                  <p className="font-medium text-success">Sistema Operacional</p>
-                  <p className="text-sm text-muted-foreground">Todos os serviços funcionando normalmente</p>
-                </div>
+                {overdueOS.length === 0 && overduePayments.length === 0 && stats.itensEstoqueBaixo === 0 && stats.osAbertas === 0 && (
+                  <div className="rounded-lg border-l-4 border-l-success bg-success/5 p-4">
+                    <p className="font-medium text-success">Sistema Operacional</p>
+                    <p className="text-sm text-muted-foreground">Todos os serviços funcionando normalmente</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
