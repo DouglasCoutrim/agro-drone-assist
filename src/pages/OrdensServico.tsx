@@ -62,6 +62,7 @@ export default function OrdensServico() {
   const [editingOS, setEditingOS] = useState<OrdemServico | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [quickClientOpen, setQuickClientOpen] = useState(false);
+  const [cobrarLoading, setCobrarLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     cliente_id: "",
