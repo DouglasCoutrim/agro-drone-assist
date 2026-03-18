@@ -104,11 +104,11 @@ export default function Financeiro() {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2"><DollarSign className="h-8 w-8 text-primary" />Financeiro</h1>
-            <p className="text-muted-foreground">Controle financeiro e transações</p>
+            <h1 className="text-xl font-bold flex items-center gap-2"><DollarSign className="h-5 w-5 text-primary" />Financeiro</h1>
+            <p className="text-xs text-muted-foreground">Controle financeiro</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
