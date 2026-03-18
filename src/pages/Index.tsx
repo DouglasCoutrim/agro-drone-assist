@@ -58,28 +58,20 @@ const Index = () => {
       const { data: receitas } = await supabase.from('financeiro').select('valor').eq('tipo', 'receita').gte('data_transacao', startOfMonth.toISOString());
       const faturamentoMes = receitas?.reduce((acc, r) => acc + Number(r.valor), 0) || 0;
 
-      // Fetch overdue OS (past data_previsao, not completed)
       const today = new Date().toISOString();
       const { data: overdueOSData } = await supabase
-        .from('ordens_servico')
-        .select('*, clientes (nome, telefone)')
-        .not('data_previsao', 'is', null)
-        .lt('data_previsao', today)
+        .from('ordens_servico').select('*, clientes (nome, telefone)')
+        .not('data_previsao', 'is', null).lt('data_previsao', today)
         .not('status', 'in', '("entregue","cancelada","pronto_retirada","concluida")')
-        .order('data_previsao', { ascending: true })
-        .limit(10);
+        .order('data_previsao', { ascending: true }).limit(10);
 
-      // Fetch overdue Asaas payments
       try {
         const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
         const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
         const session = await supabase.auth.getSession();
         const token = session.data.session?.access_token;
         if (token) {
-          const res = await fetch(
-            `https://${projectId}.supabase.co/functions/v1/asaas?action=list_payments&status=OVERDUE`,
-            { headers: { 'Authorization': `Bearer ${token}`, 'apikey': anonKey } }
-          );
+          const res = await fetch(`https://${projectId}.supabase.co/functions/v1/asaas?action=list_payments&status=OVERDUE`, { headers: { 'Authorization': `Bearer ${token}`, 'apikey': anonKey } });
           const result = await res.json();
           setOverduePayments(result.data || []);
         }
@@ -88,18 +80,12 @@ const Index = () => {
       setStats({ osAbertas: osAbertas?.length || 0, osConcluidas: osConcluidas?.length || 0, itensEstoqueBaixo, totalClientes: totalClientes || 0, faturamentoMes });
       setRecentOS(recentOSData || []);
       setOverdueOS(overdueOSData || []);
-    } catch (error) { console.error('Error fetching dashboard data:', error); } finally { setLoading(false); }
+    } catch (error) { console.error('Error:', error); } finally { setLoading(false); }
   };
 
   const getStatusBadge = (status: string) => {
     const config = STATUS_CONFIG[status] || { label: status, variant: 'outline' as const };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
-
-  const getPrioridadeBadge = (prioridade: string) => {
-    if (prioridade === 'alta') return <Badge variant="destructive">Alta</Badge>;
-    if (prioridade === 'media') return <Badge variant="secondary">Média</Badge>;
-    return <Badge variant="outline">Baixa</Badge>;
+    return <Badge variant={config.variant} className="text-[10px] px-1.5 py-0">{config.label}</Badge>;
   };
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -107,47 +93,47 @@ const Index = () => {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-             <h1 className="text-3xl font-bold flex items-center gap-2">
-               <Zap className="h-8 w-8 text-primary" />Dashboard
-             </h1>
-             <p className="text-muted-foreground">Bem-vindo ao Volt Control - Gestão de Oficina</p>
+            <h1 className="text-xl font-bold flex items-center gap-2"><Zap className="h-5 w-5 text-primary" />Dashboard</h1>
+            <p className="text-xs text-muted-foreground">Visão geral da oficina</p>
           </div>
-          <Button className="gradient-primary shadow-medium" onClick={() => navigate('/ordens-servico')}>
-            <Plus className="mr-2 h-4 w-4" />Nova OS
+          <Button size="sm" className="gradient-primary" onClick={() => navigate('/ordens-servico')}>
+            <Plus className="mr-1.5 h-3.5 w-3.5" />Nova OS
           </Button>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
           <StatsCard title="OS Abertas" value={stats.osAbertas.toString()} icon={FileText} variant="warning" onClick={() => navigate('/ordens-servico')} />
-          <StatsCard title="OS Concluídas" value={stats.osConcluidas.toString()} icon={CheckCircle} variant="success" onClick={() => navigate('/ordens-servico')} />
-          <StatsCard title="Itens Baixo Estoque" value={stats.itensEstoqueBaixo.toString()} icon={AlertTriangle} variant="destructive" onClick={() => navigate('/estoque')} />
-          <StatsCard title="Faturamento (Mês)" value={formatCurrency(stats.faturamentoMes)} icon={DollarSign} variant="success" onClick={() => navigate('/financeiro')} />
+          <StatsCard title="Concluídas" value={stats.osConcluidas.toString()} icon={CheckCircle} variant="success" onClick={() => navigate('/ordens-servico')} />
+          <StatsCard title="Estoque Baixo" value={stats.itensEstoqueBaixo.toString()} icon={AlertTriangle} variant="destructive" onClick={() => navigate('/estoque')} />
+          <StatsCard title="Faturamento" value={formatCurrency(stats.faturamentoMes)} icon={DollarSign} variant="success" onClick={() => navigate('/financeiro')} />
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          <Card className="lg:col-span-2 shadow-soft card-hover">
-            <CardHeader><CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5 text-primary" />Ordens de Serviço Recentes</CardTitle></CardHeader>
-            <CardContent>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="lg:col-span-2 shadow-soft">
+            <CardHeader className="pb-2 px-4 pt-4"><CardTitle className="text-sm flex items-center gap-1.5"><Clock className="h-4 w-4 text-primary" />OS Recentes</CardTitle></CardHeader>
+            <CardContent className="px-4 pb-4">
               {loading ? (
-                <div className="flex items-center justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>
+                <div className="flex items-center justify-center py-6"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div></div>
               ) : recentOS.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" /><p>Nenhuma ordem de serviço encontrada</p>
-                  <Button variant="outline" className="mt-4" onClick={() => navigate('/ordens-servico')}>Criar primeira OS</Button>
+                <div className="text-center py-6 text-muted-foreground">
+                  <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" /><p className="text-sm">Nenhuma OS encontrada</p>
+                  <Button variant="outline" size="sm" className="mt-2" onClick={() => navigate('/ordens-servico')}>Criar primeira OS</Button>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {recentOS.map((os) => (
-                    <div key={os.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setViewingOS(os)}>
-                      <div className="space-y-1">
-                        <p className="font-medium text-primary">{os.numero}</p>
-                        <p className="text-sm text-muted-foreground">{os.clientes?.nome}</p>
-                        <p className="text-xs text-muted-foreground">{TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento}</p>
+                    <div key={os.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setViewingOS(os)}>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-primary">{os.numero}</p>
+                          <p className="text-xs text-muted-foreground truncate">{os.clientes?.nome}</p>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">{TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento}</p>
                       </div>
-                      <div className="flex flex-col items-end gap-2">{getStatusBadge(os.status)}{getPrioridadeBadge(os.prioridade)}</div>
+                      {getStatusBadge(os.status)}
                     </div>
                   ))}
                 </div>
@@ -155,49 +141,34 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="shadow-soft card-hover">
-            <CardHeader><CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-warning" />Alertas do Sistema</CardTitle></CardHeader>
-            <CardContent>
-              <div className="space-y-4">
+          <Card className="shadow-soft">
+            <CardHeader className="pb-2 px-4 pt-4"><CardTitle className="text-sm flex items-center gap-1.5"><AlertTriangle className="h-4 w-4 text-warning" />Alertas</CardTitle></CardHeader>
+            <CardContent className="px-4 pb-4">
+              <div className="space-y-2">
                 {overdueOS.length > 0 && (
-                  <div className="rounded-lg border-l-4 border-l-destructive bg-destructive/5 p-4 cursor-pointer hover:bg-destructive/10 transition-colors" onClick={() => navigate('/ordens-servico')}>
-                    <p className="font-medium text-destructive">🔴 OS em Atraso</p>
-                    <p className="text-sm text-muted-foreground">{overdueOS.length} OS ultrapassaram a previsão de entrega</p>
-                    <div className="mt-2 space-y-1">
-                      {overdueOS.slice(0, 3).map(os => (
-                        <p key={os.id} className="text-xs text-muted-foreground">
-                          • {os.numero} - {os.clientes?.nome} (prev: {new Date(os.data_previsao).toLocaleDateString('pt-BR')})
-                        </p>
-                      ))}
-                      {overdueOS.length > 3 && <p className="text-xs text-muted-foreground">... e mais {overdueOS.length - 3}</p>}
-                    </div>
+                  <div className="rounded-lg border-l-2 border-l-destructive bg-destructive/5 p-2.5 cursor-pointer hover:bg-destructive/10 transition-colors" onClick={() => navigate('/ordens-servico')}>
+                    <p className="text-xs font-medium text-destructive">🔴 {overdueOS.length} OS em Atraso</p>
+                    {overdueOS.slice(0, 2).map(os => (
+                      <p key={os.id} className="text-[10px] text-muted-foreground mt-0.5">• {os.numero} - {os.clientes?.nome}</p>
+                    ))}
                   </div>
                 )}
                 {overduePayments.length > 0 && (
-                  <div className="rounded-lg border-l-4 border-l-destructive bg-destructive/5 p-4 cursor-pointer hover:bg-destructive/10 transition-colors" onClick={() => navigate('/cobrancas')}>
-                    <p className="font-medium text-destructive">💰 Cobranças Vencidas</p>
-                    <p className="text-sm text-muted-foreground">{overduePayments.length} cobranças vencidas no Asaas</p>
-                    <p className="text-xs font-medium text-destructive mt-1">
-                      Total: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(overduePayments.reduce((a: number, p: any) => a + p.value, 0))}
+                  <div className="rounded-lg border-l-2 border-l-destructive bg-destructive/5 p-2.5 cursor-pointer hover:bg-destructive/10 transition-colors" onClick={() => navigate('/cobrancas')}>
+                    <p className="text-xs font-medium text-destructive">💰 {overduePayments.length} Cobranças Vencidas</p>
+                    <p className="text-[10px] text-destructive font-medium mt-0.5">
+                      Total: {formatCurrency(overduePayments.reduce((a: number, p: any) => a + p.value, 0))}
                     </p>
                   </div>
                 )}
                 {stats.itensEstoqueBaixo > 0 && (
-                  <div className="rounded-lg border-l-4 border-l-warning bg-warning/5 p-4 cursor-pointer hover:bg-warning/10 transition-colors" onClick={() => navigate('/estoque')}>
-                    <p className="font-medium text-warning">Estoque Baixo</p>
-                    <p className="text-sm text-muted-foreground">{stats.itensEstoqueBaixo} itens abaixo do nível mínimo</p>
+                  <div className="rounded-lg border-l-2 border-l-warning bg-warning/5 p-2.5 cursor-pointer hover:bg-warning/10 transition-colors" onClick={() => navigate('/estoque')}>
+                    <p className="text-xs font-medium text-warning">⚠️ {stats.itensEstoqueBaixo} Itens Estoque Baixo</p>
                   </div>
                 )}
-                {stats.osAbertas > 0 && (
-                  <div className="rounded-lg border-l-4 border-l-primary bg-primary/5 p-4 cursor-pointer hover:bg-primary/10 transition-colors" onClick={() => navigate('/ordens-servico')}>
-                    <p className="font-medium text-primary">OS Pendentes</p>
-                    <p className="text-sm text-muted-foreground">{stats.osAbertas} OS aguardando atendimento</p>
-                  </div>
-                )}
-                {overdueOS.length === 0 && overduePayments.length === 0 && stats.itensEstoqueBaixo === 0 && stats.osAbertas === 0 && (
-                  <div className="rounded-lg border-l-4 border-l-success bg-success/5 p-4">
-                    <p className="font-medium text-success">Sistema Operacional</p>
-                    <p className="text-sm text-muted-foreground">Todos os serviços funcionando normalmente</p>
+                {overdueOS.length === 0 && overduePayments.length === 0 && stats.itensEstoqueBaixo === 0 && (
+                  <div className="rounded-lg border-l-2 border-l-success bg-success/5 p-2.5">
+                    <p className="text-xs font-medium text-success">✅ Tudo em dia</p>
                   </div>
                 )}
               </div>
@@ -205,32 +176,30 @@ const Index = () => {
           </Card>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
           <Card className="shadow-soft card-hover cursor-pointer" onClick={() => navigate('/financeiro')}>
-            <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" />Performance</CardTitle></CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between"><span className="text-sm">Total de Clientes</span><span className="font-medium">{stats.totalClientes}</span></div>
-                <div className="flex justify-between"><span className="text-sm">OS este mês</span><span className="font-medium">{stats.osAbertas + stats.osConcluidas}</span></div>
-                <div className="flex justify-between"><span className="text-sm">Taxa de Conclusão</span><span className="font-medium">{stats.osAbertas + stats.osConcluidas > 0 ? Math.round((stats.osConcluidas / (stats.osAbertas + stats.osConcluidas)) * 100) : 0}%</span></div>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2"><TrendingUp className="h-4 w-4 text-primary" /><span className="text-xs font-medium">Performance</span></div>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between"><span className="text-muted-foreground">Clientes</span><span className="font-medium">{stats.totalClientes}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">OS Total</span><span className="font-medium">{stats.osAbertas + stats.osConcluidas}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Taxa Conclusão</span><span className="font-medium">{stats.osAbertas + stats.osConcluidas > 0 ? Math.round((stats.osConcluidas / (stats.osAbertas + stats.osConcluidas)) * 100) : 0}%</span></div>
               </div>
             </CardContent>
           </Card>
           <Card className="shadow-soft card-hover cursor-pointer" onClick={() => navigate('/estoque')}>
-            <CardHeader><CardTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-primary" />Estoque Rápido</CardTitle></CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between"><span className="text-sm">Itens em Alerta</span><span className="font-medium text-destructive">{stats.itensEstoqueBaixo}</span></div>
-                <Button variant="outline" size="sm" className="w-full mt-2" onClick={(e) => { e.stopPropagation(); navigate('/estoque'); }}>Ver Estoque Completo</Button>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2"><Package className="h-4 w-4 text-primary" /><span className="text-xs font-medium">Estoque</span></div>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between"><span className="text-muted-foreground">Em Alerta</span><span className="font-medium text-destructive">{stats.itensEstoqueBaixo}</span></div>
               </div>
             </CardContent>
           </Card>
           <Card className="shadow-soft card-hover cursor-pointer" onClick={() => navigate('/clientes')}>
-            <CardHeader><CardTitle className="flex items-center gap-2"><Users className="h-5 w-5 text-primary" />Clientes</CardTitle></CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between"><span className="text-sm">Total de Clientes</span><span className="font-medium">{stats.totalClientes}</span></div>
-                <Button variant="outline" size="sm" className="w-full mt-2" onClick={(e) => { e.stopPropagation(); navigate('/clientes'); }}>Ver Clientes</Button>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2"><Users className="h-4 w-4 text-primary" /><span className="text-xs font-medium">Clientes</span></div>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-medium">{stats.totalClientes}</span></div>
               </div>
             </CardContent>
           </Card>
@@ -240,27 +209,25 @@ const Index = () => {
         <Dialog open={!!viewingOS} onOpenChange={(open) => { if (!open) setViewingOS(null); }}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle className="flex items-center justify-between">
+              <DialogTitle className="flex items-center justify-between text-base">
                 <span>OS {viewingOS?.numero}</span>
                 {viewingOS && getStatusBadge(viewingOS.status)}
               </DialogTitle>
-              <DialogDescription>Visualização rápida da OS</DialogDescription>
+              <DialogDescription className="text-xs">Visualização rápida</DialogDescription>
             </DialogHeader>
             {viewingOS && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div><p className="text-xs text-muted-foreground">Cliente</p><p className="font-medium">{viewingOS.clientes?.nome || "-"}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Equipamento</p><p className="font-medium">{TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Modelo</p><p className="font-medium">{viewingOS.modelo_equipamento || "-"}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Prioridade</p>{getPrioridadeBadge(viewingOS.prioridade)}</div>
-                  <div><p className="text-xs text-muted-foreground">Entrada</p><p className="text-sm">{formatDate(viewingOS.data_entrada)}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Orçamento</p><p className="font-medium text-primary">{viewingOS.valor_orcamento ? formatCurrency(viewingOS.valor_orcamento) : "-"}</p></div>
-                  <div className="col-span-2"><p className="text-xs text-muted-foreground">Defeito Relatado</p><p className="text-sm">{viewingOS.descricao_problema}</p></div>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div><p className="text-[10px] text-muted-foreground uppercase">Cliente</p><p className="text-sm font-medium">{viewingOS.clientes?.nome || "-"}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground uppercase">Equipamento</p><p className="text-sm">{TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground uppercase">Modelo</p><p className="text-sm">{viewingOS.modelo_equipamento || "-"}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground uppercase">Entrada</p><p className="text-sm">{formatDate(viewingOS.data_entrada)}</p></div>
+                  <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase">Defeito</p><p className="text-sm">{viewingOS.descricao_problema}</p></div>
                 </div>
                 <Separator />
                 <div className="flex justify-end">
-                  <Button variant="outline" onClick={() => { setViewingOS(null); navigate('/ordens-servico'); }}>
-                    <Eye className="mr-2 h-4 w-4" />Ver Completa
+                  <Button variant="outline" size="sm" onClick={() => { setViewingOS(null); navigate('/ordens-servico'); }}>
+                    <Eye className="mr-1.5 h-3.5 w-3.5" />Ver Completa
                   </Button>
                 </div>
               </div>

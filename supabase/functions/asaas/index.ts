@@ -11,12 +11,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // --- AUTHENTICATION & AUTHORIZATION ---
   const authHeader = req.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 
@@ -33,33 +31,28 @@ serve(async (req) => {
 
   if (claimsError || !claimsData?.claims) {
     return new Response(JSON.stringify({ error: 'Invalid token' }), {
-      status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 
   const userId = claimsData.claims.sub as string;
 
-  // Check role using service role client to bypass RLS
   const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
   const { data: roleData } = await serviceClient
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', userId)
-    .single();
+    .from('user_roles').select('role').eq('user_id', userId).single();
 
   const userRole = roleData?.role;
   if (!userRole || !['admin', 'tecnico'].includes(userRole)) {
     return new Response(JSON.stringify({ error: 'Forbidden: insufficient permissions' }), {
-      status: 403,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 
-  // --- ASAAS API ---
   const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY');
   if (!ASAAS_API_KEY) {
-    return new Response(JSON.stringify({ error: 'ASAAS_API_KEY not configured' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: 'ASAAS_API_KEY not configured' }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   const baseUrl = ASAAS_API_KEY.startsWith('$aact_') 
@@ -77,22 +70,60 @@ serve(async (req) => {
   try {
     if (action === 'create_customer' && req.method === 'POST') {
       const body = await req.json();
+      
+      // Clean CPF/CNPJ - remove dots, dashes, slashes
+      const cleanCpfCnpj = body.cpfCnpj ? body.cpfCnpj.replace(/[.\-\/\s]/g, '') : undefined;
+      
+      const customerData = {
+        name: body.name,
+        email: body.email || undefined,
+        mobilePhone: body.phone || undefined,
+        cpfCnpj: cleanCpfCnpj,
+        postalCode: body.postalCode || undefined,
+        address: body.address || undefined,
+        addressNumber: body.addressNumber || undefined,
+        province: body.province || undefined,
+        externalReference: body.externalReference || undefined,
+      };
+
       const res = await fetch(`${baseUrl}/customers`, {
         method: 'POST',
         headers: asaasHeaders,
-        body: JSON.stringify({
-          name: body.name,
-          email: body.email || undefined,
-          phone: body.phone || undefined,
-          cpfCnpj: body.cpfCnpj,
-          postalCode: body.postalCode || undefined,
-          address: body.address || undefined,
-          addressNumber: body.addressNumber || undefined,
-          province: body.province || undefined,
-        }),
+        body: JSON.stringify(customerData),
       });
       const data = await res.json();
-      return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: res.status });
+
+      // If CPF/CNPJ already exists, search for existing customer and return it
+      if (!res.ok && data.errors) {
+        const cpfError = data.errors.find((e: any) => 
+          e.description?.toLowerCase().includes('cpfcnpj') || 
+          e.description?.toLowerCase().includes('já existe') ||
+          e.description?.toLowerCase().includes('already') ||
+          e.code === 'invalid_cpfCnpj_duplicate'
+        );
+        
+        if (cpfError && cleanCpfCnpj) {
+          // Search existing customer by CPF/CNPJ
+          const searchRes = await fetch(
+            `${baseUrl}/customers?cpfCnpj=${cleanCpfCnpj}`,
+            { headers: asaasHeaders }
+          );
+          const searchData = await searchRes.json();
+          
+          if (searchData.data && searchData.data.length > 0) {
+            const existingCustomer = searchData.data[0];
+            return new Response(JSON.stringify(existingCustomer), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 200,
+            });
+          }
+        }
+      }
+
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: res.status,
+      });
     }
 
     if (action === 'list_customers' && req.method === 'GET') {
@@ -133,9 +164,7 @@ serve(async (req) => {
 
     if (action === 'get_payment' && req.method === 'GET') {
       const paymentId = url.searchParams.get('id');
-      if (!paymentId) {
-        return new Response(JSON.stringify({ error: 'Payment ID required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
+      if (!paymentId) return new Response(JSON.stringify({ error: 'Payment ID required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       const res = await fetch(`${baseUrl}/payments/${paymentId}`, { headers: asaasHeaders });
       const data = await res.json();
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -143,9 +172,7 @@ serve(async (req) => {
 
     if (action === 'pix_qrcode' && req.method === 'GET') {
       const paymentId = url.searchParams.get('id');
-      if (!paymentId) {
-        return new Response(JSON.stringify({ error: 'Payment ID required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
+      if (!paymentId) return new Response(JSON.stringify({ error: 'Payment ID required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       const res = await fetch(`${baseUrl}/payments/${paymentId}/pixQrCode`, { headers: asaasHeaders });
       const data = await res.json();
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -153,9 +180,7 @@ serve(async (req) => {
 
     if (action === 'delete_payment' && req.method === 'DELETE') {
       const paymentId = url.searchParams.get('id');
-      if (!paymentId) {
-        return new Response(JSON.stringify({ error: 'Payment ID required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
+      if (!paymentId) return new Response(JSON.stringify({ error: 'Payment ID required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       const res = await fetch(`${baseUrl}/payments/${paymentId}`, { method: 'DELETE', headers: asaasHeaders });
       const data = await res.json();
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: res.status });
@@ -163,23 +188,20 @@ serve(async (req) => {
 
     if (action === 'payment_link' && req.method === 'GET') {
       const paymentId = url.searchParams.get('id');
-      if (!paymentId) {
-        return new Response(JSON.stringify({ error: 'Payment ID required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
+      if (!paymentId) return new Response(JSON.stringify({ error: 'Payment ID required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       const res = await fetch(`${baseUrl}/payments/${paymentId}/identificationField`, { headers: asaasHeaders });
       const data = await res.json();
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     return new Response(JSON.stringify({ error: 'Invalid action' }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
+    console.error('Asaas edge function error:', error);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });

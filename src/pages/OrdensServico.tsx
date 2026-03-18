@@ -411,12 +411,12 @@ export default function OrdensServico() {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2"><FileText className="h-8 w-8 text-primary" />Ordens de Serviço</h1>
-            <p className="text-muted-foreground">Gerencie manutenções de drones, baterias e equipamentos</p>
+            <h1 className="text-xl font-bold flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Ordens de Serviço</h1>
+            <p className="text-xs text-muted-foreground">Manutenções de drones, baterias e equipamentos</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild><Button className="gradient-primary shadow-medium"><Plus className="mr-2 h-4 w-4" />Nova OS</Button></DialogTrigger>
@@ -632,15 +632,15 @@ export default function OrdensServico() {
         </div>
 
         {/* Stats */}
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-          <Card className="shadow-soft card-hover"><CardContent className="p-4"><div className="text-center"><p className="text-2xl font-bold text-warning">{stats.recebidas}</p><p className="text-sm text-muted-foreground">Recebidas</p></div></CardContent></Card>
-          <Card className="shadow-soft card-hover"><CardContent className="p-4"><div className="text-center"><p className="text-2xl font-bold text-primary">{stats.emReparo}</p><p className="text-sm text-muted-foreground">Em Reparo</p></div></CardContent></Card>
-          <Card className="shadow-soft card-hover"><CardContent className="p-4"><div className="text-center"><p className="text-2xl font-bold text-secondary-foreground">{stats.aguardando}</p><p className="text-sm text-muted-foreground">Aguardando</p></div></CardContent></Card>
-          <Card className="shadow-soft card-hover"><CardContent className="p-4"><div className="text-center"><p className="text-2xl font-bold text-success">{stats.prontas}</p><p className="text-sm text-muted-foreground">Prontas/Entregues</p></div></CardContent></Card>
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+          <Card className="shadow-soft"><CardContent className="p-3"><div className="text-center"><p className="text-xl font-bold text-warning">{stats.recebidas}</p><p className="text-[10px] text-muted-foreground">Recebidas</p></div></CardContent></Card>
+          <Card className="shadow-soft"><CardContent className="p-3"><div className="text-center"><p className="text-xl font-bold text-primary">{stats.emReparo}</p><p className="text-[10px] text-muted-foreground">Em Reparo</p></div></CardContent></Card>
+          <Card className="shadow-soft"><CardContent className="p-3"><div className="text-center"><p className="text-xl font-bold text-secondary-foreground">{stats.aguardando}</p><p className="text-[10px] text-muted-foreground">Aguardando</p></div></CardContent></Card>
+          <Card className="shadow-soft"><CardContent className="p-3"><div className="text-center"><p className="text-xl font-bold text-success">{stats.prontas}</p><p className="text-[10px] text-muted-foreground">Prontas</p></div></CardContent></Card>
         </div>
 
         {/* Search */}
-        <Card className="shadow-soft"><CardContent className="p-4"><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Buscar por OS, cliente ou equipamento..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div></CardContent></Card>
+        <div className="relative"><Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Buscar por OS, cliente ou equipamento..." className="pl-9 h-9 text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
 
         {/* List */}
         <Card className="shadow-soft">

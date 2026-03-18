@@ -67,17 +67,17 @@ export default function Clientes() {
             postalCode: clienteData.cep?.replace(/\D/g, '') || undefined,
             address: clienteData.endereco || undefined,
             province: clienteData.cidade || undefined,
+            externalReference: clienteId,
           }),
         }
       );
       const result = await res.json();
       if (result.id) {
-        // Save Asaas ID to the client record
         await supabase.from('clientes').update({ asaas_id: result.id } as any).eq('id', clienteId);
-        toast.success('Cliente sincronizado com Asaas: ' + result.id);
+        toast.success('Cliente sincronizado com Asaas!');
       } else if (result.errors) {
-        console.warn('Asaas customer creation warning:', result.errors);
-        toast.warning('Cliente criado, mas não foi possível sincronizar com Asaas.');
+        console.warn('Asaas sync warning:', result.errors);
+        toast.warning('Cliente criado localmente. Falha ao sincronizar com Asaas.');
       }
     } catch (err) {
       console.warn('Asaas sync failed:', err);
@@ -92,14 +92,15 @@ export default function Clientes() {
         const { error } = await supabase.from('clientes').update(formData).eq('id', editingCliente.id);
         if (error) throw error;
         toast.success('Cliente atualizado!');
+        // Re-sync with Asaas if no asaas_id yet
+        if (!(editingCliente as any).asaas_id) {
+          createAsaasCustomer(formData, editingCliente.id);
+        }
       } else {
         const { data, error } = await supabase.from('clientes').insert(formData).select('id').single();
         if (error) throw error;
         toast.success('Cliente criado!');
-        // Auto-create Asaas customer
-        if (data?.id) {
-          createAsaasCustomer(formData, data.id);
-        }
+        if (data?.id) createAsaasCustomer(formData, data.id);
       }
       setDialogOpen(false); resetForm(); fetchClientes();
     } catch (error: any) { toast.error('Erro: ' + error.message); } finally { setFormLoading(false); }
@@ -139,31 +140,31 @@ export default function Clientes() {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2"><Users className="h-8 w-8 text-primary" />Clientes</h1>
-            <p className="text-muted-foreground">Gerencie o cadastro de clientes</p>
+            <h1 className="text-xl font-bold flex items-center gap-2"><Users className="h-5 w-5 text-primary" />Clientes</h1>
+            <p className="text-xs text-muted-foreground">Cadastro de clientes</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
-              <Button className="gradient-primary shadow-medium"><Plus className="mr-2 h-4 w-4" />Novo Cliente</Button>
+              <Button size="sm" className="gradient-primary"><Plus className="mr-1.5 h-3.5 w-3.5" />Novo Cliente</Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>{editingCliente ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
-                <DialogDescription>Preencha os dados do cliente</DialogDescription>
+                <DialogTitle className="text-base">{editingCliente ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
+                <DialogDescription className="text-xs">Preencha os dados do cliente</DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2 space-y-2"><Label>Nome *</Label><Input value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required /></div>
-                  <div className="space-y-2"><Label>Telefone *</Label><Input value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} required /></div>
-                  <div className="space-y-2"><Label>E-mail</Label><Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} /></div>
-                  <div className="space-y-2"><Label>CPF/CNPJ</Label><Input value={formData.cpf_cnpj} onChange={(e) => setFormData({ ...formData, cpf_cnpj: e.target.value })} /></div>
-                  <div className="space-y-2">
-                    <Label>CEP</Label>
+              <form onSubmit={handleSubmit} className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2 space-y-1"><Label className="text-xs">Nome *</Label><Input value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required className="h-9" /></div>
+                  <div className="space-y-1"><Label className="text-xs">Telefone *</Label><Input value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} required className="h-9" /></div>
+                  <div className="space-y-1"><Label className="text-xs">E-mail</Label><Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="h-9" /></div>
+                  <div className="space-y-1"><Label className="text-xs">CPF/CNPJ</Label><Input value={formData.cpf_cnpj} onChange={(e) => setFormData({ ...formData, cpf_cnpj: e.target.value })} className="h-9" /></div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">CEP</Label>
                     <div className="relative">
-                      <Input value={formData.cep} onChange={async (e) => {
+                      <Input value={formData.cep} className="h-9" onChange={async (e) => {
                         const val = e.target.value;
                         setFormData({ ...formData, cep: val });
                         const clean = val.replace(/\D/g, "");
@@ -172,24 +173,24 @@ export default function Clientes() {
                           if (result) setFormData(f => ({ ...f, cep: val, endereco: result.logradouro, cidade: result.localidade, estado: result.uf }));
                         }
                       }} placeholder="00000-000" />
-                      {cepLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+                      {cepLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />}
                     </div>
                   </div>
-                  <div className="col-span-2 space-y-2"><Label>Endereço</Label><Input value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} /></div>
-                  <div className="space-y-2"><Label>Cidade</Label><Input value={formData.cidade} onChange={(e) => setFormData({ ...formData, cidade: e.target.value })} /></div>
-                  <div className="space-y-2">
-                    <Label>Estado</Label>
+                  <div className="sm:col-span-2 space-y-1"><Label className="text-xs">Endereço</Label><Input value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} className="h-9" /></div>
+                  <div className="space-y-1"><Label className="text-xs">Cidade</Label><Input value={formData.cidade} onChange={(e) => setFormData({ ...formData, cidade: e.target.value })} className="h-9" /></div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Estado</Label>
                     <Select value={formData.estado} onValueChange={v => setFormData({ ...formData, estado: v })}>
-                      <SelectTrigger><SelectValue placeholder="UF" /></SelectTrigger>
+                      <SelectTrigger className="h-9"><SelectValue placeholder="UF" /></SelectTrigger>
                       <SelectContent>{UF_LIST.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="col-span-2 space-y-2"><Label>Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={3} /></div>
+                  <div className="sm:col-span-2 space-y-1"><Label className="text-xs">Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                  <Button type="submit" className="gradient-primary" disabled={formLoading}>
-                    {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editingCliente ? 'Salvar' : 'Criar'}
+                  <Button type="button" variant="outline" size="sm" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+                  <Button type="submit" size="sm" className="gradient-primary" disabled={formLoading}>
+                    {formLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}{editingCliente ? 'Salvar' : 'Criar'}
                   </Button>
                 </div>
               </form>
@@ -198,51 +199,45 @@ export default function Clientes() {
         </div>
 
         {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card className="shadow-soft card-hover"><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-primary">{clientes.length}</p><p className="text-sm text-muted-foreground">Total de Clientes</p></CardContent></Card>
-          <Card className="shadow-soft card-hover"><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-success">{clientes.filter(c => c.email).length}</p><p className="text-sm text-muted-foreground">Com E-mail</p></CardContent></Card>
-          <Card className="shadow-soft card-hover"><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-warning">{clientes.filter(c => c.cpf_cnpj).length}</p><p className="text-sm text-muted-foreground">Com CPF/CNPJ</p></CardContent></Card>
+        <div className="grid gap-3 grid-cols-3">
+          <Card className="shadow-soft"><CardContent className="p-3 text-center"><p className="text-xl font-bold text-primary">{clientes.length}</p><p className="text-[10px] text-muted-foreground">Total</p></CardContent></Card>
+          <Card className="shadow-soft"><CardContent className="p-3 text-center"><p className="text-xl font-bold text-success">{clientes.filter(c => (c as any).asaas_id).length}</p><p className="text-[10px] text-muted-foreground">Sincronizados</p></CardContent></Card>
+          <Card className="shadow-soft"><CardContent className="p-3 text-center"><p className="text-xl font-bold text-warning">{clientes.filter(c => c.cpf_cnpj).length}</p><p className="text-[10px] text-muted-foreground">Com CPF/CNPJ</p></CardContent></Card>
         </div>
 
         {/* Search */}
-        <Card className="shadow-soft"><CardContent className="p-4"><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Buscar por nome, telefone, e-mail ou documento..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div></CardContent></Card>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Buscar por nome, telefone, e-mail ou documento..." className="pl-9 h-9 text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+        </div>
 
         {/* List */}
         <Card className="shadow-soft">
-          <CardHeader><CardTitle>Lista de Clientes</CardTitle></CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             {loading ? (
-              <div className="flex items-center justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+              <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
             ) : filteredClientes.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground"><Users className="h-12 w-12 mx-auto mb-4 opacity-50" /><p>Nenhum cliente encontrado</p></div>
+              <div className="text-center py-8 text-muted-foreground"><Users className="h-10 w-10 mx-auto mb-3 opacity-50" /><p className="text-sm">Nenhum cliente encontrado</p></div>
             ) : (
-              <div className="space-y-4">
+              <div className="divide-y divide-border">
                 {filteredClientes.map((cliente) => (
-                  <div key={cliente.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setViewingCliente(cliente)}>
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <div className="p-1 rounded-full bg-primary/10">
-                            {cliente.cpf_cnpj && cliente.cpf_cnpj.length > 14 ? <Building className="h-4 w-4 text-primary" /> : <User className="h-4 w-4 text-primary" />}
-                          </div>
-                          <div>
-                            <p className="font-bold">{cliente.nome}</p>
-                            <p className="text-xs text-muted-foreground">{cliente.cpf_cnpj || 'Sem documento'}</p>
-                          </div>
+                  <div key={cliente.id} className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setViewingCliente(cliente)}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="p-1.5 rounded-full bg-primary/10 shrink-0">
+                        {cliente.cpf_cnpj && cliente.cpf_cnpj.length > 14 ? <Building className="h-3.5 w-3.5 text-primary" /> : <User className="h-3.5 w-3.5 text-primary" />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{cliente.nome}</p>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{cliente.telefone}</span>
+                          {cliente.cidade && <span className="hidden sm:flex items-center gap-1"><MapPin className="h-3 w-3" />{cliente.cidade}</span>}
+                          {(cliente as any).asaas_id && <span className="text-primary text-[10px]">● Asaas</span>}
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm"><Phone className="h-4 w-4 text-muted-foreground" /><span>{cliente.telefone}</span></div>
-                        {cliente.email && <div className="flex items-center gap-2 text-sm"><Mail className="h-4 w-4 text-muted-foreground" /><span className="truncate">{cliente.email}</span></div>}
-                      </div>
-                      <div className="space-y-2">
-                        {cliente.cidade && <div className="flex items-center gap-2 text-sm"><MapPin className="h-4 w-4 text-muted-foreground" /><span>{cliente.cidade}{cliente.estado ? ` - ${cliente.estado}` : ''}</span></div>}
-                      </div>
-                      <div className="flex gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
-                        <Button size="sm" variant="ghost" onClick={() => setViewingCliente(cliente)}><Eye className="h-4 w-4" /></Button>
-                        <Button size="sm" variant="outline" onClick={() => handleEdit(cliente)}><Edit className="h-4 w-4" /></Button>
-                        <Button size="sm" variant="outline" onClick={() => handleDelete(cliente.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                      </div>
+                    </div>
+                    <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleEdit(cliente)}><Edit className="h-3.5 w-3.5" /></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(cliente.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                     </div>
                   </div>
                 ))}
@@ -254,25 +249,25 @@ export default function Clientes() {
         {/* View Client Dialog */}
         <Dialog open={!!viewingCliente} onOpenChange={(open) => { if (!open) setViewingCliente(null); }}>
           <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>Detalhes do Cliente</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle className="text-base">Detalhes do Cliente</DialogTitle></DialogHeader>
             {viewingCliente && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2"><p className="text-xs text-muted-foreground">Nome</p><p className="font-bold text-lg">{viewingCliente.nome}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Telefone</p><p className="font-medium">{viewingCliente.telefone}</p></div>
-                  <div><p className="text-xs text-muted-foreground">E-mail</p><p className="font-medium">{viewingCliente.email || "-"}</p></div>
-                  <div><p className="text-xs text-muted-foreground">CPF/CNPJ</p><p className="font-medium">{viewingCliente.cpf_cnpj || "-"}</p></div>
-                  <div><p className="text-xs text-muted-foreground">CEP</p><p className="font-medium">{viewingCliente.cep || "-"}</p></div>
-                  <div className="col-span-2"><p className="text-xs text-muted-foreground">Endereço</p><p className="font-medium">{viewingCliente.endereco || "-"}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Cidade</p><p className="font-medium">{viewingCliente.cidade || "-"}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Estado</p><p className="font-medium">{viewingCliente.estado || "-"}</p></div>
-                  {(viewingCliente as any).asaas_id && <div className="col-span-2"><p className="text-xs text-muted-foreground">ID Asaas</p><p className="font-medium text-primary">{(viewingCliente as any).asaas_id}</p></div>}
-                  {viewingCliente.observacoes && <div className="col-span-2"><p className="text-xs text-muted-foreground">Observações</p><p className="text-sm">{viewingCliente.observacoes}</p></div>}
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase">Nome</p><p className="font-medium">{viewingCliente.nome}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground uppercase">Telefone</p><p className="text-sm">{viewingCliente.telefone}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground uppercase">E-mail</p><p className="text-sm">{viewingCliente.email || "-"}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground uppercase">CPF/CNPJ</p><p className="text-sm">{viewingCliente.cpf_cnpj || "-"}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground uppercase">CEP</p><p className="text-sm">{viewingCliente.cep || "-"}</p></div>
+                  <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase">Endereço</p><p className="text-sm">{viewingCliente.endereco || "-"}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground uppercase">Cidade</p><p className="text-sm">{viewingCliente.cidade || "-"}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground uppercase">Estado</p><p className="text-sm">{viewingCliente.estado || "-"}</p></div>
+                  {(viewingCliente as any).asaas_id && <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase">ID Asaas</p><p className="text-sm text-primary">{(viewingCliente as any).asaas_id}</p></div>}
+                  {viewingCliente.observacoes && <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase">Observações</p><p className="text-sm">{viewingCliente.observacoes}</p></div>}
                 </div>
                 <Separator />
                 <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => { handleEdit(viewingCliente); setViewingCliente(null); }}>
-                    <Edit className="mr-2 h-4 w-4" />Editar
+                  <Button variant="outline" size="sm" onClick={() => { handleEdit(viewingCliente); setViewingCliente(null); }}>
+                    <Edit className="mr-1.5 h-3.5 w-3.5" />Editar
                   </Button>
                 </div>
               </div>
