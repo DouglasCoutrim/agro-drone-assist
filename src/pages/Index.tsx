@@ -159,6 +159,29 @@ const Index = () => {
             <CardHeader><CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-warning" />Alertas do Sistema</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-4">
+                {overdueOS.length > 0 && (
+                  <div className="rounded-lg border-l-4 border-l-destructive bg-destructive/5 p-4 cursor-pointer hover:bg-destructive/10 transition-colors" onClick={() => navigate('/ordens-servico')}>
+                    <p className="font-medium text-destructive">🔴 OS em Atraso</p>
+                    <p className="text-sm text-muted-foreground">{overdueOS.length} OS ultrapassaram a previsão de entrega</p>
+                    <div className="mt-2 space-y-1">
+                      {overdueOS.slice(0, 3).map(os => (
+                        <p key={os.id} className="text-xs text-muted-foreground">
+                          • {os.numero} - {os.clientes?.nome} (prev: {new Date(os.data_previsao).toLocaleDateString('pt-BR')})
+                        </p>
+                      ))}
+                      {overdueOS.length > 3 && <p className="text-xs text-muted-foreground">... e mais {overdueOS.length - 3}</p>}
+                    </div>
+                  </div>
+                )}
+                {overduePayments.length > 0 && (
+                  <div className="rounded-lg border-l-4 border-l-destructive bg-destructive/5 p-4 cursor-pointer hover:bg-destructive/10 transition-colors" onClick={() => navigate('/cobrancas')}>
+                    <p className="font-medium text-destructive">💰 Cobranças Vencidas</p>
+                    <p className="text-sm text-muted-foreground">{overduePayments.length} cobranças vencidas no Asaas</p>
+                    <p className="text-xs font-medium text-destructive mt-1">
+                      Total: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(overduePayments.reduce((a: number, p: any) => a + p.value, 0))}
+                    </p>
+                  </div>
+                )}
                 {stats.itensEstoqueBaixo > 0 && (
                   <div className="rounded-lg border-l-4 border-l-warning bg-warning/5 p-4 cursor-pointer hover:bg-warning/10 transition-colors" onClick={() => navigate('/estoque')}>
                     <p className="font-medium text-warning">Estoque Baixo</p>
@@ -171,10 +194,12 @@ const Index = () => {
                     <p className="text-sm text-muted-foreground">{stats.osAbertas} OS aguardando atendimento</p>
                   </div>
                 )}
-                <div className="rounded-lg border-l-4 border-l-success bg-success/5 p-4">
-                  <p className="font-medium text-success">Sistema Operacional</p>
-                  <p className="text-sm text-muted-foreground">Todos os serviços funcionando normalmente</p>
-                </div>
+                {overdueOS.length === 0 && overduePayments.length === 0 && stats.itensEstoqueBaixo === 0 && stats.osAbertas === 0 && (
+                  <div className="rounded-lg border-l-4 border-l-success bg-success/5 p-4">
+                    <p className="font-medium text-success">Sistema Operacional</p>
+                    <p className="text-sm text-muted-foreground">Todos os serviços funcionando normalmente</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

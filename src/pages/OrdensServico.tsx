@@ -696,6 +696,15 @@ export default function OrdensServico() {
                   <Button variant="outline" onClick={handlePrintOS}>
                     <Download className="mr-2 h-4 w-4" />Baixar PDF
                   </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleCobrar} 
+                    disabled={cobrarLoading}
+                    className="border-primary/30 text-primary hover:bg-primary/10"
+                  >
+                    {cobrarLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
+                    Cobrar
+                  </Button>
                   <Button onClick={handleWhatsApp} className="bg-[hsl(142,70%,45%)] hover:bg-[hsl(142,70%,38%)] text-white">
                     <MessageCircle className="mr-2 h-4 w-4" />Enviar WhatsApp
                   </Button>
