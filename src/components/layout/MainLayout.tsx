@@ -11,10 +11,10 @@ export function MainLayout({ children }: MainLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out md:static md:translate-x-0",
+        "fixed inset-y-0 left-0 z-50 w-56 transform transition-transform duration-300 ease-in-out md:static md:translate-x-0",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <Sidebar />
@@ -23,7 +23,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       {/* Overlay for mobile */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-black/50 md:hidden" 
+          className="fixed inset-0 z-40 bg-black/60 md:hidden" 
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -31,9 +31,8 @@ export function MainLayout({ children }: MainLayoutProps) {
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-        
-        <main className="flex-1 overflow-auto bg-muted/30">
-          <div className="container mx-auto p-6">
+        <main className="flex-1 overflow-auto">
+          <div className="mx-auto max-w-7xl px-4 py-4 md:px-6">
             {children}
           </div>
         </main>
