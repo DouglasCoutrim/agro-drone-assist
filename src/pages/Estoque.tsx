@@ -230,18 +230,18 @@ export default function Estoque() {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Package className="h-8 w-8 text-primary" />Controle de Estoque
+            <h1 className="text-xl font-bold flex items-center gap-2">
+              <Package className="h-5 w-5 text-primary" />Estoque
             </h1>
-            <p className="text-muted-foreground">Peças para drones, baterias, geradores e carregadores</p>
+            <p className="text-xs text-muted-foreground">Peças e componentes</p>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
-              <Label className="text-xs text-muted-foreground whitespace-nowrap">Margem Padrão</Label>
-              <Input type="number" className="w-16 h-7 text-sm text-center" value={margemLucro}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 bg-muted/50 rounded-lg px-2 py-1.5">
+              <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Margem</Label>
+              <Input type="number" className="w-14 h-7 text-xs text-center" value={margemLucro}
                 onChange={(e) => handleMargemChange(Number(e.target.value))} min={0} max={500} />
               <span className="text-xs text-muted-foreground">%</span>
               <AlertDialog>
