@@ -277,6 +277,90 @@ export default function OrdensServico() {
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(texto)}`, "_blank");
   };
 
+  const handleCobrar = async () => {
+    if (!viewingOS) return;
+    const cliente = clientes.find(c => c.id === viewingOS.cliente_id);
+    const asaasId = (cliente as any)?.asaas_id;
+
+    if (!asaasId) {
+      toast.error('Este cliente não possui ID Asaas. Vá em Clientes e recadastre para sincronizar.');
+      return;
+    }
+
+    if (!viewingOS.valor_orcamento || viewingOS.valor_orcamento <= 0) {
+      toast.error('Esta OS não possui valor de orçamento definido.');
+      return;
+    }
+
+    setCobrarLoading(true);
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (!token) { toast.error('Sessão expirada'); return; }
+
+      // Set due date to 3 days from now
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 3);
+      const dueDateStr = dueDate.toISOString().split('T')[0];
+
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/asaas?action=create_payment`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'apikey': anonKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            customer: asaasId,
+            billingType: 'PIX',
+            value: viewingOS.valor_orcamento,
+            dueDate: dueDateStr,
+            description: `OS ${viewingOS.numero} - ${TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento}`,
+            externalReference: viewingOS.numero,
+          }),
+        }
+      );
+      const result = await res.json();
+
+      if (result.id) {
+        toast.success('Cobrança criada com sucesso!');
+        
+        // Now send via WhatsApp with the invoice link
+        const telefone = cliente?.telefone || "";
+        const cleanPhone = telefone.replace(/\D/g, "");
+        const phone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
+        const fmtCur = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+
+        let invoiceLink = result.invoiceUrl || '';
+        
+        // If no invoice URL in create response, try to fetch it
+        if (!invoiceLink && result.id) {
+          try {
+            const linkRes = await fetch(
+              `https://${projectId}.supabase.co/functions/v1/asaas?action=get_payment&id=${result.id}`,
+              { headers: { 'Authorization': `Bearer ${token}`, 'apikey': anonKey } }
+            );
+            const linkData = await linkRes.json();
+            invoiceLink = linkData.invoiceUrl || '';
+          } catch { /* silent */ }
+        }
+
+        const texto = `Olá, *${viewingOS.clientes?.nome || "Cliente"}*! 👋\n\nAqui é da *${empresa.nome_empresa || "Volt Control"}*.\n\nSegue a cobrança referente à sua Ordem de Serviço:\n\n📋 *OS:* ${viewingOS.numero}\n🔧 *Serviço:* ${TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento}${viewingOS.modelo_equipamento ? ` - ${viewingOS.modelo_equipamento}` : ""}\n💰 *Valor:* ${fmtCur(viewingOS.valor_orcamento)}\n📅 *Vencimento:* ${new Date(dueDateStr + 'T00:00:00').toLocaleDateString('pt-BR')}\n⚡ *Pagamento via Pix*${invoiceLink ? `\n\n🔗 *Link para pagamento:*\n${invoiceLink}` : ''}\n\nQualquer dúvida, estamos à disposição!`;
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(texto)}`, "_blank");
+      } else {
+        toast.error('Erro ao criar cobrança: ' + JSON.stringify(result.errors || result));
+      }
+    } catch (err: any) {
+      toast.error('Erro ao cobrar: ' + err.message);
+    } finally {
+      setCobrarLoading(false);
+    }
+  };
+
   const handleStatusChange = async (osId: string, newStatus: string) => {
     try {
       const updateData: any = { status: newStatus };
