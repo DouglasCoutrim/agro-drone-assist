@@ -270,8 +270,8 @@ export default function Estoque() {
               </AlertDialog>
             </div>
             <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); resetForm(); } }}>
-              <Button className="gradient-primary shadow-medium" onClick={handleOpenNewDialog}>
-                <Plus className="mr-2 h-4 w-4" />Novo Item
+              <Button size="sm" className="gradient-primary" onClick={handleOpenNewDialog}>
+                <Plus className="mr-1.5 h-3.5 w-3.5" />Novo Item
               </Button>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
