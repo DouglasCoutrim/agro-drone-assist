@@ -39,6 +39,8 @@ const Index = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState({ osAbertas: 0, osConcluidas: 0, itensEstoqueBaixo: 0, totalClientes: 0, faturamentoMes: 0 });
   const [recentOS, setRecentOS] = useState<any[]>([]);
+  const [overdueOS, setOverdueOS] = useState<any[]>([]);
+  const [overduePayments, setOverduePayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewingOS, setViewingOS] = useState<any | null>(null);
 
@@ -51,12 +53,41 @@ const Index = () => {
       const { data: itensEstoque } = await supabase.from('itens_estoque').select('*');
       const itensEstoqueBaixo = itensEstoque?.filter(item => item.quantidade <= item.estoque_minimo).length || 0;
       const { count: totalClientes } = await supabase.from('clientes').select('*', { count: 'exact', head: true });
-      const { data: recentOSData } = await supabase.from('ordens_servico').select('*, clientes (nome)').order('created_at', { ascending: false }).limit(5);
+      const { data: recentOSData } = await supabase.from('ordens_servico').select('*, clientes (nome, telefone)').order('created_at', { ascending: false }).limit(5);
       const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
       const { data: receitas } = await supabase.from('financeiro').select('valor').eq('tipo', 'receita').gte('data_transacao', startOfMonth.toISOString());
       const faturamentoMes = receitas?.reduce((acc, r) => acc + Number(r.valor), 0) || 0;
+
+      // Fetch overdue OS (past data_previsao, not completed)
+      const today = new Date().toISOString();
+      const { data: overdueOSData } = await supabase
+        .from('ordens_servico')
+        .select('*, clientes (nome, telefone)')
+        .not('data_previsao', 'is', null)
+        .lt('data_previsao', today)
+        .not('status', 'in', '("entregue","cancelada","pronto_retirada","concluida")')
+        .order('data_previsao', { ascending: true })
+        .limit(10);
+
+      // Fetch overdue Asaas payments
+      try {
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+        if (token) {
+          const res = await fetch(
+            `https://${projectId}.supabase.co/functions/v1/asaas?action=list_payments&status=OVERDUE`,
+            { headers: { 'Authorization': `Bearer ${token}`, 'apikey': anonKey } }
+          );
+          const result = await res.json();
+          setOverduePayments(result.data || []);
+        }
+      } catch { /* silent */ }
+
       setStats({ osAbertas: osAbertas?.length || 0, osConcluidas: osConcluidas?.length || 0, itensEstoqueBaixo, totalClientes: totalClientes || 0, faturamentoMes });
       setRecentOS(recentOSData || []);
+      setOverdueOS(overdueOSData || []);
     } catch (error) { console.error('Error fetching dashboard data:', error); } finally { setLoading(false); }
   };
 
