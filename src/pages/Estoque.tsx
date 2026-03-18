@@ -361,15 +361,15 @@ export default function Estoque() {
         </div>
 
         {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card className="shadow-soft card-hover"><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Total Itens</p><p className="text-2xl font-bold">{itens.length}</p></div><Package className="h-8 w-8 text-primary" /></div></CardContent></Card>
-          <Card className="shadow-soft card-hover"><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Baixo Estoque</p><p className="text-2xl font-bold text-destructive">{itensEstoqueBaixo.length}</p></div><AlertTriangle className="h-8 w-8 text-destructive" /></div></CardContent></Card>
-          <Card className="shadow-soft card-hover"><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Valor Total</p><p className="text-2xl font-bold">{formatCurrency(valorTotal)}</p></div><TrendingUp className="h-8 w-8 text-success" /></div></CardContent></Card>
-          <Card className="shadow-soft card-hover"><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Categorias</p><p className="text-2xl font-bold">{new Set(itens.map(i => i.categoria)).size}</p></div><Package className="h-8 w-8 text-primary" /></div></CardContent></Card>
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+          <Card className="shadow-soft"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground">Total</p><p className="text-xl font-bold">{itens.length}</p></div><Package className="h-5 w-5 text-primary" /></div></CardContent></Card>
+          <Card className="shadow-soft"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground">Baixo</p><p className="text-xl font-bold text-destructive">{itensEstoqueBaixo.length}</p></div><AlertTriangle className="h-5 w-5 text-destructive" /></div></CardContent></Card>
+          <Card className="shadow-soft"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground">Valor</p><p className="text-xl font-bold">{formatCurrency(valorTotal)}</p></div><TrendingUp className="h-5 w-5 text-success" /></div></CardContent></Card>
+          <Card className="shadow-soft"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground">Categorias</p><p className="text-xl font-bold">{new Set(itens.map(i => i.categoria)).size}</p></div><Package className="h-5 w-5 text-primary" /></div></CardContent></Card>
         </div>
 
         {/* Search */}
-        <Card className="shadow-soft"><CardContent className="p-4"><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Buscar por código, nome ou categoria..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div></CardContent></Card>
+        <div className="relative"><Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Buscar por código, nome ou categoria..." className="pl-9 h-9 text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
 
         {/* Table */}
         <Card className="shadow-soft">
