@@ -221,6 +221,35 @@ export default function OrdensServico() {
 
   const handleEdit = (os: OrdemServico) => {
     setEditingOS(os);
+    const detectedCategory = detectUiCategory(os);
+    setUiCategory(detectedCategory);
+
+    // Parse mobility data from observacoes if present
+    const obs = os.observacoes || "";
+    const mobilityMatch = obs.match(/\[MOBILIDADE:(\w+)\s*\|\s*Voltagem:(.*?)\s*\|\s*Bateria:(.*?)Ah\s*\|\s*Odômetro:(.*?)km\s*\|\s*Chave:(.*?)\s*\|\s*Carregador:(.*?)\s*\|\s*Checklist:(.*?)\]/);
+    if (mobilityMatch) {
+      const checkItems = mobilityMatch[7].split(",");
+      setMobilityData({
+        voltagem: mobilityMatch[2] === "-" ? "" : mobilityMatch[2],
+        capacidade_bateria: mobilityMatch[3] === "-" ? "" : mobilityMatch[3],
+        odometro: mobilityMatch[4] === "-" ? "" : mobilityMatch[4],
+        chave_ignicao: mobilityMatch[5] === "Sim",
+        carregador_entregue: mobilityMatch[6] === "Sim",
+        check_display: checkItems.includes("Display"),
+        check_acelerador: checkItems.includes("Acelerador"),
+        check_freios: checkItems.includes("Freios"),
+        check_pneus: checkItems.includes("Pneus"),
+        check_controladora: checkItems.includes("Controladora"),
+        check_iluminacao: checkItems.includes("Iluminação"),
+        check_carenagem: checkItems.includes("Carenagem"),
+      });
+    } else {
+      resetMobilityData();
+    }
+
+    // Clean observacoes of mobility metadata for display
+    const cleanObs = obs.replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").trim();
+
     setFormData({
       cliente_id: os.cliente_id,
       tipo_equipamento: os.tipo_equipamento,
@@ -234,7 +263,7 @@ export default function OrdensServico() {
       custo_pecas: (os as any).custo_pecas || 0,
       custo_mao_obra: (os as any).custo_mao_obra || 0,
       valor_orcamento: os.valor_orcamento || 0,
-      observacoes: os.observacoes || "",
+      observacoes: cleanObs,
       checklist_bateria: (os as any).checklist_bateria || false,
       checklist_carregador: (os as any).checklist_carregador || false,
       checklist_controle: (os as any).checklist_controle || false,
