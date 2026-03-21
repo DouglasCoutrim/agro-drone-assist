@@ -381,9 +381,6 @@ export default function OrdensServico() {
       <div class="footer"><div class="signature">Técnico Responsável</div><div class="signature">Cliente</div></div>
       ${getLegalTermsHTML()}
     </body></html>`);
-      <div class="footer"><div class="signature">Técnico Responsável</div><div class="signature">Cliente</div></div>
-      ${getLegalTermsHTML()}
-    </body></html>`);
     printWindow.document.close();
     printWindow.focus();
     setTimeout(() => printWindow.print(), 300);
