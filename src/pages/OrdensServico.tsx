@@ -86,6 +86,9 @@ export default function OrdensServico() {
   const [quickClientOpen, setQuickClientOpen] = useState(false);
   const [cobrarLoading, setCobrarLoading] = useState(false);
 
+  // uiCategory tracks the actual UI selection; tipo_equipamento stores the DB enum
+  const [uiCategory, setUiCategory] = useState("bateria");
+
   const [formData, setFormData] = useState({
     cliente_id: "",
     tipo_equipamento: "bateria" as Enums<"tipo_equipamento">,
@@ -100,7 +103,7 @@ export default function OrdensServico() {
     custo_mao_obra: 0,
     valor_orcamento: 0,
     observacoes: "",
-    // Checklist
+    // Checklist (drone/bateria)
     checklist_bateria: false,
     checklist_carregador: false,
     checklist_controle: false,
@@ -113,7 +116,25 @@ export default function OrdensServico() {
     ciclos_carga_saida: 0,
   });
 
-  const isBateria = formData.tipo_equipamento === "bateria" || 
+  // Mobility-specific state (not stored directly in DB columns)
+  const [mobilityData, setMobilityData] = useState({
+    voltagem: "",
+    capacidade_bateria: "",
+    odometro: "",
+    chave_ignicao: false,
+    carregador_entregue: false,
+    // Mobility checklist
+    check_display: false,
+    check_acelerador: false,
+    check_freios: false,
+    check_pneus: false,
+    check_controladora: false,
+    check_iluminacao: false,
+    check_carenagem: false,
+  });
+
+  const isMobility = MOBILITY_CATEGORIES.includes(uiCategory);
+  const isBateria = uiCategory === "bateria" || 
     formData.modelo_equipamento?.toLowerCase().includes("bateria");
 
   useEffect(() => { fetchData(); }, []);
