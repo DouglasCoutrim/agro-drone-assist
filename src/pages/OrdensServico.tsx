@@ -291,13 +291,39 @@ export default function OrdensServico() {
     const fmtDt = (d: string | null) => d ? new Date(d).toLocaleDateString("pt-BR") : "-";
     const os = viewingOS as any;
 
-    const checklistItems = [];
-    if (os.checklist_bateria) checklistItems.push("Bateria");
-    if (os.checklist_carregador) checklistItems.push("Carregador");
-    if (os.checklist_controle) checklistItems.push("Controle");
-    if (os.checklist_cabos) checklistItems.push("Cabos");
-    if (os.checklist_helices) checklistItems.push("Hélices");
-    if (os.checklist_outros) checklistItems.push("Outros");
+    // Parse mobility data from observacoes
+    const obsText = viewingOS.observacoes || "";
+    const mobilityMatch = obsText.match(/\[MOBILIDADE:(\w+)\s*\|\s*Voltagem:(.*?)\s*\|\s*Bateria:(.*?)Ah\s*\|\s*Odômetro:(.*?)km\s*\|\s*Chave:(.*?)\s*\|\s*Carregador:(.*?)\s*\|\s*Checklist:(.*?)\]/);
+    const hasMobility = !!mobilityMatch;
+    const cleanObs = obsText.replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").trim();
+    const mobilityCategory = mobilityMatch ? mobilityMatch[1] : "";
+    const displayType = TIPO_EQUIPAMENTO[mobilityCategory] || TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento;
+
+    // Standard checklist
+    const checklistItems: string[] = [];
+    if (!hasMobility) {
+      if (os.checklist_bateria) checklistItems.push("Bateria");
+      if (os.checklist_carregador) checklistItems.push("Carregador");
+      if (os.checklist_controle) checklistItems.push("Controle");
+      if (os.checklist_cabos) checklistItems.push("Cabos");
+      if (os.checklist_helices) checklistItems.push("Hélices");
+      if (os.checklist_outros) checklistItems.push("Outros");
+    }
+
+    // Mobility section HTML
+    let mobilityHTML = "";
+    if (hasMobility && mobilityMatch) {
+      const mCheckItems = mobilityMatch[7] !== "Nenhum" ? mobilityMatch[7] : "";
+      mobilityHTML = `
+        <div class="section"><div class="section-title">⚡ Dados da Mobilidade Elétrica</div><div class="grid">
+          <div class="field"><div class="field-label">Voltagem</div><div class="field-value">${mobilityMatch[2]}</div></div>
+          <div class="field"><div class="field-label">Capacidade Bateria</div><div class="field-value">${mobilityMatch[3]}Ah</div></div>
+          <div class="field"><div class="field-label">Odômetro</div><div class="field-value">${mobilityMatch[4]}km</div></div>
+          <div class="field"><div class="field-label">Chave Ignição</div><div class="field-value">${mobilityMatch[5]}</div></div>
+          <div class="field"><div class="field-label">Carregador</div><div class="field-value">${mobilityMatch[6]}</div></div>
+          ${mCheckItems ? `<div class="field full-width"><div class="field-label">Checklist Mobilidade</div><div class="field-value">${mCheckItems.replace(/,/g, ", ")}</div></div>` : ""}
+        </div></div>`;
+    }
 
     printWindow.document.write(`<!DOCTYPE html><html><head><title>OS ${viewingOS.numero}</title>
       <style>
@@ -327,11 +353,12 @@ export default function OrdensServico() {
         <div class="field"><div class="field-label">Nome</div><div class="field-value">${viewingOS.clientes?.nome || "-"}</div></div>
       </div></div>
       <div class="section"><div class="section-title">Equipamento</div><div class="grid">
-        <div class="field"><div class="field-label">Tipo</div><div class="field-value">${TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento}</div></div>
+        <div class="field"><div class="field-label">Tipo</div><div class="field-value">${displayType}</div></div>
         <div class="field"><div class="field-label">Marca</div><div class="field-value">${os.marca || "-"}</div></div>
         <div class="field"><div class="field-label">Modelo</div><div class="field-value">${viewingOS.modelo_equipamento || "-"}</div></div>
         <div class="field"><div class="field-label">Nº Série</div><div class="field-value">${viewingOS.numero_serie || "-"}</div></div>
       </div></div>
+      ${mobilityHTML}
       ${checklistItems.length > 0 ? `<div class="section"><div class="section-title">Checklist de Entrada</div><div class="grid">
         <div class="field full-width"><div class="field-label">Acessórios Entregues</div><div class="field-value">${checklistItems.join(", ")}</div></div>
         ${os.condicao_visual ? `<div class="field full-width"><div class="field-label">Condição Visual</div><div class="field-value">${os.condicao_visual}</div></div>` : ""}
@@ -350,7 +377,10 @@ export default function OrdensServico() {
         <div class="field"><div class="field-label">Conclusão</div><div class="field-value">${fmtDt(viewingOS.data_conclusao)}</div></div>
         <div class="field"><div class="field-label">Entrega</div><div class="field-value">${fmtDt(viewingOS.data_entrega)}</div></div>
       </div></div>
-      ${viewingOS.observacoes ? `<div class="section"><div class="section-title">Observações</div><p style="font-size:14px">${viewingOS.observacoes}</p></div>` : ""}
+      ${cleanObs ? `<div class="section"><div class="section-title">Observações</div><p style="font-size:14px">${cleanObs}</p></div>` : ""}
+      <div class="footer"><div class="signature">Técnico Responsável</div><div class="signature">Cliente</div></div>
+      ${getLegalTermsHTML()}
+    </body></html>`);
       <div class="footer"><div class="signature">Técnico Responsável</div><div class="signature">Cliente</div></div>
       ${getLegalTermsHTML()}
     </body></html>`);
