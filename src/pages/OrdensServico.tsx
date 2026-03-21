@@ -667,28 +667,51 @@ export default function OrdensServico() {
                   {/* TAB 2 - CHECKLIST DE ENTRADA */}
                   <TabsContent value="checklist" className="space-y-4 mt-4">
                     <Card>
-                      <CardHeader className="pb-3"><CardTitle className="text-base">Checklist de Entrada</CardTitle></CardHeader>
+                      <CardHeader className="pb-3"><CardTitle className="text-base">Checklist de Entrada {isMobility ? "(Mobilidade)" : "(Drone/Acessório)"}</CardTitle></CardHeader>
                       <CardContent className="space-y-4">
-                        <p className="text-sm text-muted-foreground">Marque os acessórios entregues junto com o equipamento:</p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                          {([
-                            ["checklist_bateria", "Bateria"],
-                            ["checklist_carregador", "Carregador"],
-                            ["checklist_controle", "Controle"],
-                            ["checklist_cabos", "Cabos"],
-                            ["checklist_helices", "Hélices"],
-                            ["checklist_outros", "Outros"],
-                          ] as const).map(([key, label]) => (
-                            <div key={key} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={key}
-                                checked={(formData as any)[key]}
-                                onCheckedChange={(checked) => setFormData({ ...formData, [key]: !!checked })}
-                              />
-                              <Label htmlFor={key} className="cursor-pointer">{label}</Label>
-                            </div>
-                          ))}
-                        </div>
+                        <p className="text-sm text-muted-foreground">Marque os itens verificados na entrada:</p>
+                        {isMobility ? (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                            {([
+                              ["check_display", "Display / Painel"],
+                              ["check_acelerador", "Acelerador"],
+                              ["check_freios", "Freios"],
+                              ["check_pneus", "Pneus"],
+                              ["check_controladora", "Módulo / Controladora"],
+                              ["check_iluminacao", "Iluminação"],
+                              ["check_carenagem", "Carenagem"],
+                            ] as const).map(([key, label]) => (
+                              <div key={key} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={key}
+                                  checked={(mobilityData as any)[key]}
+                                  onCheckedChange={(checked) => setMobilityData({ ...mobilityData, [key]: !!checked })}
+                                />
+                                <Label htmlFor={key} className="cursor-pointer">{label}</Label>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                            {([
+                              ["checklist_bateria", "Bateria"],
+                              ["checklist_carregador", "Carregador"],
+                              ["checklist_controle", "Controle"],
+                              ["checklist_cabos", "Cabos"],
+                              ["checklist_helices", "Hélices"],
+                              ["checklist_outros", "Outros"],
+                            ] as const).map(([key, label]) => (
+                              <div key={key} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={key}
+                                  checked={(formData as any)[key]}
+                                  onCheckedChange={(checked) => setFormData({ ...formData, [key]: !!checked })}
+                                />
+                                <Label htmlFor={key} className="cursor-pointer">{label}</Label>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         <Separator />
                         <div className="space-y-2">
                           <Label>Condição Visual (Riscos, amassados, lacres)</Label>
