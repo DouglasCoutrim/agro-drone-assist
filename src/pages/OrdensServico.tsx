@@ -558,24 +558,28 @@ export default function OrdensServico() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label>Tipo de Equipamento *</Label>
-                            <Select value={formData.tipo_equipamento} onValueChange={(v: Enums<"tipo_equipamento">) => setFormData({ ...formData, tipo_equipamento: v })}>
+                            <Select value={uiCategory} onValueChange={(v) => { setUiCategory(v); setFormData({ ...formData, tipo_equipamento: mapCategoryToDbEnum(v) as Enums<"tipo_equipamento"> }); }}>
                               <SelectTrigger><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="drone_agricola">Drone Agrícola</SelectItem>
                                 <SelectItem value="drone_convencional">Drone de Consumo / Enterprise</SelectItem>
-                                <SelectItem value="bateria">Bateria</SelectItem>
+                                <SelectItem value="bateria">Bateria Avulsa</SelectItem>
                                 <SelectItem value="controle">Controle Remoto</SelectItem>
                                 <SelectItem value="outro">Gerador / Carregador / Outro</SelectItem>
+                                <SelectItem value="patinete_eletrico">Patinete Elétrico</SelectItem>
+                                <SelectItem value="bicicleta_eletrica">Bicicleta Elétrica</SelectItem>
+                                <SelectItem value="moto_eletrica">Moto Elétrica</SelectItem>
+                                <SelectItem value="outros_autopropelidos">Outros Autopropelidos</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-2">
                             <Label>Marca</Label>
-                            <Input value={formData.marca} onChange={(e) => setFormData({ ...formData, marca: e.target.value })} placeholder="Ex: DJI, XAG..." />
+                            <Input value={formData.marca} onChange={(e) => setFormData({ ...formData, marca: e.target.value })} placeholder={isMobility ? "Ex: Xiaomi, Caloi..." : "Ex: DJI, XAG..."} />
                           </div>
                           <div className="space-y-2">
                             <Label>Modelo</Label>
-                            <Input value={formData.modelo_equipamento} onChange={(e) => setFormData({ ...formData, modelo_equipamento: e.target.value })} placeholder="Ex: Agras T40..." />
+                            <Input value={formData.modelo_equipamento} onChange={(e) => setFormData({ ...formData, modelo_equipamento: e.target.value })} placeholder={isMobility ? "Ex: Mi Pro 2, E-Vibe..." : "Ex: Agras T40..."} />
                           </div>
                           <div className="space-y-2">
                             <Label>Número de Série</Label>
@@ -583,7 +587,7 @@ export default function OrdensServico() {
                           </div>
                         </div>
                         {/* Battery conditional fields */}
-                        {isBateria && (
+                        {isBateria && !isMobility && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 rounded-lg border border-dashed border-primary/30 bg-primary/5">
                             <div className="space-y-2">
                               <Label>Ciclos de Carga (Entrada)</Label>
@@ -598,6 +602,46 @@ export default function OrdensServico() {
                                 placeholder="Ex: 155" />
                             </div>
                           </div>
+                        )}
+                        {/* Mobility-specific fields */}
+                        {isMobility && (
+                          <Card className="border-dashed border-primary/30 bg-primary/5">
+                            <CardHeader className="pb-2"><CardTitle className="text-sm">⚡ Dados da Mobilidade Elétrica</CardTitle></CardHeader>
+                            <CardContent className="space-y-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label>Voltagem Nominal</Label>
+                                  <Select value={mobilityData.voltagem} onValueChange={(v) => setMobilityData({ ...mobilityData, voltagem: v })}>
+                                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="36V">36V</SelectItem>
+                                      <SelectItem value="48V">48V</SelectItem>
+                                      <SelectItem value="60V">60V</SelectItem>
+                                      <SelectItem value="72V">72V</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Capacidade da Bateria (Ah)</Label>
+                                  <Input value={mobilityData.capacidade_bateria} onChange={(e) => setMobilityData({ ...mobilityData, capacidade_bateria: e.target.value })} placeholder="Ex: 12, 20, 30..." />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Odômetro / Quilometragem</Label>
+                                  <Input value={mobilityData.odometro} onChange={(e) => setMobilityData({ ...mobilityData, odometro: e.target.value })} placeholder="Ex: 1500" />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="flex items-center space-x-2">
+                                  <Checkbox id="chave_ignicao" checked={mobilityData.chave_ignicao} onCheckedChange={(c) => setMobilityData({ ...mobilityData, chave_ignicao: !!c })} />
+                                  <Label htmlFor="chave_ignicao" className="cursor-pointer">Chave de Ignição entregue</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <Checkbox id="carregador_mob" checked={mobilityData.carregador_entregue} onCheckedChange={(c) => setMobilityData({ ...mobilityData, carregador_entregue: !!c })} />
+                                  <Label htmlFor="carregador_mob" className="cursor-pointer">Carregador entregue</Label>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
                         )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
