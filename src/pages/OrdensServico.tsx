@@ -902,7 +902,14 @@ export default function OrdensServico() {
               </DialogTitle>
               <DialogDescription>Visualização da ordem de serviço</DialogDescription>
             </DialogHeader>
-            {viewingOS && (
+            {viewingOS && (() => {
+              const obsText = viewingOS.observacoes || "";
+              const mMatch = obsText.match(/\[MOBILIDADE:(\w+)\s*\|\s*Voltagem:(.*?)\s*\|\s*Bateria:(.*?)Ah\s*\|\s*Odômetro:(.*?)km\s*\|\s*Chave:(.*?)\s*\|\s*Carregador:(.*?)\s*\|\s*Checklist:(.*?)\]/);
+              const hasMob = !!mMatch;
+              const cleanObsView = obsText.replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").trim();
+              const viewDisplayType = hasMob && mMatch ? (TIPO_EQUIPAMENTO[mMatch[1]] || TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento]) : (TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento);
+
+              return (
               <div className="space-y-6">
                 <div>
                   <h3 className="text-sm font-semibold text-primary uppercase mb-3">Dados do Cliente</h3>
@@ -912,17 +919,38 @@ export default function OrdensServico() {
                 <div>
                   <h3 className="text-sm font-semibold text-primary uppercase mb-3">Equipamento</h3>
                   <div className="grid grid-cols-2 gap-4">
-                    <div><p className="text-xs text-muted-foreground">Tipo</p><p className="font-medium">{TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Tipo</p><p className="font-medium">{viewDisplayType}</p></div>
                     <div><p className="text-xs text-muted-foreground">Marca</p><p className="font-medium">{(viewingOS as any).marca || "-"}</p></div>
                     <div><p className="text-xs text-muted-foreground">Modelo</p><p className="font-medium">{viewingOS.modelo_equipamento || "-"}</p></div>
                     <div><p className="text-xs text-muted-foreground">Nº Série</p><p className="font-medium">{viewingOS.numero_serie || "-"}</p></div>
                   </div>
                 </div>
+                {/* Mobility data section */}
+                {hasMob && mMatch && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-sm font-semibold text-primary uppercase mb-3">⚡ Dados da Mobilidade Elétrica</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div><p className="text-xs text-muted-foreground">Voltagem</p><p className="font-medium">{mMatch[2]}</p></div>
+                        <div><p className="text-xs text-muted-foreground">Capacidade Bateria</p><p className="font-medium">{mMatch[3]}Ah</p></div>
+                        <div><p className="text-xs text-muted-foreground">Odômetro</p><p className="font-medium">{mMatch[4]}km</p></div>
+                        <div><p className="text-xs text-muted-foreground">Chave Ignição</p><p className="font-medium">{mMatch[5]}</p></div>
+                        <div><p className="text-xs text-muted-foreground">Carregador</p><p className="font-medium">{mMatch[6]}</p></div>
+                      </div>
+                      {mMatch[7] !== "Nenhum" && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {mMatch[7].split(",").map(item => <Badge key={item} variant="secondary">{item}</Badge>)}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
                 <Separator />
-                {/* Checklist section */}
-                {(() => {
+                {/* Standard Checklist section */}
+                {!hasMob && (() => {
                   const os = viewingOS as any;
-                  const items = [];
+                  const items: string[] = [];
                   if (os.checklist_bateria) items.push("Bateria");
                   if (os.checklist_carregador) items.push("Carregador");
                   if (os.checklist_controle) items.push("Controle");
@@ -969,7 +997,7 @@ export default function OrdensServico() {
                     <div><p className="text-xs text-muted-foreground">Entrega</p><p className="text-sm">{formatDate(viewingOS.data_entrega)}</p></div>
                   </div>
                 </div>
-                {viewingOS.observacoes && (<><Separator /><div><p className="text-xs text-muted-foreground">Observações</p><p className="text-sm">{viewingOS.observacoes}</p></div></>)}
+                {cleanObsView && (<><Separator /><div><p className="text-xs text-muted-foreground">Observações</p><p className="text-sm">{cleanObsView}</p></div></>)}
 
                 {/* Legal Terms */}
                 <LegalTermsFooter />
