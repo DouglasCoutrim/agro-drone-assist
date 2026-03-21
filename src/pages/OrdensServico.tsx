@@ -45,8 +45,30 @@ const TIPO_EQUIPAMENTO: Record<string, string> = {
   drone_agricola: "Drone Agrícola",
   drone_convencional: "Drone de Consumo / Enterprise",
   controle: "Controle Remoto",
-  bateria: "Bateria",
+  bateria: "Bateria Avulsa",
   outro: "Gerador / Carregador / Outro",
+  // UI-only categories (mapped to "outro" in DB)
+  patinete_eletrico: "Patinete Elétrico",
+  bicicleta_eletrica: "Bicicleta Elétrica",
+  moto_eletrica: "Moto Elétrica",
+  outros_autopropelidos: "Outros Autopropelidos",
+};
+
+// UI categories that map to "outro" in the DB enum
+const MOBILITY_CATEGORIES = ["patinete_eletrico", "bicicleta_eletrica", "moto_eletrica", "outros_autopropelidos"];
+
+// Map UI category to DB enum value
+const mapCategoryToDbEnum = (uiCategory: string): string => {
+  if (MOBILITY_CATEGORIES.includes(uiCategory)) return "outro";
+  return uiCategory;
+};
+
+// Try to detect UI category from observacoes metadata
+const detectUiCategory = (os: any): string => {
+  const obs = os.observacoes || "";
+  const match = obs.match(/\[MOBILIDADE:(\w+)/);
+  if (match) return match[1];
+  return os.tipo_equipamento;
 };
 
 export default function OrdensServico() {
