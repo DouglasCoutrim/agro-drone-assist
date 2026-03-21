@@ -165,8 +165,30 @@ export default function OrdensServico() {
     setFormLoading(true);
     try {
       const { ciclos_carga_entrada, ciclos_carga_saida, ...restForm } = formData;
+
+      // Build mobility metadata string to inject into observacoes
+      let observacoesWithMobility = restForm.observacoes || "";
+      // Remove any previous mobility metadata
+      observacoesWithMobility = observacoesWithMobility.replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").trim();
+
+      if (isMobility) {
+        const mChecklist = [];
+        if (mobilityData.check_display) mChecklist.push("Display");
+        if (mobilityData.check_acelerador) mChecklist.push("Acelerador");
+        if (mobilityData.check_freios) mChecklist.push("Freios");
+        if (mobilityData.check_pneus) mChecklist.push("Pneus");
+        if (mobilityData.check_controladora) mChecklist.push("Controladora");
+        if (mobilityData.check_iluminacao) mChecklist.push("Iluminação");
+        if (mobilityData.check_carenagem) mChecklist.push("Carenagem");
+
+        const mobilityTag = `[MOBILIDADE:${uiCategory} | Voltagem:${mobilityData.voltagem || "-"} | Bateria:${mobilityData.capacidade_bateria || "-"}Ah | Odômetro:${mobilityData.odometro || "-"}km | Chave:${mobilityData.chave_ignicao ? "Sim" : "Não"} | Carregador:${mobilityData.carregador_entregue ? "Sim" : "Não"} | Checklist:${mChecklist.join(",") || "Nenhum"}]`;
+        observacoesWithMobility = observacoesWithMobility ? `${observacoesWithMobility}\n${mobilityTag}` : mobilityTag;
+      }
+
       const osData: any = {
         ...restForm,
+        tipo_equipamento: mapCategoryToDbEnum(uiCategory),
+        observacoes: observacoesWithMobility || null,
         valor_orcamento: totalOrcamento || null,
         data_previsao: formData.data_previsao || null,
         diagnostico: formData.diagnostico || null,
