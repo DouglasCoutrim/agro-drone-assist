@@ -863,7 +863,7 @@ export default function OrdensServico() {
                         </div>
                         <p className="text-sm font-medium">{os.clientes?.nome}</p>
                       </div>
-                      <div><p className="text-sm text-muted-foreground">Equipamento</p><p className="font-medium">{TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento}</p>{os.modelo_equipamento && <p className="text-xs text-muted-foreground">{os.modelo_equipamento}</p>}</div>
+                      <div><p className="text-sm text-muted-foreground">Equipamento</p><p className="font-medium">{TIPO_EQUIPAMENTO[detectUiCategory(os)] || TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento}</p>{os.modelo_equipamento && <p className="text-xs text-muted-foreground">{os.modelo_equipamento}</p>}</div>
                       <div><p className="text-sm text-muted-foreground">Status</p>{getStatusBadge(os.status)}</div>
                       <div><p className="text-sm text-muted-foreground">Entrada</p><p className="text-sm">{new Date(os.data_entrada).toLocaleDateString("pt-BR")}</p></div>
                       <div className="flex gap-2 items-start justify-end flex-wrap">
