@@ -45,8 +45,30 @@ const TIPO_EQUIPAMENTO: Record<string, string> = {
   drone_agricola: "Drone Agrícola",
   drone_convencional: "Drone de Consumo / Enterprise",
   controle: "Controle Remoto",
-  bateria: "Bateria",
+  bateria: "Bateria Avulsa",
   outro: "Gerador / Carregador / Outro",
+  // UI-only categories (mapped to "outro" in DB)
+  patinete_eletrico: "Patinete Elétrico",
+  bicicleta_eletrica: "Bicicleta Elétrica",
+  moto_eletrica: "Moto Elétrica",
+  outros_autopropelidos: "Outros Autopropelidos",
+};
+
+// UI categories that map to "outro" in the DB enum
+const MOBILITY_CATEGORIES = ["patinete_eletrico", "bicicleta_eletrica", "moto_eletrica", "outros_autopropelidos"];
+
+// Map UI category to DB enum value
+const mapCategoryToDbEnum = (uiCategory: string): string => {
+  if (MOBILITY_CATEGORIES.includes(uiCategory)) return "outro";
+  return uiCategory;
+};
+
+// Try to detect UI category from observacoes metadata
+const detectUiCategory = (os: any): string => {
+  const obs = os.observacoes || "";
+  const match = obs.match(/\[MOBILIDADE:(\w+)/);
+  if (match) return match[1];
+  return os.tipo_equipamento;
 };
 
 export default function OrdensServico() {
@@ -64,6 +86,9 @@ export default function OrdensServico() {
   const [quickClientOpen, setQuickClientOpen] = useState(false);
   const [cobrarLoading, setCobrarLoading] = useState(false);
 
+  // uiCategory tracks the actual UI selection; tipo_equipamento stores the DB enum
+  const [uiCategory, setUiCategory] = useState("bateria");
+
   const [formData, setFormData] = useState({
     cliente_id: "",
     tipo_equipamento: "bateria" as Enums<"tipo_equipamento">,
@@ -78,7 +103,7 @@ export default function OrdensServico() {
     custo_mao_obra: 0,
     valor_orcamento: 0,
     observacoes: "",
-    // Checklist
+    // Checklist (drone/bateria)
     checklist_bateria: false,
     checklist_carregador: false,
     checklist_controle: false,
@@ -91,7 +116,25 @@ export default function OrdensServico() {
     ciclos_carga_saida: 0,
   });
 
-  const isBateria = formData.tipo_equipamento === "bateria" || 
+  // Mobility-specific state (not stored directly in DB columns)
+  const [mobilityData, setMobilityData] = useState({
+    voltagem: "",
+    capacidade_bateria: "",
+    odometro: "",
+    chave_ignicao: false,
+    carregador_entregue: false,
+    // Mobility checklist
+    check_display: false,
+    check_acelerador: false,
+    check_freios: false,
+    check_pneus: false,
+    check_controladora: false,
+    check_iluminacao: false,
+    check_carenagem: false,
+  });
+
+  const isMobility = MOBILITY_CATEGORIES.includes(uiCategory);
+  const isBateria = uiCategory === "bateria" || 
     formData.modelo_equipamento?.toLowerCase().includes("bateria");
 
   useEffect(() => { fetchData(); }, []);
@@ -122,8 +165,30 @@ export default function OrdensServico() {
     setFormLoading(true);
     try {
       const { ciclos_carga_entrada, ciclos_carga_saida, ...restForm } = formData;
+
+      // Build mobility metadata string to inject into observacoes
+      let observacoesWithMobility = restForm.observacoes || "";
+      // Remove any previous mobility metadata
+      observacoesWithMobility = observacoesWithMobility.replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").trim();
+
+      if (isMobility) {
+        const mChecklist = [];
+        if (mobilityData.check_display) mChecklist.push("Display");
+        if (mobilityData.check_acelerador) mChecklist.push("Acelerador");
+        if (mobilityData.check_freios) mChecklist.push("Freios");
+        if (mobilityData.check_pneus) mChecklist.push("Pneus");
+        if (mobilityData.check_controladora) mChecklist.push("Controladora");
+        if (mobilityData.check_iluminacao) mChecklist.push("Iluminação");
+        if (mobilityData.check_carenagem) mChecklist.push("Carenagem");
+
+        const mobilityTag = `[MOBILIDADE:${uiCategory} | Voltagem:${mobilityData.voltagem || "-"} | Bateria:${mobilityData.capacidade_bateria || "-"}Ah | Odômetro:${mobilityData.odometro || "-"}km | Chave:${mobilityData.chave_ignicao ? "Sim" : "Não"} | Carregador:${mobilityData.carregador_entregue ? "Sim" : "Não"} | Checklist:${mChecklist.join(",") || "Nenhum"}]`;
+        observacoesWithMobility = observacoesWithMobility ? `${observacoesWithMobility}\n${mobilityTag}` : mobilityTag;
+      }
+
       const osData: any = {
         ...restForm,
+        tipo_equipamento: mapCategoryToDbEnum(uiCategory),
+        observacoes: observacoesWithMobility || null,
         valor_orcamento: totalOrcamento || null,
         data_previsao: formData.data_previsao || null,
         diagnostico: formData.diagnostico || null,
@@ -156,6 +221,35 @@ export default function OrdensServico() {
 
   const handleEdit = (os: OrdemServico) => {
     setEditingOS(os);
+    const detectedCategory = detectUiCategory(os);
+    setUiCategory(detectedCategory);
+
+    // Parse mobility data from observacoes if present
+    const obs = os.observacoes || "";
+    const mobilityMatch = obs.match(/\[MOBILIDADE:(\w+)\s*\|\s*Voltagem:(.*?)\s*\|\s*Bateria:(.*?)Ah\s*\|\s*Odômetro:(.*?)km\s*\|\s*Chave:(.*?)\s*\|\s*Carregador:(.*?)\s*\|\s*Checklist:(.*?)\]/);
+    if (mobilityMatch) {
+      const checkItems = mobilityMatch[7].split(",");
+      setMobilityData({
+        voltagem: mobilityMatch[2] === "-" ? "" : mobilityMatch[2],
+        capacidade_bateria: mobilityMatch[3] === "-" ? "" : mobilityMatch[3],
+        odometro: mobilityMatch[4] === "-" ? "" : mobilityMatch[4],
+        chave_ignicao: mobilityMatch[5] === "Sim",
+        carregador_entregue: mobilityMatch[6] === "Sim",
+        check_display: checkItems.includes("Display"),
+        check_acelerador: checkItems.includes("Acelerador"),
+        check_freios: checkItems.includes("Freios"),
+        check_pneus: checkItems.includes("Pneus"),
+        check_controladora: checkItems.includes("Controladora"),
+        check_iluminacao: checkItems.includes("Iluminação"),
+        check_carenagem: checkItems.includes("Carenagem"),
+      });
+    } else {
+      resetMobilityData();
+    }
+
+    // Clean observacoes of mobility metadata for display
+    const cleanObs = obs.replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").trim();
+
     setFormData({
       cliente_id: os.cliente_id,
       tipo_equipamento: os.tipo_equipamento,
@@ -169,7 +263,7 @@ export default function OrdensServico() {
       custo_pecas: (os as any).custo_pecas || 0,
       custo_mao_obra: (os as any).custo_mao_obra || 0,
       valor_orcamento: os.valor_orcamento || 0,
-      observacoes: os.observacoes || "",
+      observacoes: cleanObs,
       checklist_bateria: (os as any).checklist_bateria || false,
       checklist_carregador: (os as any).checklist_carregador || false,
       checklist_controle: (os as any).checklist_controle || false,
@@ -197,13 +291,39 @@ export default function OrdensServico() {
     const fmtDt = (d: string | null) => d ? new Date(d).toLocaleDateString("pt-BR") : "-";
     const os = viewingOS as any;
 
-    const checklistItems = [];
-    if (os.checklist_bateria) checklistItems.push("Bateria");
-    if (os.checklist_carregador) checklistItems.push("Carregador");
-    if (os.checklist_controle) checklistItems.push("Controle");
-    if (os.checklist_cabos) checklistItems.push("Cabos");
-    if (os.checklist_helices) checklistItems.push("Hélices");
-    if (os.checklist_outros) checklistItems.push("Outros");
+    // Parse mobility data from observacoes
+    const obsText = viewingOS.observacoes || "";
+    const mobilityMatch = obsText.match(/\[MOBILIDADE:(\w+)\s*\|\s*Voltagem:(.*?)\s*\|\s*Bateria:(.*?)Ah\s*\|\s*Odômetro:(.*?)km\s*\|\s*Chave:(.*?)\s*\|\s*Carregador:(.*?)\s*\|\s*Checklist:(.*?)\]/);
+    const hasMobility = !!mobilityMatch;
+    const cleanObs = obsText.replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").trim();
+    const mobilityCategory = mobilityMatch ? mobilityMatch[1] : "";
+    const displayType = TIPO_EQUIPAMENTO[mobilityCategory] || TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento;
+
+    // Standard checklist
+    const checklistItems: string[] = [];
+    if (!hasMobility) {
+      if (os.checklist_bateria) checklistItems.push("Bateria");
+      if (os.checklist_carregador) checklistItems.push("Carregador");
+      if (os.checklist_controle) checklistItems.push("Controle");
+      if (os.checklist_cabos) checklistItems.push("Cabos");
+      if (os.checklist_helices) checklistItems.push("Hélices");
+      if (os.checklist_outros) checklistItems.push("Outros");
+    }
+
+    // Mobility section HTML
+    let mobilityHTML = "";
+    if (hasMobility && mobilityMatch) {
+      const mCheckItems = mobilityMatch[7] !== "Nenhum" ? mobilityMatch[7] : "";
+      mobilityHTML = `
+        <div class="section"><div class="section-title">⚡ Dados da Mobilidade Elétrica</div><div class="grid">
+          <div class="field"><div class="field-label">Voltagem</div><div class="field-value">${mobilityMatch[2]}</div></div>
+          <div class="field"><div class="field-label">Capacidade Bateria</div><div class="field-value">${mobilityMatch[3]}Ah</div></div>
+          <div class="field"><div class="field-label">Odômetro</div><div class="field-value">${mobilityMatch[4]}km</div></div>
+          <div class="field"><div class="field-label">Chave Ignição</div><div class="field-value">${mobilityMatch[5]}</div></div>
+          <div class="field"><div class="field-label">Carregador</div><div class="field-value">${mobilityMatch[6]}</div></div>
+          ${mCheckItems ? `<div class="field full-width"><div class="field-label">Checklist Mobilidade</div><div class="field-value">${mCheckItems.replace(/,/g, ", ")}</div></div>` : ""}
+        </div></div>`;
+    }
 
     printWindow.document.write(`<!DOCTYPE html><html><head><title>OS ${viewingOS.numero}</title>
       <style>
@@ -233,11 +353,12 @@ export default function OrdensServico() {
         <div class="field"><div class="field-label">Nome</div><div class="field-value">${viewingOS.clientes?.nome || "-"}</div></div>
       </div></div>
       <div class="section"><div class="section-title">Equipamento</div><div class="grid">
-        <div class="field"><div class="field-label">Tipo</div><div class="field-value">${TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento}</div></div>
+        <div class="field"><div class="field-label">Tipo</div><div class="field-value">${displayType}</div></div>
         <div class="field"><div class="field-label">Marca</div><div class="field-value">${os.marca || "-"}</div></div>
         <div class="field"><div class="field-label">Modelo</div><div class="field-value">${viewingOS.modelo_equipamento || "-"}</div></div>
         <div class="field"><div class="field-label">Nº Série</div><div class="field-value">${viewingOS.numero_serie || "-"}</div></div>
       </div></div>
+      ${mobilityHTML}
       ${checklistItems.length > 0 ? `<div class="section"><div class="section-title">Checklist de Entrada</div><div class="grid">
         <div class="field full-width"><div class="field-label">Acessórios Entregues</div><div class="field-value">${checklistItems.join(", ")}</div></div>
         ${os.condicao_visual ? `<div class="field full-width"><div class="field-label">Condição Visual</div><div class="field-value">${os.condicao_visual}</div></div>` : ""}
@@ -256,7 +377,7 @@ export default function OrdensServico() {
         <div class="field"><div class="field-label">Conclusão</div><div class="field-value">${fmtDt(viewingOS.data_conclusao)}</div></div>
         <div class="field"><div class="field-label">Entrega</div><div class="field-value">${fmtDt(viewingOS.data_entrega)}</div></div>
       </div></div>
-      ${viewingOS.observacoes ? `<div class="section"><div class="section-title">Observações</div><p style="font-size:14px">${viewingOS.observacoes}</p></div>` : ""}
+      ${cleanObs ? `<div class="section"><div class="section-title">Observações</div><p style="font-size:14px">${cleanObs}</p></div>` : ""}
       <div class="footer"><div class="signature">Técnico Responsável</div><div class="signature">Cliente</div></div>
       ${getLegalTermsHTML()}
     </body></html>`);
@@ -375,6 +496,15 @@ export default function OrdensServico() {
     }
   };
 
+  const resetMobilityData = () => {
+    setMobilityData({
+      voltagem: "", capacidade_bateria: "", odometro: "",
+      chave_ignicao: false, carregador_entregue: false,
+      check_display: false, check_acelerador: false, check_freios: false,
+      check_pneus: false, check_controladora: false, check_iluminacao: false, check_carenagem: false,
+    });
+  };
+
   const resetForm = () => {
     setFormData({
       cliente_id: "", tipo_equipamento: "bateria", marca: "", modelo_equipamento: "", numero_serie: "",
@@ -384,6 +514,8 @@ export default function OrdensServico() {
       checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "",
       ciclos_carga_entrada: 0, ciclos_carga_saida: 0,
     });
+    setUiCategory("bateria");
+    resetMobilityData();
     setEditingOS(null);
   };
 
@@ -416,7 +548,7 @@ export default function OrdensServico() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-bold flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Ordens de Serviço</h1>
-            <p className="text-xs text-muted-foreground">Manutenções de drones, baterias e equipamentos</p>
+            <p className="text-xs text-muted-foreground">Drones, baterias, patinetes, bicicletas e veículos elétricos</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild><Button className="gradient-primary shadow-medium"><Plus className="mr-2 h-4 w-4" />Nova OS</Button></DialogTrigger>
@@ -453,24 +585,28 @@ export default function OrdensServico() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label>Tipo de Equipamento *</Label>
-                            <Select value={formData.tipo_equipamento} onValueChange={(v: Enums<"tipo_equipamento">) => setFormData({ ...formData, tipo_equipamento: v })}>
+                            <Select value={uiCategory} onValueChange={(v) => { setUiCategory(v); setFormData({ ...formData, tipo_equipamento: mapCategoryToDbEnum(v) as Enums<"tipo_equipamento"> }); }}>
                               <SelectTrigger><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="drone_agricola">Drone Agrícola</SelectItem>
                                 <SelectItem value="drone_convencional">Drone de Consumo / Enterprise</SelectItem>
-                                <SelectItem value="bateria">Bateria</SelectItem>
+                                <SelectItem value="bateria">Bateria Avulsa</SelectItem>
                                 <SelectItem value="controle">Controle Remoto</SelectItem>
                                 <SelectItem value="outro">Gerador / Carregador / Outro</SelectItem>
+                                <SelectItem value="patinete_eletrico">Patinete Elétrico</SelectItem>
+                                <SelectItem value="bicicleta_eletrica">Bicicleta Elétrica</SelectItem>
+                                <SelectItem value="moto_eletrica">Moto Elétrica</SelectItem>
+                                <SelectItem value="outros_autopropelidos">Outros Autopropelidos</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-2">
                             <Label>Marca</Label>
-                            <Input value={formData.marca} onChange={(e) => setFormData({ ...formData, marca: e.target.value })} placeholder="Ex: DJI, XAG..." />
+                            <Input value={formData.marca} onChange={(e) => setFormData({ ...formData, marca: e.target.value })} placeholder={isMobility ? "Ex: Xiaomi, Caloi..." : "Ex: DJI, XAG..."} />
                           </div>
                           <div className="space-y-2">
                             <Label>Modelo</Label>
-                            <Input value={formData.modelo_equipamento} onChange={(e) => setFormData({ ...formData, modelo_equipamento: e.target.value })} placeholder="Ex: Agras T40..." />
+                            <Input value={formData.modelo_equipamento} onChange={(e) => setFormData({ ...formData, modelo_equipamento: e.target.value })} placeholder={isMobility ? "Ex: Mi Pro 2, E-Vibe..." : "Ex: Agras T40..."} />
                           </div>
                           <div className="space-y-2">
                             <Label>Número de Série</Label>
@@ -478,7 +614,7 @@ export default function OrdensServico() {
                           </div>
                         </div>
                         {/* Battery conditional fields */}
-                        {isBateria && (
+                        {isBateria && !isMobility && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 rounded-lg border border-dashed border-primary/30 bg-primary/5">
                             <div className="space-y-2">
                               <Label>Ciclos de Carga (Entrada)</Label>
@@ -493,6 +629,46 @@ export default function OrdensServico() {
                                 placeholder="Ex: 155" />
                             </div>
                           </div>
+                        )}
+                        {/* Mobility-specific fields */}
+                        {isMobility && (
+                          <Card className="border-dashed border-primary/30 bg-primary/5">
+                            <CardHeader className="pb-2"><CardTitle className="text-sm">⚡ Dados da Mobilidade Elétrica</CardTitle></CardHeader>
+                            <CardContent className="space-y-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label>Voltagem Nominal</Label>
+                                  <Select value={mobilityData.voltagem} onValueChange={(v) => setMobilityData({ ...mobilityData, voltagem: v })}>
+                                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="36V">36V</SelectItem>
+                                      <SelectItem value="48V">48V</SelectItem>
+                                      <SelectItem value="60V">60V</SelectItem>
+                                      <SelectItem value="72V">72V</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Capacidade da Bateria (Ah)</Label>
+                                  <Input value={mobilityData.capacidade_bateria} onChange={(e) => setMobilityData({ ...mobilityData, capacidade_bateria: e.target.value })} placeholder="Ex: 12, 20, 30..." />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Odômetro / Quilometragem</Label>
+                                  <Input value={mobilityData.odometro} onChange={(e) => setMobilityData({ ...mobilityData, odometro: e.target.value })} placeholder="Ex: 1500" />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="flex items-center space-x-2">
+                                  <Checkbox id="chave_ignicao" checked={mobilityData.chave_ignicao} onCheckedChange={(c) => setMobilityData({ ...mobilityData, chave_ignicao: !!c })} />
+                                  <Label htmlFor="chave_ignicao" className="cursor-pointer">Chave de Ignição entregue</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <Checkbox id="carregador_mob" checked={mobilityData.carregador_entregue} onCheckedChange={(c) => setMobilityData({ ...mobilityData, carregador_entregue: !!c })} />
+                                  <Label htmlFor="carregador_mob" className="cursor-pointer">Carregador entregue</Label>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
                         )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
@@ -518,28 +694,51 @@ export default function OrdensServico() {
                   {/* TAB 2 - CHECKLIST DE ENTRADA */}
                   <TabsContent value="checklist" className="space-y-4 mt-4">
                     <Card>
-                      <CardHeader className="pb-3"><CardTitle className="text-base">Checklist de Entrada</CardTitle></CardHeader>
+                      <CardHeader className="pb-3"><CardTitle className="text-base">Checklist de Entrada {isMobility ? "(Mobilidade)" : "(Drone/Acessório)"}</CardTitle></CardHeader>
                       <CardContent className="space-y-4">
-                        <p className="text-sm text-muted-foreground">Marque os acessórios entregues junto com o equipamento:</p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                          {([
-                            ["checklist_bateria", "Bateria"],
-                            ["checklist_carregador", "Carregador"],
-                            ["checklist_controle", "Controle"],
-                            ["checklist_cabos", "Cabos"],
-                            ["checklist_helices", "Hélices"],
-                            ["checklist_outros", "Outros"],
-                          ] as const).map(([key, label]) => (
-                            <div key={key} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={key}
-                                checked={(formData as any)[key]}
-                                onCheckedChange={(checked) => setFormData({ ...formData, [key]: !!checked })}
-                              />
-                              <Label htmlFor={key} className="cursor-pointer">{label}</Label>
-                            </div>
-                          ))}
-                        </div>
+                        <p className="text-sm text-muted-foreground">Marque os itens verificados na entrada:</p>
+                        {isMobility ? (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                            {([
+                              ["check_display", "Display / Painel"],
+                              ["check_acelerador", "Acelerador"],
+                              ["check_freios", "Freios"],
+                              ["check_pneus", "Pneus"],
+                              ["check_controladora", "Módulo / Controladora"],
+                              ["check_iluminacao", "Iluminação"],
+                              ["check_carenagem", "Carenagem"],
+                            ] as const).map(([key, label]) => (
+                              <div key={key} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={key}
+                                  checked={(mobilityData as any)[key]}
+                                  onCheckedChange={(checked) => setMobilityData({ ...mobilityData, [key]: !!checked })}
+                                />
+                                <Label htmlFor={key} className="cursor-pointer">{label}</Label>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                            {([
+                              ["checklist_bateria", "Bateria"],
+                              ["checklist_carregador", "Carregador"],
+                              ["checklist_controle", "Controle"],
+                              ["checklist_cabos", "Cabos"],
+                              ["checklist_helices", "Hélices"],
+                              ["checklist_outros", "Outros"],
+                            ] as const).map(([key, label]) => (
+                              <div key={key} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={key}
+                                  checked={(formData as any)[key]}
+                                  onCheckedChange={(checked) => setFormData({ ...formData, [key]: !!checked })}
+                                />
+                                <Label htmlFor={key} className="cursor-pointer">{label}</Label>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         <Separator />
                         <div className="space-y-2">
                           <Label>Condição Visual (Riscos, amassados, lacres)</Label>
@@ -664,7 +863,7 @@ export default function OrdensServico() {
                         </div>
                         <p className="text-sm font-medium">{os.clientes?.nome}</p>
                       </div>
-                      <div><p className="text-sm text-muted-foreground">Equipamento</p><p className="font-medium">{TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento}</p>{os.modelo_equipamento && <p className="text-xs text-muted-foreground">{os.modelo_equipamento}</p>}</div>
+                      <div><p className="text-sm text-muted-foreground">Equipamento</p><p className="font-medium">{TIPO_EQUIPAMENTO[detectUiCategory(os)] || TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento}</p>{os.modelo_equipamento && <p className="text-xs text-muted-foreground">{os.modelo_equipamento}</p>}</div>
                       <div><p className="text-sm text-muted-foreground">Status</p>{getStatusBadge(os.status)}</div>
                       <div><p className="text-sm text-muted-foreground">Entrada</p><p className="text-sm">{new Date(os.data_entrada).toLocaleDateString("pt-BR")}</p></div>
                       <div className="flex gap-2 items-start justify-end flex-wrap">
@@ -703,7 +902,14 @@ export default function OrdensServico() {
               </DialogTitle>
               <DialogDescription>Visualização da ordem de serviço</DialogDescription>
             </DialogHeader>
-            {viewingOS && (
+            {viewingOS && (() => {
+              const obsText = viewingOS.observacoes || "";
+              const mMatch = obsText.match(/\[MOBILIDADE:(\w+)\s*\|\s*Voltagem:(.*?)\s*\|\s*Bateria:(.*?)Ah\s*\|\s*Odômetro:(.*?)km\s*\|\s*Chave:(.*?)\s*\|\s*Carregador:(.*?)\s*\|\s*Checklist:(.*?)\]/);
+              const hasMob = !!mMatch;
+              const cleanObsView = obsText.replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").trim();
+              const viewDisplayType = hasMob && mMatch ? (TIPO_EQUIPAMENTO[mMatch[1]] || TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento]) : (TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento);
+
+              return (
               <div className="space-y-6">
                 <div>
                   <h3 className="text-sm font-semibold text-primary uppercase mb-3">Dados do Cliente</h3>
@@ -713,17 +919,38 @@ export default function OrdensServico() {
                 <div>
                   <h3 className="text-sm font-semibold text-primary uppercase mb-3">Equipamento</h3>
                   <div className="grid grid-cols-2 gap-4">
-                    <div><p className="text-xs text-muted-foreground">Tipo</p><p className="font-medium">{TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Tipo</p><p className="font-medium">{viewDisplayType}</p></div>
                     <div><p className="text-xs text-muted-foreground">Marca</p><p className="font-medium">{(viewingOS as any).marca || "-"}</p></div>
                     <div><p className="text-xs text-muted-foreground">Modelo</p><p className="font-medium">{viewingOS.modelo_equipamento || "-"}</p></div>
                     <div><p className="text-xs text-muted-foreground">Nº Série</p><p className="font-medium">{viewingOS.numero_serie || "-"}</p></div>
                   </div>
                 </div>
+                {/* Mobility data section */}
+                {hasMob && mMatch && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-sm font-semibold text-primary uppercase mb-3">⚡ Dados da Mobilidade Elétrica</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div><p className="text-xs text-muted-foreground">Voltagem</p><p className="font-medium">{mMatch[2]}</p></div>
+                        <div><p className="text-xs text-muted-foreground">Capacidade Bateria</p><p className="font-medium">{mMatch[3]}Ah</p></div>
+                        <div><p className="text-xs text-muted-foreground">Odômetro</p><p className="font-medium">{mMatch[4]}km</p></div>
+                        <div><p className="text-xs text-muted-foreground">Chave Ignição</p><p className="font-medium">{mMatch[5]}</p></div>
+                        <div><p className="text-xs text-muted-foreground">Carregador</p><p className="font-medium">{mMatch[6]}</p></div>
+                      </div>
+                      {mMatch[7] !== "Nenhum" && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {mMatch[7].split(",").map(item => <Badge key={item} variant="secondary">{item}</Badge>)}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
                 <Separator />
-                {/* Checklist section */}
-                {(() => {
+                {/* Standard Checklist section */}
+                {!hasMob && (() => {
                   const os = viewingOS as any;
-                  const items = [];
+                  const items: string[] = [];
                   if (os.checklist_bateria) items.push("Bateria");
                   if (os.checklist_carregador) items.push("Carregador");
                   if (os.checklist_controle) items.push("Controle");
@@ -770,7 +997,7 @@ export default function OrdensServico() {
                     <div><p className="text-xs text-muted-foreground">Entrega</p><p className="text-sm">{formatDate(viewingOS.data_entrega)}</p></div>
                   </div>
                 </div>
-                {viewingOS.observacoes && (<><Separator /><div><p className="text-xs text-muted-foreground">Observações</p><p className="text-sm">{viewingOS.observacoes}</p></div></>)}
+                {cleanObsView && (<><Separator /><div><p className="text-xs text-muted-foreground">Observações</p><p className="text-sm">{cleanObsView}</p></div></>)}
 
                 {/* Legal Terms */}
                 <LegalTermsFooter />
@@ -794,7 +1021,8 @@ export default function OrdensServico() {
                   </Button>
                 </div>
               </div>
-            )}
+              );
+            })()}
           </DialogContent>
         </Dialog>
 
