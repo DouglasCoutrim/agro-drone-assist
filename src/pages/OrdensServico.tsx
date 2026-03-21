@@ -1021,7 +1021,8 @@ export default function OrdensServico() {
                   </Button>
                 </div>
               </div>
-            )}
+              );
+            })()}
           </DialogContent>
         </Dialog>
 
