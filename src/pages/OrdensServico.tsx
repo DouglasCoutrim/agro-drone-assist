@@ -469,6 +469,15 @@ export default function OrdensServico() {
     }
   };
 
+  const resetMobilityData = () => {
+    setMobilityData({
+      voltagem: "", capacidade_bateria: "", odometro: "",
+      chave_ignicao: false, carregador_entregue: false,
+      check_display: false, check_acelerador: false, check_freios: false,
+      check_pneus: false, check_controladora: false, check_iluminacao: false, check_carenagem: false,
+    });
+  };
+
   const resetForm = () => {
     setFormData({
       cliente_id: "", tipo_equipamento: "bateria", marca: "", modelo_equipamento: "", numero_serie: "",
@@ -478,6 +487,8 @@ export default function OrdensServico() {
       checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "",
       ciclos_carga_entrada: 0, ciclos_carga_saida: 0,
     });
+    setUiCategory("bateria");
+    resetMobilityData();
     setEditingOS(null);
   };
 
