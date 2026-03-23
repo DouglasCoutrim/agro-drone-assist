@@ -547,7 +547,7 @@ export default function OrdensServico() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-bold flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Ordens de Serviço</h1>
+            <h1 className="text-lg font-bold flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Ordens de Serviço</h1>
             <p className="text-xs text-muted-foreground">Drones, baterias, patinetes, bicicletas e veículos elétricos</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
