@@ -1016,7 +1016,7 @@ export default function OrdensServico() {
                     {cobrarLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
                     Cobrar
                   </Button>
-                  <Button onClick={handleWhatsApp} className="bg-[hsl(142,70%,45%)] hover:bg-[hsl(142,70%,38%)] text-white">
+                  <Button onClick={handleWhatsApp} className="bg-success hover:bg-success/90 text-success-foreground">
                     <MessageCircle className="mr-2 h-4 w-4" />Enviar WhatsApp
                   </Button>
                 </div>
