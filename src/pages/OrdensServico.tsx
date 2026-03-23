@@ -850,9 +850,9 @@ export default function OrdensServico() {
             ) : filteredOrdens.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground"><FileText className="h-12 w-12 mx-auto mb-4 opacity-50" /><p>Nenhuma ordem de serviço encontrada</p></div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {filteredOrdens.map((os) => (
-                  <div key={os.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                  <div key={os.id} className="border border-border/50 rounded-lg p-3 hover:bg-muted/30 transition-colors">
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 flex-wrap">
