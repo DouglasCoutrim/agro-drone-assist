@@ -842,8 +842,8 @@ export default function OrdensServico() {
         <div className="relative"><Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Buscar por OS, cliente ou equipamento..." className="pl-9 h-9 text-xs bg-muted/30 border-border/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
 
         {/* List */}
-        <Card className="shadow-soft">
-          <CardHeader><CardTitle>Lista de Ordens de Serviço</CardTitle></CardHeader>
+        <Card className="shadow-soft border-border/50">
+          <CardHeader className="pb-2 px-4 pt-4"><CardTitle className="text-sm">Lista de Ordens de Serviço</CardTitle></CardHeader>
           <CardContent>
             {loading ? (
               <div className="flex items-center justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
