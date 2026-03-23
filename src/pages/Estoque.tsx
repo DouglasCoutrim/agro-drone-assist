@@ -233,7 +233,7 @@ export default function Estoque() {
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-xl font-bold flex items-center gap-2">
+            <h1 className="text-lg font-bold flex items-center gap-2">
               <Package className="h-5 w-5 text-primary" />Estoque
             </h1>
             <p className="text-xs text-muted-foreground">Peças e componentes</p>
