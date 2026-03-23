@@ -143,8 +143,8 @@ export default function Clientes() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold flex items-center gap-2"><Users className="h-5 w-5 text-primary" />Clientes</h1>
-            <p className="text-xs text-muted-foreground">Cadastro de clientes</p>
+            <h1 className="text-lg font-bold flex items-center gap-2"><Users className="h-5 w-5 text-primary" />Clientes</h1>
+            <p className="text-xs text-muted-foreground">Cadastro e gestão de clientes</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
