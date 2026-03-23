@@ -212,7 +212,7 @@ export default function Clientes() {
         </div>
 
         {/* List */}
-        <Card className="shadow-soft">
+        <Card className="shadow-soft border-border/50">
           <CardContent className="p-0">
             {loading ? (
               <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
