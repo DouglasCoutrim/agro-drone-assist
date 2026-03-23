@@ -832,10 +832,10 @@ export default function OrdensServico() {
 
         {/* Stats */}
         <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-          <Card className="shadow-soft"><CardContent className="p-3"><div className="text-center"><p className="text-xl font-bold text-warning">{stats.recebidas}</p><p className="text-[10px] text-muted-foreground">Recebidas</p></div></CardContent></Card>
-          <Card className="shadow-soft"><CardContent className="p-3"><div className="text-center"><p className="text-xl font-bold text-primary">{stats.emReparo}</p><p className="text-[10px] text-muted-foreground">Em Reparo</p></div></CardContent></Card>
-          <Card className="shadow-soft"><CardContent className="p-3"><div className="text-center"><p className="text-xl font-bold text-secondary-foreground">{stats.aguardando}</p><p className="text-[10px] text-muted-foreground">Aguardando</p></div></CardContent></Card>
-          <Card className="shadow-soft"><CardContent className="p-3"><div className="text-center"><p className="text-xl font-bold text-success">{stats.prontas}</p><p className="text-[10px] text-muted-foreground">Prontas</p></div></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Recebidas</p><p className="text-lg font-bold text-warning">{stats.recebidas}</p></div><div className="p-2 rounded-lg bg-warning/10"><Clock className="h-4 w-4 text-warning" /></div></div></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Em Reparo</p><p className="text-lg font-bold text-primary">{stats.emReparo}</p></div><div className="p-2 rounded-lg bg-primary/10"><Wrench className="h-4 w-4 text-primary" /></div></div></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Aguardando</p><p className="text-lg font-bold text-secondary-foreground">{stats.aguardando}</p></div><div className="p-2 rounded-lg bg-muted"><Clock className="h-4 w-4 text-muted-foreground" /></div></div></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Prontas</p><p className="text-lg font-bold text-success">{stats.prontas}</p></div><div className="p-2 rounded-lg bg-success/10"><CheckCircle2 className="h-4 w-4 text-success" /></div></div></CardContent></Card>
         </div>
 
         {/* Search */}
