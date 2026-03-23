@@ -233,7 +233,7 @@ export default function Estoque() {
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-xl font-bold flex items-center gap-2">
+            <h1 className="text-lg font-bold flex items-center gap-2">
               <Package className="h-5 w-5 text-primary" />Estoque
             </h1>
             <p className="text-xs text-muted-foreground">Peças e componentes</p>
@@ -362,18 +362,18 @@ export default function Estoque() {
 
         {/* Stats */}
         <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-          <Card className="shadow-soft"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground">Total</p><p className="text-xl font-bold">{itens.length}</p></div><Package className="h-5 w-5 text-primary" /></div></CardContent></Card>
-          <Card className="shadow-soft"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground">Baixo</p><p className="text-xl font-bold text-destructive">{itensEstoqueBaixo.length}</p></div><AlertTriangle className="h-5 w-5 text-destructive" /></div></CardContent></Card>
-          <Card className="shadow-soft"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground">Valor</p><p className="text-xl font-bold">{formatCurrency(valorTotal)}</p></div><TrendingUp className="h-5 w-5 text-success" /></div></CardContent></Card>
-          <Card className="shadow-soft"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground">Categorias</p><p className="text-xl font-bold">{new Set(itens.map(i => i.categoria)).size}</p></div><Package className="h-5 w-5 text-primary" /></div></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Total</p><p className="text-lg font-bold">{itens.length}</p></div><Package className="h-4 w-4 text-primary" /></div></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Baixo</p><p className="text-lg font-bold text-destructive">{itensEstoqueBaixo.length}</p></div><AlertTriangle className="h-4 w-4 text-destructive" /></div></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Valor</p><p className="text-lg font-bold">{formatCurrency(valorTotal)}</p></div><TrendingUp className="h-4 w-4 text-success" /></div></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Categorias</p><p className="text-lg font-bold">{new Set(itens.map(i => i.categoria)).size}</p></div><Package className="h-4 w-4 text-primary" /></div></CardContent></Card>
         </div>
 
         {/* Search */}
-        <div className="relative"><Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Buscar por código, nome ou categoria..." className="pl-9 h-9 text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+        <div className="relative"><Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Buscar por código, nome ou categoria..." className="pl-9 h-9 text-xs bg-muted/30 border-border/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
 
         {/* Table */}
-        <Card className="shadow-soft">
-          <CardHeader><CardTitle>Inventário</CardTitle></CardHeader>
+        <Card className="shadow-soft border-border/50">
+          <CardHeader className="pb-2 px-4 pt-4"><CardTitle className="text-sm">Inventário</CardTitle></CardHeader>
           <CardContent>
             {loading ? (
               <div className="flex items-center justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>

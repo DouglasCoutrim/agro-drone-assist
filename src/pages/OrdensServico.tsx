@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download, UserPlus, CreditCard } from "lucide-react";
+import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download, UserPlus, CreditCard, Clock, Wrench, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
@@ -547,11 +547,11 @@ export default function OrdensServico() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-bold flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Ordens de Serviço</h1>
+            <h1 className="text-lg font-bold flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Ordens de Serviço</h1>
             <p className="text-xs text-muted-foreground">Drones, baterias, patinetes, bicicletas e veículos elétricos</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-            <DialogTrigger asChild><Button className="gradient-primary shadow-medium"><Plus className="mr-2 h-4 w-4" />Nova OS</Button></DialogTrigger>
+            <DialogTrigger asChild><Button size="sm" className="gradient-primary shadow-soft"><Plus className="mr-1.5 h-3.5 w-3.5" />Nova OS</Button></DialogTrigger>
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingOS ? "Editar OS" : "Nova Ordem de Serviço"}</DialogTitle>
@@ -832,27 +832,27 @@ export default function OrdensServico() {
 
         {/* Stats */}
         <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-          <Card className="shadow-soft"><CardContent className="p-3"><div className="text-center"><p className="text-xl font-bold text-warning">{stats.recebidas}</p><p className="text-[10px] text-muted-foreground">Recebidas</p></div></CardContent></Card>
-          <Card className="shadow-soft"><CardContent className="p-3"><div className="text-center"><p className="text-xl font-bold text-primary">{stats.emReparo}</p><p className="text-[10px] text-muted-foreground">Em Reparo</p></div></CardContent></Card>
-          <Card className="shadow-soft"><CardContent className="p-3"><div className="text-center"><p className="text-xl font-bold text-secondary-foreground">{stats.aguardando}</p><p className="text-[10px] text-muted-foreground">Aguardando</p></div></CardContent></Card>
-          <Card className="shadow-soft"><CardContent className="p-3"><div className="text-center"><p className="text-xl font-bold text-success">{stats.prontas}</p><p className="text-[10px] text-muted-foreground">Prontas</p></div></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Recebidas</p><p className="text-lg font-bold text-warning">{stats.recebidas}</p></div><div className="p-2 rounded-lg bg-warning/10"><Clock className="h-4 w-4 text-warning" /></div></div></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Em Reparo</p><p className="text-lg font-bold text-primary">{stats.emReparo}</p></div><div className="p-2 rounded-lg bg-primary/10"><Wrench className="h-4 w-4 text-primary" /></div></div></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Aguardando</p><p className="text-lg font-bold text-secondary-foreground">{stats.aguardando}</p></div><div className="p-2 rounded-lg bg-muted"><Clock className="h-4 w-4 text-muted-foreground" /></div></div></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Prontas</p><p className="text-lg font-bold text-success">{stats.prontas}</p></div><div className="p-2 rounded-lg bg-success/10"><CheckCircle2 className="h-4 w-4 text-success" /></div></div></CardContent></Card>
         </div>
 
         {/* Search */}
-        <div className="relative"><Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Buscar por OS, cliente ou equipamento..." className="pl-9 h-9 text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+        <div className="relative"><Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Buscar por OS, cliente ou equipamento..." className="pl-9 h-9 text-xs bg-muted/30 border-border/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
 
         {/* List */}
-        <Card className="shadow-soft">
-          <CardHeader><CardTitle>Lista de Ordens de Serviço</CardTitle></CardHeader>
+        <Card className="shadow-soft border-border/50">
+          <CardHeader className="pb-2 px-4 pt-4"><CardTitle className="text-sm">Lista de Ordens de Serviço</CardTitle></CardHeader>
           <CardContent>
             {loading ? (
               <div className="flex items-center justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
             ) : filteredOrdens.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground"><FileText className="h-12 w-12 mx-auto mb-4 opacity-50" /><p>Nenhuma ordem de serviço encontrada</p></div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {filteredOrdens.map((os) => (
-                  <div key={os.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                  <div key={os.id} className="border border-border/50 rounded-lg p-3 hover:bg-muted/30 transition-colors">
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -1016,7 +1016,7 @@ export default function OrdensServico() {
                     {cobrarLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
                     Cobrar
                   </Button>
-                  <Button onClick={handleWhatsApp} className="bg-[hsl(142,70%,45%)] hover:bg-[hsl(142,70%,38%)] text-white">
+                  <Button onClick={handleWhatsApp} className="bg-success hover:bg-success/90 text-success-foreground">
                     <MessageCircle className="mr-2 h-4 w-4" />Enviar WhatsApp
                   </Button>
                 </div>

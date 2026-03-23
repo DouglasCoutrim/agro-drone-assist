@@ -73,14 +73,18 @@ const Index = () => {
         if (token) {
           const res = await fetch(`https://${projectId}.supabase.co/functions/v1/asaas?action=list_payments&status=OVERDUE`, { headers: { 'Authorization': `Bearer ${token}`, 'apikey': anonKey } });
           const result = await res.json();
-          setOverduePayments(result.data || []);
+          setOverduePayments(result?.data || []);
         }
-      } catch { /* silent */ }
+      } catch { /* silent - asaas may not be configured */ }
 
       setStats({ osAbertas: osAbertas?.length || 0, osConcluidas: osConcluidas?.length || 0, itensEstoqueBaixo, totalClientes: totalClientes || 0, faturamentoMes });
       setRecentOS(recentOSData || []);
       setOverdueOS(overdueOSData || []);
-    } catch (error) { console.error('Error:', error); } finally { setLoading(false); }
+    } catch (error) {
+      console.error('Dashboard error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -96,10 +100,10 @@ const Index = () => {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold flex items-center gap-2"><Zap className="h-5 w-5 text-primary" />Dashboard</h1>
+            <h1 className="text-lg font-bold flex items-center gap-2"><Zap className="h-5 w-5 text-primary" />Dashboard</h1>
             <p className="text-xs text-muted-foreground">Visão geral da oficina</p>
           </div>
-          <Button size="sm" className="gradient-primary" onClick={() => navigate('/ordens-servico')}>
+          <Button size="sm" className="gradient-primary shadow-soft" onClick={() => navigate('/ordens-servico')}>
             <Plus className="mr-1.5 h-3.5 w-3.5" />Nova OS
           </Button>
         </div>
@@ -112,24 +116,25 @@ const Index = () => {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">
-          <Card className="lg:col-span-2 shadow-soft">
+          {/* Recent OS */}
+          <Card className="lg:col-span-2 shadow-soft border-border/50">
             <CardHeader className="pb-2 px-4 pt-4"><CardTitle className="text-sm flex items-center gap-1.5"><Clock className="h-4 w-4 text-primary" />OS Recentes</CardTitle></CardHeader>
             <CardContent className="px-4 pb-4">
               {loading ? (
                 <div className="flex items-center justify-center py-6"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div></div>
               ) : recentOS.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground">
-                  <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" /><p className="text-sm">Nenhuma OS encontrada</p>
+                  <FileText className="h-8 w-8 mx-auto mb-2 opacity-30" /><p className="text-sm">Nenhuma OS encontrada</p>
                   <Button variant="outline" size="sm" className="mt-2" onClick={() => navigate('/ordens-servico')}>Criar primeira OS</Button>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {recentOS.map((os) => (
-                    <div key={os.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setViewingOS(os)}>
+                    <div key={os.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border/40 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setViewingOS(os)}>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-medium text-primary">{os.numero}</p>
-                          <p className="text-xs text-muted-foreground truncate">{os.clientes?.nome}</p>
+                          <p className="text-xs text-muted-foreground truncate">{os.clientes?.nome || 'Cliente'}</p>
                         </div>
                         <p className="text-[10px] text-muted-foreground">{TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento}</p>
                       </div>
@@ -141,7 +146,8 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="shadow-soft">
+          {/* Alerts */}
+          <Card className="shadow-soft border-border/50">
             <CardHeader className="pb-2 px-4 pt-4"><CardTitle className="text-sm flex items-center gap-1.5"><AlertTriangle className="h-4 w-4 text-warning" />Alertas</CardTitle></CardHeader>
             <CardContent className="px-4 pb-4">
               <div className="space-y-2">
@@ -149,7 +155,7 @@ const Index = () => {
                   <div className="rounded-lg border-l-2 border-l-destructive bg-destructive/5 p-2.5 cursor-pointer hover:bg-destructive/10 transition-colors" onClick={() => navigate('/ordens-servico')}>
                     <p className="text-xs font-medium text-destructive">🔴 {overdueOS.length} OS em Atraso</p>
                     {overdueOS.slice(0, 2).map(os => (
-                      <p key={os.id} className="text-[10px] text-muted-foreground mt-0.5">• {os.numero} - {os.clientes?.nome}</p>
+                      <p key={os.id} className="text-[10px] text-muted-foreground mt-0.5">• {os.numero} - {os.clientes?.nome || 'N/A'}</p>
                     ))}
                   </div>
                 )}
@@ -157,7 +163,7 @@ const Index = () => {
                   <div className="rounded-lg border-l-2 border-l-destructive bg-destructive/5 p-2.5 cursor-pointer hover:bg-destructive/10 transition-colors" onClick={() => navigate('/cobrancas')}>
                     <p className="text-xs font-medium text-destructive">💰 {overduePayments.length} Cobranças Vencidas</p>
                     <p className="text-[10px] text-destructive font-medium mt-0.5">
-                      Total: {formatCurrency(overduePayments.reduce((a: number, p: any) => a + p.value, 0))}
+                      Total: {formatCurrency(overduePayments.reduce((a: number, p: any) => a + (p?.value || 0), 0))}
                     </p>
                   </div>
                 )}
@@ -176,29 +182,30 @@ const Index = () => {
           </Card>
         </div>
 
-        <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
-          <Card className="shadow-soft card-hover cursor-pointer" onClick={() => navigate('/financeiro')}>
+        {/* Quick Access Cards */}
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+          <Card className="shadow-soft border-border/50 card-hover cursor-pointer" onClick={() => navigate('/financeiro')}>
             <CardContent className="p-3">
               <div className="flex items-center gap-2 mb-2"><TrendingUp className="h-4 w-4 text-primary" /><span className="text-xs font-medium">Performance</span></div>
-              <div className="space-y-1.5 text-xs">
+              <div className="space-y-1 text-xs">
                 <div className="flex justify-between"><span className="text-muted-foreground">Clientes</span><span className="font-medium">{stats.totalClientes}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">OS Total</span><span className="font-medium">{stats.osAbertas + stats.osConcluidas}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Taxa Conclusão</span><span className="font-medium">{stats.osAbertas + stats.osConcluidas > 0 ? Math.round((stats.osConcluidas / (stats.osAbertas + stats.osConcluidas)) * 100) : 0}%</span></div>
               </div>
             </CardContent>
           </Card>
-          <Card className="shadow-soft card-hover cursor-pointer" onClick={() => navigate('/estoque')}>
+          <Card className="shadow-soft border-border/50 card-hover cursor-pointer" onClick={() => navigate('/estoque')}>
             <CardContent className="p-3">
               <div className="flex items-center gap-2 mb-2"><Package className="h-4 w-4 text-primary" /><span className="text-xs font-medium">Estoque</span></div>
-              <div className="space-y-1.5 text-xs">
+              <div className="space-y-1 text-xs">
                 <div className="flex justify-between"><span className="text-muted-foreground">Em Alerta</span><span className="font-medium text-destructive">{stats.itensEstoqueBaixo}</span></div>
               </div>
             </CardContent>
           </Card>
-          <Card className="shadow-soft card-hover cursor-pointer" onClick={() => navigate('/clientes')}>
+          <Card className="shadow-soft border-border/50 card-hover cursor-pointer" onClick={() => navigate('/clientes')}>
             <CardContent className="p-3">
               <div className="flex items-center gap-2 mb-2"><Users className="h-4 w-4 text-primary" /><span className="text-xs font-medium">Clientes</span></div>
-              <div className="space-y-1.5 text-xs">
+              <div className="space-y-1 text-xs">
                 <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-medium">{stats.totalClientes}</span></div>
               </div>
             </CardContent>
@@ -207,7 +214,7 @@ const Index = () => {
 
         {/* View OS Dialog */}
         <Dialog open={!!viewingOS} onOpenChange={(open) => { if (!open) setViewingOS(null); }}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center justify-between text-base">
                 <span>OS {viewingOS?.numero}</span>
@@ -218,11 +225,11 @@ const Index = () => {
             {viewingOS && (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div><p className="text-[10px] text-muted-foreground uppercase">Cliente</p><p className="text-sm font-medium">{viewingOS.clientes?.nome || "-"}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase">Equipamento</p><p className="text-sm">{TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase">Modelo</p><p className="text-sm">{viewingOS.modelo_equipamento || "-"}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase">Entrada</p><p className="text-sm">{formatDate(viewingOS.data_entrada)}</p></div>
-                  <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase">Defeito</p><p className="text-sm">{viewingOS.descricao_problema}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Cliente</p><p className="text-sm font-medium">{viewingOS.clientes?.nome || "-"}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Equipamento</p><p className="text-sm">{TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Modelo</p><p className="text-sm">{viewingOS.modelo_equipamento || "-"}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Entrada</p><p className="text-sm">{formatDate(viewingOS.data_entrada)}</p></div>
+                  <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Defeito</p><p className="text-sm">{viewingOS.descricao_problema}</p></div>
                 </div>
                 <Separator />
                 <div className="flex justify-end">
