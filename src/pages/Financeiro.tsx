@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DollarSign, TrendingUp, TrendingDown, Plus, CreditCard, Wallet, Receipt, Loader2, Edit, Trash2, Eye } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, Plus, CreditCard, Wallet, Receipt, Loader2, Edit, Trash2, Eye, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
@@ -25,6 +25,7 @@ export default function Financeiro() {
   const [editingTransacao, setEditingTransacao] = useState<Transacao | null>(null);
   const [viewingTransacao, setViewingTransacao] = useState<Transacao | null>(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [formData, setFormData] = useState({
     tipo: "receita" as Enums<"tipo_transacao">,
@@ -39,11 +40,17 @@ export default function Financeiro() {
       const { data, error } = await supabase.from('financeiro').select('*').order('data_transacao', { ascending: false });
       if (error) throw error;
       setTransacoes(data || []);
-    } catch { toast.error('Erro ao carregar transações'); } finally { setLoading(false); }
+    } catch {
+      toast.error('Erro ao carregar transações');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.descricao.trim()) { toast.error('Erro: Preencha a descrição'); return; }
+    if (!formData.valor || formData.valor <= 0) { toast.error('Erro: Informe um valor válido'); return; }
     if (!user) { toast.error('Usuário não autenticado'); return; }
     setFormLoading(true);
     try {
@@ -57,8 +64,14 @@ export default function Financeiro() {
         if (error) throw error;
         toast.success('Transação criada!');
       }
-      setDialogOpen(false); resetForm(); fetchTransacoes();
-    } catch (error: any) { toast.error('Erro: ' + error.message); } finally { setFormLoading(false); }
+      setDialogOpen(false);
+      resetForm();
+      fetchTransacoes();
+    } catch (error: any) {
+      toast.error('Erro ao salvar: ' + (error?.message || 'Tente novamente'));
+    } finally {
+      setFormLoading(false);
+    }
   };
 
   const handleEdit = (transacao: Transacao) => {
@@ -76,8 +89,11 @@ export default function Financeiro() {
     try {
       const { error } = await supabase.from('financeiro').delete().eq('id', id);
       if (error) throw error;
-      toast.success('Transação excluída!'); fetchTransacoes();
-    } catch (error: any) { toast.error('Erro: ' + error.message); }
+      toast.success('Transação excluída!');
+      fetchTransacoes();
+    } catch (error: any) {
+      toast.error('Erro ao excluir: ' + (error?.message || 'Tente novamente'));
+    }
   };
 
   const resetForm = () => {
@@ -95,36 +111,44 @@ export default function Financeiro() {
   const lucroLiquido = receitaMensal - despesaMensal - comissoesMensal;
 
   const getTipoConfig = (tipo: string) => {
-    const config: Record<string, { label: string; color: string }> = {
-      'receita': { label: 'Receita', color: 'text-success' }, 'despesa': { label: 'Despesa', color: 'text-destructive' },
-      'salario': { label: 'Salário', color: 'text-warning' }, 'comissao': { label: 'Comissão', color: 'text-primary' }
+    const config: Record<string, { label: string; color: string; badgeVariant: "default" | "secondary" | "outline" | "destructive" }> = {
+      'receita': { label: 'Receita', color: 'text-success', badgeVariant: 'default' },
+      'despesa': { label: 'Despesa', color: 'text-destructive', badgeVariant: 'destructive' },
+      'salario': { label: 'Salário', color: 'text-warning', badgeVariant: 'secondary' },
+      'comissao': { label: 'Comissão', color: 'text-primary', badgeVariant: 'outline' }
     };
-    return config[tipo] || { label: tipo, color: 'text-foreground' };
+    return config[tipo] || { label: tipo, color: 'text-foreground', badgeVariant: 'outline' as const };
   };
+
+  const filteredTransacoes = transacoes.filter(t =>
+    t.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    t.categoria?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    t.observacoes?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <MainLayout>
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-bold flex items-center gap-2"><DollarSign className="h-5 w-5 text-primary" />Financeiro</h1>
-            <p className="text-xs text-muted-foreground">Controle financeiro</p>
+            <h1 className="text-lg font-bold flex items-center gap-2"><DollarSign className="h-5 w-5 text-primary" />Financeiro</h1>
+            <p className="text-xs text-muted-foreground">Controle de receitas e despesas</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
-              <Button className="gradient-primary shadow-medium"><Plus className="mr-2 h-4 w-4" />Nova Transação</Button>
+              <Button size="sm" className="gradient-primary shadow-soft"><Plus className="mr-1.5 h-3.5 w-3.5" />Nova Transação</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>{editingTransacao ? 'Editar Transação' : 'Nova Transação'}</DialogTitle>
-                <DialogDescription>Registre uma nova transação financeira</DialogDescription>
+                <DialogTitle className="text-base">{editingTransacao ? 'Editar Transação' : 'Nova Transação'}</DialogTitle>
+                <DialogDescription className="text-xs">Registre uma nova transação financeira</DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Tipo *</Label>
+              <form onSubmit={handleSubmit} className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Tipo *</Label>
                     <Select value={formData.tipo} onValueChange={(value: Enums<"tipo_transacao">) => setFormData({ ...formData, tipo: value })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="receita">Receita</SelectItem>
                         <SelectItem value="despesa">Despesa</SelectItem>
@@ -133,16 +157,16 @@ export default function Financeiro() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2"><Label>Valor (R$) *</Label><Input type="number" step="0.01" value={formData.valor} onChange={(e) => setFormData({ ...formData, valor: Number(e.target.value) })} required /></div>
-                  <div className="col-span-2 space-y-2"><Label>Descrição *</Label><Input value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} required /></div>
-                  <div className="space-y-2"><Label>Categoria</Label><Input value={formData.categoria} onChange={(e) => setFormData({ ...formData, categoria: e.target.value })} placeholder="Ex: Serviços, Estoque" /></div>
-                  <div className="space-y-2"><Label>Data *</Label><Input type="date" value={formData.data_transacao} onChange={(e) => setFormData({ ...formData, data_transacao: e.target.value })} required /></div>
-                  <div className="col-span-2 space-y-2"><Label>Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
+                  <div className="space-y-1.5"><Label className="text-xs">Valor (R$) *</Label><Input type="number" step="0.01" className="h-9" value={formData.valor} onChange={(e) => setFormData({ ...formData, valor: Number(e.target.value) })} required /></div>
+                  <div className="sm:col-span-2 space-y-1.5"><Label className="text-xs">Descrição *</Label><Input className="h-9" value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} required /></div>
+                  <div className="space-y-1.5"><Label className="text-xs">Categoria</Label><Input className="h-9" value={formData.categoria} onChange={(e) => setFormData({ ...formData, categoria: e.target.value })} placeholder="Ex: Serviços, Estoque" /></div>
+                  <div className="space-y-1.5"><Label className="text-xs">Data *</Label><Input type="date" className="h-9" value={formData.data_transacao} onChange={(e) => setFormData({ ...formData, data_transacao: e.target.value })} required /></div>
+                  <div className="sm:col-span-2 space-y-1.5"><Label className="text-xs">Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
                 </div>
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                  <Button type="submit" className="gradient-primary" disabled={formLoading}>
-                    {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editingTransacao ? 'Salvar' : 'Criar'}
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+                  <Button type="submit" size="sm" className="gradient-primary" disabled={formLoading}>
+                    {formLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}{editingTransacao ? 'Salvar' : 'Criar'}
                   </Button>
                 </div>
               </form>
@@ -152,40 +176,45 @@ export default function Financeiro() {
 
         {/* Stats */}
         <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-          <Card className="shadow-soft"><CardContent className="p-3"><div className="flex items-center gap-2"><div className="p-1.5 rounded-md bg-success/10"><TrendingUp className="h-4 w-4 text-success" /></div><div><p className="text-[10px] text-muted-foreground">Receita</p><p className="text-lg font-bold text-success">{formatCurrency(receitaMensal)}</p></div></div></CardContent></Card>
-          <Card className="shadow-soft"><CardContent className="p-3"><div className="flex items-center gap-2"><div className="p-1.5 rounded-md bg-destructive/10"><CreditCard className="h-4 w-4 text-destructive" /></div><div><p className="text-[10px] text-muted-foreground">Despesas</p><p className="text-lg font-bold text-destructive">{formatCurrency(despesaMensal)}</p></div></div></CardContent></Card>
-          <Card className="shadow-soft"><CardContent className="p-3"><div className="flex items-center gap-2"><div className="p-1.5 rounded-md bg-primary/10"><Wallet className="h-4 w-4 text-primary" /></div><div><p className="text-[10px] text-muted-foreground">Lucro</p><p className={`text-lg font-bold ${lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>{formatCurrency(lucroLiquido)}</p></div></div></CardContent></Card>
-          <Card className="shadow-soft"><CardContent className="p-3"><div className="flex items-center gap-2"><div className="p-1.5 rounded-md bg-warning/10"><DollarSign className="h-4 w-4 text-warning" /></div><div><p className="text-[10px] text-muted-foreground">Comissões</p><p className="text-lg font-bold text-warning">{formatCurrency(comissoesMensal)}</p></div></div></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center gap-2.5"><div className="p-2 rounded-lg bg-success/10"><TrendingUp className="h-4 w-4 text-success" /></div><div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Receita</p><p className="text-base sm:text-lg font-bold text-success truncate">{formatCurrency(receitaMensal)}</p></div></div></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center gap-2.5"><div className="p-2 rounded-lg bg-destructive/10"><TrendingDown className="h-4 w-4 text-destructive" /></div><div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Despesas</p><p className="text-base sm:text-lg font-bold text-destructive truncate">{formatCurrency(despesaMensal)}</p></div></div></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center gap-2.5"><div className="p-2 rounded-lg bg-primary/10"><Wallet className="h-4 w-4 text-primary" /></div><div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Lucro</p><p className={`text-base sm:text-lg font-bold truncate ${lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>{formatCurrency(lucroLiquido)}</p></div></div></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center gap-2.5"><div className="p-2 rounded-lg bg-warning/10"><DollarSign className="h-4 w-4 text-warning" /></div><div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Comissões</p><p className="text-base sm:text-lg font-bold text-warning truncate">{formatCurrency(comissoesMensal)}</p></div></div></CardContent></Card>
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Buscar por descrição, categoria..." className="pl-9 h-9 text-xs bg-muted/30 border-border/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
 
         {/* List */}
-        <Card className="shadow-soft">
-          <CardHeader><CardTitle className="flex items-center gap-2"><Receipt className="h-5 w-5 text-primary" />Transações Recentes</CardTitle></CardHeader>
-          <CardContent>
+        <Card className="shadow-soft border-border/50">
+          <CardHeader className="pb-2 px-4 pt-4"><CardTitle className="text-sm flex items-center gap-1.5"><Receipt className="h-4 w-4 text-primary" />Transações Recentes</CardTitle></CardHeader>
+          <CardContent className="px-4 pb-4">
             {loading ? (
-              <div className="flex items-center justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-            ) : transacoes.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground"><Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" /><p>Nenhuma transação encontrada</p></div>
+              <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            ) : filteredTransacoes.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground"><Receipt className="h-10 w-10 mx-auto mb-3 opacity-30" /><p className="text-sm">{searchTerm ? 'Nenhuma transação encontrada' : 'Nenhuma transação cadastrada'}</p></div>
             ) : (
-              <div className="space-y-4">
-                {transacoes.slice(0, 20).map((transacao) => {
+              <div className="space-y-2">
+                {filteredTransacoes.slice(0, 30).map((transacao) => {
                   const tipoConfig = getTipoConfig(transacao.tipo);
                   return (
-                    <div key={transacao.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setViewingTransacao(transacao)}>
-                      <div className="space-y-1">
-                        <p className="font-medium">{transacao.descricao}</p>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">{tipoConfig.label}</Badge>
-                          {transacao.categoria && <Badge variant="secondary" className="text-xs">{transacao.categoria}</Badge>}
-                          <span className="text-xs text-muted-foreground">{new Date(transacao.data_transacao).toLocaleDateString('pt-BR')}</span>
+                    <div key={transacao.id} className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setViewingTransacao(transacao)}>
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{transacao.descricao}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Badge variant={tipoConfig.badgeVariant} className="text-[10px] h-5">{tipoConfig.label}</Badge>
+                          {transacao.categoria && <Badge variant="secondary" className="text-[10px] h-5">{transacao.categoria}</Badge>}
+                          <span className="text-[10px] text-muted-foreground">{new Date(transacao.data_transacao).toLocaleDateString('pt-BR')}</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <p className={`font-bold ${tipoConfig.color}`}>{transacao.tipo === 'receita' ? '+' : '-'}{formatCurrency(transacao.valor)}</p>
-                        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Button size="sm" variant="ghost" onClick={() => setViewingTransacao(transacao)}><Eye className="h-4 w-4" /></Button>
-                          <Button size="sm" variant="ghost" onClick={() => handleEdit(transacao)}><Edit className="h-4 w-4" /></Button>
-                          <Button size="sm" variant="ghost" onClick={() => handleDelete(transacao.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <p className={`text-sm font-bold ${tipoConfig.color}`}>{transacao.tipo === 'receita' ? '+' : '-'}{formatCurrency(transacao.valor)}</p>
+                        <div className="flex gap-0.5" onClick={(e) => e.stopPropagation()}>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleEdit(transacao)}><Edit className="h-3.5 w-3.5" /></Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(transacao.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                         </div>
                       </div>
                     </div>
@@ -198,22 +227,22 @@ export default function Financeiro() {
 
         {/* View Transaction Dialog */}
         <Dialog open={!!viewingTransacao} onOpenChange={(open) => { if (!open) setViewingTransacao(null); }}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>Detalhes da Transação</DialogTitle></DialogHeader>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader><DialogTitle className="text-base">Detalhes da Transação</DialogTitle></DialogHeader>
             {viewingTransacao && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2"><p className="text-xs text-muted-foreground">Descrição</p><p className="font-bold text-lg">{viewingTransacao.descricao}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Tipo</p><Badge variant="outline">{getTipoConfig(viewingTransacao.tipo).label}</Badge></div>
-                  <div><p className="text-xs text-muted-foreground">Valor</p><p className={`font-bold text-lg ${getTipoConfig(viewingTransacao.tipo).color}`}>{formatCurrency(viewingTransacao.valor)}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Categoria</p><p className="font-medium">{viewingTransacao.categoria || "-"}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Data</p><p className="font-medium">{new Date(viewingTransacao.data_transacao).toLocaleDateString('pt-BR')}</p></div>
-                  {viewingTransacao.observacoes && <div className="col-span-2"><p className="text-xs text-muted-foreground">Observações</p><p className="text-sm">{viewingTransacao.observacoes}</p></div>}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Descrição</p><p className="font-bold text-lg">{viewingTransacao.descricao}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Tipo</p><Badge variant={getTipoConfig(viewingTransacao.tipo).badgeVariant}>{getTipoConfig(viewingTransacao.tipo).label}</Badge></div>
+                  <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Valor</p><p className={`font-bold text-lg ${getTipoConfig(viewingTransacao.tipo).color}`}>{formatCurrency(viewingTransacao.valor)}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Categoria</p><p className="text-sm font-medium">{viewingTransacao.categoria || "-"}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Data</p><p className="text-sm font-medium">{new Date(viewingTransacao.data_transacao).toLocaleDateString('pt-BR')}</p></div>
+                  {viewingTransacao.observacoes && <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Observações</p><p className="text-sm">{viewingTransacao.observacoes}</p></div>}
                 </div>
                 <Separator />
                 <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => { handleEdit(viewingTransacao); setViewingTransacao(null); }}>
-                    <Edit className="mr-2 h-4 w-4" />Editar
+                  <Button variant="outline" size="sm" onClick={() => { handleEdit(viewingTransacao); setViewingTransacao(null); }}>
+                    <Edit className="mr-1.5 h-3.5 w-3.5" />Editar
                   </Button>
                 </div>
               </div>
