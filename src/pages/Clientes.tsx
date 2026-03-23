@@ -200,9 +200,9 @@ export default function Clientes() {
 
         {/* Stats */}
         <div className="grid gap-3 grid-cols-3">
-          <Card className="shadow-soft"><CardContent className="p-3 text-center"><p className="text-xl font-bold text-primary">{clientes.length}</p><p className="text-[10px] text-muted-foreground">Total</p></CardContent></Card>
-          <Card className="shadow-soft"><CardContent className="p-3 text-center"><p className="text-xl font-bold text-success">{clientes.filter(c => (c as any).asaas_id).length}</p><p className="text-[10px] text-muted-foreground">Sincronizados</p></CardContent></Card>
-          <Card className="shadow-soft"><CardContent className="p-3 text-center"><p className="text-xl font-bold text-warning">{clientes.filter(c => c.cpf_cnpj).length}</p><p className="text-[10px] text-muted-foreground">Com CPF/CNPJ</p></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3 text-center"><p className="text-lg font-bold text-primary">{clientes.length}</p><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Total</p></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3 text-center"><p className="text-lg font-bold text-success">{clientes.filter(c => (c as any).asaas_id).length}</p><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Sincronizados</p></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3 text-center"><p className="text-lg font-bold text-warning">{clientes.filter(c => c.cpf_cnpj).length}</p><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Com CPF/CNPJ</p></CardContent></Card>
         </div>
 
         {/* Search */}
