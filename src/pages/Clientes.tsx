@@ -44,43 +44,31 @@ export default function Clientes() {
 
   const createAsaasCustomer = async (clienteData: typeof formData, clienteId: string) => {
     try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
-      if (!token) return;
+      const { data: result, error } = await supabase.functions.invoke('asaas-customer-sync', {
+        body: {
+          nome: clienteData.nome,
+          email: clienteData.email,
+          telefone: clienteData.telefone,
+          cpf_cnpj: clienteData.cpf_cnpj,
+          cep: clienteData.cep,
+          endereco: clienteData.endereco,
+          cidade: clienteData.cidade,
+          clienteId,
+        },
+      });
 
-      const res = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/asaas?action=create_customer`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'apikey': anonKey,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: clienteData.nome,
-            email: clienteData.email || undefined,
-            phone: clienteData.telefone || undefined,
-            cpfCnpj: clienteData.cpf_cnpj || undefined,
-            postalCode: clienteData.cep?.replace(/\D/g, '') || undefined,
-            address: clienteData.endereco || undefined,
-            province: clienteData.cidade || undefined,
-            externalReference: clienteId,
-          }),
-        }
-      );
-      const result = await res.json();
-      if (result.id) {
-        await supabase.from('clientes').update({ asaas_id: result.id } as any).eq('id', clienteId);
-        toast.success('Cliente sincronizado com Asaas!');
-      } else if (result.errors) {
-        console.warn('Asaas sync warning:', result.errors);
-        toast.warning('Cliente criado localmente. Falha ao sincronizar com Asaas.');
+      if (error) throw error;
+
+      if (result?.asaas_id) {
+        await supabase.from('clientes').update({ asaas_id: result.asaas_id } as any).eq('id', clienteId);
+        toast.success(result.reused ? 'Cliente vinculado ao Asaas (já existente)!' : 'Cliente sincronizado com Asaas!');
+      } else if (result?.error) {
+        console.warn('Asaas sync warning:', result.error);
+        toast.warning('Cliente criado localmente. Asaas: ' + result.error);
       }
     } catch (err) {
       console.warn('Asaas sync failed:', err);
+      toast.warning('Cliente salvo. Sincronização Asaas pendente.');
     }
   };
 
