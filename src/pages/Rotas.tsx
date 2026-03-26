@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useOrganization } from "@/hooks/useOrganization";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, MapPin, Loader2, Edit, Trash2, Eye, MessageCircle, Navigation, DollarSign, Search, Route } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +32,7 @@ interface RotaDB {
 export default function Rotas() {
   const [rotas, setRotas] = useState<RotaDB[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const { organizationId } = useOrganization();
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRota, setEditingRota] = useState<RotaDB | null>(null);
@@ -86,7 +88,7 @@ export default function Rotas() {
     e.preventDefault();
     setFormLoading(true);
     try {
-      const payload = { ...formData, observacoes: formData.observacoes || null };
+      const payload = { ...formData, observacoes: formData.observacoes || null, organization_id: organizationId };
       if (editingRota) {
         const { error } = await supabase.from("rotas").update(payload).eq("id", editingRota.id);
         if (error) throw error;

@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
 import { SearchableInput } from "@/components/ui/searchable-input";
+import { useOrganization } from "@/hooks/useOrganization";
 
 type ItemEstoque = Tables<"itens_estoque">;
 
@@ -31,6 +32,7 @@ const DEFAULT_MARGIN = 30;
 
 export default function Estoque() {
   const [itens, setItens] = useState<ItemEstoque[]>([]);
+  const { organizationId } = useOrganization();
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -123,7 +125,7 @@ export default function Estoque() {
         if (error) throw error;
         toast.success('Item atualizado com sucesso!');
       } else {
-        const { error } = await supabase.from('itens_estoque').insert(formData);
+        const { error } = await supabase.from('itens_estoque').insert({ ...formData, organization_id: organizationId });
         if (error) throw error;
         toast.success('Item criado com sucesso!');
       }
