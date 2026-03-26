@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrganization } from "@/hooks/useOrganization";
 import { useNavigate } from "react-router-dom";
 
 type Cliente = Tables<"clientes">;
@@ -38,6 +39,7 @@ interface Orcamento {
 export default function Orcamentos() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { organizationId } = useOrganization();
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
