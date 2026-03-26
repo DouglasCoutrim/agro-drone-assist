@@ -207,6 +207,7 @@ export default function OrdensServico() {
           numero: "",
           tecnico_id: user.id,
           status: "recebido" as any,
+          organization_id: organizationId,
         });
         if (error) throw error;
         toast.success("OS criada com sucesso!");
