@@ -8,9 +8,11 @@ import { Building2, Save, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
+import { useOrganization } from "@/hooks/useOrganization";
 
 export default function EmpresaConfig() {
   const { config, loading: configLoading, refetch } = useEmpresaConfig();
+  const { organizationId } = useOrganization();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     nome_empresa: "Ares Agrotec",
@@ -46,7 +48,7 @@ export default function EmpresaConfig() {
       } else {
         const { error } = await supabase
           .from("empresa_config" as any)
-          .insert(form as any);
+          .insert({ ...form, organization_id: organizationId } as any);
         if (error) throw error;
       }
       toast.success("Configurações da empresa salvas!");
