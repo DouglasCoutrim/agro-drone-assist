@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { useOrganization } from "@/hooks/useOrganization";
 
 export default function Onboarding() {
   const { createOrganization } = useOrganization();
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [segmento, setSegmento] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,7 +24,8 @@ export default function Onboarding() {
     setLoading(true);
     try {
       await createOrganization(name.trim(), segmento);
-      toast.success("Oficina cadastrada com sucesso!");
+      toast.success("Oficina cadastrada! Configure os dados da sua empresa.");
+      navigate("/empresa", { replace: true });
     } catch (err: any) {
       toast.error("Erro ao cadastrar: " + (err?.message || "Tente novamente"));
     } finally {
