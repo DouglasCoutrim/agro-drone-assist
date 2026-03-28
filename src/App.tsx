@@ -23,6 +23,7 @@ import EmpresaConfig from "./pages/EmpresaConfig";
 import Orcamentos from "./pages/Orcamentos";
 import Rotas from "./pages/Rotas";
 import Onboarding from "./pages/Onboarding";
+import GodMode from "./pages/GodMode";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
                   <Route path="/configuracoes" element={<ProtectedRoute requiredRole="admin"><Configuracoes /></ProtectedRoute>} />
                   <Route path="/equipe" element={<ProtectedRoute requiredRole="admin"><Equipe /></ProtectedRoute>} />
                   <Route path="/empresa" element={<ProtectedRoute requiredRole="admin"><EmpresaConfig /></ProtectedRoute>} />
+                  <Route path="/god-mode" element={<ProtectedRoute skipOrgCheck><GodMode /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </EmpresaConfigProvider>
