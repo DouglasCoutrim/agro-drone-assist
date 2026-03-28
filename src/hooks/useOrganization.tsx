@@ -15,7 +15,7 @@ interface OrganizationContextType {
   organizationId: string | null;
   loading: boolean;
   needsOnboarding: boolean;
-  createOrganization: (name: string, segmento: string) => Promise<void>;
+  createOrganization: (name: string, segmento: string, telefone?: string) => Promise<void>;
   refetch: () => Promise<void>;
 }
 
@@ -83,7 +83,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     }
   }, [user, authLoading]);
 
-  const createOrganization = async (name: string, segmento: string) => {
+  const createOrganization = async (name: string, segmento: string, telefone?: string) => {
     if (!user) throw new Error("Usuário não autenticado");
 
     const slug = name
@@ -101,6 +101,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         slug,
         owner_id: user.id,
         settings: { segmento },
+        telefone: telefone || null,
       })
       .select("id")
       .single();
