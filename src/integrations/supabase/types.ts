@@ -82,6 +82,7 @@ export type Database = {
           logo_url: string | null
           nome_empresa: string
           organization_id: string | null
+          owner_id: string | null
           responsavel: string | null
           telefone: string | null
           updated_at: string
@@ -94,6 +95,7 @@ export type Database = {
           logo_url?: string | null
           nome_empresa?: string
           organization_id?: string | null
+          owner_id?: string | null
           responsavel?: string | null
           telefone?: string | null
           updated_at?: string
@@ -106,6 +108,7 @@ export type Database = {
           logo_url?: string | null
           nome_empresa?: string
           organization_id?: string | null
+          owner_id?: string | null
           responsavel?: string | null
           telefone?: string | null
           updated_at?: string
