@@ -14,6 +14,7 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [segmento, setSegmento] = useState("");
+  const [telefone, setTelefone] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,7 +24,7 @@ export default function Onboarding() {
 
     setLoading(true);
     try {
-      await createOrganization(name.trim(), segmento);
+      await createOrganization(name.trim(), segmento, telefone.trim() || undefined);
       toast.success("Oficina cadastrada! Configure os dados da sua empresa.");
       navigate("/empresa", { replace: true });
     } catch (err: any) {
@@ -73,6 +74,15 @@ export default function Onboarding() {
                   <SelectItem value="outro">Outro / Manutenção Geral</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Telefone</Label>
+              <Input
+                value={telefone}
+                onChange={(e) => setTelefone(e.target.value)}
+                placeholder="(00) 0 0000-0000"
+              />
             </div>
 
             <Button type="submit" className="w-full gradient-primary" disabled={loading}>

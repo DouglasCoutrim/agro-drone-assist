@@ -55,6 +55,7 @@ const App = () => (
                   <Route path="/equipe" element={<ProtectedRoute requiredRole="admin"><Equipe /></ProtectedRoute>} />
                   <Route path="/empresa" element={<ProtectedRoute requiredRole="admin"><EmpresaConfig /></ProtectedRoute>} />
                   <Route path="/god-mode" element={<ProtectedRoute skipOrgCheck><GodMode /></ProtectedRoute>} />
+                  <Route path="/admin-master" element={<ProtectedRoute skipOrgCheck><GodMode /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </EmpresaConfigProvider>

@@ -486,28 +486,34 @@ export type Database = {
       }
       organizations: {
         Row: {
+          active: boolean
           created_at: string
           id: string
           name: string
           owner_id: string
           settings: Json | null
           slug: string
+          telefone: string | null
         }
         Insert: {
+          active?: boolean
           created_at?: string
           id?: string
           name: string
           owner_id: string
           settings?: Json | null
           slug: string
+          telefone?: string | null
         }
         Update: {
+          active?: boolean
           created_at?: string
           id?: string
           name?: string
           owner_id?: string
           settings?: Json | null
           slug?: string
+          telefone?: string | null
         }
         Relationships: []
       }
