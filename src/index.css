@@ -2,34 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
-/* VoltControl - Professional Dark Theme */
+/* VoltControl - Professional Theme with Dark/Light support */
 
 @layer base {
   :root {
-    --background: 220 13% 8%;
-    --foreground: 210 20% 95%;
+    --background: 0 0% 100%;
+    --foreground: 220 13% 10%;
 
-    --card: 220 13% 11%;
-    --card-foreground: 210 20% 95%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 13% 10%;
 
-    --popover: 220 13% 11%;
-    --popover-foreground: 210 20% 95%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 13% 10%;
 
-    /* Primary - Verde Elétrico #39FF14 */
-    --primary: 110 100% 54%;
-    --primary-foreground: 0 0% 5%;
-    --primary-light: 110 100% 64%;
-    --primary-dark: 110 100% 40%;
+    /* Primary - Verde Elétrico */
+    --primary: 110 100% 35%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 110 80% 45%;
+    --primary-dark: 110 100% 28%;
 
     /* Secondary */
-    --secondary: 220 10% 16%;
-    --secondary-foreground: 210 15% 80%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 13% 20%;
 
-    --muted: 220 10% 14%;
-    --muted-foreground: 215 12% 50%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 12% 45%;
 
-    --accent: 220 10% 16%;
-    --accent-foreground: 110 100% 54%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 110 100% 35%;
 
     /* Status */
     --success: 142 76% 36%;
@@ -40,26 +40,26 @@
     --destructive-foreground: 0 0% 100%;
 
     /* Interface */
-    --border: 220 10% 16%;
-    --input: 220 10% 16%;
-    --ring: 110 100% 54%;
+    --border: 220 13% 90%;
+    --input: 220 13% 90%;
+    --ring: 110 100% 35%;
 
     --radius: 0.5rem;
 
     /* Shadows */
-    --shadow-soft: 0 1px 3px 0 hsl(0 0% 0% / 0.2), 0 1px 2px -1px hsl(0 0% 0% / 0.2);
-    --shadow-medium: 0 4px 6px -1px hsl(0 0% 0% / 0.3), 0 2px 4px -2px hsl(0 0% 0% / 0.3);
-    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.3), 0 4px 6px -4px hsl(0 0% 0% / 0.3);
+    --shadow-soft: 0 1px 3px 0 hsl(0 0% 0% / 0.08), 0 1px 2px -1px hsl(0 0% 0% / 0.08);
+    --shadow-medium: 0 4px 6px -1px hsl(0 0% 0% / 0.1), 0 2px 4px -2px hsl(0 0% 0% / 0.1);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.1), 0 4px 6px -4px hsl(0 0% 0% / 0.1);
 
     /* Sidebar */
-    --sidebar-background: 220 15% 6%;
-    --sidebar-foreground: 210 15% 85%;
-    --sidebar-primary: 110 100% 54%;
-    --sidebar-primary-foreground: 0 0% 5%;
-    --sidebar-accent: 220 10% 12%;
-    --sidebar-accent-foreground: 210 20% 95%;
-    --sidebar-border: 220 10% 14%;
-    --sidebar-ring: 110 100% 54%;
+    --sidebar-background: 220 14% 97%;
+    --sidebar-foreground: 220 13% 20%;
+    --sidebar-primary: 110 100% 35%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 93%;
+    --sidebar-accent-foreground: 220 13% 10%;
+    --sidebar-border: 220 13% 90%;
+    --sidebar-ring: 110 100% 35%;
   }
 
   .dark {
@@ -82,6 +82,11 @@
     --border: 220 10% 16%;
     --input: 220 10% 16%;
     --ring: 110 100% 54%;
+
+    --shadow-soft: 0 1px 3px 0 hsl(0 0% 0% / 0.2), 0 1px 2px -1px hsl(0 0% 0% / 0.2);
+    --shadow-medium: 0 4px 6px -1px hsl(0 0% 0% / 0.3), 0 2px 4px -2px hsl(0 0% 0% / 0.3);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.3), 0 4px 6px -4px hsl(0 0% 0% / 0.3);
+
     --sidebar-background: 220 15% 6%;
     --sidebar-foreground: 210 15% 85%;
     --sidebar-primary: 110 100% 54%;
@@ -109,7 +114,7 @@
 
 @layer components {
   .gradient-primary {
-    background: linear-gradient(135deg, hsl(var(--primary)), hsl(110 100% 44%));
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-dark)));
     @apply text-primary-foreground font-medium;
   }
 
