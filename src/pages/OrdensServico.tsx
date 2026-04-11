@@ -19,7 +19,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
 import { QuickClientModal } from "@/components/os/QuickClientModal";
 import { LegalTermsFooter, getLegalTermsHTML } from "@/components/os/LegalTermsFooter";
-import { useOrganization } from "@/hooks/useOrganization";
 
 type OrdemServico = Tables<"ordens_servico"> & { clientes: { nome: string; telefone?: string } | null };
 type Cliente = Tables<"clientes">;
@@ -75,7 +74,6 @@ const detectUiCategory = (os: any): string => {
 export default function OrdensServico() {
   const { user } = useAuth();
   const { config: empresa } = useEmpresaConfig();
-  const { organizationId } = useOrganization();
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -207,7 +205,6 @@ export default function OrdensServico() {
           numero: "",
           tecnico_id: user.id,
           status: "recebido" as any,
-          organization_id: organizationId,
         });
         if (error) throw error;
         toast.success("OS criada com sucesso!");

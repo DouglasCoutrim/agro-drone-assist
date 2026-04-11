@@ -13,7 +13,6 @@ import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
 import { useViaCep } from "@/hooks/useViaCep";
 import { UF_LIST } from "@/lib/constants";
-import { useOrganization } from "@/hooks/useOrganization";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Cliente = Tables<"clientes">;
@@ -22,7 +21,6 @@ export default function Clientes() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const { fetchCep, loading: cepLoading } = useViaCep();
-  const { organizationId } = useOrganization();
   const [searchTerm, setSearchTerm] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
@@ -87,7 +85,7 @@ export default function Clientes() {
           createAsaasCustomer(formData, editingCliente.id);
         }
       } else {
-        const { data, error } = await supabase.from('clientes').insert({ ...formData, organization_id: organizationId }).select('id').single();
+        const { data, error } = await supabase.from('clientes').insert(formData).select('id').single();
         if (error) throw error;
         toast.success('Cliente criado!');
         if (data?.id) createAsaasCustomer(formData, data.id);

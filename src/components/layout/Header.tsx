@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell, Search, Menu, LogOut, Zap } from "lucide-react";
+import { Bell, User, Search, Menu, LogOut, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,6 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
 import { supabase } from "@/integrations/supabase/client";
 
 interface HeaderProps { onMenuToggle?: () => void; }
@@ -19,7 +18,6 @@ export function Header({ onMenuToggle }: HeaderProps) {
   const { user, role, signOut } = useAuth();
   const navigate = useNavigate();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const { config } = useEmpresaConfig();
 
   useEffect(() => {
     if (user) {
@@ -29,8 +27,6 @@ export function Header({ onMenuToggle }: HeaderProps) {
   }, [user]);
 
   const handleSignOut = async () => { await signOut(); navigate('/auth'); };
-
-  const companyName = config?.nome_empresa || "VoltControl";
 
   const getRoleBadge = () => {
     switch (role) {
@@ -48,12 +44,8 @@ export function Header({ onMenuToggle }: HeaderProps) {
           <Menu className="h-4 w-4" />
         </Button>
         <div className="flex items-center gap-1.5 md:hidden">
-          {config?.logo_url ? (
-            <img src={config.logo_url} alt={companyName} className="h-5 w-auto" />
-          ) : (
-            <Zap className="h-4 w-4 text-primary" />
-          )}
-          <span className="text-sm font-bold text-primary">{companyName}</span>
+          <Zap className="h-4 w-4 text-primary" />
+          <span className="text-sm font-bold text-primary">VoltControl</span>
         </div>
         <div className="relative hidden md:block">
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />

@@ -18,7 +18,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
-import { useOrganization } from "@/hooks/useOrganization";
 import { useNavigate } from "react-router-dom";
 
 type Cliente = Tables<"clientes">;
@@ -39,7 +38,6 @@ interface Orcamento {
 export default function Orcamentos() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { organizationId } = useOrganization();
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,7 +80,7 @@ export default function Orcamentos() {
         if (error) throw error;
         toast.success("Orçamento atualizado!");
       } else {
-        const { error } = await supabase.from("orcamentos").insert({ ...formData, organization_id: organizationId });
+        const { error } = await supabase.from("orcamentos").insert(formData);
         if (error) throw error;
         toast.success("Orçamento criado!");
       }
@@ -123,7 +121,6 @@ export default function Orcamentos() {
         tecnico_id: user.id,
         status: "aprovado" as any,
         prioridade: "media",
-        organization_id: organizationId,
       }).select("id").single();
       if (osErr) throw osErr;
 

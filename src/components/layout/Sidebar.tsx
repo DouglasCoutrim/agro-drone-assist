@@ -5,16 +5,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
+import logo from "@/assets/logo.png";
 
 interface SidebarProps { className?: string; }
 
 export function Sidebar({ className }: SidebarProps) {
   const location = useLocation();
   const { role } = useAuth();
-  const { config } = useEmpresaConfig();
-
-  const companyName = config?.nome_empresa || "VoltControl";
 
   const menuItems = [
     { title: "Dashboard", icon: LayoutDashboard, href: "/", roles: ['admin', 'tecnico', 'consulta'] },
@@ -35,17 +32,11 @@ export function Sidebar({ className }: SidebarProps) {
 
   return (
     <div className={cn("flex h-full w-56 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border", className)}>
-      {/* Logo - White Label */}
+      {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 py-4">
-        {config?.logo_url ? (
-          <img src={config.logo_url} alt={companyName} className="h-7 w-auto max-w-[28px] object-contain" />
-        ) : (
-          <div className="h-7 w-7 rounded-md bg-primary/15 flex items-center justify-center">
-            <Zap className="h-4 w-4 text-primary" />
-          </div>
-        )}
+        <img src={logo} alt="Volt Control" className="h-7 w-auto" />
         <div>
-          <h2 className="text-sm font-bold text-primary leading-none tracking-tight truncate max-w-[140px]">{companyName}</h2>
+          <h2 className="text-sm font-bold text-primary leading-none tracking-tight">VoltControl</h2>
           <p className="text-[10px] text-sidebar-foreground/40 mt-0.5">Gestão de Oficina</p>
         </div>
       </div>

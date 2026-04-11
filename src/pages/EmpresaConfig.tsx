@@ -8,13 +8,9 @@ import { Building2, Save, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
-import { useOrganization } from "@/hooks/useOrganization";
-import { useAuth } from "@/hooks/useAuth";
 
 export default function EmpresaConfig() {
   const { config, loading: configLoading, refetch } = useEmpresaConfig();
-  const { organizationId } = useOrganization();
-  const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     nome_empresa: "Ares Agrotec",
@@ -50,11 +46,8 @@ export default function EmpresaConfig() {
       } else {
         const { error } = await supabase
           .from("empresa_config" as any)
-          .insert({ ...form, organization_id: organizationId, owner_id: user?.id } as any);
-        if (error) {
-          console.error("Erro RLS empresa_config INSERT:", error);
-          throw error;
-        }
+          .insert(form as any);
+        if (error) throw error;
       }
       toast.success("Configurações da empresa salvas!");
       await refetch();

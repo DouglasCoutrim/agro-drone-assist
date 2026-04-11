@@ -1,7 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useOrganization } from '@/hooks/useOrganization';
 import { Loader2, ShieldX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -10,15 +9,13 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: 'admin' | 'tecnico' | 'consulta';
   requiredPermission?: 'acesso_os' | 'acesso_estoque' | 'acesso_financeiro';
-  skipOrgCheck?: boolean;
 }
 
-export default function ProtectedRoute({ children, requiredRole, requiredPermission, skipOrgCheck }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, requiredRole, requiredPermission }: ProtectedRouteProps) {
   const { user, role, loading } = useAuth();
   const { permissions, loading: permsLoading } = usePermissions();
-  const { needsOnboarding, loading: orgLoading } = useOrganization();
 
-  if (loading || permsLoading || orgLoading) {
+  if (loading || permsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -31,11 +28,6 @@ export default function ProtectedRoute({ children, requiredRole, requiredPermiss
 
   if (!user) {
     return <Navigate to="/auth" replace />;
-  }
-
-  // Redirect to onboarding if no organization
-  if (!skipOrgCheck && needsOnboarding) {
-    return <Navigate to="/onboarding" replace />;
   }
 
   // Role hierarchy check

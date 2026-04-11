@@ -14,13 +14,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
-import { useOrganization } from "@/hooks/useOrganization";
 
 type Transacao = Tables<"financeiro">;
 
 export default function Financeiro() {
   const { user } = useAuth();
-  const { organizationId } = useOrganization();
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -56,7 +54,7 @@ export default function Financeiro() {
     if (!user) { toast.error('Usuário não autenticado'); return; }
     setFormLoading(true);
     try {
-      const transacaoData = { ...formData, usuario_id: user.id, observacoes: formData.observacoes || null, categoria: formData.categoria || null, organization_id: organizationId };
+      const transacaoData = { ...formData, usuario_id: user.id, observacoes: formData.observacoes || null, categoria: formData.categoria || null };
       if (editingTransacao) {
         const { error } = await supabase.from('financeiro').update(transacaoData).eq('id', editingTransacao.id);
         if (error) throw error;
