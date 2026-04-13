@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, Save, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Building2, Save, Loader2, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
@@ -19,6 +20,7 @@ export default function EmpresaConfig() {
     telefone: "61 9 91147599",
     responsavel: "Douglas",
     logo_url: "",
+    termos_servico: "",
   });
 
   useEffect(() => {
@@ -30,6 +32,7 @@ export default function EmpresaConfig() {
         telefone: config.telefone,
         responsavel: config.responsavel,
         logo_url: config.logo_url,
+        termos_servico: config.termos_servico || "",
       });
     }
   }, [config]);
@@ -152,6 +155,32 @@ export default function EmpresaConfig() {
             <Button className="gradient-primary shadow-medium" onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               Salvar Configurações
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Termos de Serviço */}
+        <Card className="shadow-soft max-w-2xl">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Termos de Serviço Padrão
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Este texto será enviado automaticamente via WhatsApp ao abrir uma nova OS.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Textarea
+              value={form.termos_servico}
+              onChange={(e) => setForm({ ...form, termos_servico: e.target.value })}
+              rows={12}
+              placeholder="TERMOS E CONDIÇÕES DE PRESTAÇÃO DE SERVIÇO&#10;&#10;1. DIAGNÓSTICO: O prazo de diagnóstico é de até 5 dias úteis...&#10;2. PAGAMENTO: O pagamento deve ser efetuado integralmente na aprovação...&#10;3. PRAZO DE RETIRADA: Equipamentos não retirados em 90 dias..."
+              className="font-mono text-xs leading-relaxed"
+            />
+            <Button className="gradient-primary shadow-medium" onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              Salvar Termos
             </Button>
           </CardContent>
         </Card>
