@@ -1,8 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell, User, Search, Menu, LogOut, Zap } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Bell, Search, LogOut } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -11,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
 
 interface HeaderProps { onMenuToggle?: () => void; }
 
@@ -21,52 +19,46 @@ export function Header({ onMenuToggle }: HeaderProps) {
 
   useEffect(() => {
     if (user) {
-      supabase.from('profiles').select('avatar_url').eq('id', user.id).maybeSingle()
+      supabase.from("profiles").select("avatar_url").eq("id", user.id).maybeSingle()
         .then(({ data }) => { if (data?.avatar_url) setAvatarUrl(data.avatar_url); });
     }
   }, [user]);
 
-  const handleSignOut = async () => { await signOut(); navigate('/auth'); };
+  const handleSignOut = async () => { await signOut(); navigate("/auth"); };
 
   const getRoleBadge = () => {
     switch (role) {
-      case 'admin': return <Badge className="bg-primary/20 text-primary text-[10px] px-1.5 py-0">Admin</Badge>;
-      case 'tecnico': return <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Técnico</Badge>;
-      case 'consulta': return <Badge variant="outline" className="text-[10px] px-1.5 py-0">Consulta</Badge>;
+      case "admin": return <Badge className="bg-primary/20 text-primary text-[10px] px-1.5 py-0">Admin</Badge>;
+      case "tecnico": return <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Técnico</Badge>;
+      case "consulta": return <Badge variant="outline" className="text-[10px] px-1.5 py-0">Consulta</Badge>;
       default: return null;
     }
   };
 
   return (
-    <header className="flex h-12 items-center justify-between border-b border-border bg-card px-4">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="md:hidden h-8 w-8" onClick={onMenuToggle}>
-          <Menu className="h-4 w-4" />
-        </Button>
-        <div className="flex items-center gap-1.5 md:hidden">
-          <Zap className="h-4 w-4 text-primary" />
-          <span className="text-sm font-bold text-primary">VoltControl</span>
-        </div>
-        <div className="relative hidden md:block">
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Buscar..." className="w-64 h-8 pl-8 text-sm bg-muted/50 border-0" />
-        </div>
+    <header className="hidden lg:flex h-16 items-center justify-between border-b border-border bg-card px-6">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          placeholder="Buscar..."
+          className="w-72 h-10 pl-10 pr-4 text-sm bg-background border border-border rounded-xl outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
+        />
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
         <ThemeToggle />
-        <Button variant="ghost" size="icon" className="relative h-8 w-8">
-          <Bell className="h-4 w-4" />
-        </Button>
+        <button className="w-9 h-9 rounded-lg border border-border bg-card text-muted-foreground flex items-center justify-center relative transition-all hover:bg-background hover:text-foreground">
+          <Bell size={16} />
+        </button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="gap-1.5 h-8 px-2">
-              <Avatar className="h-6 w-6">
+            <button className="flex items-center gap-2 h-9 px-2 rounded-lg hover:bg-muted transition-colors">
+              <Avatar className="h-7 w-7">
                 {avatarUrl ? <AvatarImage src={avatarUrl} alt="avatar" /> : null}
-                <AvatarFallback className="bg-primary/20 text-primary text-[10px]">{user?.email?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+                <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">{user?.email?.charAt(0)?.toUpperCase() || "U"}</AvatarFallback>
               </Avatar>
-              <span className="hidden md:inline text-xs">{user?.email?.split('@')[0]}</span>
+              <span className="text-sm font-medium">{user?.email?.split("@")[0]}</span>
               {getRoleBadge()}
-            </Button>
+            </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuLabel className="text-xs">{user?.email}</DropdownMenuLabel>
