@@ -953,7 +953,11 @@ Qualquer dúvida, estamos à disposição! 🔧`;
               </DialogTitle>
               <DialogDescription>Visualização da ordem de serviço</DialogDescription>
             </DialogHeader>
-            {viewingOS && (() => {
+            {/* Terms banner */}
+            <div className="rounded-lg bg-muted/50 border border-border/50 px-4 py-2.5 text-xs text-muted-foreground flex items-start gap-2">
+              <FileText className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
+              <span>Ao deixar seu equipamento em nossa assistência, você concorda com nossos <button className="underline text-primary hover:text-primary/80 font-medium" onClick={() => { const t = empresa.termos_servico; if (t) { const w = window.open("", "_blank"); if (w) { w.document.write(`<pre style="font-family:sans-serif;padding:40px;white-space:pre-wrap;max-width:700px;margin:0 auto">${t}</pre>`); w.document.close(); } } else { toast.info("Nenhum termo configurado. Acesse Configurações da Empresa."); } }}>termos de prestação de serviços</button>.</span>
+            </div>
               const obsText = viewingOS.observacoes || "";
               const mMatch = obsText.match(/\[MOBILIDADE:(\w+)\s*\|\s*Voltagem:(.*?)\s*\|\s*Bateria:(.*?)Ah\s*\|\s*Odômetro:(.*?)km\s*\|\s*Chave:(.*?)\s*\|\s*Carregador:(.*?)\s*\|\s*Checklist:(.*?)\]/);
               const hasMob = !!mMatch;
