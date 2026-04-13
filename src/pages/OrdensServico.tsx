@@ -1077,6 +1077,42 @@ Qualquer dúvida, estamos à disposição! 🔧`;
           </DialogContent>
         </Dialog>
 
+        {/* Terms WhatsApp Dialog */}
+        <Dialog open={termsDialogOpen} onOpenChange={(open) => { setTermsDialogOpen(open); if (!open) setLastCreatedOS(null); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <MessageCircle className="h-5 w-5 text-success" />
+                OS Criada com Sucesso!
+              </DialogTitle>
+              <DialogDescription>
+                Deseja enviar o termo de entrada e os dados da OS via WhatsApp para o cliente?
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              {lastCreatedOS && (
+                <div className="p-3 rounded-lg bg-muted/50 border border-border/50 text-sm space-y-1">
+                  <p><span className="text-muted-foreground">OS:</span> <span className="font-bold text-primary">{lastCreatedOS.numero}</span></p>
+                  <p><span className="text-muted-foreground">Cliente:</span> {clientes.find(c => c.id === lastCreatedOS.cliente_id)?.nome || "-"}</p>
+                  <p><span className="text-muted-foreground">Equipamento:</span> {TIPO_EQUIPAMENTO[lastCreatedOS.tipo_equipamento] || lastCreatedOS.tipo_equipamento}</p>
+                </div>
+              )}
+              {!empresa.termos_servico && (
+                <p className="text-xs text-warning">⚠️ Nenhum termo de serviço configurado. Configure em Configurações da Empresa.</p>
+              )}
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => { setTermsDialogOpen(false); setLastCreatedOS(null); }}>
+                  Pular
+                </Button>
+                <Button onClick={handleSendTermsWhatsApp} className="bg-success hover:bg-success/90 text-success-foreground">
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  Enviar via WhatsApp
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* Quick Client Modal */}
         <QuickClientModal
           open={quickClientOpen}
