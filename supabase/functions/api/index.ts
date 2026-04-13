@@ -12,6 +12,13 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 type AppRole = 'admin' | 'tecnico' | 'consulta';
 
+// Sanitize search input to prevent PostgREST filter injection
+function sanitizeSearch(input: string): string {
+  return input
+    .replace(/[^a-zA-Z0-9\s@.\-_()áéíóúãõçÀ-ÿ]/g, '')
+    .slice(0, 100);
+}
+
 async function getUserRole(supabase: any, userId: string): Promise<AppRole | null> {
   const { data } = await supabase
     .from('user_roles')
@@ -95,20 +102,7 @@ serve(async (req) => {
 
       default:
         return new Response(
-          JSON.stringify({ 
-            error: 'Resource not found',
-            available_endpoints: [
-              'GET /api/health',
-              'GET/POST /api/clientes',
-              'GET/PUT/DELETE /api/clientes/:id',
-              'GET/POST /api/ordens-servico',
-              'GET/PUT/DELETE /api/ordens-servico/:id',
-              'GET/POST /api/estoque',
-              'GET/PUT/DELETE /api/estoque/:id',
-              'GET/POST /api/financeiro',
-              'GET /api/dashboard'
-            ]
-          }),
+          JSON.stringify({ error: 'Resource not found' }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
     }
@@ -124,7 +118,6 @@ serve(async (req) => {
 async function handleClientes(req: Request, supabase: any, role: AppRole | null, id?: string) {
   const method = req.method;
 
-  // SELECT: admin and tecnico only
   if (method === 'GET') {
     if (!role || !['admin', 'tecnico'].includes(role)) return forbidden();
 
@@ -139,13 +132,16 @@ async function handleClientes(req: Request, supabase: any, role: AppRole | null,
     }
 
     const url = new URL(req.url);
-    const search = url.searchParams.get('search');
+    const rawSearch = url.searchParams.get('search');
     const limit = parseInt(url.searchParams.get('limit') || '50');
     const offset = parseInt(url.searchParams.get('offset') || '0');
 
     let query = supabase.from('clientes').select('*', { count: 'exact' });
-    if (search) {
-      query = query.or(`nome.ilike.%${search}%,email.ilike.%${search}%,telefone.ilike.%${search}%,cpf_cnpj.ilike.%${search}%`);
+    if (rawSearch) {
+      const search = sanitizeSearch(rawSearch);
+      if (search.length > 0) {
+        query = query.or(`nome.ilike.%${search}%,email.ilike.%${search}%,telefone.ilike.%${search}%,cpf_cnpj.ilike.%${search}%`);
+      }
     }
 
     const { data, error, count } = await query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
@@ -154,7 +150,6 @@ async function handleClientes(req: Request, supabase: any, role: AppRole | null,
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 
-  // INSERT/UPDATE: admin and tecnico
   if (method === 'POST') {
     if (!role || !['admin', 'tecnico'].includes(role)) return forbidden();
     const body = await req.json();
@@ -171,7 +166,6 @@ async function handleClientes(req: Request, supabase: any, role: AppRole | null,
     return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 
-  // DELETE: admin only
   if (method === 'DELETE' && id) {
     if (role !== 'admin') return forbidden();
     const { error } = await supabase.from('clientes').delete().eq('id', id);
@@ -187,7 +181,6 @@ async function handleOrdensServico(req: Request, supabase: any, role: AppRole | 
   const method = req.method;
 
   if (method === 'GET') {
-    // All authenticated users can view OS
     if (id) {
       const { data, error } = await supabase.from('ordens_servico')
         .select(`*, cliente:clientes(*), tecnico:profiles!ordens_servico_tecnico_id_fkey(id, nome, email)`)
@@ -202,14 +195,19 @@ async function handleOrdensServico(req: Request, supabase: any, role: AppRole | 
 
     const url = new URL(req.url);
     const status = url.searchParams.get('status');
-    const search = url.searchParams.get('search');
+    const rawSearch = url.searchParams.get('search');
     const limit = parseInt(url.searchParams.get('limit') || '50');
     const offset = parseInt(url.searchParams.get('offset') || '0');
 
     let query = supabase.from('ordens_servico')
       .select(`*, cliente:clientes(id, nome, telefone), tecnico:profiles!ordens_servico_tecnico_id_fkey(id, nome)`, { count: 'exact' });
     if (status) query = query.eq('status', status);
-    if (search) query = query.or(`numero.ilike.%${search}%,descricao_problema.ilike.%${search}%`);
+    if (rawSearch) {
+      const search = sanitizeSearch(rawSearch);
+      if (search.length > 0) {
+        query = query.or(`numero.ilike.%${search}%,descricao_problema.ilike.%${search}%`);
+      }
+    }
 
     const { data, error, count } = await query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
     if (error) throw error;
@@ -248,7 +246,6 @@ async function handleEstoque(req: Request, supabase: any, role: AppRole | null, 
   const method = req.method;
 
   if (method === 'GET') {
-    // All authenticated users can view estoque
     if (id) {
       const { data, error } = await supabase.from('itens_estoque').select('*').eq('id', id).maybeSingle();
       if (error) throw error;
@@ -261,13 +258,18 @@ async function handleEstoque(req: Request, supabase: any, role: AppRole | null, 
 
     const url = new URL(req.url);
     const categoria = url.searchParams.get('categoria');
-    const search = url.searchParams.get('search');
+    const rawSearch = url.searchParams.get('search');
     const limit = parseInt(url.searchParams.get('limit') || '50');
     const offset = parseInt(url.searchParams.get('offset') || '0');
 
     let query = supabase.from('itens_estoque').select('*', { count: 'exact' });
     if (categoria) query = query.eq('categoria', categoria);
-    if (search) query = query.or(`codigo.ilike.%${search}%,descricao.ilike.%${search}%`);
+    if (rawSearch) {
+      const search = sanitizeSearch(rawSearch);
+      if (search.length > 0) {
+        query = query.or(`codigo.ilike.%${search}%,descricao.ilike.%${search}%`);
+      }
+    }
 
     const { data, error, count } = await query.order('descricao', { ascending: true }).range(offset, offset + limit - 1);
     if (error) throw error;
@@ -306,7 +308,6 @@ async function handleFinanceiro(req: Request, supabase: any, role: AppRole | nul
   const method = req.method;
 
   if (method === 'GET') {
-    // admin full access, tecnico can view
     if (!role || !['admin', 'tecnico'].includes(role)) return forbidden();
 
     const url = new URL(req.url);
@@ -340,7 +341,6 @@ async function handleFinanceiro(req: Request, supabase: any, role: AppRole | nul
 }
 
 async function handleDashboard(supabase: any, role: AppRole | null) {
-  // All authenticated users can view dashboard
   const today = new Date();
   const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
   const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
@@ -359,7 +359,6 @@ async function handleDashboard(supabase: any, role: AppRole | null) {
   const { data: lowStock } = await supabase.from('itens_estoque').select('id, quantidade, estoque_minimo');
   const lowStockCount = lowStock?.filter((i: any) => i.quantidade <= i.estoque_minimo).length || 0;
 
-  // Revenue only for admin/tecnico
   let receitaMensal = 0;
   if (role && ['admin', 'tecnico'].includes(role)) {
     const { data: receitas } = await supabase.from('financeiro').select('valor')
