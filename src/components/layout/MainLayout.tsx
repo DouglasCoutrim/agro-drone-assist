@@ -1,6 +1,7 @@
 import { Sidebar } from "./Sidebar";
 import { MobileHeader } from "./MobileHeader";
 import { BottomNav } from "./BottomNav";
+import { GlobalSearch } from "@/components/GlobalSearch";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -28,6 +29,9 @@ export function MainLayout({ children }: MainLayoutProps) {
 
       {/* Mobile Bottom Nav */}
       <BottomNav />
+
+      {/* Global Search Overlay */}
+      <GlobalSearch />
     </div>
   );
 }

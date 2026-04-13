@@ -1,19 +1,21 @@
 import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Users, Search, Plus, Phone, Mail, MapPin, User, Building, Edit, Trash2, Loader2, Eye } from "lucide-react";
+import { Users, Search, Plus, Phone, Mail, MapPin, User, Building, Edit, Trash2, Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
 import { useViaCep } from "@/hooks/useViaCep";
 import { UF_LIST } from "@/lib/constants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { EmptyState } from "@/components/os/EmptyState";
+import { formatCpfCnpj, formatPhone, validateCpfCnpj, getErrorMessage } from "@/lib/formatters";
 
 type Cliente = Tables<"clientes">;
 
@@ -26,6 +28,7 @@ export default function Clientes() {
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [viewingCliente, setViewingCliente] = useState<Cliente | null>(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     nome: "", telefone: "", email: "", cpf_cnpj: "",
@@ -42,48 +45,43 @@ export default function Clientes() {
     } catch { toast.error('Erro ao carregar clientes'); } finally { setLoading(false); }
   };
 
+  const checkDuplicate = async (cpfCnpj: string) => {
+    if (!cpfCnpj || cpfCnpj.replace(/\D/g, '').length < 11) { setDuplicateWarning(null); return; }
+    const { data } = await supabase.from('clientes').select('id, nome').eq('cpf_cnpj', cpfCnpj).maybeSingle();
+    if (data && data.id !== editingCliente?.id) {
+      setDuplicateWarning(`Cliente já cadastrado: ${data.nome}`);
+    } else {
+      setDuplicateWarning(null);
+    }
+  };
+
   const createAsaasCustomer = async (clienteData: typeof formData, clienteId: string) => {
     try {
       const { data: result, error } = await supabase.functions.invoke('asaas-customer-sync', {
-        body: {
-          nome: clienteData.nome,
-          email: clienteData.email,
-          telefone: clienteData.telefone,
-          cpf_cnpj: clienteData.cpf_cnpj,
-          cep: clienteData.cep,
-          endereco: clienteData.endereco,
-          cidade: clienteData.cidade,
-          clienteId,
-        },
+        body: { nome: clienteData.nome, email: clienteData.email, telefone: clienteData.telefone, cpf_cnpj: clienteData.cpf_cnpj, cep: clienteData.cep, endereco: clienteData.endereco, cidade: clienteData.cidade, clienteId },
       });
-
       if (error) throw error;
-
       if (result?.asaas_id) {
         await supabase.from('clientes').update({ asaas_id: result.asaas_id } as any).eq('id', clienteId);
-        toast.success(result.reused ? 'Cliente vinculado ao Asaas (já existente)!' : 'Cliente sincronizado com Asaas!');
+        toast.success(result.reused ? 'Cliente vinculado ao Asaas!' : 'Sincronizado com Asaas!');
       } else if (result?.error) {
-        console.warn('Asaas sync warning:', result.error);
-        toast.warning('Cliente criado localmente. Asaas: ' + result.error);
+        toast.warning('Sincronização Asaas pendente.');
       }
-    } catch (err) {
-      console.warn('Asaas sync failed:', err);
-      toast.warning('Cliente salvo. Sincronização Asaas pendente.');
-    }
+    } catch { toast.warning('Cliente salvo. Sincronização Asaas pendente.'); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (formData.nome.length < 3) { toast.error("Nome muito curto (mínimo 3 caracteres)"); return; }
+    if (!formData.telefone) { toast.error("Informe o telefone"); return; }
+    
     setFormLoading(true);
     try {
       if (editingCliente) {
         const { error } = await supabase.from('clientes').update(formData).eq('id', editingCliente.id);
         if (error) throw error;
         toast.success('Cliente atualizado!');
-        // Re-sync with Asaas if no asaas_id yet
-        if (!(editingCliente as any).asaas_id) {
-          createAsaasCustomer(formData, editingCliente.id);
-        }
+        if (!(editingCliente as any).asaas_id) createAsaasCustomer(formData, editingCliente.id);
       } else {
         const { data, error } = await supabase.from('clientes').insert(formData).select('id').single();
         if (error) throw error;
@@ -91,7 +89,7 @@ export default function Clientes() {
         if (data?.id) createAsaasCustomer(formData, data.id);
       }
       setDialogOpen(false); resetForm(); fetchClientes();
-    } catch (error: any) { toast.error('Erro: ' + error.message); } finally { setFormLoading(false); }
+    } catch (error: any) { toast.error(getErrorMessage(error)); } finally { setFormLoading(false); }
   };
 
   const handleEdit = (cliente: Cliente) => {
@@ -102,21 +100,23 @@ export default function Clientes() {
       cidade: cliente.cidade || "", estado: cliente.estado || "",
       cep: cliente.cep || "", observacoes: cliente.observacoes || ""
     });
+    setDuplicateWarning(null);
     setDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Excluir este cliente?')) return;
+    if (!confirm('Excluir este cliente? Esta ação não pode ser desfeita.')) return;
     try {
       const { error } = await supabase.from('clientes').delete().eq('id', id);
       if (error) throw error;
       toast.success('Cliente excluído!'); fetchClientes();
-    } catch (error: any) { toast.error('Erro: ' + error.message); }
+    } catch (error: any) { toast.error(getErrorMessage(error)); }
   };
 
   const resetForm = () => {
     setFormData({ nome: "", telefone: "", email: "", cpf_cnpj: "", endereco: "", cidade: "", estado: "", cep: "", observacoes: "" });
     setEditingCliente(null);
+    setDuplicateWarning(null);
   };
 
   const filteredClientes = clientes.filter(c =>
@@ -131,7 +131,7 @@ export default function Clientes() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold flex items-center gap-2"><Users className="h-5 w-5 text-primary" />Clientes</h1>
+            <h1 className="text-lg font-bold font-display flex items-center gap-2"><Users className="h-5 w-5 text-primary" />Clientes</h1>
             <p className="text-xs text-muted-foreground">Cadastro e gestão de clientes</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
@@ -145,10 +145,38 @@ export default function Clientes() {
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="sm:col-span-2 space-y-1"><Label className="text-xs">Nome *</Label><Input value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required className="h-9" /></div>
-                  <div className="space-y-1"><Label className="text-xs">Telefone *</Label><Input value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} required className="h-9" /></div>
-                  <div className="space-y-1"><Label className="text-xs">E-mail</Label><Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="h-9" /></div>
-                  <div className="space-y-1"><Label className="text-xs">CPF/CNPJ</Label><Input value={formData.cpf_cnpj} onChange={(e) => setFormData({ ...formData, cpf_cnpj: e.target.value })} className="h-9" /></div>
+                  <div className="sm:col-span-2 space-y-1">
+                    <Label className="text-xs">Nome *</Label>
+                    <Input value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required className="h-9" minLength={3} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Telefone *</Label>
+                    <Input
+                      value={formData.telefone}
+                      onChange={(e) => setFormData({ ...formData, telefone: formatPhone(e.target.value) })}
+                      required className="h-9"
+                      placeholder="(99) 99999-9999"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">E-mail</Label>
+                    <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="h-9" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">CPF/CNPJ</Label>
+                    <Input
+                      value={formData.cpf_cnpj}
+                      onChange={(e) => setFormData({ ...formData, cpf_cnpj: formatCpfCnpj(e.target.value) })}
+                      onBlur={() => checkDuplicate(formData.cpf_cnpj)}
+                      className="h-9"
+                      placeholder="000.000.000-00"
+                    />
+                    {duplicateWarning && (
+                      <p className="text-xs text-amber-600 flex items-center gap-1 mt-1">
+                        <AlertTriangle className="h-3 w-3" />{duplicateWarning}
+                      </p>
+                    )}
+                  </div>
                   <div className="space-y-1">
                     <Label className="text-xs">CEP</Label>
                     <div className="relative">
@@ -189,8 +217,8 @@ export default function Clientes() {
         {/* Stats */}
         <div className="grid gap-3 grid-cols-3">
           <Card className="shadow-soft border-border/50"><CardContent className="p-3 text-center"><p className="text-lg font-bold text-primary">{clientes.length}</p><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Total</p></CardContent></Card>
-          <Card className="shadow-soft border-border/50"><CardContent className="p-3 text-center"><p className="text-lg font-bold text-success">{clientes.filter(c => (c as any).asaas_id).length}</p><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Sincronizados</p></CardContent></Card>
-          <Card className="shadow-soft border-border/50"><CardContent className="p-3 text-center"><p className="text-lg font-bold text-warning">{clientes.filter(c => c.cpf_cnpj).length}</p><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Com CPF/CNPJ</p></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3 text-center"><p className="text-lg font-bold text-primary">{clientes.filter(c => (c as any).asaas_id).length}</p><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Sincronizados</p></CardContent></Card>
+          <Card className="shadow-soft border-border/50"><CardContent className="p-3 text-center"><p className="text-lg font-bold text-primary">{clientes.filter(c => c.cpf_cnpj).length}</p><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Com CPF/CNPJ</p></CardContent></Card>
         </div>
 
         {/* Search */}
@@ -205,14 +233,20 @@ export default function Clientes() {
             {loading ? (
               <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
             ) : filteredClientes.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground"><Users className="h-10 w-10 mx-auto mb-3 opacity-50" /><p className="text-sm">Nenhum cliente encontrado</p></div>
+              <EmptyState
+                icon={Users}
+                title={searchTerm ? "Nenhum cliente encontrado" : "Nenhum cliente cadastrado"}
+                description={searchTerm ? "Tente buscar com outros termos." : "Cadastre seu primeiro cliente para criar ordens de serviço."}
+                actionLabel={searchTerm ? undefined : "Cadastrar primeiro cliente"}
+                onAction={searchTerm ? undefined : () => setDialogOpen(true)}
+              />
             ) : (
               <div className="divide-y divide-border">
                 {filteredClientes.map((cliente) => (
                   <div key={cliente.id} className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setViewingCliente(cliente)}>
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="p-1.5 rounded-full bg-primary/10 shrink-0">
-                        {cliente.cpf_cnpj && cliente.cpf_cnpj.length > 14 ? <Building className="h-3.5 w-3.5 text-primary" /> : <User className="h-3.5 w-3.5 text-primary" />}
+                        {cliente.cpf_cnpj && cliente.cpf_cnpj.replace(/\D/g, '').length > 11 ? <Building className="h-3.5 w-3.5 text-primary" /> : <User className="h-3.5 w-3.5 text-primary" />}
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{cliente.nome}</p>
