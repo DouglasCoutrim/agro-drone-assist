@@ -185,8 +185,12 @@ export default function Configuracoes() {
             <Card className="shadow-soft">
               <CardHeader><CardTitle className="flex items-center gap-2"><Shield className="h-5 w-5 text-primary" />Segurança</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <Button variant="outline" className="w-full justify-start"><Key className="mr-2 h-4 w-4" />Alterar Senha</Button>
-                <Button variant="outline" className="w-full justify-start"><Shield className="mr-2 h-4 w-4" />Sessões Ativas</Button>
+                <Button variant="outline" className="w-full justify-start" onClick={async () => {
+                  const { error } = await supabase.auth.resetPasswordForEmail(profile?.email || '', { redirectTo: window.location.origin });
+                  if (error) toast.error('Erro: ' + error.message);
+                  else toast.success('E-mail de redefinição enviado!');
+                }}><Key className="mr-2 h-4 w-4" />Alterar Senha</Button>
+                <Button variant="outline" className="w-full justify-start" onClick={() => toast.info('Você está na sessão atual. Para encerrar outras sessões, altere sua senha.')}><Shield className="mr-2 h-4 w-4" />Sessões Ativas</Button>
               </CardContent>
             </Card>
             <Card className="shadow-soft">
