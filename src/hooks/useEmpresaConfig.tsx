@@ -39,7 +39,7 @@ export function EmpresaConfigProvider({ children }: { children: ReactNode }) {
         .from("empresa_config" as any)
         .select("*")
         .limit(1)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       if (data) setConfig(data as any);
     } catch {

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { 
   FileText, Package, DollarSign, AlertTriangle, TrendingUp, Clock, CheckCircle, Users, Plus, Zap, Eye
@@ -108,12 +109,20 @@ const Index = () => {
           </Button>
         </div>
 
+        {loading ? (
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+            {[1,2,3,4].map(i => (
+              <Card key={i} className="shadow-soft border-border/50"><CardContent className="p-3 sm:p-4"><div className="space-y-2"><Skeleton className="h-3 w-20" /><Skeleton className="h-6 w-16" /></div></CardContent></Card>
+            ))}
+          </div>
+        ) : (
         <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
           <StatsCard title="OS Abertas" value={stats.osAbertas.toString()} icon={FileText} variant="warning" onClick={() => navigate('/ordens-servico')} />
           <StatsCard title="Concluídas" value={stats.osConcluidas.toString()} icon={CheckCircle} variant="success" onClick={() => navigate('/ordens-servico')} />
           <StatsCard title="Estoque Baixo" value={stats.itensEstoqueBaixo.toString()} icon={AlertTriangle} variant="destructive" onClick={() => navigate('/estoque')} />
           <StatsCard title="Faturamento" value={formatCurrency(stats.faturamentoMes)} icon={DollarSign} variant="success" onClick={() => navigate('/financeiro')} />
         </div>
+        )}
 
         <div className="grid gap-4 lg:grid-cols-3">
           {/* Recent OS */}
