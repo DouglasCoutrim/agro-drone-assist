@@ -530,6 +530,46 @@ export default function OrdensServico() {
     setEditingOS(null);
   };
 
+  const handleSendTermsWhatsApp = () => {
+    if (!lastCreatedOS) return;
+    const cliente = clientes.find(c => c.id === lastCreatedOS.cliente_id);
+    if (!cliente) { toast.error("Cliente não encontrado"); return; }
+    const telefone = cliente.telefone || "";
+    const cleanPhone = telefone.replace(/\D/g, "");
+    const phone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
+
+    const equipamento = TIPO_EQUIPAMENTO[uiCategory] || TIPO_EQUIPAMENTO[lastCreatedOS.tipo_equipamento] || lastCreatedOS.tipo_equipamento;
+    const modelo = lastCreatedOS.modelo_equipamento ? ` - ${lastCreatedOS.modelo_equipamento}` : "";
+    const nomeEmpresa = empresa.nome_empresa || "Volt Control";
+    const appUrl = window.location.origin;
+
+    const termos = empresa.termos_servico
+      ? `\n\n📋 *TERMOS DE SERVIÇO:*\n${empresa.termos_servico}`
+      : "";
+
+    const texto = `Olá, *${cliente.nome}*! 👋
+
+Aqui é da *${nomeEmpresa}*.
+
+Recebemos o seu equipamento: *${equipamento}${modelo}*.
+
+Sua Ordem de Serviço é a nº *${lastCreatedOS.numero}*.
+
+*INFORMAÇÕES IMPORTANTES:*
+
+• Nosso prazo de diagnóstico é de até 5 dias úteis.
+• O pagamento é realizado integralmente na aprovação/retirada.
+• Aceitamos Pix, Cartão e Dinheiro.
+• Ao deixar seu equipamento, você concorda com nossos termos de serviço.
+${termos}
+
+Qualquer dúvida, estamos à disposição! 🔧`;
+
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(texto)}`, "_blank");
+    setTermsDialogOpen(false);
+    setLastCreatedOS(null);
+  };
+
   const getStatusLabel = (status: string) => STATUS_CONFIG[status]?.label || status;
   const getStatusBadge = (status: string) => {
     const c = STATUS_CONFIG[status] || { label: status, variant: "outline" as const };
