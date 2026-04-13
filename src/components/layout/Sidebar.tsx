@@ -1,75 +1,133 @@
 import { cn } from "@/lib/utils";
-import { 
-  LayoutDashboard, FileText, Package, BarChart3, DollarSign, Settings, Users, Zap, CreditCard, UsersRound, Building2, ClipboardList, Route
+import {
+  LayoutDashboard, FileText, Package, BarChart3, DollarSign, Settings,
+  Users, Zap, CreditCard, UsersRound, Building2, ClipboardList, Route, LogOut
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import logo from "@/assets/logo.png";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SidebarProps { className?: string; }
 
+const navSections = [
+  {
+    title: "PRINCIPAL",
+    items: [
+      { title: "Dashboard", icon: LayoutDashboard, href: "/", roles: ["admin", "tecnico", "consulta"] },
+      { title: "Ordens de Serviço", icon: FileText, href: "/ordens-servico", roles: ["admin", "tecnico", "consulta"] },
+      { title: "Clientes", icon: Users, href: "/clientes", roles: ["admin", "tecnico", "consulta"] },
+    ],
+  },
+  {
+    title: "GESTÃO",
+    items: [
+      { title: "Estoque", icon: Package, href: "/estoque", roles: ["admin", "tecnico", "consulta"] },
+      { title: "Financeiro", icon: DollarSign, href: "/financeiro", roles: ["admin", "tecnico"] },
+      { title: "Cobranças", icon: CreditCard, href: "/cobrancas", roles: ["admin", "tecnico"] },
+      { title: "Orçamentos", icon: ClipboardList, href: "/orcamentos", roles: ["admin", "tecnico"] },
+      { title: "Rotas", icon: Route, href: "/rotas", roles: ["admin", "tecnico"] },
+      { title: "Relatórios", icon: BarChart3, href: "/relatorios", roles: ["admin", "tecnico", "consulta"] },
+    ],
+  },
+  {
+    title: "SISTEMA",
+    items: [
+      { title: "Equipe", icon: UsersRound, href: "/equipe", roles: ["admin"] },
+      { title: "Empresa", icon: Building2, href: "/empresa", roles: ["admin"] },
+      { title: "Configurações", icon: Settings, href: "/configuracoes", roles: ["admin"] },
+    ],
+  },
+];
+
 export function Sidebar({ className }: SidebarProps) {
   const location = useLocation();
-  const { role } = useAuth();
+  const navigate = useNavigate();
+  const { role, user, signOut } = useAuth();
+  const [profile, setProfile] = useState<{ nome: string; avatar_url: string | null } | null>(null);
 
-  const menuItems = [
-    { title: "Dashboard", icon: LayoutDashboard, href: "/", roles: ['admin', 'tecnico', 'consulta'] },
-    { title: "Ordens de Serviço", icon: FileText, href: "/ordens-servico", roles: ['admin', 'tecnico', 'consulta'] },
-    { title: "Orçamentos", icon: ClipboardList, href: "/orcamentos", roles: ['admin', 'tecnico'] },
-    { title: "Estoque", icon: Package, href: "/estoque", roles: ['admin', 'tecnico', 'consulta'] },
-    { title: "Relatórios", icon: BarChart3, href: "/relatorios", roles: ['admin', 'tecnico', 'consulta'] },
-    { title: "Financeiro", icon: DollarSign, href: "/financeiro", roles: ['admin', 'tecnico'] },
-    { title: "Cobranças", icon: CreditCard, href: "/cobrancas", roles: ['admin', 'tecnico'] },
-    { title: "Rotas", icon: Route, href: "/rotas", roles: ['admin', 'tecnico'] },
-    { title: "Clientes", icon: Users, href: "/clientes", roles: ['admin', 'tecnico', 'consulta'] },
-    { title: "Equipe", icon: UsersRound, href: "/equipe", roles: ['admin'] },
-    { title: "Empresa", icon: Building2, href: "/empresa", roles: ['admin'] },
-    { title: "Configurações", icon: Settings, href: "/configuracoes", roles: ['admin'] },
-  ];
+  useEffect(() => {
+    if (user) {
+      supabase.from("profiles").select("nome, avatar_url").eq("id", user.id).maybeSingle()
+        .then(({ data }) => { if (data) setProfile(data); });
+    }
+  }, [user]);
 
-  const filteredMenuItems = menuItems.filter(item => role && item.roles.includes(role));
+  const handleSignOut = async () => { await signOut(); navigate("/auth"); };
+
+  const roleLabel = role === "admin" ? "Administrador" : role === "tecnico" ? "Técnico" : "Consulta";
+  const initials = profile?.nome?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "U";
 
   return (
-    <div className={cn("flex h-full w-56 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border", className)}>
+    <div className={cn(
+      "flex h-full flex-col bg-sidebar overflow-hidden flex-shrink-0",
+      className
+    )} style={{ width: "var(--sidebar-width)" }}>
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 py-4">
-        <img src={logo} alt="Volt Control" className="h-7 w-auto" />
+      <div className="flex items-center gap-2.5 px-5 py-5 border-b border-white/[0.06] mb-2">
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-emerald-500 flex items-center justify-center flex-shrink-0">
+          <Zap className="h-4 w-4 text-white" />
+        </div>
         <div>
-          <h2 className="text-sm font-bold text-primary leading-none tracking-tight">VoltControl</h2>
-          <p className="text-[10px] text-sidebar-foreground/40 mt-0.5">Gestão de Oficina</p>
+          <h2 className="font-display font-extrabold text-lg text-white leading-none tracking-tight">VoltControl</h2>
+          <p className="text-[10px] text-white/35 mt-0.5">Gestão de Oficina</p>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-2 py-1 space-y-0.5 overflow-y-auto">
-        {filteredMenuItems.map((item) => {
-          const isActive = location.pathname === item.href;
-          const Icon = item.icon;
+      <nav className="flex-1 px-3 py-1 space-y-1 overflow-y-auto scrollbar-thin">
+        {navSections.map((section) => {
+          const items = section.items.filter(item => role && item.roles.includes(role));
+          if (items.length === 0) return null;
           return (
-            <Button key={item.href} variant="ghost" className={cn(
-              "w-full justify-start gap-2.5 h-8 text-xs font-normal text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent rounded-md px-2.5 transition-all duration-150",
-              isActive && "bg-sidebar-accent text-primary font-medium border-l-2 border-primary rounded-l-none"
-            )} asChild>
-              <Link to={item.href}>
-                <Icon className={cn("h-3.5 w-3.5 shrink-0", isActive ? "text-primary" : "text-sidebar-foreground/50")} />
-                {item.title}
-              </Link>
-            </Button>
+            <div key={section.title}>
+              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-white/25 px-2 pt-3 pb-1 mt-2 first:mt-0">
+                {section.title}
+              </p>
+              {items.map((item) => {
+                const isActive = location.pathname === item.href;
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    className={cn(
+                      "relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-normal transition-all duration-150 border border-transparent",
+                      isActive
+                        ? "bg-primary/[0.12] text-emerald-400 font-medium border-emerald-400/15"
+                        : "text-white/60 hover:bg-white/[0.07] hover:text-white/90"
+                    )}
+                  >
+                    {isActive && (
+                      <span className="absolute left-0 top-[20%] bottom-[20%] w-[3px] bg-emerald-500 rounded-r-sm" />
+                    )}
+                    <Icon className={cn("h-4 w-4 shrink-0", isActive ? "opacity-100" : "opacity-70")} />
+                    {item.title}
+                  </Link>
+                );
+              })}
+            </div>
           );
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="border-t border-sidebar-border px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-md bg-primary/15">
-            <Zap className="h-3 w-3 text-primary" />
+      {/* User footer */}
+      <div className="border-t border-white/[0.06] px-3 py-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-[34px] h-[34px] rounded-lg bg-gradient-to-br from-primary to-emerald-800 flex items-center justify-center text-[13px] font-bold text-white flex-shrink-0">
+            {initials}
           </div>
-          <div>
-            <p className="text-[10px] font-medium text-sidebar-foreground/80">Sistema Online</p>
-            <p className="text-[9px] text-sidebar-foreground/30">v1.0.0</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-medium text-white/85 leading-tight truncate">{profile?.nome || user?.email?.split("@")[0]}</p>
+            <p className="text-[11px] text-white/35">{roleLabel}</p>
           </div>
+          <button
+            onClick={handleSignOut}
+            className="w-7 h-7 rounded flex items-center justify-center text-white/30 hover:text-destructive hover:bg-destructive/10 transition-all duration-150"
+            aria-label="Sair"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
     </div>

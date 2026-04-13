@@ -1,42 +1,33 @@
-import { useState } from "react";
 import { Sidebar } from "./Sidebar";
-import { Header } from "./Header";
-import { cn } from "@/lib/utils";
+import { MobileHeader } from "./MobileHeader";
+import { BottomNav } from "./BottomNav";
 
 interface MainLayoutProps {
   children: React.ReactNode;
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar */}
-      <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-56 transform transition-transform duration-200 ease-out md:static md:translate-x-0",
-        sidebarOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
+    <div className="flex min-h-screen">
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:block sticky top-0 h-screen z-50">
         <Sidebar />
       </aside>
 
-      {/* Overlay for mobile */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden" 
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
       {/* Main Content */}
-      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-        <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-        <main className="flex-1 overflow-auto">
-          <div className="mx-auto max-w-7xl px-3 py-3 sm:px-4 sm:py-4 md:px-6">
+      <div className="flex-1 min-w-0 flex flex-col">
+        {/* Mobile Header */}
+        <MobileHeader />
+
+        <main className="flex-1 overflow-y-auto px-4 pt-[calc(var(--header-height)+16px)] pb-[calc(var(--bottom-nav-height)+24px)] lg:pt-8 lg:pb-8 lg:px-8">
+          <div className="mx-auto max-w-7xl">
             {children}
           </div>
         </main>
       </div>
+
+      {/* Mobile Bottom Nav */}
+      <BottomNav />
     </div>
   );
 }
