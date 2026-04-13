@@ -85,6 +85,8 @@ export default function OrdensServico() {
   const [formLoading, setFormLoading] = useState(false);
   const [quickClientOpen, setQuickClientOpen] = useState(false);
   const [cobrarLoading, setCobrarLoading] = useState(false);
+  const [termsDialogOpen, setTermsDialogOpen] = useState(false);
+  const [lastCreatedOS, setLastCreatedOS] = useState<{ numero: string; cliente_id: string; tipo_equipamento: string; modelo_equipamento: string } | null>(null);
 
   // uiCategory tracks the actual UI selection; tipo_equipamento stores the DB enum
   const [uiCategory, setUiCategory] = useState("bateria");
