@@ -202,14 +202,23 @@ export default function OrdensServico() {
         if (error) throw error;
         toast.success("OS atualizada com sucesso!");
       } else {
-        const { error } = await supabase.from("ordens_servico").insert({
+        const { data: insertedData, error } = await supabase.from("ordens_servico").insert({
           ...osData,
           numero: "",
           tecnico_id: user.id,
           status: "recebido" as any,
-        });
+        }).select("numero, cliente_id, tipo_equipamento, modelo_equipamento").single();
         if (error) throw error;
         toast.success("OS criada com sucesso!");
+        if (insertedData) {
+          setLastCreatedOS({
+            numero: insertedData.numero,
+            cliente_id: insertedData.cliente_id,
+            tipo_equipamento: insertedData.tipo_equipamento,
+            modelo_equipamento: insertedData.modelo_equipamento || "",
+          });
+          setTermsDialogOpen(true);
+        }
       }
       setDialogOpen(false);
       resetForm();
