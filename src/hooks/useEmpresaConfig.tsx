@@ -9,6 +9,7 @@ export interface EmpresaConfig {
   telefone: string;
   responsavel: string;
   logo_url: string;
+  termos_servico: string;
 }
 
 const defaultConfig: EmpresaConfig = {
@@ -19,6 +20,7 @@ const defaultConfig: EmpresaConfig = {
   telefone: "61 9 91147599",
   responsavel: "Douglas",
   logo_url: "",
+  termos_servico: "",
 };
 
 const EmpresaConfigContext = createContext<{

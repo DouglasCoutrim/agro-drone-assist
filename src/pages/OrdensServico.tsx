@@ -85,6 +85,8 @@ export default function OrdensServico() {
   const [formLoading, setFormLoading] = useState(false);
   const [quickClientOpen, setQuickClientOpen] = useState(false);
   const [cobrarLoading, setCobrarLoading] = useState(false);
+  const [termsDialogOpen, setTermsDialogOpen] = useState(false);
+  const [lastCreatedOS, setLastCreatedOS] = useState<{ numero: string; cliente_id: string; tipo_equipamento: string; modelo_equipamento: string } | null>(null);
 
   // uiCategory tracks the actual UI selection; tipo_equipamento stores the DB enum
   const [uiCategory, setUiCategory] = useState("bateria");
@@ -200,14 +202,23 @@ export default function OrdensServico() {
         if (error) throw error;
         toast.success("OS atualizada com sucesso!");
       } else {
-        const { error } = await supabase.from("ordens_servico").insert({
+        const { data: insertedData, error } = await supabase.from("ordens_servico").insert({
           ...osData,
           numero: "",
           tecnico_id: user.id,
           status: "recebido" as any,
-        });
+        }).select("numero, cliente_id, tipo_equipamento, modelo_equipamento").single();
         if (error) throw error;
         toast.success("OS criada com sucesso!");
+        if (insertedData) {
+          setLastCreatedOS({
+            numero: insertedData.numero,
+            cliente_id: insertedData.cliente_id,
+            tipo_equipamento: insertedData.tipo_equipamento,
+            modelo_equipamento: insertedData.modelo_equipamento || "",
+          });
+          setTermsDialogOpen(true);
+        }
       }
       setDialogOpen(false);
       resetForm();
@@ -517,6 +528,46 @@ export default function OrdensServico() {
     setUiCategory("bateria");
     resetMobilityData();
     setEditingOS(null);
+  };
+
+  const handleSendTermsWhatsApp = () => {
+    if (!lastCreatedOS) return;
+    const cliente = clientes.find(c => c.id === lastCreatedOS.cliente_id);
+    if (!cliente) { toast.error("Cliente não encontrado"); return; }
+    const telefone = cliente.telefone || "";
+    const cleanPhone = telefone.replace(/\D/g, "");
+    const phone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
+
+    const equipamento = TIPO_EQUIPAMENTO[uiCategory] || TIPO_EQUIPAMENTO[lastCreatedOS.tipo_equipamento] || lastCreatedOS.tipo_equipamento;
+    const modelo = lastCreatedOS.modelo_equipamento ? ` - ${lastCreatedOS.modelo_equipamento}` : "";
+    const nomeEmpresa = empresa.nome_empresa || "Volt Control";
+    const appUrl = window.location.origin;
+
+    const termos = empresa.termos_servico
+      ? `\n\n📋 *TERMOS DE SERVIÇO:*\n${empresa.termos_servico}`
+      : "";
+
+    const texto = `Olá, *${cliente.nome}*! 👋
+
+Aqui é da *${nomeEmpresa}*.
+
+Recebemos o seu equipamento: *${equipamento}${modelo}*.
+
+Sua Ordem de Serviço é a nº *${lastCreatedOS.numero}*.
+
+*INFORMAÇÕES IMPORTANTES:*
+
+• Nosso prazo de diagnóstico é de até 5 dias úteis.
+• O pagamento é realizado integralmente na aprovação/retirada.
+• Aceitamos Pix, Cartão e Dinheiro.
+• Ao deixar seu equipamento, você concorda com nossos termos de serviço.
+${termos}
+
+Qualquer dúvida, estamos à disposição! 🔧`;
+
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(texto)}`, "_blank");
+    setTermsDialogOpen(false);
+    setLastCreatedOS(null);
   };
 
   const getStatusLabel = (status: string) => STATUS_CONFIG[status]?.label || status;
@@ -902,6 +953,11 @@ export default function OrdensServico() {
               </DialogTitle>
               <DialogDescription>Visualização da ordem de serviço</DialogDescription>
             </DialogHeader>
+            {/* Terms banner */}
+            <div className="rounded-lg bg-muted/50 border border-border/50 px-4 py-2.5 text-xs text-muted-foreground flex items-start gap-2">
+              <FileText className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
+              <span>Ao deixar seu equipamento em nossa assistência, você concorda com nossos <button className="underline text-primary hover:text-primary/80 font-medium" onClick={() => { const t = empresa.termos_servico; if (t) { const w = window.open("", "_blank"); if (w) { w.document.write(`<pre style="font-family:sans-serif;padding:40px;white-space:pre-wrap;max-width:700px;margin:0 auto">${t}</pre>`); w.document.close(); } } else { toast.info("Nenhum termo configurado. Acesse Configurações da Empresa."); } }}>termos de prestação de serviços</button>.</span>
+            </div>
             {viewingOS && (() => {
               const obsText = viewingOS.observacoes || "";
               const mMatch = obsText.match(/\[MOBILIDADE:(\w+)\s*\|\s*Voltagem:(.*?)\s*\|\s*Bateria:(.*?)Ah\s*\|\s*Odômetro:(.*?)km\s*\|\s*Chave:(.*?)\s*\|\s*Carregador:(.*?)\s*\|\s*Checklist:(.*?)\]/);
@@ -1023,6 +1079,42 @@ export default function OrdensServico() {
               </div>
               );
             })()}
+          </DialogContent>
+        </Dialog>
+
+        {/* Terms WhatsApp Dialog */}
+        <Dialog open={termsDialogOpen} onOpenChange={(open) => { setTermsDialogOpen(open); if (!open) setLastCreatedOS(null); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <MessageCircle className="h-5 w-5 text-success" />
+                OS Criada com Sucesso!
+              </DialogTitle>
+              <DialogDescription>
+                Deseja enviar o termo de entrada e os dados da OS via WhatsApp para o cliente?
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              {lastCreatedOS && (
+                <div className="p-3 rounded-lg bg-muted/50 border border-border/50 text-sm space-y-1">
+                  <p><span className="text-muted-foreground">OS:</span> <span className="font-bold text-primary">{lastCreatedOS.numero}</span></p>
+                  <p><span className="text-muted-foreground">Cliente:</span> {clientes.find(c => c.id === lastCreatedOS.cliente_id)?.nome || "-"}</p>
+                  <p><span className="text-muted-foreground">Equipamento:</span> {TIPO_EQUIPAMENTO[lastCreatedOS.tipo_equipamento] || lastCreatedOS.tipo_equipamento}</p>
+                </div>
+              )}
+              {!empresa.termos_servico && (
+                <p className="text-xs text-warning">⚠️ Nenhum termo de serviço configurado. Configure em Configurações da Empresa.</p>
+              )}
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => { setTermsDialogOpen(false); setLastCreatedOS(null); }}>
+                  Pular
+                </Button>
+                <Button onClick={handleSendTermsWhatsApp} className="bg-success hover:bg-success/90 text-success-foreground">
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  Enviar via WhatsApp
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
 
