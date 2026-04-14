@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DollarSign, TrendingUp, TrendingDown, Plus, CreditCard, Wallet, Receipt, Loader2, Edit, Trash2, Eye, Search } from "lucide-react";
+import { CatalogAutocomplete } from "@/components/ui/catalog-autocomplete";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
@@ -158,7 +159,22 @@ export default function Financeiro() {
                     </Select>
                   </div>
                   <div className="space-y-1.5"><Label className="text-xs">Valor (R$) *</Label><Input type="number" step="0.01" className="h-9" value={formData.valor} onChange={(e) => setFormData({ ...formData, valor: Number(e.target.value) })} required /></div>
-                  <div className="sm:col-span-2 space-y-1.5"><Label className="text-xs">Descrição *</Label><Input className="h-9" value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} required /></div>
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <Label className="text-xs">Descrição *</Label>
+                    <CatalogAutocomplete
+                      value={formData.descricao}
+                      onChange={(v) => setFormData({ ...formData, descricao: v })}
+                      onSelect={(item) => setFormData(f => ({
+                        ...f,
+                        descricao: item.descricao,
+                        valor: item.preco > 0 ? item.preco : f.valor,
+                        categoria: item.categoria || f.categoria,
+                      }))}
+                      placeholder="Buscar produto/serviço ou digitar..."
+                      mode="text"
+                      required
+                    />
+                  </div>
                   <div className="space-y-1.5"><Label className="text-xs">Categoria</Label><Input className="h-9" value={formData.categoria} onChange={(e) => setFormData({ ...formData, categoria: e.target.value })} placeholder="Ex: Serviços, Estoque" /></div>
                   <div className="space-y-1.5"><Label className="text-xs">Data *</Label><Input type="date" className="h-9" value={formData.data_transacao} onChange={(e) => setFormData({ ...formData, data_transacao: e.target.value })} required /></div>
                   <div className="sm:col-span-2 space-y-1.5"><Label className="text-xs">Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
