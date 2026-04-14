@@ -871,6 +871,12 @@ export default function OrdensServico() {
                         <div className="space-y-1.5"><Label className="text-xs">Total</Label><Input type="number" value={totalOrcamento.toFixed(2)} readOnly disabled className="h-9 font-bold text-primary" /></div>
                       </div>
                       <div className="space-y-1.5"><Label className="text-xs">Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
+                      <Separator />
+                      <OSItemsSection
+                        items={osItems}
+                        onChange={setOsItems}
+                        organizationId={user ? undefined : undefined}
+                      />
                     </CardContent>
                   </Card>
                 </div>
