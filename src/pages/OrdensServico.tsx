@@ -22,6 +22,7 @@ import { LegalTermsFooter, getLegalTermsHTML } from "@/components/os/LegalTermsF
 import { SmartSelect, SmartSelectOption } from "@/components/ui/smart-select";
 import { StatusPipeline, getNextStatus, getStatusLabel } from "@/components/os/StatusPipeline";
 import { EmptyState } from "@/components/os/EmptyState";
+import { OSItemsSection, OSItem } from "@/components/os/OSItemsSection";
 import { formatCurrency, formatDate, getErrorMessage } from "@/lib/formatters";
 import { whatsappTemplates, openWhatsApp, WhatsAppOS } from "@/lib/whatsapp-templates";
 
@@ -81,6 +82,8 @@ export default function OrdensServico() {
   const [termsDialogOpen, setTermsDialogOpen] = useState(false);
   const [lastCreatedOS, setLastCreatedOS] = useState<{ numero: string; cliente_id: string; tipo_equipamento: string; modelo_equipamento: string } | null>(null);
   const [quickClientPreName, setQuickClientPreName] = useState("");
+  const [osItems, setOsItems] = useState<OSItem[]>([]);
+  const [viewOsItems, setViewOsItems] = useState<OSItem[]>([]);
 
   // Wizard step
   const [wizardStep, setWizardStep] = useState(0);
@@ -196,19 +199,44 @@ export default function OrdensServico() {
         ciclos_carga_saida: isBateria ? ciclos_carga_saida || null : null,
       };
 
+      let osId: string;
       if (editingOS) {
         const { error } = await supabase.from("ordens_servico").update(osData).eq("id", editingOS.id);
         if (error) throw error;
+        osId = editingOS.id;
         toast.success("OS atualizada com sucesso!");
       } else {
         const { data: insertedData, error } = await supabase.from("ordens_servico").insert({
           ...osData, numero: "", tecnico_id: user.id, status: "recebido" as any,
-        }).select("numero, cliente_id, tipo_equipamento, modelo_equipamento").single();
+        }).select("id, numero, cliente_id, tipo_equipamento, modelo_equipamento").single();
         if (error) throw error;
+        osId = insertedData.id;
         toast.success(`OS ${insertedData?.numero} criada com sucesso!`);
         if (insertedData) {
           setLastCreatedOS(insertedData);
           setTermsDialogOpen(true);
+        }
+      }
+
+      // Save OS items
+      if (osId) {
+        // Delete existing items for this OS
+        await supabase.from("itens_os").delete().eq("ordem_servico_id", osId);
+        // Insert new items
+        if (osItems.length > 0) {
+          const itemsToInsert = osItems.map(item => ({
+            ordem_servico_id: osId,
+            tipo: item.tipo,
+            produto_id: item.produto_id || null,
+            servico_id: item.servico_id || null,
+            descricao: item.descricao,
+            quantidade: item.quantidade,
+            valor_unitario: item.valor_unitario,
+            valor_total: item.valor_total,
+            organization_id: osData.organization_id || null,
+          }));
+          const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInsert);
+          if (itemsError) console.error("Erro ao salvar itens:", itemsError);
         }
       }
       setDialogOpen(false);
@@ -271,11 +299,28 @@ export default function OrdensServico() {
       ciclos_carga_entrada: (os as any).ciclos_carga_entrada || 0,
       ciclos_carga_saida: (os as any).ciclos_carga_saida || 0,
     });
+    // Load items for this OS
+    supabase.from("itens_os").select("*").eq("ordem_servico_id", os.id).then(({ data }) => {
+      setOsItems((data || []).map((d: any) => ({
+        id: d.id, tipo: d.tipo, produto_id: d.produto_id, servico_id: d.servico_id,
+        descricao: d.descricao, quantidade: d.quantidade, valor_unitario: d.valor_unitario, valor_total: d.valor_total,
+      })));
+    });
     setWizardStep(0);
     setDialogOpen(true);
   };
 
-  const handleView = (os: OrdemServico) => { setViewingOS(os); setViewDialogOpen(true); };
+  const handleView = (os: OrdemServico) => {
+    setViewingOS(os);
+    setViewDialogOpen(true);
+    // Load items for view
+    supabase.from("itens_os").select("*").eq("ordem_servico_id", os.id).then(({ data }) => {
+      setViewOsItems((data || []).map((d: any) => ({
+        id: d.id, tipo: d.tipo, produto_id: d.produto_id, servico_id: d.servico_id,
+        descricao: d.descricao, quantidade: d.quantidade, valor_unitario: d.valor_unitario, valor_total: d.valor_total,
+      })));
+    });
+  };
 
   const handleStatusChange = async (osId: string, newStatus: string) => {
     try {
@@ -491,6 +536,7 @@ export default function OrdensServico() {
     resetMobilityData();
     setEditingOS(null);
     setWizardStep(0);
+    setOsItems([]);
   };
 
   const getStatusBadge = (status: string) => {
@@ -825,6 +871,12 @@ export default function OrdensServico() {
                         <div className="space-y-1.5"><Label className="text-xs">Total</Label><Input type="number" value={totalOrcamento.toFixed(2)} readOnly disabled className="h-9 font-bold text-primary" /></div>
                       </div>
                       <div className="space-y-1.5"><Label className="text-xs">Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
+                      <Separator />
+                      <OSItemsSection
+                        items={osItems}
+                        onChange={setOsItems}
+                        organizationId={user ? undefined : undefined}
+                      />
                     </CardContent>
                   </Card>
                 </div>
@@ -933,6 +985,11 @@ export default function OrdensServico() {
                           </div>
                         </div>
                       </div>
+                      <Separator />
+                      {/* Items da OS */}
+                      {viewOsItems.length > 0 && (
+                        <OSItemsSection items={viewOsItems} onChange={() => {}} disabled />
+                      )}
                       <Separator />
                       <div className="grid grid-cols-2 gap-3">
                         <div><p className="text-[10px] text-muted-foreground">Entrada</p><p className="text-sm">{formatDate(viewingOS.data_entrada)}</p></div>

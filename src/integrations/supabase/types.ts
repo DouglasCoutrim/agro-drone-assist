@@ -239,6 +239,77 @@ export type Database = {
           },
         ]
       }
+      itens_os: {
+        Row: {
+          created_at: string
+          descricao: string
+          id: string
+          ordem_servico_id: string
+          organization_id: string | null
+          produto_id: string | null
+          quantidade: number
+          servico_id: string | null
+          tipo: string
+          valor_total: number
+          valor_unitario: number
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          id?: string
+          ordem_servico_id: string
+          organization_id?: string | null
+          produto_id?: string | null
+          quantidade?: number
+          servico_id?: string | null
+          tipo?: string
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          id?: string
+          ordem_servico_id?: string
+          organization_id?: string | null
+          produto_id?: string | null
+          quantidade?: number
+          servico_id?: string | null
+          tipo?: string
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "itens_os_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "itens_os_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "itens_os_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "itens_os_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "servicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       movimentacoes_estoque: {
         Row: {
           created_at: string
@@ -616,6 +687,50 @@ export type Database = {
           },
         ]
       }
+      produtos: {
+        Row: {
+          categoria: string | null
+          codigo: string | null
+          created_at: string
+          custo_unitario: number
+          descricao: string
+          id: string
+          organization_id: string | null
+          preco_venda: number
+          updated_at: string
+        }
+        Insert: {
+          categoria?: string | null
+          codigo?: string | null
+          created_at?: string
+          custo_unitario?: number
+          descricao: string
+          id?: string
+          organization_id?: string | null
+          preco_venda?: number
+          updated_at?: string
+        }
+        Update: {
+          categoria?: string | null
+          codigo?: string | null
+          created_at?: string
+          custo_unitario?: number
+          descricao?: string
+          id?: string
+          organization_id?: string | null
+          preco_venda?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produtos_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -704,6 +819,44 @@ export type Database = {
           },
           {
             foreignKeyName: "rotas_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      servicos: {
+        Row: {
+          created_at: string
+          descricao: string
+          id: string
+          organization_id: string | null
+          preco: number
+          tempo_estimado: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          id?: string
+          organization_id?: string | null
+          preco?: number
+          tempo_estimado?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          id?: string
+          organization_id?: string | null
+          preco?: number
+          tempo_estimado?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "servicos_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
