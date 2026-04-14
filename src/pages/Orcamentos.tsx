@@ -14,6 +14,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from "@/components/ui/alert-dialog";
 import { Plus, FileText, Loader2, Edit, Trash2, Eye, ArrowRight, Search } from "lucide-react";
+import { CatalogAutocomplete, CatalogResult } from "@/components/ui/catalog-autocomplete";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
@@ -179,7 +180,19 @@ export default function Orcamentos() {
                 </div>
                 <div className="space-y-2">
                   <Label>Equipamento *</Label>
-                  <Input value={formData.equipamento} onChange={(e) => setFormData({ ...formData, equipamento: e.target.value })} placeholder="Ex: Drone DJI Agras T40" required />
+                  <CatalogAutocomplete
+                    value={formData.equipamento}
+                    onChange={(v) => setFormData({ ...formData, equipamento: v })}
+                    onSelect={(item) => setFormData(f => ({
+                      ...f,
+                      equipamento: item.descricao,
+                      valor: item.preco > 0 ? item.preco : f.valor,
+                    }))}
+                    placeholder="Buscar produto ou digitar..."
+                    source="produtos"
+                    mode="text"
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Descrição *</Label>

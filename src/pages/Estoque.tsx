@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
 import { SearchableInput } from "@/components/ui/searchable-input";
+import { CatalogAutocomplete } from "@/components/ui/catalog-autocomplete";
 
 type ItemEstoque = Tables<"itens_estoque">;
 
@@ -318,7 +319,23 @@ export default function Estoque() {
                         required
                       />
                     </div>
-                    <div className="col-span-2 space-y-2"><Label>Descrição *</Label><Input value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} required /></div>
+                    <div className="col-span-2 space-y-2">
+                      <Label>Descrição *</Label>
+                      <CatalogAutocomplete
+                        value={formData.descricao}
+                        onChange={(v) => setFormData({ ...formData, descricao: v })}
+                        onSelect={(item) => setFormData(f => ({
+                          ...f,
+                          descricao: item.descricao,
+                          custo_unitario: item.preco > 0 ? item.preco : f.custo_unitario,
+                          categoria: item.categoria || f.categoria,
+                        }))}
+                        placeholder="Buscar no catálogo ou digitar..."
+                        source="produtos"
+                        mode="text"
+                        required
+                      />
+                    </div>
                     <div className="space-y-2"><Label>Quantidade</Label><Input type="number" value={formData.quantidade} onChange={(e) => setFormData({ ...formData, quantidade: Number(e.target.value) })} /></div>
                     <div className="space-y-2"><Label>Estoque Mínimo</Label><Input type="number" value={formData.estoque_minimo} onChange={(e) => setFormData({ ...formData, estoque_minimo: Number(e.target.value) })} /></div>
                     <div className="space-y-2">
