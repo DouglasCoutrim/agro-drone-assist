@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
 import { SearchableInput } from "@/components/ui/searchable-input";
+import { CatalogAutocomplete } from "@/components/ui/catalog-autocomplete";
 
 type ItemEstoque = Tables<"itens_estoque">;
 
