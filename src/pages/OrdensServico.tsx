@@ -299,11 +299,28 @@ export default function OrdensServico() {
       ciclos_carga_entrada: (os as any).ciclos_carga_entrada || 0,
       ciclos_carga_saida: (os as any).ciclos_carga_saida || 0,
     });
+    // Load items for this OS
+    supabase.from("itens_os").select("*").eq("ordem_servico_id", os.id).then(({ data }) => {
+      setOsItems((data || []).map((d: any) => ({
+        id: d.id, tipo: d.tipo, produto_id: d.produto_id, servico_id: d.servico_id,
+        descricao: d.descricao, quantidade: d.quantidade, valor_unitario: d.valor_unitario, valor_total: d.valor_total,
+      })));
+    });
     setWizardStep(0);
     setDialogOpen(true);
   };
 
-  const handleView = (os: OrdemServico) => { setViewingOS(os); setViewDialogOpen(true); };
+  const handleView = (os: OrdemServico) => {
+    setViewingOS(os);
+    setViewDialogOpen(true);
+    // Load items for view
+    supabase.from("itens_os").select("*").eq("ordem_servico_id", os.id).then(({ data }) => {
+      setViewOsItems((data || []).map((d: any) => ({
+        id: d.id, tipo: d.tipo, produto_id: d.produto_id, servico_id: d.servico_id,
+        descricao: d.descricao, quantidade: d.quantidade, valor_unitario: d.valor_unitario, valor_total: d.valor_total,
+      })));
+    });
+  };
 
   const handleStatusChange = async (osId: string, newStatus: string) => {
     try {
