@@ -22,6 +22,7 @@ import { LegalTermsFooter, getLegalTermsHTML } from "@/components/os/LegalTermsF
 import { SmartSelect, SmartSelectOption } from "@/components/ui/smart-select";
 import { StatusPipeline, getNextStatus, getStatusLabel } from "@/components/os/StatusPipeline";
 import { EmptyState } from "@/components/os/EmptyState";
+import { OSItemsSection, OSItem } from "@/components/os/OSItemsSection";
 import { formatCurrency, formatDate, getErrorMessage } from "@/lib/formatters";
 import { whatsappTemplates, openWhatsApp, WhatsAppOS } from "@/lib/whatsapp-templates";
 
