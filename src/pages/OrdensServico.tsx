@@ -82,6 +82,8 @@ export default function OrdensServico() {
   const [termsDialogOpen, setTermsDialogOpen] = useState(false);
   const [lastCreatedOS, setLastCreatedOS] = useState<{ numero: string; cliente_id: string; tipo_equipamento: string; modelo_equipamento: string } | null>(null);
   const [quickClientPreName, setQuickClientPreName] = useState("");
+  const [osItems, setOsItems] = useState<OSItem[]>([]);
+  const [viewOsItems, setViewOsItems] = useState<OSItem[]>([]);
 
   // Wizard step
   const [wizardStep, setWizardStep] = useState(0);
