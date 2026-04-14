@@ -536,6 +536,7 @@ export default function OrdensServico() {
     resetMobilityData();
     setEditingOS(null);
     setWizardStep(0);
+    setOsItems([]);
   };
 
   const getStatusBadge = (status: string) => {
