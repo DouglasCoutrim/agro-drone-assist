@@ -199,19 +199,44 @@ export default function OrdensServico() {
         ciclos_carga_saida: isBateria ? ciclos_carga_saida || null : null,
       };
 
+      let osId: string;
       if (editingOS) {
         const { error } = await supabase.from("ordens_servico").update(osData).eq("id", editingOS.id);
         if (error) throw error;
+        osId = editingOS.id;
         toast.success("OS atualizada com sucesso!");
       } else {
         const { data: insertedData, error } = await supabase.from("ordens_servico").insert({
           ...osData, numero: "", tecnico_id: user.id, status: "recebido" as any,
-        }).select("numero, cliente_id, tipo_equipamento, modelo_equipamento").single();
+        }).select("id, numero, cliente_id, tipo_equipamento, modelo_equipamento").single();
         if (error) throw error;
+        osId = insertedData.id;
         toast.success(`OS ${insertedData?.numero} criada com sucesso!`);
         if (insertedData) {
           setLastCreatedOS(insertedData);
           setTermsDialogOpen(true);
+        }
+      }
+
+      // Save OS items
+      if (osId) {
+        // Delete existing items for this OS
+        await supabase.from("itens_os").delete().eq("ordem_servico_id", osId);
+        // Insert new items
+        if (osItems.length > 0) {
+          const itemsToInsert = osItems.map(item => ({
+            ordem_servico_id: osId,
+            tipo: item.tipo,
+            produto_id: item.produto_id || null,
+            servico_id: item.servico_id || null,
+            descricao: item.descricao,
+            quantidade: item.quantidade,
+            valor_unitario: item.valor_unitario,
+            valor_total: item.valor_total,
+            organization_id: osData.organization_id || null,
+          }));
+          const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInsert);
+          if (itemsError) console.error("Erro ao salvar itens:", itemsError);
         }
       }
       setDialogOpen(false);
