@@ -986,6 +986,11 @@ export default function OrdensServico() {
                         </div>
                       </div>
                       <Separator />
+                      {/* Items da OS */}
+                      {viewOsItems.length > 0 && (
+                        <OSItemsSection items={viewOsItems} onChange={() => {}} disabled />
+                      )}
+                      <Separator />
                       <div className="grid grid-cols-2 gap-3">
                         <div><p className="text-[10px] text-muted-foreground">Entrada</p><p className="text-sm">{formatDate(viewingOS.data_entrada)}</p></div>
                         <div><p className="text-[10px] text-muted-foreground">Previsão</p><p className="text-sm">{formatDate(viewingOS.data_previsao)}</p></div>
