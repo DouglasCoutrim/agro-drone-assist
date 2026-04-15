@@ -381,6 +381,7 @@ export type Database = {
           updated_at: string
           validade: string
           valor: number
+          vendedor_id: string | null
         }
         Insert: {
           cliente_id: string
@@ -394,6 +395,7 @@ export type Database = {
           updated_at?: string
           validade?: string
           valor?: number
+          vendedor_id?: string | null
         }
         Update: {
           cliente_id?: string
@@ -407,6 +409,7 @@ export type Database = {
           updated_at?: string
           validade?: string
           valor?: number
+          vendedor_id?: string | null
         }
         Relationships: [
           {
