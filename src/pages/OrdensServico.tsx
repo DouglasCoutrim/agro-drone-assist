@@ -25,6 +25,7 @@ import { EmptyState } from "@/components/os/EmptyState";
 import { OSItemsSection, OSItem } from "@/components/os/OSItemsSection";
 import { formatCurrency, formatDate, getErrorMessage } from "@/lib/formatters";
 import { whatsappTemplates, openWhatsApp, WhatsAppOS } from "@/lib/whatsapp-templates";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 
 type OrdemServico = Tables<"ordens_servico"> & { clientes: { nome: string; telefone?: string } | null };
 type Cliente = Tables<"clientes">;
@@ -67,6 +68,7 @@ const detectUiCategory = (os: any): string => {
 export default function OrdensServico() {
   const { user } = useAuth();
   const { config: empresa } = useEmpresaConfig();
+  const { tecnicos } = useTeamMembers();
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,6 +107,7 @@ export default function OrdensServico() {
     custo_mao_obra: 0,
     valor_orcamento: 0,
     observacoes: "",
+    tecnico_id: "" as string,
     checklist_bateria: false,
     checklist_carregador: false,
     checklist_controle: false,
@@ -837,6 +840,16 @@ export default function OrdensServico() {
                         </div>
                       )}
                       <div className="space-y-1.5"><Label className="text-xs">Condição Visual</Label><Textarea value={formData.condicao_visual} onChange={(e) => setFormData({ ...formData, condicao_visual: e.target.value })} rows={2} className="text-sm" placeholder="Riscos, amassados, lacres..." /></div>
+                      <Separator />
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Técnico Responsável</Label>
+                        <Select value={formData.tecnico_id || ""} onValueChange={(v) => setFormData({ ...formData, tecnico_id: v } as any)}>
+                          <SelectTrigger className="h-9"><SelectValue placeholder="Selecionar técnico..." /></SelectTrigger>
+                          <SelectContent>
+                            {tecnicos.map(t => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
