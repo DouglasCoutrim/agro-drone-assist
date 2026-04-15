@@ -204,6 +204,13 @@ export default function Orcamentos() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label>Vendedor Responsável</Label>
+                  <Select value={(formData as any).vendedor_id || ""} onValueChange={(v) => setFormData({ ...formData, vendedor_id: v } as any)}>
+                    <SelectTrigger><SelectValue placeholder="Selecionar vendedor..." /></SelectTrigger>
+                    <SelectContent>{vendedores.map(v => <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label>Descrição *</Label>
                   <Textarea value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} rows={3} required placeholder="Descreva o serviço a ser orçado..." />
                 </div>
