@@ -210,7 +210,7 @@ export default function OrdensServico() {
         toast.success("OS atualizada com sucesso!");
       } else {
         const { data: insertedData, error } = await supabase.from("ordens_servico").insert({
-          ...osData, numero: "", tecnico_id: user.id, status: "recebido" as any,
+          ...osData, numero: "", tecnico_id: formData.tecnico_id || user.id, status: "recebido" as any,
         }).select("id, numero, cliente_id, tipo_equipamento, modelo_equipamento").single();
         if (error) throw error;
         osId = insertedData.id;
