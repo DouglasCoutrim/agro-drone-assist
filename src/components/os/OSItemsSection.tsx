@@ -39,7 +39,6 @@ interface OSItemsSectionProps {
   disabled?: boolean;
 }
 
-// Inline search row component
 function ItemSearchRow({
   tipo,
   onAdd,
@@ -150,43 +149,46 @@ function ItemSearchRow({
 
   const filtered = results.filter(r => !existingIds.has(r.id));
   const exactMatch = results.some(r => r.descricao.toLowerCase() === search.trim().toLowerCase());
-  const placeholder = tipo === "produto" ? "Digite parte do nome ou código da peça" : "Digite parte do nome ou código do serviço";
+  const placeholder = tipo === "produto" ? "Buscar peça ou produto..." : "Buscar serviço...";
 
   return (
     <>
-      <div ref={wrapperRef} className="relative flex-1">
-        <Input
-          ref={inputRef}
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); if (!isOpen) setIsOpen(true); }}
-          onFocus={() => { if (search.trim()) setIsOpen(true); }}
-          placeholder={placeholder}
-          disabled={disabled}
-          className="h-8 text-xs"
-        />
-        {loading && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 animate-spin text-muted-foreground" />}
+      <div ref={wrapperRef} className="relative w-full">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            ref={inputRef}
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); if (!isOpen) setIsOpen(true); }}
+            onFocus={() => { if (search.trim()) setIsOpen(true); }}
+            placeholder={placeholder}
+            disabled={disabled}
+            className="h-10 text-sm pl-8"
+          />
+          {loading && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+        </div>
 
         {isOpen && search.trim() && (
-          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto animate-in fade-in-0 zoom-in-95 duration-100">
+          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-52 overflow-y-auto animate-in fade-in-0 zoom-in-95 duration-100">
             {filtered.length === 0 && !loading && (
-              <div className="px-3 py-2 text-center text-xs text-muted-foreground">Nenhum resultado</div>
+              <div className="px-3 py-3 text-center text-sm text-muted-foreground">Nenhum resultado</div>
             )}
             {filtered.map((cat) => (
               <button key={cat.id} type="button" onClick={() => handleSelect(cat)}
-                className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors border-b border-border/30 last:border-b-0 flex items-center gap-2">
-                {cat.tipo === "produto" ? <Package className="h-3 w-3 text-blue-500 shrink-0" /> : <Wrench className="h-3 w-3 text-amber-500 shrink-0" />}
+                className="w-full text-left px-3 py-2.5 hover:bg-muted/50 transition-colors border-b border-border/30 last:border-b-0 flex items-center gap-2">
+                {cat.tipo === "produto" ? <Package className="h-4 w-4 text-blue-500 shrink-0" /> : <Wrench className="h-4 w-4 text-amber-500 shrink-0" />}
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium truncate">{cat.descricao}</p>
-                  {cat.codigo && <p className="text-[10px] text-muted-foreground">{cat.codigo}</p>}
+                  <p className="text-sm font-medium truncate">{cat.descricao}</p>
+                  {cat.codigo && <p className="text-xs text-muted-foreground">{cat.codigo}</p>}
                 </div>
-                <span className="text-xs font-semibold text-primary shrink-0">{formatCurrency(cat.preco)}</span>
+                <span className="text-sm font-semibold text-primary shrink-0">{formatCurrency(cat.preco)}</span>
               </button>
             ))}
             {!exactMatch && search.trim() && (
               <button type="button"
                 onClick={() => { setQuickCreateName(search.trim()); setQuickCreateOpen(true); setIsOpen(false); }}
-                className="w-full text-left px-3 py-2 flex items-center gap-2 text-xs font-medium text-primary hover:bg-primary/5 transition-colors border-t border-border/50">
-                <Plus className="h-3 w-3" />
+                className="w-full text-left px-3 py-2.5 flex items-center gap-2 text-sm font-medium text-primary hover:bg-primary/5 transition-colors border-t border-border/50">
+                <Plus className="h-4 w-4" />
                 Cadastrar "{search.trim()}"
               </button>
             )}
@@ -194,7 +196,6 @@ function ItemSearchRow({
         )}
       </div>
 
-      {/* Quick Create Modal */}
       <Dialog open={quickCreateOpen} onOpenChange={setQuickCreateOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -203,16 +204,16 @@ function ItemSearchRow({
           <div className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">Descrição</Label>
-              <Input value={quickCreateName} onChange={(e) => setQuickCreateName(e.target.value)} className="h-8 text-xs" />
+              <Input value={quickCreateName} onChange={(e) => setQuickCreateName(e.target.value)} className="h-9 text-sm" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Preço de Venda (R$)</Label>
-                <Input type="number" step="0.01" min="0" value={quickCreatePrice} onChange={(e) => setQuickCreatePrice(Number(e.target.value))} className="h-8 text-xs" />
+                <Input type="number" step="0.01" min="0" value={quickCreatePrice} onChange={(e) => setQuickCreatePrice(Number(e.target.value))} className="h-9 text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Unidade</Label>
-                <Input value={quickCreateUnit} onChange={(e) => setQuickCreateUnit(e.target.value)} className="h-8 text-xs" placeholder="UN" />
+                <Input value={quickCreateUnit} onChange={(e) => setQuickCreateUnit(e.target.value)} className="h-9 text-sm" placeholder="UN" />
               </div>
             </div>
             <Button size="sm" className="w-full gradient-primary" onClick={handleQuickCreate} disabled={creating}>
@@ -226,24 +227,85 @@ function ItemSearchRow({
   );
 }
 
+// Mobile card for a single item
+function ItemCard({
+  item,
+  index,
+  onUpdate,
+  onRemove,
+  disabled,
+}: {
+  item: OSItem;
+  index: number;
+  onUpdate: (field: keyof OSItem, value: any) => void;
+  onRemove: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="rounded-lg border border-border/60 bg-card/50 p-3 space-y-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <span className="flex items-center justify-center h-6 w-6 rounded-full bg-muted text-[11px] font-bold text-muted-foreground shrink-0">
+            {index + 1}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium truncate">{item.descricao}</p>
+            {item.codigo && <p className="text-xs text-muted-foreground">{item.codigo}</p>}
+          </div>
+        </div>
+        {!disabled && (
+          <Button type="button" size="icon" variant="ghost"
+            className="h-7 w-7 text-destructive/60 hover:text-destructive shrink-0"
+            onClick={onRemove}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <div className="space-y-1">
+          <Label className="text-[10px] text-muted-foreground uppercase">Qtd</Label>
+          <Input
+            type="number" min="1"
+            value={item.quantidade}
+            onChange={(e) => onUpdate("quantidade", Math.max(1, Number(e.target.value)))}
+            className="h-8 text-sm text-center" disabled={disabled}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[10px] text-muted-foreground uppercase">Preço Unit.</Label>
+          <Input
+            type="number" step="0.01" min="0"
+            value={item.valor_unitario}
+            onChange={(e) => onUpdate("valor_unitario", Number(e.target.value))}
+            className="h-8 text-sm text-center" disabled={disabled}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[10px] text-muted-foreground uppercase">Total</Label>
+          <div className="h-8 flex items-center justify-center text-sm font-semibold text-primary bg-muted/30 rounded-md border border-border/50">
+            {formatCurrency(item.valor_total)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function OSItemsSection({ items, onChange, organizationId, disabled }: OSItemsSectionProps) {
   const produtos = items.filter(i => i.tipo === "produto");
   const servicos = items.filter(i => i.tipo === "servico");
-
   const existingIds = new Set(items.map(i => i.produto_id || i.servico_id || "").filter(Boolean));
 
   const updateItem = (index: number, field: keyof OSItem, value: any) => {
     const updated = [...items];
-    const globalIdx = index;
-    (updated[globalIdx] as any)[field] = value;
+    (updated[index] as any)[field] = value;
     if (field === "quantidade" || field === "valor_unitario") {
-      updated[globalIdx].valor_total = updated[globalIdx].quantidade * updated[globalIdx].valor_unitario;
+      updated[index].valor_total = updated[index].quantidade * updated[index].valor_unitario;
     }
     onChange(updated);
   };
 
   const removeItem = (index: number) => onChange(items.filter((_, i) => i !== index));
-
   const addItem = (item: OSItem) => onChange([...items, item]);
 
   const totalProdutos = produtos.reduce((s, i) => s + i.valor_total, 0);
@@ -261,113 +323,47 @@ export function OSItemsSection({ items, onChange, organizationId, disabled }: OS
     return -1;
   };
 
-  const renderItemsTable = (sectionItems: OSItem[], tipo: "produto" | "servico") => {
+  const renderSection = (sectionItems: OSItem[], tipo: "produto" | "servico") => {
     const isProduct = tipo === "produto";
     return (
-      <div className="space-y-2">
-        {/* Section Header */}
+      <div className="space-y-3">
         <div className="flex items-center gap-2">
           {isProduct ? <Package className="h-4 w-4 text-blue-500" /> : <Wrench className="h-4 w-4 text-amber-500" />}
-          <h4 className="text-sm font-bold">{isProduct ? "Itens" : "Serviços executados"}</h4>
+          <h4 className="text-sm font-bold">{isProduct ? "Itens / Peças" : "Serviços executados"}</h4>
+          {sectionItems.length > 0 && (
+            <span className="ml-auto text-xs font-semibold text-primary">
+              {formatCurrency(isProduct ? totalProdutos : totalServicos)}
+            </span>
+          )}
         </div>
-        <div className="border-t-2 border-primary mb-2" />
+        <div className="border-t-2 border-primary" />
 
-        {/* Column Headers */}
-        <div className={cn(
-          "grid gap-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1",
-          isProduct
-            ? "grid-cols-[1fr_70px_50px_40px_70px_70px_28px]"
-            : "grid-cols-[1fr_70px_50px_60px_70px_28px]"
-        )}>
-          <span>Descrição</span>
-          <span className="text-center">Código</span>
-          <span className="text-center">{isProduct ? "Qtd" : "Horas"}</span>
-          {isProduct && <span className="text-center">UN</span>}
-          <span className="text-center">Preço {isProduct ? "unitário" : ""}</span>
-          <span className="text-center">Preço total</span>
-          <span />
-        </div>
-
-        {/* Existing Items */}
-        {sectionItems.map((item, localIdx) => {
-          const globalIdx = getGlobalIndex(tipo, localIdx);
-          return (
-            <div key={globalIdx} className={cn(
-              "grid gap-1 items-center px-1",
-              isProduct
-                ? "grid-cols-[1fr_70px_50px_40px_70px_70px_28px]"
-                : "grid-cols-[1fr_70px_50px_60px_70px_28px]"
-            )}>
-              <div className="flex items-center gap-1.5">
-                <span className="flex items-center justify-center h-6 w-6 rounded-full bg-muted text-[10px] font-bold text-muted-foreground shrink-0">
-                  {localIdx + 1}
-                </span>
-                <span className="text-xs truncate">{item.descricao}</span>
-              </div>
-              <Input value={item.codigo || ""} readOnly disabled className="h-7 text-[10px] text-center bg-muted/30" />
-              <Input
-                type="number" min="1"
-                value={item.quantidade}
-                onChange={(e) => updateItem(globalIdx, "quantidade", Math.max(1, Number(e.target.value)))}
-                className="h-7 text-[10px] text-center" disabled={disabled}
-              />
-              {isProduct && (
-                <Input value={item.unidade || "UN"} onChange={(e) => updateItem(globalIdx, "unidade" as any, e.target.value)}
-                  className="h-7 text-[10px] text-center" disabled={disabled} />
-              )}
-              <Input
-                type="number" step="0.01" min="0"
-                value={item.valor_unitario}
-                onChange={(e) => updateItem(globalIdx, "valor_unitario", Number(e.target.value))}
-                className="h-7 text-[10px] text-center" disabled={disabled}
-              />
-              <div className="h-7 flex items-center justify-center text-xs font-semibold text-primary bg-muted/30 rounded-md border border-border/50">
-                {formatCurrency(item.valor_total)}
-              </div>
-              {!disabled && (
-                <Button type="button" size="icon" variant="ghost"
-                  className="h-6 w-6 text-destructive/60 hover:text-destructive"
-                  onClick={() => removeItem(globalIdx)}>
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Add New Row */}
-        {!disabled && (
-          <div className={cn(
-            "grid gap-1 items-center px-1",
-            isProduct
-              ? "grid-cols-[1fr_70px_50px_40px_70px_70px_28px]"
-              : "grid-cols-[1fr_70px_50px_60px_70px_28px]"
-          )}>
-            <div className="flex items-center gap-1.5 col-span-1">
-              <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-[10px] font-bold text-primary shrink-0">
-                {sectionItems.length + 1}
-              </span>
-              <ItemSearchRow
-                tipo={tipo}
-                onAdd={addItem}
-                organizationId={organizationId}
-                existingIds={existingIds}
+        {/* Item cards */}
+        <div className="space-y-2">
+          {sectionItems.map((item, localIdx) => {
+            const globalIdx = getGlobalIndex(tipo, localIdx);
+            return (
+              <ItemCard
+                key={globalIdx}
+                item={item}
+                index={localIdx}
+                onUpdate={(field, value) => updateItem(globalIdx, field, value)}
+                onRemove={() => removeItem(globalIdx)}
                 disabled={disabled}
               />
-            </div>
-            {/* Empty cells to fill grid */}
-            <div /><div />{isProduct && <div />}<div /><div /><div />
-          </div>
-        )}
+            );
+          })}
+        </div>
 
+        {/* Search to add */}
         {!disabled && (
-          <div className="flex justify-end">
-            <button type="button" onClick={() => {/* focus handled by search */}}
-              className="text-xs font-medium text-primary flex items-center gap-1 hover:underline">
-              <Plus className="h-3 w-3" />
-              {isProduct ? "Adicionar outro item" : "Adicionar serviço"}
-            </button>
-          </div>
+          <ItemSearchRow
+            tipo={tipo}
+            onAdd={addItem}
+            organizationId={organizationId}
+            existingIds={existingIds}
+            disabled={disabled}
+          />
         )}
       </div>
     );
@@ -375,20 +371,17 @@ export function OSItemsSection({ items, onChange, organizationId, disabled }: OS
 
   return (
     <div className="space-y-6">
-      {renderItemsTable(produtos, "produto")}
-      
+      {renderSection(produtos, "produto")}
       <Separator />
-      
-      {renderItemsTable(servicos, "servico")}
+      {renderSection(servicos, "servico")}
 
-      {/* Totals */}
       {items.length > 0 && (
         <>
           <Separator />
-          <div className="flex flex-col items-end gap-1 text-xs">
+          <div className="flex flex-col items-end gap-1 text-sm">
             {produtos.length > 0 && <p>Peças: <span className="font-semibold">{formatCurrency(totalProdutos)}</span></p>}
             {servicos.length > 0 && <p>Serviços: <span className="font-semibold">{formatCurrency(totalServicos)}</span></p>}
-            <p className="text-sm font-bold">Total Geral: <span className="text-primary">{formatCurrency(totalGeral)}</span></p>
+            <p className="text-base font-bold">Total: <span className="text-primary">{formatCurrency(totalGeral)}</span></p>
           </div>
         </>
       )}
