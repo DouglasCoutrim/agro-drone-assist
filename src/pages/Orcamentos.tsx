@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 
 type Cliente = Tables<"clientes">;
 
@@ -39,6 +40,7 @@ interface Orcamento {
 export default function Orcamentos() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { vendedores } = useTeamMembers();
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,12 +78,19 @@ export default function Orcamentos() {
     e.preventDefault();
     setFormLoading(true);
     try {
+      // Get user's organization_id
+      let orgId: string | null = null;
+      if (user) {
+        const { data: profile } = await supabase.from("profiles").select("organization_id").eq("id", user.id).single();
+        orgId = profile?.organization_id || null;
+      }
+
       if (editingOrc) {
-        const { error } = await supabase.from("orcamentos").update(formData).eq("id", editingOrc.id);
+        const { error } = await supabase.from("orcamentos").update({ ...formData, organization_id: orgId }).eq("id", editingOrc.id);
         if (error) throw error;
         toast.success("Orçamento atualizado!");
       } else {
-        const { error } = await supabase.from("orcamentos").insert(formData);
+        const { error } = await supabase.from("orcamentos").insert({ ...formData, organization_id: orgId });
         if (error) throw error;
         toast.success("Orçamento criado!");
       }
@@ -193,6 +202,13 @@ export default function Orcamentos() {
                     mode="text"
                     required
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label>Vendedor Responsável</Label>
+                  <Select value={(formData as any).vendedor_id || ""} onValueChange={(v) => setFormData({ ...formData, vendedor_id: v } as any)}>
+                    <SelectTrigger><SelectValue placeholder="Selecionar vendedor..." /></SelectTrigger>
+                    <SelectContent>{vendedores.map(v => <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Descrição *</Label>

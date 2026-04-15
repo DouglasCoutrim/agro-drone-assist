@@ -25,6 +25,7 @@ import { EmptyState } from "@/components/os/EmptyState";
 import { OSItemsSection, OSItem } from "@/components/os/OSItemsSection";
 import { formatCurrency, formatDate, getErrorMessage } from "@/lib/formatters";
 import { whatsappTemplates, openWhatsApp, WhatsAppOS } from "@/lib/whatsapp-templates";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 
 type OrdemServico = Tables<"ordens_servico"> & { clientes: { nome: string; telefone?: string } | null };
 type Cliente = Tables<"clientes">;
@@ -67,6 +68,7 @@ const detectUiCategory = (os: any): string => {
 export default function OrdensServico() {
   const { user } = useAuth();
   const { config: empresa } = useEmpresaConfig();
+  const { tecnicos } = useTeamMembers();
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,6 +107,7 @@ export default function OrdensServico() {
     custo_mao_obra: 0,
     valor_orcamento: 0,
     observacoes: "",
+    tecnico_id: "" as string,
     checklist_bateria: false,
     checklist_carregador: false,
     checklist_controle: false,
@@ -207,7 +210,7 @@ export default function OrdensServico() {
         toast.success("OS atualizada com sucesso!");
       } else {
         const { data: insertedData, error } = await supabase.from("ordens_servico").insert({
-          ...osData, numero: "", tecnico_id: user.id, status: "recebido" as any,
+          ...osData, numero: "", tecnico_id: formData.tecnico_id || user.id, status: "recebido" as any,
         }).select("id, numero, cliente_id, tipo_equipamento, modelo_equipamento").single();
         if (error) throw error;
         osId = insertedData.id;
@@ -298,6 +301,7 @@ export default function OrdensServico() {
       condicao_visual: (os as any).condicao_visual || "",
       ciclos_carga_entrada: (os as any).ciclos_carga_entrada || 0,
       ciclos_carga_saida: (os as any).ciclos_carga_saida || 0,
+      tecnico_id: os.tecnico_id || "",
     });
     // Load items for this OS
     supabase.from("itens_os").select("*").eq("ordem_servico_id", os.id).then(({ data }) => {
@@ -531,7 +535,7 @@ export default function OrdensServico() {
   const resetMobilityData = () => setMobilityData({ voltagem: "", capacidade_bateria: "", odometro: "", chave_ignicao: false, carregador_entregue: false, check_display: false, check_acelerador: false, check_freios: false, check_pneus: false, check_controladora: false, check_iluminacao: false, check_carenagem: false });
 
   const resetForm = () => {
-    setFormData({ cliente_id: "", tipo_equipamento: "bateria", marca: "", modelo_equipamento: "", numero_serie: "", descricao_problema: "", diagnostico: "", prioridade: "media", data_previsao: "", custo_pecas: 0, custo_mao_obra: 0, valor_orcamento: 0, observacoes: "", checklist_bateria: false, checklist_carregador: false, checklist_controle: false, checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "", ciclos_carga_entrada: 0, ciclos_carga_saida: 0 });
+    setFormData({ cliente_id: "", tipo_equipamento: "bateria", marca: "", modelo_equipamento: "", numero_serie: "", descricao_problema: "", diagnostico: "", prioridade: "media", data_previsao: "", custo_pecas: 0, custo_mao_obra: 0, valor_orcamento: 0, observacoes: "", tecnico_id: "", checklist_bateria: false, checklist_carregador: false, checklist_controle: false, checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "", ciclos_carga_entrada: 0, ciclos_carga_saida: 0 });
     setUiCategory("bateria");
     resetMobilityData();
     setEditingOS(null);
@@ -837,6 +841,16 @@ export default function OrdensServico() {
                         </div>
                       )}
                       <div className="space-y-1.5"><Label className="text-xs">Condição Visual</Label><Textarea value={formData.condicao_visual} onChange={(e) => setFormData({ ...formData, condicao_visual: e.target.value })} rows={2} className="text-sm" placeholder="Riscos, amassados, lacres..." /></div>
+                      <Separator />
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Técnico Responsável</Label>
+                        <Select value={formData.tecnico_id || ""} onValueChange={(v) => setFormData({ ...formData, tecnico_id: v } as any)}>
+                          <SelectTrigger className="h-9"><SelectValue placeholder="Selecionar técnico..." /></SelectTrigger>
+                          <SelectContent>
+                            {tecnicos.map(t => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
