@@ -78,12 +78,19 @@ export default function Orcamentos() {
     e.preventDefault();
     setFormLoading(true);
     try {
+      // Get user's organization_id
+      let orgId: string | null = null;
+      if (user) {
+        const { data: profile } = await supabase.from("profiles").select("organization_id").eq("id", user.id).single();
+        orgId = profile?.organization_id || null;
+      }
+
       if (editingOrc) {
-        const { error } = await supabase.from("orcamentos").update(formData).eq("id", editingOrc.id);
+        const { error } = await supabase.from("orcamentos").update({ ...formData, organization_id: orgId }).eq("id", editingOrc.id);
         if (error) throw error;
         toast.success("Orçamento atualizado!");
       } else {
-        const { error } = await supabase.from("orcamentos").insert(formData);
+        const { error } = await supabase.from("orcamentos").insert({ ...formData, organization_id: orgId });
         if (error) throw error;
         toast.success("Orçamento criado!");
       }
