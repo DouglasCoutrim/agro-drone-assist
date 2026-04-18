@@ -137,7 +137,7 @@ serve(async (req) => {
     // Auth check
     const authHeader = req.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return jsonResponse({ error: 'Não autorizado' }, 401);
+      return jsonResponse({ ok: false, error: 'Não autorizado' });
     }
 
     const token = authHeader.replace('Bearer ', '');
@@ -149,26 +149,24 @@ serve(async (req) => {
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
-      return jsonResponse({ error: 'Não autorizado' }, 401);
+      return jsonResponse({ ok: false, error: 'Não autorizado' });
     }
 
     const body = await req.json().catch(() => ({}));
     const rawId = body?.mlId || body?.url || '';
     if (!rawId) {
-      return jsonResponse({ error: 'ID ou URL do produto é obrigatório' }, 400);
+      return jsonResponse({ ok: false, error: 'ID ou URL do produto é obrigatório' });
     }
 
-    // Extract ID from URL or string
     const idMatch = String(rawId).match(/MLB[-]?(\d+)/i);
     const cleanId = idMatch ? `MLB${idMatch[1]}` : String(rawId).replace(/[^A-Za-z0-9]/g, '');
 
     if (!cleanId || !/^MLB\d+$/i.test(cleanId)) {
-      return jsonResponse({ error: FRIENDLY_ERROR }, 400);
+      return jsonResponse({ ok: false, error: FRIENDLY_ERROR });
     }
 
     console.log(`Fetching ML product: ${cleanId}`);
 
-    // Try official API first, then fallback to scrape
     let result = await tryOfficialApi(cleanId);
     if (!result) {
       console.log(`API failed for ${cleanId}, trying scrape...`);
@@ -176,12 +174,12 @@ serve(async (req) => {
     }
 
     if (!result) {
-      return jsonResponse({ error: FRIENDLY_ERROR }, 404);
+      return jsonResponse({ ok: false, error: FRIENDLY_ERROR });
     }
 
-    return jsonResponse(result);
+    return jsonResponse({ ok: true, ...result });
   } catch (error) {
     console.error('ML fetch error:', error);
-    return jsonResponse({ error: FRIENDLY_ERROR }, 500);
+    return jsonResponse({ ok: false, error: FRIENDLY_ERROR });
   }
 });
