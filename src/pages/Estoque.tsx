@@ -188,12 +188,13 @@ export default function Estoque() {
 
       toast.dismiss(loadingToast);
 
-      if (error || data?.error) {
-        toast.error(data?.error || 'Produto não encontrado no Mercado Livre. Verifique o link.');
+      if (error || !data || data.ok === false) {
+        const msg = data?.error || 'Não foi possível extrair dados deste link. Por favor, preencha manualmente.';
+        toast.error(msg);
         return;
       }
 
-      const price = data.price || 0;
+      const price = Number(data.price) || 0;
       setFormData(prev => ({
         ...prev,
         descricao: data.title || prev.descricao,
