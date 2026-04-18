@@ -8,9 +8,11 @@ const corsHeaders = {
 
 const FRIENDLY_ERROR = 'Não foi possível extrair dados deste link. Por favor, preencha manualmente.';
 
-function jsonResponse(body: unknown, status = 200) {
+function jsonResponse(body: Record<string, unknown>, status = 200) {
+  // Always return 200 so the supabase-js client doesn't throw FunctionsHttpError.
+  // Errors are signaled via { ok: false, error } in the body.
   return new Response(JSON.stringify(body), {
-    status,
+    status: 200,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
