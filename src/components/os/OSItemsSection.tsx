@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { NumberInput } from "@/components/ui/number-input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatCurrency, getErrorMessage } from "@/lib/formatters";
@@ -209,7 +210,7 @@ function ItemSearchRow({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Preço de Venda (R$)</Label>
-                <Input type="number" step="0.01" min="0" value={quickCreatePrice} onChange={(e) => setQuickCreatePrice(Number(e.target.value))} className="h-9 text-sm" />
+                <NumberInput step="0.01" min="0" value={quickCreatePrice} onChange={setQuickCreatePrice} className="h-9 text-sm" placeholder="0,00" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Unidade</Label>
@@ -264,20 +265,22 @@ function ItemCard({
       <div className="grid grid-cols-3 gap-2">
         <div className="space-y-1">
           <Label className="text-[10px] text-muted-foreground uppercase">Qtd</Label>
-          <Input
-            type="number" min="1"
+          <NumberInput
+            min="1"
             value={item.quantidade}
-            onChange={(e) => onUpdate("quantidade", Math.max(1, Number(e.target.value)))}
+            onChange={(v) => onUpdate("quantidade", Math.max(1, v))}
             className="h-8 text-sm text-center" disabled={disabled}
+            placeholder="1"
           />
         </div>
         <div className="space-y-1">
           <Label className="text-[10px] text-muted-foreground uppercase">Preço Unit.</Label>
-          <Input
-            type="number" step="0.01" min="0"
+          <NumberInput
+            step="0.01" min="0"
             value={item.valor_unitario}
-            onChange={(e) => onUpdate("valor_unitario", Number(e.target.value))}
+            onChange={(v) => onUpdate("valor_unitario", v)}
             className="h-8 text-sm text-center" disabled={disabled}
+            placeholder="0,00"
           />
         </div>
         <div className="space-y-1">
