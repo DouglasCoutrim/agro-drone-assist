@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -105,6 +106,7 @@ export default function OrdensServico() {
     data_previsao: "",
     custo_pecas: 0,
     custo_mao_obra: 0,
+    desconto: 0,
     valor_orcamento: 0,
     observacoes: "",
     tecnico_id: "" as string,
@@ -128,7 +130,7 @@ export default function OrdensServico() {
 
   const isMobility = MOBILITY_CATEGORIES.includes(uiCategory);
   const isBateria = uiCategory === "bateria" || formData.modelo_equipamento?.toLowerCase().includes("bateria");
-  const totalOrcamento = (formData.custo_pecas || 0) + (formData.custo_mao_obra || 0);
+  const totalOrcamento = Math.max(0, (formData.custo_pecas || 0) + (formData.custo_mao_obra || 0) - (formData.desconto || 0));
 
   useEffect(() => { fetchData(); }, []);
 
@@ -290,6 +292,7 @@ export default function OrdensServico() {
       data_previsao: os.data_previsao || "",
       custo_pecas: (os as any).custo_pecas || 0,
       custo_mao_obra: (os as any).custo_mao_obra || 0,
+      desconto: (os as any).desconto || 0,
       valor_orcamento: os.valor_orcamento || 0,
       observacoes: cleanObs,
       checklist_bateria: (os as any).checklist_bateria || false,
@@ -535,7 +538,7 @@ export default function OrdensServico() {
   const resetMobilityData = () => setMobilityData({ voltagem: "", capacidade_bateria: "", odometro: "", chave_ignicao: false, carregador_entregue: false, check_display: false, check_acelerador: false, check_freios: false, check_pneus: false, check_controladora: false, check_iluminacao: false, check_carenagem: false });
 
   const resetForm = () => {
-    setFormData({ cliente_id: "", tipo_equipamento: "bateria", marca: "", modelo_equipamento: "", numero_serie: "", descricao_problema: "", diagnostico: "", prioridade: "media", data_previsao: "", custo_pecas: 0, custo_mao_obra: 0, valor_orcamento: 0, observacoes: "", tecnico_id: "", checklist_bateria: false, checklist_carregador: false, checklist_controle: false, checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "", ciclos_carga_entrada: 0, ciclos_carga_saida: 0 });
+    setFormData({ cliente_id: "", tipo_equipamento: "bateria", marca: "", modelo_equipamento: "", numero_serie: "", descricao_problema: "", diagnostico: "", prioridade: "media", data_previsao: "", custo_pecas: 0, custo_mao_obra: 0, desconto: 0, valor_orcamento: 0, observacoes: "", tecnico_id: "", checklist_bateria: false, checklist_carregador: false, checklist_controle: false, checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "", ciclos_carga_entrada: 0, ciclos_carga_saida: 0 });
     setUiCategory("bateria");
     resetMobilityData();
     setEditingOS(null);
@@ -796,8 +799,8 @@ export default function OrdensServico() {
                       {/* Battery fields */}
                       {isBateria && !isMobility && (
                         <div className="grid grid-cols-2 gap-3 p-3 rounded-md border border-dashed border-primary/30 bg-primary/5">
-                          <div className="space-y-1.5"><Label className="text-xs">Ciclos Entrada</Label><Input type="number" min="0" value={formData.ciclos_carga_entrada} onChange={(e) => setFormData({ ...formData, ciclos_carga_entrada: Number(e.target.value) })} className="h-9" /></div>
-                          <div className="space-y-1.5"><Label className="text-xs">Ciclos Saída</Label><Input type="number" min="0" value={formData.ciclos_carga_saida} onChange={(e) => setFormData({ ...formData, ciclos_carga_saida: Number(e.target.value) })} className="h-9" /></div>
+                          <div className="space-y-1.5"><Label className="text-xs">Ciclos Entrada</Label><NumberInput min="0" value={formData.ciclos_carga_entrada} onChange={(v) => setFormData({ ...formData, ciclos_carga_entrada: v })} className="h-9" placeholder="0" /></div>
+                          <div className="space-y-1.5"><Label className="text-xs">Ciclos Saída</Label><NumberInput min="0" value={formData.ciclos_carga_saida} onChange={(v) => setFormData({ ...formData, ciclos_carga_saida: v })} className="h-9" placeholder="0" /></div>
                         </div>
                       )}
 
@@ -879,10 +882,11 @@ export default function OrdensServico() {
                         <div className="space-y-1.5"><Label className="text-xs">Previsão de Entrega</Label><Input type="date" value={formData.data_previsao} onChange={(e) => setFormData({ ...formData, data_previsao: e.target.value })} className="h-9" /></div>
                       </div>
                       <Separator />
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="space-y-1.5"><Label className="text-xs">Peças (R$)</Label><Input type="number" step="0.01" min="0" value={formData.custo_pecas} onChange={(e) => setFormData({ ...formData, custo_pecas: Number(e.target.value) })} className="h-9" /></div>
-                        <div className="space-y-1.5"><Label className="text-xs">Mão de Obra (R$)</Label><Input type="number" step="0.01" min="0" value={formData.custo_mao_obra} onChange={(e) => setFormData({ ...formData, custo_mao_obra: Number(e.target.value) })} className="h-9" /></div>
-                        <div className="space-y-1.5"><Label className="text-xs">Total</Label><Input type="number" value={totalOrcamento.toFixed(2)} readOnly disabled className="h-9 font-bold text-primary" /></div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="space-y-1.5"><Label className="text-xs">Peças (R$)</Label><NumberInput step="0.01" min="0" value={formData.custo_pecas} onChange={(v) => setFormData({ ...formData, custo_pecas: v })} className="h-9" placeholder="0,00" /></div>
+                        <div className="space-y-1.5"><Label className="text-xs">Mão de Obra (R$)</Label><NumberInput step="0.01" min="0" value={formData.custo_mao_obra} onChange={(v) => setFormData({ ...formData, custo_mao_obra: v })} className="h-9" placeholder="0,00" /></div>
+                        <div className="space-y-1.5"><Label className="text-xs">Desconto (R$)</Label><NumberInput step="0.01" min="0" value={formData.desconto} onChange={(v) => setFormData({ ...formData, desconto: v })} className="h-9" placeholder="0,00" /></div>
+                        <div className="space-y-1.5"><Label className="text-xs">Total</Label><Input type="text" value={totalOrcamento.toFixed(2)} readOnly disabled className="h-9 font-bold text-primary" /></div>
                       </div>
                       <div className="space-y-1.5"><Label className="text-xs">Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
                       <Separator />

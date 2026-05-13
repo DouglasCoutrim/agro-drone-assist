@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -158,7 +159,7 @@ export default function Financeiro() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1.5"><Label className="text-xs">Valor (R$) *</Label><Input type="number" step="0.01" className="h-9" value={formData.valor} onChange={(e) => setFormData({ ...formData, valor: Number(e.target.value) })} required /></div>
+                  <div className="space-y-1.5"><Label className="text-xs">Valor (R$) *</Label><NumberInput step="0.01" className="h-9" value={formData.valor} onChange={(v) => setFormData({ ...formData, valor: v })} placeholder="0,00" required /></div>
                   <div className="sm:col-span-2 space-y-1.5">
                     <Label className="text-xs">Descrição *</Label>
                     <CatalogAutocomplete
