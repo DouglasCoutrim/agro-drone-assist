@@ -372,9 +372,11 @@ export type Database = {
         Row: {
           cliente_id: string
           created_at: string
+          desconto: number
           descricao: string
           equipamento: string
           id: string
+          itens: Json
           ordem_servico_id: string | null
           organization_id: string | null
           status: string
@@ -386,9 +388,11 @@ export type Database = {
         Insert: {
           cliente_id: string
           created_at?: string
+          desconto?: number
           descricao?: string
           equipamento?: string
           id?: string
+          itens?: Json
           ordem_servico_id?: string | null
           organization_id?: string | null
           status?: string
@@ -400,9 +404,11 @@ export type Database = {
         Update: {
           cliente_id?: string
           created_at?: string
+          desconto?: number
           descricao?: string
           equipamento?: string
           id?: string
+          itens?: Json
           ordem_servico_id?: string | null
           organization_id?: string | null
           status?: string
@@ -454,6 +460,7 @@ export type Database = {
           data_entrada: string
           data_entrega: string | null
           data_previsao: string | null
+          desconto: number
           descricao_problema: string
           diagnostico: string | null
           id: string
@@ -490,6 +497,7 @@ export type Database = {
           data_entrada?: string
           data_entrega?: string | null
           data_previsao?: string | null
+          desconto?: number
           descricao_problema: string
           diagnostico?: string | null
           id?: string
@@ -526,6 +534,7 @@ export type Database = {
           data_entrada?: string
           data_entrega?: string | null
           data_previsao?: string | null
+          desconto?: number
           descricao_problema?: string
           diagnostico?: string | null
           id?: string
