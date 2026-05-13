@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -796,8 +797,8 @@ export default function OrdensServico() {
                       {/* Battery fields */}
                       {isBateria && !isMobility && (
                         <div className="grid grid-cols-2 gap-3 p-3 rounded-md border border-dashed border-primary/30 bg-primary/5">
-                          <div className="space-y-1.5"><Label className="text-xs">Ciclos Entrada</Label><Input type="number" min="0" value={formData.ciclos_carga_entrada} onChange={(e) => setFormData({ ...formData, ciclos_carga_entrada: Number(e.target.value) })} className="h-9" /></div>
-                          <div className="space-y-1.5"><Label className="text-xs">Ciclos Saída</Label><Input type="number" min="0" value={formData.ciclos_carga_saida} onChange={(e) => setFormData({ ...formData, ciclos_carga_saida: Number(e.target.value) })} className="h-9" /></div>
+                          <div className="space-y-1.5"><Label className="text-xs">Ciclos Entrada</Label><NumberInput min="0" value={formData.ciclos_carga_entrada} onChange={(v) => setFormData({ ...formData, ciclos_carga_entrada: v })} className="h-9" placeholder="0" /></div>
+                          <div className="space-y-1.5"><Label className="text-xs">Ciclos Saída</Label><NumberInput min="0" value={formData.ciclos_carga_saida} onChange={(v) => setFormData({ ...formData, ciclos_carga_saida: v })} className="h-9" placeholder="0" /></div>
                         </div>
                       )}
 
@@ -880,8 +881,8 @@ export default function OrdensServico() {
                       </div>
                       <Separator />
                       <div className="grid grid-cols-3 gap-3">
-                        <div className="space-y-1.5"><Label className="text-xs">Peças (R$)</Label><Input type="number" step="0.01" min="0" value={formData.custo_pecas} onChange={(e) => setFormData({ ...formData, custo_pecas: Number(e.target.value) })} className="h-9" /></div>
-                        <div className="space-y-1.5"><Label className="text-xs">Mão de Obra (R$)</Label><Input type="number" step="0.01" min="0" value={formData.custo_mao_obra} onChange={(e) => setFormData({ ...formData, custo_mao_obra: Number(e.target.value) })} className="h-9" /></div>
+                        <div className="space-y-1.5"><Label className="text-xs">Peças (R$)</Label><NumberInput step="0.01" min="0" value={formData.custo_pecas} onChange={(v) => setFormData({ ...formData, custo_pecas: v })} className="h-9" placeholder="0,00" /></div>
+                        <div className="space-y-1.5"><Label className="text-xs">Mão de Obra (R$)</Label><NumberInput step="0.01" min="0" value={formData.custo_mao_obra} onChange={(v) => setFormData({ ...formData, custo_mao_obra: v })} className="h-9" placeholder="0,00" /></div>
                         <div className="space-y-1.5"><Label className="text-xs">Total</Label><Input type="number" value={totalOrcamento.toFixed(2)} readOnly disabled className="h-9 font-bold text-primary" /></div>
                       </div>
                       <div className="space-y-1.5"><Label className="text-xs">Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
