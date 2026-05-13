@@ -337,12 +337,12 @@ export default function Estoque() {
                         required
                       />
                     </div>
-                    <div className="space-y-2"><Label>Quantidade</Label><Input type="number" value={formData.quantidade} onChange={(e) => setFormData({ ...formData, quantidade: Number(e.target.value) })} /></div>
-                    <div className="space-y-2"><Label>Estoque Mínimo</Label><Input type="number" value={formData.estoque_minimo} onChange={(e) => setFormData({ ...formData, estoque_minimo: Number(e.target.value) })} /></div>
+                    <div className="space-y-2"><Label>Quantidade</Label><NumberInput value={formData.quantidade} onChange={(v) => setFormData({ ...formData, quantidade: v })} placeholder="0" /></div>
+                    <div className="space-y-2"><Label>Estoque Mínimo</Label><NumberInput value={formData.estoque_minimo} onChange={(v) => setFormData({ ...formData, estoque_minimo: v })} placeholder="0" /></div>
                     <div className="space-y-2">
                       <Label>Custo Unitário (R$)</Label>
-                      <Input type="number" step="0.01" value={formData.custo_unitario}
-                        onChange={(e) => handleCustoChange(Number(e.target.value))} />
+                      <NumberInput step="0.01" value={formData.custo_unitario}
+                        onChange={(v) => handleCustoChange(v)} placeholder="0,00" />
                     </div>
                     <div className="space-y-2">
                       <Label className="flex items-center gap-1">
