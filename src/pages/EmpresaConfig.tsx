@@ -9,6 +9,7 @@ import { Building2, Save, Loader2, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
+import { IntegracoesFinanceiras } from "@/components/IntegracoesFinanceiras";
 
 export default function EmpresaConfig() {
   const { config, loading: configLoading, refetch } = useEmpresaConfig();
