@@ -590,10 +590,21 @@ export default function OrdensServico() {
             <h1 className="text-lg font-bold font-display flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Ordens de Serviço</h1>
             <p className="text-xs text-muted-foreground">Gestão completa de reparos e manutenção</p>
           </div>
-          <Button size="sm" className="gradient-primary shadow-soft" onClick={() => { resetForm(); setDialogOpen(true); }}>
-            <Plus className="mr-1.5 h-3.5 w-3.5" />Nova OS
-          </Button>
+          <div className="flex flex-col items-end gap-1">
+            <Button size="sm" className="gradient-primary shadow-soft" onClick={() => {
+              if (!canCreateOS) { setShowUpgrade(true); return; }
+              resetForm(); setDialogOpen(true);
+            }}>
+              <Plus className="mr-1.5 h-3.5 w-3.5" />Nova OS
+            </Button>
+            {osLimit !== -1 && (
+              <span className="text-[10px] text-muted-foreground">
+                {osUsed}/{osLimit} OS este mês
+              </span>
+            )}
+          </div>
         </div>
+        <UpgradePlanModal open={showUpgrade} onOpenChange={setShowUpgrade} reason="os" currentPlan={plan} />
 
         {/* Stats */}
         <div className="grid gap-2 grid-cols-4">
