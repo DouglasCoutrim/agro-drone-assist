@@ -116,6 +116,7 @@ export default function AdminMaster() {
                 <Input className="pl-8 w-48" placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} />
               </div>
               <Button size="sm" onClick={generateMonthly} disabled={busy}>Gerar mensalidades</Button>
+              <Button size="sm" variant="outline" onClick={checkOverdue} disabled={busy}>Verificar atrasos</Button>
             </div>
           </CardHeader>
           <CardContent>
