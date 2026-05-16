@@ -51,12 +51,12 @@ export default function Auth() {
       <Card className="w-full max-w-md shadow-strong relative z-10 border-primary/20">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
-            <img src={logo} alt="Volt Control" className="h-16 w-auto" />
+            <img src={logo} alt="LivreOS" className="h-16 w-auto" />
           </div>
           <div>
             <CardTitle className="text-2xl flex items-center justify-center gap-2">
               <Zap className="h-6 w-6 text-primary" />
-              Volt Control
+              LivreOS
             </CardTitle>
             <CardDescription>Gestão de Oficina - Drones, Baterias e Equipamentos</CardDescription>
           </div>

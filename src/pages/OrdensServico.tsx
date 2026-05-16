@@ -419,7 +419,7 @@ export default function OrdensServico() {
       </style></head><body>
       <div class="header">
         ${empresa.logo_url ? `<img src="${empresa.logo_url}" alt="Logo" style="max-height:50px" />` : ""}
-        <div><h1>${empresa.nome_empresa || "Volt Control"}</h1><p style="font-size:12px;color:#888">${empresa.cnpj ? "CNPJ: " + empresa.cnpj : ""} ${empresa.telefone ? "| Tel: " + empresa.telefone : ""}</p></div>
+        <div><h1>${empresa.nome_empresa || "LivreOS"}</h1><p style="font-size:12px;color:#888">${empresa.cnpj ? "CNPJ: " + empresa.cnpj : ""} ${empresa.telefone ? "| Tel: " + empresa.telefone : ""}</p></div>
         <div style="text-align:right"><div style="font-size:20px;font-weight:bold;">OS ${viewingOS.numero}</div><div class="status-badge">${getStatusLabel(viewingOS.status)}</div></div>
       </div>
       <div class="section"><div class="section-title">Cliente</div><div class="grid">
@@ -471,7 +471,7 @@ export default function OrdensServico() {
       previsao: viewingOS.data_previsao,
       status: getStatusLabel(viewingOS.status),
     };
-    const nomeEmpresa = empresa.nome_empresa || "Volt Control";
+    const nomeEmpresa = empresa.nome_empresa || "LivreOS";
     const msg = template === "osRecebida"
       ? whatsappTemplates.osRecebida(osData, nomeEmpresa, empresa.termos_servico || undefined)
       : whatsappTemplates[template](osData, nomeEmpresa);
@@ -515,7 +515,7 @@ export default function OrdensServico() {
             invoiceLink = linkData.invoiceUrl || "";
           } catch {}
         }
-        const texto = `Olá, *${viewingOS.clientes?.nome}*! 👋\n\n*${empresa.nome_empresa || "Volt Control"}*\n\n📋 *OS:* ${viewingOS.numero}\n💰 *Valor:* ${fmtCurLocal(viewingOS.valor_orcamento)}\n📅 *Vencimento:* ${new Date(dueDateStr + "T00:00:00").toLocaleDateString("pt-BR")}\n⚡ Pix${invoiceLink ? `\n\n🔗 ${invoiceLink}` : ""}`;
+        const texto = `Olá, *${viewingOS.clientes?.nome}*! 👋\n\n*${empresa.nome_empresa || "LivreOS"}*\n\n📋 *OS:* ${viewingOS.numero}\n💰 *Valor:* ${fmtCurLocal(viewingOS.valor_orcamento)}\n📅 *Vencimento:* ${new Date(dueDateStr + "T00:00:00").toLocaleDateString("pt-BR")}\n⚡ Pix${invoiceLink ? `\n\n🔗 ${invoiceLink}` : ""}`;
         openWhatsApp(telefone, texto);
       } else {
         toast.error("Erro ao criar cobrança");
@@ -533,7 +533,7 @@ export default function OrdensServico() {
       equipamento: TIPO_EQUIPAMENTO[uiCategory] || TIPO_EQUIPAMENTO[lastCreatedOS.tipo_equipamento] || lastCreatedOS.tipo_equipamento,
       modelo: lastCreatedOS.modelo_equipamento || undefined,
     };
-    const msg = whatsappTemplates.osRecebida(osData, empresa.nome_empresa || "Volt Control", empresa.termos_servico || undefined);
+    const msg = whatsappTemplates.osRecebida(osData, empresa.nome_empresa || "LivreOS", empresa.termos_servico || undefined);
     openWhatsApp(cliente.telefone, msg);
     setTermsDialogOpen(false);
     setLastCreatedOS(null);

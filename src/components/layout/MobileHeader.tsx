@@ -21,7 +21,7 @@ export function MobileHeader() {
         <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-emerald-500 flex items-center justify-center flex-shrink-0">
           <Zap className="h-3.5 w-3.5 text-white" />
         </div>
-        <span className="font-display font-extrabold text-lg text-primary">VoltControl</span>
+        <span className="font-display font-extrabold text-lg text-primary">LivreOS</span>
       </div>
       <div className="flex items-center gap-1">
         <ThemeToggle />

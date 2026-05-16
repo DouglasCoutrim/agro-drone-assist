@@ -196,7 +196,7 @@ export default function Configuracoes() {
             <Card className="shadow-soft">
               <CardHeader><CardTitle className="flex items-center gap-2"><Zap className="h-5 w-5 text-primary" />Sistema</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex justify-between text-sm"><span>Versão</span><span className="font-medium">Volt Control v1.0.0</span></div>
+                <div className="flex justify-between text-sm"><span>Versão</span><span className="font-medium">LivreOS v1.0.0</span></div>
                 <div className="flex justify-between text-sm"><span>Status</span><Badge className="bg-success text-success-foreground">Online</Badge></div>
                 <div className="flex justify-between text-sm"><span>Seu Perfil</span>{getRoleBadge(role || undefined)}</div>
               </CardContent>

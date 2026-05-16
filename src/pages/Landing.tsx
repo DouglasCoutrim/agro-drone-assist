@@ -54,8 +54,8 @@ export default function Landing() {
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src={logo} alt="Volt Control" className="h-8 w-auto" />
-            <span className="font-bold text-lg">Volt Control</span>
+            <img src={logo} alt="LivreOS" className="h-8 w-auto" />
+            <span className="font-bold text-lg">LivreOS</span>
           </div>
           <nav className="hidden md:flex items-center gap-6 text-sm">
             <a href="#features" className="hover:text-primary">Recursos</a>
@@ -135,7 +135,7 @@ export default function Landing() {
         <div className="container mx-auto px-4">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-4">
-              <Badge variant="outline">Por que Volt Control?</Badge>
+              <Badge variant="outline">Por que LivreOS?</Badge>
               <h2 className="text-3xl md:text-4xl font-bold">Feito para quem coloca a mão na massa</h2>
               <p className="text-muted-foreground">
                 Não é mais um ERP genérico. Cada tela foi pensada para o dia a dia de uma assistência técnica real.
@@ -236,8 +236,8 @@ export default function Landing() {
       <footer className="border-t py-8">
         <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
-            <img src={logo} alt="Volt Control" className="h-6 w-auto" />
-            <span>© {new Date().getFullYear()} Volt Control. Todos os direitos reservados.</span>
+            <img src={logo} alt="LivreOS" className="h-6 w-auto" />
+            <span>© {new Date().getFullYear()} LivreOS. Todos os direitos reservados.</span>
           </div>
           <div className="flex gap-4">
             <Link to="/auth" className="hover:text-primary">Entrar</Link>
