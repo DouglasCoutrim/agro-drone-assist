@@ -78,6 +78,8 @@ export default function OrdensServico() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todas");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const { canCreateOS, osUsed, osLimit, plan } = useUsageLimits();
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingOS, setViewingOS] = useState<OrdemServico | null>(null);
   const [editingOS, setEditingOS] = useState<OrdemServico | null>(null);
