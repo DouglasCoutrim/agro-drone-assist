@@ -18,6 +18,8 @@ import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
+import { useUsageLimits } from "@/hooks/useUsageLimits";
+import { UpgradePlanModal } from "@/components/UpgradePlanModal";
 import { QuickClientModal } from "@/components/os/QuickClientModal";
 import { LegalTermsFooter, getLegalTermsHTML } from "@/components/os/LegalTermsFooter";
 import { SmartSelect, SmartSelectOption } from "@/components/ui/smart-select";
@@ -76,6 +78,8 @@ export default function OrdensServico() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todas");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const { canCreateOS, osUsed, osLimit, plan } = useUsageLimits();
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingOS, setViewingOS] = useState<OrdemServico | null>(null);
   const [editingOS, setEditingOS] = useState<OrdemServico | null>(null);
@@ -586,10 +590,21 @@ export default function OrdensServico() {
             <h1 className="text-lg font-bold font-display flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Ordens de Serviço</h1>
             <p className="text-xs text-muted-foreground">Gestão completa de reparos e manutenção</p>
           </div>
-          <Button size="sm" className="gradient-primary shadow-soft" onClick={() => { resetForm(); setDialogOpen(true); }}>
-            <Plus className="mr-1.5 h-3.5 w-3.5" />Nova OS
-          </Button>
+          <div className="flex flex-col items-end gap-1">
+            <Button size="sm" className="gradient-primary shadow-soft" onClick={() => {
+              if (!canCreateOS) { setShowUpgrade(true); return; }
+              resetForm(); setDialogOpen(true);
+            }}>
+              <Plus className="mr-1.5 h-3.5 w-3.5" />Nova OS
+            </Button>
+            {osLimit !== -1 && (
+              <span className="text-[10px] text-muted-foreground">
+                {osUsed}/{osLimit} OS este mês
+              </span>
+            )}
+          </div>
         </div>
+        <UpgradePlanModal open={showUpgrade} onOpenChange={setShowUpgrade} reason="os" currentPlan={plan} />
 
         {/* Stats */}
         <div className="grid gap-2 grid-cols-4">

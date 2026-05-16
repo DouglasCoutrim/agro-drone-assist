@@ -24,6 +24,7 @@ import Rotas from "./pages/Rotas";
 import AdminMaster from "./pages/AdminMaster";
 import CadastroEmpresa from "./pages/CadastroEmpresa";
 import MensalidadeAtraso from "./pages/MensalidadeAtraso";
+import Assinatura from "./pages/Assinatura";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const App = () => (
                 <Route path="/configuracoes" element={<ProtectedRoute requiredRole="admin"><Configuracoes /></ProtectedRoute>} />
                 <Route path="/equipe" element={<ProtectedRoute requiredRole="admin"><Equipe /></ProtectedRoute>} />
                 <Route path="/empresa" element={<ProtectedRoute requiredRole="admin"><EmpresaConfig /></ProtectedRoute>} />
+                <Route path="/assinatura" element={<ProtectedRoute allowBlocked requiredRole="admin"><Assinatura /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </EmpresaConfigProvider>

@@ -14,6 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
+import { useUsageLimits } from "@/hooks/useUsageLimits";
+import { UpgradePlanModal } from "@/components/UpgradePlanModal";
 
 type Profile = Tables<"profiles">;
 
@@ -99,11 +101,15 @@ export default function Equipe() {
     } catch (error: any) { toast.error('Erro: ' + error.message); }
   };
 
+  const { canInviteUser, usersUsed, usersLimit, plan } = useUsageLimits();
+  const [showUpgrade, setShowUpgrade] = useState(false);
+
   const handleAddMember = async () => {
     if (!newMember.nome.trim() || !newMember.email.trim() || !newMember.senha.trim()) {
       toast.error('Nome, Email e Senha são obrigatórios');
       return;
     }
+    if (!canInviteUser) { setShowUpgrade(true); return; }
     setAddLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-user', {
@@ -166,12 +172,21 @@ export default function Equipe() {
           </div>
 
           {isAdmin && (
+            <div className="flex flex-col items-end gap-1">
+              <Button className="gradient-primary shadow-medium" onClick={() => {
+                if (!canInviteUser) { setShowUpgrade(true); return; }
+                setAddDialogOpen(true);
+              }}>
+                <UserPlus className="mr-2 h-4 w-4" />Adicionar Membro
+              </Button>
+              {usersLimit !== -1 && (
+                <span className="text-[10px] text-muted-foreground">{usersUsed}/{usersLimit} usuários</span>
+              )}
+            </div>
+          )}
+          <UpgradePlanModal open={showUpgrade} onOpenChange={setShowUpgrade} reason="users" currentPlan={plan} />
+          {isAdmin && (
             <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="gradient-primary shadow-medium">
-                  <UserPlus className="mr-2 h-4 w-4" />Adicionar Membro
-                </Button>
-              </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Novo Membro da Equipe</DialogTitle>

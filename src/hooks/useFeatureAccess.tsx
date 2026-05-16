@@ -27,10 +27,13 @@ export function useFeatureAccess() {
     if (!organization) { setFeatures([]); setLoading(false); return; }
 
     (async () => {
+      const planSlug = ['bronze','prata','ouro'].includes(organization.plan)
+        ? organization.plan
+        : 'bronze';
       const { data } = await supabase
         .from('subscription_plans' as any)
         .select('features')
-        .eq('slug', organization.plan === 'trial' ? 'pro' : organization.plan)
+        .eq('slug', planSlug)
         .maybeSingle();
       setFeatures(((data as any)?.features as FeatureKey[]) || []);
       setLoading(false);
