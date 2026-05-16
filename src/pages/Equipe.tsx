@@ -172,12 +172,21 @@ export default function Equipe() {
           </div>
 
           {isAdmin && (
+            <div className="flex flex-col items-end gap-1">
+              <Button className="gradient-primary shadow-medium" onClick={() => {
+                if (!canInviteUser) { setShowUpgrade(true); return; }
+                setAddDialogOpen(true);
+              }}>
+                <UserPlus className="mr-2 h-4 w-4" />Adicionar Membro
+              </Button>
+              {usersLimit !== -1 && (
+                <span className="text-[10px] text-muted-foreground">{usersUsed}/{usersLimit} usuários</span>
+              )}
+            </div>
+          )}
+          <UpgradePlanModal open={showUpgrade} onOpenChange={setShowUpgrade} reason="users" currentPlan={plan} />
+          {isAdmin && (
             <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="gradient-primary shadow-medium">
-                  <UserPlus className="mr-2 h-4 w-4" />Adicionar Membro
-                </Button>
-              </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Novo Membro da Equipe</DialogTitle>
