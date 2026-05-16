@@ -14,6 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
+import { useUsageLimits } from "@/hooks/useUsageLimits";
+import { UpgradePlanModal } from "@/components/UpgradePlanModal";
 
 type Profile = Tables<"profiles">;
 
