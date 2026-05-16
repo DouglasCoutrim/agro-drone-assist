@@ -18,6 +18,8 @@ import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
+import { useUsageLimits } from "@/hooks/useUsageLimits";
+import { UpgradePlanModal } from "@/components/UpgradePlanModal";
 import { QuickClientModal } from "@/components/os/QuickClientModal";
 import { LegalTermsFooter, getLegalTermsHTML } from "@/components/os/LegalTermsFooter";
 import { SmartSelect, SmartSelectOption } from "@/components/ui/smart-select";
