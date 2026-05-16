@@ -10,9 +10,10 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: 'admin' | 'tecnico' | 'consulta';
   requiredPermission?: 'acesso_os' | 'acesso_estoque' | 'acesso_financeiro';
+  allowBlocked?: boolean;
 }
 
-export default function ProtectedRoute({ children, requiredRole, requiredPermission }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, requiredRole, requiredPermission, allowBlocked }: ProtectedRouteProps) {
   const { user, role, loading } = useAuth();
   const { permissions, loading: permsLoading } = usePermissions();
   const { organization, isPlatformAdmin, loading: orgLoading } = useOrganization();
@@ -33,7 +34,7 @@ export default function ProtectedRoute({ children, requiredRole, requiredPermiss
   }
 
   // Org blocked? (platform admin bypasses)
-  if (!isPlatformAdmin && organization && organization.status === 'blocked') {
+  if (!allowBlocked && !isPlatformAdmin && organization && organization.status === 'blocked') {
     return <Navigate to="/mensalidade-em-atraso" replace />;
   }
 
