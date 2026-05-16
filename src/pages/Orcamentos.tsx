@@ -436,6 +436,12 @@ export default function Orcamentos() {
                   <Button variant="default" className="gap-2 bg-success hover:bg-success/90" onClick={() => handleSendWhatsApp(viewingOrc)}>
                     <Send className="h-4 w-4" />Enviar WhatsApp
                   </Button>
+                  <PayButton
+                    cliente_id={viewingOrc.cliente_id}
+                    valor={Number(viewingOrc.valor) - Number(viewingOrc.desconto || 0)}
+                    descricao={`Orçamento ${viewingOrc.equipamento || ''}`.trim()}
+                    orcamento_id={viewingOrc.id}
+                  />
                   {viewingOrc.status === "pendente" && (
                     <AlertDialog open={convertId === viewingOrc.id} onOpenChange={(open) => setConvertId(open ? viewingOrc.id : null)}>
                       <Button variant="default" className="gradient-primary gap-2" onClick={() => setConvertId(viewingOrc.id)}>
