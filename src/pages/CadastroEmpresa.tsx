@@ -47,8 +47,8 @@ export default function CadastroEmpresa() {
       });
       if (signErr) throw signErr;
 
-      toast.success('Empresa cadastrada! Você tem 7 dias de teste grátis.');
-      navigate('/');
+      toast.success('Empresa cadastrada! Configure os dados da sua empresa para começar.');
+      navigate('/empresa');
     } catch (err: any) {
       toast.error(err.message || 'Erro no cadastro');
     } finally {

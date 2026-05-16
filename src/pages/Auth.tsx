@@ -20,7 +20,7 @@ export default function Auth() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
-  if (user) { navigate('/'); return null; }
+  if (user) { navigate('/dashboard'); return null; }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +42,7 @@ export default function Auth() {
       return;
     }
     toast.success('Login realizado com sucesso!');
-    navigate('/');
+    navigate('/dashboard');
   };
 
   return (

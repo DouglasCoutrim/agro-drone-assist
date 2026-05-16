@@ -31,7 +31,7 @@ export default function AdminMaster() {
   useEffect(() => { if (isPlatformAdmin) fetchData(); }, [isPlatformAdmin]);
 
   if (loading || authLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
-  if (!isPlatformAdmin) return <Navigate to="/" replace />;
+  if (!isPlatformAdmin) return <Navigate to="/dashboard" replace />;
 
   const toggleBlock = async (org: any) => {
     setBusy(true);
