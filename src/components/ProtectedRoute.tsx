@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useOrganization } from '@/hooks/useOrganization';
 import { Loader2, ShieldX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -9,13 +10,15 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: 'admin' | 'tecnico' | 'consulta';
   requiredPermission?: 'acesso_os' | 'acesso_estoque' | 'acesso_financeiro';
+  allowBlocked?: boolean;
 }
 
-export default function ProtectedRoute({ children, requiredRole, requiredPermission }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, requiredRole, requiredPermission, allowBlocked }: ProtectedRouteProps) {
   const { user, role, loading } = useAuth();
   const { permissions, loading: permsLoading } = usePermissions();
+  const { organization, isPlatformAdmin, loading: orgLoading } = useOrganization();
 
-  if (loading || permsLoading) {
+  if (loading || permsLoading || orgLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -28,6 +31,11 @@ export default function ProtectedRoute({ children, requiredRole, requiredPermiss
 
   if (!user) {
     return <Navigate to="/auth" replace />;
+  }
+
+  // Org blocked? (platform admin bypasses)
+  if (!allowBlocked && !isPlatformAdmin && organization && organization.status === 'blocked') {
+    return <Navigate to="/mensalidade-em-atraso" replace />;
   }
 
   // Role hierarchy check

@@ -21,6 +21,9 @@ import Equipe from "./pages/Equipe";
 import EmpresaConfig from "./pages/EmpresaConfig";
 import Orcamentos from "./pages/Orcamentos";
 import Rotas from "./pages/Rotas";
+import AdminMaster from "./pages/AdminMaster";
+import CadastroEmpresa from "./pages/CadastroEmpresa";
+import MensalidadeAtraso from "./pages/MensalidadeAtraso";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +39,9 @@ const App = () => (
             <EmpresaConfigProvider>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/cadastro-empresa" element={<CadastroEmpresa />} />
+                <Route path="/mensalidade-em-atraso" element={<ProtectedRoute allowBlocked><MensalidadeAtraso /></ProtectedRoute>} />
+                <Route path="/admin-master" element={<AdminMaster />} />
                 <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                 <Route path="/ordens-servico" element={<ProtectedRoute requiredPermission="acesso_os"><OrdensServico /></ProtectedRoute>} />
                 <Route path="/estoque" element={<ProtectedRoute requiredPermission="acesso_estoque"><Estoque /></ProtectedRoute>} />
