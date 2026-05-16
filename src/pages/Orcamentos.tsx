@@ -25,6 +25,7 @@ import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { generateOrcamentoPDF, shareOrcamentoViaWhatsApp } from "@/lib/orcamento-pdf";
 import { formatCurrency } from "@/lib/formatters";
+import { PayButton } from "@/components/PayButton";
 
 type Cliente = Tables<"clientes">;
 
