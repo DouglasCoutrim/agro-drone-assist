@@ -83,6 +83,8 @@ export type Database = {
           email_remetente: string | null
           endereco: string | null
           favicon_url: string | null
+          gateway_clientes: string
+          gateway_clientes_credentials: Json
           gateway_credentials: Json | null
           gateway_pagamento: string | null
           id: string
@@ -105,6 +107,8 @@ export type Database = {
           email_remetente?: string | null
           endereco?: string | null
           favicon_url?: string | null
+          gateway_clientes?: string
+          gateway_clientes_credentials?: Json
           gateway_credentials?: Json | null
           gateway_pagamento?: string | null
           id?: string
@@ -127,6 +131,8 @@ export type Database = {
           email_remetente?: string | null
           endereco?: string | null
           favicon_url?: string | null
+          gateway_clientes?: string
+          gateway_clientes_credentials?: Json
           gateway_credentials?: Json | null
           gateway_pagamento?: string | null
           id?: string
@@ -597,9 +603,11 @@ export type Database = {
       organizations: {
         Row: {
           active: boolean
+          billing_cycle: string
           blocked_at: string | null
           blocked_reason: string | null
           created_at: string
+          cycle_discount: number
           id: string
           max_os_per_month: number
           max_users: number
@@ -616,9 +624,11 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          billing_cycle?: string
           blocked_at?: string | null
           blocked_reason?: string | null
           created_at?: string
+          cycle_discount?: number
           id?: string
           max_os_per_month?: number
           max_users?: number
@@ -635,9 +645,11 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          billing_cycle?: string
           blocked_at?: string | null
           blocked_reason?: string | null
           created_at?: string
+          cycle_discount?: number
           id?: string
           max_os_per_month?: number
           max_users?: number
@@ -1079,6 +1091,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      count_active_users: { Args: { _org: string }; Returns: number }
+      count_os_current_month: { Args: { _org: string }; Returns: number }
       get_user_org_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }

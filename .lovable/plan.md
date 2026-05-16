@@ -1,95 +1,131 @@
-# Plano: SaaS Multi-Empresa com Super Admin
+# Plano: SaaS Multi-tenant — Planos, Paywall, Checkout e Gateway por Tenant
 
-A base já tem `organizations` + `organization_id` em todas as tabelas e RLS por organização. Falta: onboarding de novas empresas, painel Super Admin (você), whitelabel real, billing/mensalidade e bloqueio automático.
+## Visão geral
+Refatorar o ecossistema de planos com nova nomenclatura (Bronze/Prata/Ouro) e novos preços, implementar paywall por uso (OS/usuários), tela de assinatura com periodicidade e checkout Asaas (PIX/Boleto), e configuração de gateway de cobrança por tenant (Asaas ou Mercado Pago) para cobrar os clientes finais da oficina — com links de afiliado quando o tenant não tem conta.
 
-## 1. Modelo de dados (migrações)
+---
 
-**Tabela `platform_admins`** — quem é Super Admin da plataforma (você).
-- `user_id` (PK), `created_at`
-- Função `is_platform_admin(uuid)` SECURITY DEFINER
+## 1. Reestruturação de Planos (DB)
 
-**Estender `organizations`**:
-- `plan` (text: trial/basic/pro/enterprise)
-- `status` (text: active/trial/overdue/blocked/canceled)
-- `trial_ends_at`, `next_due_date`, `monthly_fee` (numeric)
-- `blocked_at`, `blocked_reason`
-- `max_users`, `max_os_per_month` (limites do plano)
+Atualizar `subscription_plans`:
+- **Bronze** — R$ 39,90 — 2 usuários, 30 OS/mês — features: `os, clientes, estoque, orcamentos`
+- **Prata** — R$ 59,90 — 4 usuários, 60 OS/mês — features: Bronze + `financeiro, cobrancas_asaas, mercado_livre, whatsapp_templates`
+- **Ouro** — R$ 69,90 — 10 usuários, OS ilimitadas (`max_os_per_month = -1`) — features: Prata + `rotas, whitelabel, api_rest, suporte_prioritario`
 
-**Tabela `subscription_plans`** (catálogo de planos):
-- `name`, `slug`, `monthly_price`, `max_users`, `max_os`, `features` (jsonb)
+Novas colunas em `organizations`:
+- `billing_cycle` text default `'mensal'` (`mensal | semestral | anual`)
+- `cycle_discount` numeric default 0 (10% semestral, 20% anual)
 
-**Tabela `tenant_invoices`** (cobranças de mensalidade que VOCÊ emite para seus clientes):
-- `organization_id`, `competencia` (YYYY-MM), `valor`, `vencimento`
-- `status` (pendente/pago/vencido/cancelado)
-- `asaas_charge_id`, `payment_url`, `pago_em`
+Nova coluna em `empresa_config`:
+- `gateway_clientes` text (`asaas | mercadopago | none`)
+- `gateway_clientes_credentials` jsonb (criptografar em edge function antes de salvar — armazenar como string base64 mínima por ora)
 
-**Estender `empresa_config`** (whitelabel):
-- `cor_primaria`, `cor_secundaria`, `favicon_url`
-- `dominio_personalizado`, `email_remetente`
-- `gateway_pagamento` (asaas/stripe/mercadopago), `gateway_credentials` (jsonb encriptado)
-- `subdominio` (ex: minhaoficina.voltmaster.app)
+Função SQL `count_os_current_month(_org uuid)` e `count_active_users(_org uuid)` (SECURITY DEFINER) para o paywall consultar sem RLS recursion.
 
-**RLS**: Super Admin (`is_platform_admin`) ganha acesso total a `organizations`, `tenant_invoices`, `profiles`, `subscription_plans`. Cada organização continua isolada por `organization_id`.
+---
 
-## 2. Onboarding de nova empresa
+## 2. Paywall por uso
 
-Fluxo público em `/cadastro-empresa`:
-1. Form: nome empresa, CNPJ, responsável, e-mail, telefone, senha, plano escolhido
-2. Cria `auth.user` → cria `organization` (owner_id = user) → vincula `profiles.organization_id` → role `admin` → `empresa_config` inicial → `trial_ends_at = now + 7 dias`
-3. Tudo via Edge Function `signup-tenant` para garantir atomicidade
+Novo hook `useUsageLimits()` que retorna:
+```ts
+{ osUsed, osLimit, usersUsed, usersLimit, canCreateOS, canInviteUser, plan }
+```
+- Consome RPC `count_os_current_month` + `count_active_users` + plano atual.
+- `osLimit = -1` significa ilimitado.
 
-## 3. Painel Super Admin (`/admin-master`)
+Novo componente `<UpgradePlanModal />` (Dialog amigável):
+- Mostra plano atual, limite atingido, comparativo dos 3 planos, CTA "Fazer upgrade" → `/configuracoes/assinatura`.
 
-Rota protegida por `is_platform_admin`. Layout próprio (não usa sidebar de tenant). Páginas:
+Integração:
+- `OrdensServico.tsx` — antes de abrir o dialog "Nova OS", checar `canCreateOS`; se falso, abrir `<UpgradePlanModal reason="os" />`.
+- `Equipe.tsx` (convite de usuário) — checar `canInviteUser` antes do submit.
+- Badge de uso no topo do Dashboard: "OS este mês: 12/30".
 
-- **Dashboard**: MRR, total de tenants, ativos, em trial, inadimplentes, churn
-- **Clientes (Tenants)**: lista de todas organizações com status, plano, último pagamento, ações (ver detalhes, alterar plano, bloquear/desbloquear, login como)
-- **Cobranças**: gerar fatura manual, faturas em aberto, vencidas, pagas; botão "Gerar mensalidades do mês" que cria `tenant_invoices` para todos ativos
-- **Planos**: CRUD de `subscription_plans`
-- **Configurações da plataforma**: dados do seu Asaas master, templates de e-mail de cobrança
+---
 
-## 4. Cobrança de mensalidade + bloqueio
+## 3. Tela de Assinatura (`/configuracoes/assinatura`)
 
-- Edge Function `generate-monthly-invoices` (cron diário): para cada org com `next_due_date <= hoje`, cria `tenant_invoice` + cobrança no SEU Asaas master → envia link por e-mail/WhatsApp
-- Edge Function `asaas-webhook-platform` (separada da do tenant): recebe confirmação de pagamento → marca fatura paga → avança `next_due_date` +1 mês → garante `status = active`
-- Edge Function `check-overdue-tenants` (cron diário): se fatura vencida há >X dias (configurável, ex: 5) → `organizations.status = 'blocked'`
-- `ProtectedRoute` checa `organization.status`. Se `blocked`, redireciona para tela "Mensalidade em atraso" com link de pagamento. Super Admin nunca é bloqueado.
+Nova página `src/pages/Assinatura.tsx`:
+- Toggle de periodicidade: **Mensal | Semestral (-10%) | Anual (-20%)**
+- 3 cards (Bronze/Prata/Ouro) com preço calculado em tempo real:
+  - Semestral: `price * 6 * 0.9`
+  - Anual: `price * 12 * 0.8`
+- Botão "Assinar" → invoca edge function `create-subscription-checkout` que:
+  1. Cria/atualiza `tenant_invoices` com valor calculado.
+  2. Cria cobrança no Asaas (master account) com `billingType: 'UNDEFINED'` (PIX + Boleto).
+  3. Retorna `pix.payload`, `pix.encodedImage` (QR), `bankSlipUrl`, `invoiceUrl`.
+- UI exibe: QR Code PIX, copia-e-cola, linha digitável boleto, link "Abrir boleto", estado "Aguardando pagamento" com polling a cada 5s na `tenant_invoices.status`.
+- Webhook `asaas-platform-webhook` (já existe) confirma → status muda para `pago` → modal "Pagamento confirmado" + reload.
 
-## 5. Whitelabel por empresa
+---
 
-- `useEmpresaConfig` já existe; estendê-lo para aplicar `cor_primaria/secundaria` em runtime via CSS variables (`--primary`, `--accent` no `:root`)
-- Logo e nome da empresa já saem no PDF/sidebar
-- Página `/empresa` ganha abas: **Identidade Visual**, **Gateway de Pagamento**, **Domínio**, **Termos**, **Templates WhatsApp**
+## 4. Gateway por Tenant (`/configuracoes/integracoes`)
 
-## 6. Gateway de pagamento por tenant
+Nova aba "Integrações Financeiras" em `EmpresaConfig.tsx`:
 
-Hoje o Asaas é global (uma `ASAAS_API_KEY`). Mudar para:
-- Cada tenant grava sua própria credencial em `empresa_config.gateway_credentials` (criptografado via pgsodium ou via Edge Function que usa Vault)
-- Edge Function `asaas/*` lê a credencial do tenant chamador (pelo `organization_id` do JWT) em vez da env global
-- O Asaas master (para cobrar mensalidade dos tenants) continua em env separada `PLATFORM_ASAAS_API_KEY`
+**Seletor de gateway** (radio cards):
+- **Asaas** → input "API Key"
+- **Mercado Pago** → input "Access Token"
+- **Não tenho conta ainda** → mostra 2 cards de afiliado:
+  - "Criar conta no Asaas" → `https://www.asaas.com/r/SEU_CODIGO_AFILIADO` (placeholder `{{ASAAS_AFFILIATE_URL}}`)
+  - "Criar conta no Mercado Pago" → `https://www.mercadopago.com.br/?ref=SEU_CODIGO` (placeholder)
 
-## 7. Usuários e Fornecedores
+Validação:
+- Botão "Testar credenciais" → edge function `test-tenant-gateway` faz uma chamada ping (Asaas: GET `/myAccount`; MP: GET `/users/me`) e confirma sucesso.
 
-- **Usuários**: já existe `/equipe`. Adicionar limite por plano (`max_users`) bloqueando convite ao atingir
-- **Fornecedores**: nova tabela `fornecedores` (nome, cnpj, contato, observações) + página `/fornecedores`, vinculável em `itens_estoque.fornecedor_id`
+**Botão "Pagar via PIX/Boleto" na OS/Vendas:**
+- Em `OrdensServico` (detalhe) e `Orcamentos` aprovados: se `empresa_config.gateway_clientes` configurado, mostrar botão.
+- Clique → edge function `create-customer-charge` usa as **credenciais do tenant** (não as do platform) para criar cobrança em nome da oficina → retorna URL → abre em nova aba ou modal com QR.
+- Restrição: feature `cobrancas_asaas` (Prata+) — Bronze vê CTA de upgrade.
 
-## 8. Entrega faseada sugerida
+---
 
-**Fase 1 — Fundação multi-tenant** (esta entrega):
-- Migrações de schema (orgs/plans/invoices/platform_admins/empresa_config)
-- Edge Function `signup-tenant` + página `/cadastro-empresa`
-- Painel `/admin-master` (dashboard + lista de tenants + bloquear/desbloquear)
-- Bloqueio no `ProtectedRoute` baseado em `organization.status`
+## 5. White-label (revisão)
 
-**Fase 2 — Billing**:
-- Planos, geração de faturas, webhook, cron de inadimplência, tela de "mensalidade em atraso"
+Garantir que `empresa_config.logo_url`, `nome_empresa`, `cor_primaria` sejam usados em:
+- PDF de OS (`orcamento-pdf.ts` e impressão da OS)
+- Links públicos de cobrança (página de visualização cliente final)
+- Email/WhatsApp templates
 
-**Fase 3 — Whitelabel completo + gateway por tenant**:
-- CSS variables dinâmicas, credenciais Asaas por tenant, página `/fornecedores`, limites de plano
+Provider `useEmpresaConfig` já existe — auditar uso nos pontos acima e completar onde faltar.
 
-## Confirmações antes de começar
+Restrição: customização de cor/favicon só liberada para plano **Ouro** (feature `whitelabel`); logo e nome funcionam em todos.
 
-1. **Você quer que eu execute a Fase 1 inteira agora**, ou prefere que eu faça apenas as migrações de schema primeiro para você revisar?
-2. **Cadastro público de novas empresas** deve ser aberto (qualquer um se cadastra e ganha 7 dias de trial) ou fechado (só você cria via Super Admin)?
-3. **Seu gateway master** para cobrar os tenants será o Asaas (mesma conta atual numa env separada) ou outro?
-4. **Quantos planos iniciais** quer cadastrar e com quais preços? (ex: Basic R$ 99, Pro R$ 199, Enterprise R$ 399)
+---
+
+## 6. Estrutura técnica
+
+### Migrations
+1. Atualizar `subscription_plans` (3 planos novos) — substitui Basic/Pro/Enterprise.
+2. Adicionar colunas a `organizations` e `empresa_config`.
+3. Criar funções `count_os_current_month` e `count_active_users`.
+
+### Edge Functions novas
+- `create-subscription-checkout` — cria cobrança Asaas master para o tenant assinar.
+- `create-customer-charge` — usa credenciais do tenant para cobrar cliente final.
+- `test-tenant-gateway` — valida API key/token.
+
+### Frontend novo/alterado
+- **Novo:** `src/pages/Assinatura.tsx`, `src/components/UpgradePlanModal.tsx`, `src/hooks/useUsageLimits.tsx`, `src/components/IntegracoesFinanceiras.tsx`
+- **Alterado:** `App.tsx` (rota), `OrdensServico.tsx` (paywall + botão pagar), `Orcamentos.tsx` (botão pagar), `Equipe.tsx` (paywall convite), `EmpresaConfig.tsx` (aba integrações), `useFeatureAccess.tsx` (mapear novos slugs bronze/prata/ouro).
+
+### Compatibilidade
+Migrar organizações existentes (`plan = 'basic' → 'bronze'`, `pro → prata`, `enterprise → ouro`) na mesma migration.
+
+---
+
+## Ordem de implementação
+1. Migrations (planos + colunas + funções de contagem)
+2. Hook `useUsageLimits` + `UpgradePlanModal` + paywall em OS/Equipe
+3. Página `/configuracoes/assinatura` + edge function `create-subscription-checkout`
+4. Aba Integrações Financeiras + edge functions `test-tenant-gateway` e `create-customer-charge`
+5. Botão "Pagar via PIX/Boleto" em OS e Orçamentos
+6. Auditoria white-label (PDF, links públicos)
+
+---
+
+## Perguntas antes de implementar
+1. Confirma a substituição dos planos antigos (Basic/Pro/Enterprise R$ 49,90/69,90/89,90) pelos novos Bronze/Prata/Ouro (R$ 39,90/59,90/69,90)? As organizações em trial migram para Bronze por padrão?
+2. Para o checkout do SaaS (suas mensalidades), uso o mesmo `ASAAS_API_KEY` já configurado, ou você quer separar em `PLATFORM_ASAAS_API_KEY`?
+3. Os links de afiliado Asaas e Mercado Pago — quer que eu deixe placeholders `{{ASAAS_AFFILIATE_URL}}` em constants para você editar depois, ou já tem as URLs?
+4. Implemento tudo em sequência (6 etapas) ou prefere validar etapa por etapa?
