@@ -40,7 +40,7 @@ const App = () => (
               <Routes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/cadastro-empresa" element={<CadastroEmpresa />} />
-                <Route path="/mensalidade-em-atraso" element={<ProtectedRoute><MensalidadeAtraso /></ProtectedRoute>} />
+                <Route path="/mensalidade-em-atraso" element={<ProtectedRoute allowBlocked><MensalidadeAtraso /></ProtectedRoute>} />
                 <Route path="/admin-master" element={<AdminMaster />} />
                 <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                 <Route path="/ordens-servico" element={<ProtectedRoute requiredPermission="acesso_os"><OrdensServico /></ProtectedRoute>} />
