@@ -101,11 +101,15 @@ export default function Equipe() {
     } catch (error: any) { toast.error('Erro: ' + error.message); }
   };
 
+  const { canInviteUser, usersUsed, usersLimit, plan } = useUsageLimits();
+  const [showUpgrade, setShowUpgrade] = useState(false);
+
   const handleAddMember = async () => {
     if (!newMember.nome.trim() || !newMember.email.trim() || !newMember.senha.trim()) {
       toast.error('Nome, Email e Senha são obrigatórios');
       return;
     }
+    if (!canInviteUser) { setShowUpgrade(true); return; }
     setAddLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-user', {
