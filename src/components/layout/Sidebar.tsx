@@ -69,7 +69,7 @@ export function Sidebar({ className }: SidebarProps) {
           <Zap className="h-4 w-4 text-white" />
         </div>
         <div>
-          <h2 className="font-display font-extrabold text-lg text-white leading-none tracking-tight">VoltControl</h2>
+          <h2 className="font-display font-extrabold text-lg text-white leading-none tracking-tight">LivreOS</h2>
           <p className="text-[10px] text-white/35 mt-0.5">Gestão de Oficina</p>
         </div>
       </div>

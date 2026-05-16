@@ -113,7 +113,7 @@ export default function Relatorios() {
     if (!printContent) return;
     const w = window.open('', '_blank');
     if (!w) return;
-    w.document.write(`<html><head><title>Relatórios - Volt Control</title><style>
+    w.document.write(`<html><head><title>Relatórios - LivreOS</title><style>
       body{font-family:system-ui,sans-serif;padding:40px;color:#333}
       h1{font-size:24px;margin-bottom:20px}h2{font-size:18px;margin:24px 0 12px}
       .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
@@ -122,7 +122,7 @@ export default function Relatorios() {
       table{width:100%;border-collapse:collapse;margin:12px 0}th,td{padding:8px 12px;border:1px solid #e5e7eb;text-align:left;font-size:13px}
       th{background:#f9fafb;font-weight:600}
     </style></head><body>
-      <h1>Relatórios - Volt Control</h1><p>Gerado em: ${new Date().toLocaleDateString('pt-BR')}</p>
+      <h1>Relatórios - LivreOS</h1><p>Gerado em: ${new Date().toLocaleDateString('pt-BR')}</p>
       <div class="stats">
         <div class="stat"><div class="stat-value">${stats.osConcluidas}</div><div class="stat-label">OS Concluídas</div></div>
         <div class="stat"><div class="stat-value">${fmt(stats.faturamento)}</div><div class="stat-label">Faturamento</div></div>
