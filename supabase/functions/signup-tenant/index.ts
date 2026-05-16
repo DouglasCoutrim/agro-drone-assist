@@ -75,8 +75,9 @@ Deno.serve(async (req) => {
       organization_id: org.id,
     });
 
-    // 5. Role admin
-    await admin.from('user_roles').upsert({ user_id: userId, role: 'admin' });
+    // 5. Role admin (replace default 'consulta')
+    await admin.from('user_roles').delete().eq('user_id', userId);
+    await admin.from('user_roles').insert({ user_id: userId, role: 'admin' });
 
     // 6. empresa_config
     await admin.from('empresa_config').insert({
