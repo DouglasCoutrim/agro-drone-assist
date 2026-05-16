@@ -76,42 +76,66 @@ export type Database = {
       empresa_config: {
         Row: {
           cnpj: string | null
+          cor_primaria: string | null
+          cor_secundaria: string | null
           created_at: string
+          dominio_personalizado: string | null
+          email_remetente: string | null
           endereco: string | null
+          favicon_url: string | null
+          gateway_credentials: Json | null
+          gateway_pagamento: string | null
           id: string
           logo_url: string | null
           nome_empresa: string
           organization_id: string | null
           owner_id: string | null
           responsavel: string | null
+          subdominio: string | null
           telefone: string | null
           termos_servico: string | null
           updated_at: string
         }
         Insert: {
           cnpj?: string | null
+          cor_primaria?: string | null
+          cor_secundaria?: string | null
           created_at?: string
+          dominio_personalizado?: string | null
+          email_remetente?: string | null
           endereco?: string | null
+          favicon_url?: string | null
+          gateway_credentials?: Json | null
+          gateway_pagamento?: string | null
           id?: string
           logo_url?: string | null
           nome_empresa?: string
           organization_id?: string | null
           owner_id?: string | null
           responsavel?: string | null
+          subdominio?: string | null
           telefone?: string | null
           termos_servico?: string | null
           updated_at?: string
         }
         Update: {
           cnpj?: string | null
+          cor_primaria?: string | null
+          cor_secundaria?: string | null
           created_at?: string
+          dominio_personalizado?: string | null
+          email_remetente?: string | null
           endereco?: string | null
+          favicon_url?: string | null
+          gateway_credentials?: Json | null
+          gateway_pagamento?: string | null
           id?: string
           logo_url?: string | null
           nome_empresa?: string
           organization_id?: string | null
           owner_id?: string | null
           responsavel?: string | null
+          subdominio?: string | null
           telefone?: string | null
           termos_servico?: string | null
           updated_at?: string
@@ -573,33 +597,60 @@ export type Database = {
       organizations: {
         Row: {
           active: boolean
+          blocked_at: string | null
+          blocked_reason: string | null
           created_at: string
           id: string
+          max_os_per_month: number
+          max_users: number
+          monthly_fee: number
           name: string
+          next_due_date: string | null
           owner_id: string
+          plan: string
           settings: Json | null
           slug: string
+          status: string
           telefone: string | null
+          trial_ends_at: string | null
         }
         Insert: {
           active?: boolean
+          blocked_at?: string | null
+          blocked_reason?: string | null
           created_at?: string
           id?: string
+          max_os_per_month?: number
+          max_users?: number
+          monthly_fee?: number
           name: string
+          next_due_date?: string | null
           owner_id: string
+          plan?: string
           settings?: Json | null
           slug: string
+          status?: string
           telefone?: string | null
+          trial_ends_at?: string | null
         }
         Update: {
           active?: boolean
+          blocked_at?: string | null
+          blocked_reason?: string | null
           created_at?: string
           id?: string
+          max_os_per_month?: number
+          max_users?: number
+          monthly_fee?: number
           name?: string
+          next_due_date?: string | null
           owner_id?: string
+          plan?: string
           settings?: Json | null
           slug?: string
+          status?: string
           telefone?: string | null
+          trial_ends_at?: string | null
         }
         Relationships: []
       }
@@ -698,6 +749,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      platform_admins: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       produtos: {
         Row: {
@@ -876,6 +942,87 @@ export type Database = {
           },
         ]
       }
+      subscription_plans: {
+        Row: {
+          active: boolean
+          created_at: string
+          features: Json
+          id: string
+          max_os_per_month: number
+          max_users: number
+          monthly_price: number
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          features?: Json
+          id?: string
+          max_os_per_month?: number
+          max_users?: number
+          monthly_price?: number
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          features?: Json
+          id?: string
+          max_os_per_month?: number
+          max_users?: number
+          monthly_price?: number
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tenant_invoices: {
+        Row: {
+          asaas_charge_id: string | null
+          competencia: string
+          created_at: string
+          id: string
+          organization_id: string
+          pago_em: string | null
+          payment_url: string | null
+          status: string
+          updated_at: string
+          valor: number
+          vencimento: string
+        }
+        Insert: {
+          asaas_charge_id?: string | null
+          competencia: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          pago_em?: string | null
+          payment_url?: string | null
+          status?: string
+          updated_at?: string
+          valor: number
+          vencimento: string
+        }
+        Update: {
+          asaas_charge_id?: string | null
+          competencia?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          pago_em?: string | null
+          payment_url?: string | null
+          status?: string
+          updated_at?: string
+          valor?: number
+          vencimento?: string
+        }
+        Relationships: []
+      }
       user_permissions: {
         Row: {
           acesso_estoque: boolean
@@ -945,6 +1092,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_tecnico: { Args: { _user_id: string }; Returns: boolean }
+      is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "tecnico" | "consulta"
