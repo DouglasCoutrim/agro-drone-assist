@@ -185,6 +185,10 @@ export default function EmpresaConfig() {
             </Button>
           </CardContent>
         </Card>
+
+        <div className="max-w-2xl">
+          <IntegracoesFinanceiras />
+        </div>
       </div>
     </MainLayout>
   );
