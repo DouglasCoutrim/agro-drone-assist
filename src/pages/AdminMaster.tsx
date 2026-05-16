@@ -48,20 +48,18 @@ export default function AdminMaster() {
 
   const generateMonthly = async () => {
     setBusy(true);
-    const today = new Date();
-    const competencia = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    const vencimento = new Date(today.getFullYear(), today.getMonth(), 10).toISOString().slice(0, 10);
-
-    const activeOrgs = orgs.filter((o) => o.status !== 'blocked' && o.status !== 'canceled' && Number(o.monthly_fee) > 0);
-    const rows = activeOrgs.map((o) => ({
-      organization_id: o.id, competencia, valor: o.monthly_fee, vencimento, status: 'pendente',
-    }));
-    if (rows.length === 0) { toast.info('Nenhuma empresa elegível'); setBusy(false); return; }
-
-    const { error } = await supabase.from('tenant_invoices' as any).insert(rows);
+    const { data, error } = await supabase.functions.invoke('generate-monthly-invoices');
     setBusy(false);
-    if (error) toast.error(error.message);
-    else { toast.success(`${rows.length} faturas geradas`); fetchData(); }
+    if (error || !(data as any)?.ok) toast.error((data as any)?.error || error?.message || 'Erro');
+    else { toast.success(`${(data as any).created} faturas criadas (${(data as any).skipped} já existiam)`); fetchData(); }
+  };
+
+  const checkOverdue = async () => {
+    setBusy(true);
+    const { data, error } = await supabase.functions.invoke('check-overdue-tenants');
+    setBusy(false);
+    if (error || !(data as any)?.ok) toast.error((data as any)?.error || error?.message || 'Erro');
+    else { toast.success(`${(data as any).blocked} tenants bloqueados`); fetchData(); }
   };
 
   const stats = {
@@ -118,6 +116,7 @@ export default function AdminMaster() {
                 <Input className="pl-8 w-48" placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} />
               </div>
               <Button size="sm" onClick={generateMonthly} disabled={busy}>Gerar mensalidades</Button>
+              <Button size="sm" variant="outline" onClick={checkOverdue} disabled={busy}>Verificar atrasos</Button>
             </div>
           </CardHeader>
           <CardContent>
