@@ -15,8 +15,9 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({ children, requiredRole, requiredPermission }: ProtectedRouteProps) {
   const { user, role, loading } = useAuth();
   const { permissions, loading: permsLoading } = usePermissions();
+  const { organization, isPlatformAdmin, loading: orgLoading } = useOrganization();
 
-  if (loading || permsLoading) {
+  if (loading || permsLoading || orgLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -29,6 +30,11 @@ export default function ProtectedRoute({ children, requiredRole, requiredPermiss
 
   if (!user) {
     return <Navigate to="/auth" replace />;
+  }
+
+  // Org blocked? (platform admin bypasses)
+  if (!isPlatformAdmin && organization && organization.status === 'blocked') {
+    return <Navigate to="/mensalidade-em-atraso" replace />;
   }
 
   // Role hierarchy check
