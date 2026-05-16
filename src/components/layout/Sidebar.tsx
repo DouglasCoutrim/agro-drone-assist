@@ -14,7 +14,7 @@ const navSections = [
   {
     title: "PRINCIPAL",
     items: [
-      { title: "Dashboard", icon: LayoutDashboard, href: "/", roles: ["admin", "tecnico", "consulta"] },
+      { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard", roles: ["admin", "tecnico", "consulta"] },
       { title: "Ordens de Serviço", icon: FileText, href: "/ordens-servico", roles: ["admin", "tecnico", "consulta"] },
       { title: "Clientes", icon: Users, href: "/clientes", roles: ["admin", "tecnico", "consulta"] },
     ],

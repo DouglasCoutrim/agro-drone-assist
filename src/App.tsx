@@ -25,6 +25,7 @@ import AdminMaster from "./pages/AdminMaster";
 import CadastroEmpresa from "./pages/CadastroEmpresa";
 import MensalidadeAtraso from "./pages/MensalidadeAtraso";
 import Assinatura from "./pages/Assinatura";
+import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,7 +44,8 @@ const App = () => (
                 <Route path="/cadastro-empresa" element={<CadastroEmpresa />} />
                 <Route path="/mensalidade-em-atraso" element={<ProtectedRoute allowBlocked><MensalidadeAtraso /></ProtectedRoute>} />
                 <Route path="/admin-master" element={<AdminMaster />} />
-                <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+                <Route path="/" element={<Landing />} />
+                <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                 <Route path="/ordens-servico" element={<ProtectedRoute requiredPermission="acesso_os"><OrdensServico /></ProtectedRoute>} />
                 <Route path="/estoque" element={<ProtectedRoute requiredPermission="acesso_estoque"><Estoque /></ProtectedRoute>} />
                 <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
