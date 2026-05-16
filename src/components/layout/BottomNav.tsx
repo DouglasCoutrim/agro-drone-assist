@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 const mainItems = [
-  { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/ordens-servico", icon: FileText, label: "Ordens" },
   { to: "/clientes", icon: Users, label: "Clientes" },
   { to: "/estoque", icon: Package, label: "Estoque" },
