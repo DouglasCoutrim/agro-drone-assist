@@ -24,6 +24,7 @@ import Rotas from "./pages/Rotas";
 import AdminMaster from "./pages/AdminMaster";
 import CadastroEmpresa from "./pages/CadastroEmpresa";
 import MensalidadeAtraso from "./pages/MensalidadeAtraso";
+import Assinatura from "./pages/Assinatura";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
