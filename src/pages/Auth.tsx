@@ -81,7 +81,7 @@ export default function Auth() {
               {loading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Entrando...</>) : 'Entrar'}
             </Button>
             <p className="text-xs text-muted-foreground text-center">
-              Acesso restrito. Solicite suas credenciais ao administrador.
+              Quer cadastrar sua empresa? <a href="/cadastro-empresa" className="text-primary underline">Criar conta grátis</a>
             </p>
           </form>
         </CardContent>
