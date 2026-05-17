@@ -38,9 +38,7 @@ export function MobileHeader() {
       </div>
       <div className="flex items-center gap-1">
         <ThemeToggle />
-        <button className="w-9 h-9 rounded-lg border border-border bg-card text-muted-foreground flex items-center justify-center relative transition-all hover:bg-background hover:text-foreground">
-          <Bell size={16} />
-        </button>
+        <NotificationBell compact />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="w-8 h-8 rounded-lg overflow-hidden bg-primary/20 flex items-center justify-center ml-1" aria-label="Menu da conta">
