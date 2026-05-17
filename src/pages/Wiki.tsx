@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, BookOpen, ChevronRight, Play, ArrowLeft } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import Joyride, { Step } from "react-joyride";
+import { Joyride, type Step } from "react-joyride";
 import { useNavigate, useParams } from "react-router-dom";
 
 interface Category { id: string; slug: string; name: string; description: string | null; icon: string; sort_order: number; }
@@ -35,7 +35,7 @@ export default function Wiki() {
         supabase.from("wiki_articles").select("*").eq("published", true).order("sort_order"),
       ]);
       setCats((c || []) as Category[]);
-      setArticles((a || []) as Article[]);
+      setArticles((a || []) as unknown as Article[]);
     })();
   }, []);
 
