@@ -107,13 +107,13 @@ export default function Wiki() {
   // ----- List view -----
   return (
     <MainLayout>
-      <Joyride
-        steps={tourSteps}
-        run={runTour}
-        continuous showSkipButton showProgress
-        callback={(e) => { if (["finished", "skipped"].includes(e.status)) setRunTour(false); }}
-        
-      />
+      {runTour && tourSteps.length > 0 && (
+        <Joyride
+          steps={tourSteps}
+          continuous
+          onEvent={(e: any) => { if (e?.type === "tour:end" || e?.status === "finished" || e?.status === "skipped") setRunTour(false); }}
+        />
+      )}
       <div className="space-y-6">
         <header className="space-y-2">
           <h1 className="font-display text-3xl font-bold flex items-center gap-2">
