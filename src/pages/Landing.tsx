@@ -87,8 +87,7 @@ export default function Landing() {
               <span className="text-primary">assistência técnica</span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground">
-              Ordens de serviço, estoque, financeiro, cobranças e clientes em um só lugar.
-              Pensado para oficinas de drones, baterias, eletrônica e mobilidade elétrica.
+              Pare de perder tempo com papel ou sistemas antigos. O LivreOS foi pensado para a nova geração de assistências — perfeito para oficinas de eletrônica, drones, mobilidade urbana e prestadores de serviços que buscam faturamento, estoque e OS organizados em poucos cliques.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
               <Button asChild size="lg" className="gap-2">
