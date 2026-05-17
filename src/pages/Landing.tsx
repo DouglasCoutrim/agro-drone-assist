@@ -54,8 +54,7 @@ export default function Landing() {
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src={logo} alt="LivreOS" className="h-8 w-auto" />
-            <span className="font-bold text-lg">LivreOS</span>
+            <img src={logo} alt="LivreOS" className="h-9 w-auto" />
           </div>
           <nav className="hidden md:flex items-center gap-6 text-sm">
             <a href="#features" className="hover:text-primary">Recursos</a>
