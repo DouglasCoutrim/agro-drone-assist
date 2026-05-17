@@ -2,12 +2,14 @@ import { Sidebar } from "./Sidebar";
 import { MobileHeader } from "./MobileHeader";
 import { BottomNav } from "./BottomNav";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import { useInactivityLogout } from "@/hooks/useInactivityLogout";
 
 interface MainLayoutProps {
   children: React.ReactNode;
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
+  useInactivityLogout();
   return (
     <div className="flex min-h-screen">
       {/* Desktop Sidebar */}
