@@ -65,19 +65,19 @@ Deno.serve(async (req) => {
       const apiKey = credsAsaas.api_key;
       const asaasBase = credsAsaas.asaas_environment === 'sandbox'
         ? 'https://api-sandbox.asaas.com/v3'
-        : 'https://api.asaas.com/v3';
+        : '${asaasBase}';
       if (!apiKey) return json({ error: 'API Key Asaas ausente' }, 400);
 
       // customer
       let custId: string | null = null;
       if (cliente?.email) {
-        const found = await fetch(`https://api.asaas.com/v3/customers?email=${encodeURIComponent(cliente.email)}`, {
+        const found = await fetch(`${asaasBase}/customers?email=${encodeURIComponent(cliente.email)}`, {
           headers: { 'access_token': apiKey },
         }).then(r => r.json());
         custId = found?.data?.[0]?.id || null;
       }
       if (!custId) {
-        const cust = await fetch('https://api.asaas.com/v3/customers', {
+        const cust = await fetch('${asaasBase}/customers', {
           method: 'POST',
           headers: { 'access_token': apiKey, 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
         custId = cust.id;
       }
 
-      const charge = await fetch('https://api.asaas.com/v3/payments', {
+      const charge = await fetch('${asaasBase}/payments', {
         method: 'POST',
         headers: { 'access_token': apiKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
 
       let pix: any = {};
       try {
-        pix = await fetch(`https://api.asaas.com/v3/payments/${charge.id}/pixQrCode`, {
+        pix = await fetch(`${asaasBase}/payments/${charge.id}/pixQrCode`, {
           headers: { 'access_token': apiKey },
         }).then(r => r.json());
       } catch (_) {}
