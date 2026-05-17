@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
         headers: { 'access_token': apiKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customer: custId,
-          billingType: 'UNDEFINED',
+          billingType: 'UNDEFINED', // permite PIX, Boleto e Cartão
           value: valor,
           dueDate: dueISO,
           description: descricao || 'Pagamento',
