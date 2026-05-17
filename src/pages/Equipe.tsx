@@ -252,10 +252,10 @@ export default function Equipe() {
                           <p className="text-sm text-muted-foreground truncate">{u.email}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap sm:justify-end">
                         {isAdmin && (
                           <Select value={u.role} onValueChange={(v) => handleChangeRole(u.id, v)}>
-                            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="w-full sm:w-36"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="admin">Administrador</SelectItem>
                               <SelectItem value="tecnico">Técnico</SelectItem>
@@ -277,7 +277,7 @@ export default function Equipe() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pl-13">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:pl-13">
                       <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4 text-primary" />

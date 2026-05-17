@@ -85,7 +85,7 @@ export default function CadastroEmpresa() {
                   <Input required value={form.empresa} onChange={(e) => setForm({ ...form, empresa: e.target.value })} />
                 </div>
                 <div>
-                  <Label>CNPJ</Label>
+                  <Label>CPF/CNPJ</Label>
                   <Input value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value })} />
                 </div>
                 <div>

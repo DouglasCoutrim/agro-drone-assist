@@ -111,7 +111,7 @@ export default function EmpresaConfig() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>CNPJ</Label>
+                <Label>CPF/CNPJ</Label>
                 <Input
                   value={form.cnpj}
                   onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
