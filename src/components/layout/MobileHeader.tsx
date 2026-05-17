@@ -19,7 +19,7 @@ export function MobileHeader() {
   return (
     <header className="fixed top-0 left-0 right-0 h-[var(--header-height)] bg-card border-b border-border flex items-center justify-between px-4 z-[100] lg:hidden" style={{ boxShadow: "var(--shadow-xs)" }}>
       <div className="flex items-center">
-        <img src={logo} alt="LivreOS" className="h-8 w-auto" />
+        <img src={logo} alt="LivreOS" className="h-12 w-auto drop-shadow-[0_2px_8px_rgba(57,255,20,0.25)]" />
       </div>
       <div className="flex items-center gap-1">
         <ThemeToggle />
