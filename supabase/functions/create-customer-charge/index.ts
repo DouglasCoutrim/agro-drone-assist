@@ -61,7 +61,11 @@ Deno.serve(async (req) => {
     const dueISO = dueDate.toISOString().slice(0, 10);
 
     if (cfg.gateway_clientes === 'asaas') {
-      const apiKey = (cfg.gateway_clientes_credentials as any)?.api_key;
+      const credsAsaas = (cfg.gateway_clientes_credentials as any) || {};
+      const apiKey = credsAsaas.api_key;
+      const asaasBase = credsAsaas.asaas_environment === 'sandbox'
+        ? 'https://api-sandbox.asaas.com/v3'
+        : 'https://api.asaas.com/v3';
       if (!apiKey) return json({ error: 'API Key Asaas ausente' }, 400);
 
       // customer
