@@ -1,4 +1,5 @@
-import { Bell, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell";
 import logo from "@/assets/logo.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
