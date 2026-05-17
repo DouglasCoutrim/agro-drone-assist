@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, FileText, Package, BarChart3, DollarSign, Settings,
-  Users, CreditCard, UsersRound, Building2, ClipboardList, Route, LogOut, LifeBuoy
+  Users, CreditCard, UsersRound, Building2, ClipboardList, Route, LogOut, LifeBuoy, BookOpen, Bell
 } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,6 +37,8 @@ const navSections = [
       { title: "Equipe", icon: UsersRound, href: "/equipe", roles: ["admin"] },
       { title: "Empresa", icon: Building2, href: "/empresa", roles: ["admin"] },
       { title: "Configurações", icon: Settings, href: "/configuracoes", roles: ["admin"] },
+      { title: "Notificações", icon: Bell, href: "/notificacoes", roles: ["admin", "tecnico", "consulta"] },
+      { title: "Central de Ajuda", icon: BookOpen, href: "/wiki", roles: ["admin", "tecnico", "consulta"] },
       { title: "Suporte", icon: LifeBuoy, href: "/suporte", roles: ["admin", "tecnico", "consulta"] },
     ],
   },

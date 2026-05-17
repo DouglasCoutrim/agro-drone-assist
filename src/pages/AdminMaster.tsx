@@ -3,11 +3,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { useOrganization } from '@/hooks/useOrganization';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ShieldCheck, LogOut, LayoutDashboard, Building2, Package, LifeBuoy } from 'lucide-react';
+import { Loader2, ShieldCheck, LogOut, LayoutDashboard, Building2, Package, LifeBuoy, Megaphone, BookOpen } from 'lucide-react';
 import OverviewTab from '@/components/admin/OverviewTab';
 import TenantsTab from '@/components/admin/TenantsTab';
 import PlansTab from '@/components/admin/PlansTab';
 import SupportTab from '@/components/admin/SupportTab';
+import BroadcastTab from '@/components/admin/BroadcastTab';
+import WikiTab from '@/components/admin/WikiTab';
 
 export default function AdminMaster() {
   const { signOut, loading: authLoading } = useAuth();
@@ -42,7 +44,7 @@ export default function AdminMaster() {
 
       <div className="max-w-[1400px] mx-auto p-4 lg:p-8">
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 h-auto">
             <TabsTrigger value="overview" className="gap-2 py-2.5">
               <LayoutDashboard className="h-4 w-4" /> Visão Geral
             </TabsTrigger>
@@ -55,12 +57,20 @@ export default function AdminMaster() {
             <TabsTrigger value="support" className="gap-2 py-2.5">
               <LifeBuoy className="h-4 w-4" /> Suporte
             </TabsTrigger>
+            <TabsTrigger value="broadcast" className="gap-2 py-2.5">
+              <Megaphone className="h-4 w-4" /> Avisos
+            </TabsTrigger>
+            <TabsTrigger value="wiki" className="gap-2 py-2.5">
+              <BookOpen className="h-4 w-4" /> Wiki
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview"><OverviewTab /></TabsContent>
           <TabsContent value="tenants"><TenantsTab /></TabsContent>
           <TabsContent value="plans"><PlansTab /></TabsContent>
           <TabsContent value="support"><SupportTab /></TabsContent>
+          <TabsContent value="broadcast"><BroadcastTab /></TabsContent>
+          <TabsContent value="wiki"><WikiTab /></TabsContent>
         </Tabs>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Bell, Search, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -36,19 +37,10 @@ export function Header({ onMenuToggle }: HeaderProps) {
   };
 
   return (
-    <header className="hidden lg:flex h-16 items-center justify-between border-b border-border bg-card px-6">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          placeholder="Buscar..."
-          className="w-72 h-10 pl-10 pr-4 text-sm bg-background border border-border rounded-xl outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
-        />
-      </div>
+    <header className="hidden lg:flex h-16 items-center justify-end border-b border-border bg-card px-6">
       <div className="flex items-center gap-2">
         <ThemeToggle />
-        <button className="w-9 h-9 rounded-lg border border-border bg-card text-muted-foreground flex items-center justify-center relative transition-all hover:bg-background hover:text-foreground">
-          <Bell size={16} />
-        </button>
+        <NotificationBell />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2 h-9 px-2 rounded-lg hover:bg-muted transition-colors">
