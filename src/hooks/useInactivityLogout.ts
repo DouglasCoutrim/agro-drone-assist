@@ -64,15 +64,15 @@ export function useInactivityLogout() {
       }
     };
 
-    const events: (keyof WindowEventMap)[] = [
+    const events = [
       "mousemove",
       "mousedown",
       "keydown",
       "touchstart",
       "scroll",
-      "visibilitychange",
-    ];
+    ] as const;
     events.forEach((ev) => window.addEventListener(ev, reset, { passive: true }));
+    document.addEventListener("visibilitychange", reset);
     window.addEventListener("storage", onStorage);
 
     // inicializa a partir do último timestamp (cross-tab) ou agora
@@ -95,6 +95,7 @@ export function useInactivityLogout() {
     return () => {
       clearTimers();
       events.forEach((ev) => window.removeEventListener(ev, reset));
+      document.removeEventListener("visibilitychange", reset);
       window.removeEventListener("storage", onStorage);
     };
   }, [user, signOut, navigate]);
