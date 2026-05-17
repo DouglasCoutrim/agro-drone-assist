@@ -9,6 +9,3 @@ verify_jwt = false
 [functions.mercadopago-webhook]
 verify_jwt = false
 
-[functions.bootstrap-platform-admin]
-verify_jwt = false
-
