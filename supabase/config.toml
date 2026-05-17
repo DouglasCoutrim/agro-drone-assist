@@ -2,3 +2,10 @@ project_id = "iynljexyjhbkfxsurddn"
 
 [functions.asaas-platform-webhook]
 verify_jwt = false
+
+[functions.asaas-tenant-webhook]
+verify_jwt = false
+
+[functions.mercadopago-webhook]
+verify_jwt = false
+

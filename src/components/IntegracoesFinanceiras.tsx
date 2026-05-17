@@ -4,18 +4,41 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
 import { toast } from 'sonner';
-import { ExternalLink, Loader2, ShieldCheck } from 'lucide-react';
+import { ExternalLink, Eye, EyeOff, Loader2, ShieldCheck, KeyRound } from 'lucide-react';
 
-const ASAAS_AFFILIATE_URL = 'https://www.asaas.com/r/SEU_CODIGO_AFILIADO';
-const MP_AFFILIATE_URL = 'https://www.mercadopago.com.br/?ref=SEU_CODIGO_AFILIADO';
+type Gateway = 'none' | 'asaas' | 'mercadopago' | 'pix_manual';
+type PixKeyType = 'cpf' | 'cnpj' | 'email' | 'telefone' | 'aleatoria';
+
+interface Credentials {
+  api_key?: string;
+  asaas_environment?: 'sandbox' | 'production';
+  token?: string;
+  mp_public_key?: string;
+  pix_key_type?: PixKeyType;
+  pix_key_value?: string;
+  pix_receiver_name?: string;
+}
+
+function SecretInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <Input type={show ? 'text' : 'password'} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="pr-10" />
+      <button type="button" onClick={() => setShow(s => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+}
 
 export function IntegracoesFinanceiras() {
   const { organization } = useOrganization();
-  const [gateway, setGateway] = useState<'none' | 'asaas' | 'mercadopago'>('none');
-  const [credential, setCredential] = useState('');
+  const [gateway, setGateway] = useState<Gateway>('none');
+  const [creds, setCreds] = useState<Credentials>({ asaas_environment: 'production', pix_key_type: 'cpf' });
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -29,36 +52,49 @@ export function IntegracoesFinanceiras() {
         .eq('organization_id', organization.id)
         .maybeSingle();
       if (data) {
-        setGateway(((data as any).gateway_clientes as any) || 'none');
-        const creds = (data as any).gateway_clientes_credentials || {};
-        setCredential(creds.token || creds.api_key || '');
+        setGateway(((data as any).gateway_clientes as Gateway) || 'none');
+        setCreds({ asaas_environment: 'production', pix_key_type: 'cpf', ...((data as any).gateway_clientes_credentials || {}) });
       }
       setLoading(false);
     })();
   }, [organization]);
 
+  const update = (patch: Partial<Credentials>) => setCreds(prev => ({ ...prev, ...patch }));
+
+  const validate = (): string | null => {
+    if (gateway === 'asaas' && !creds.api_key) return 'Informe a API Key do Asaas';
+    if (gateway === 'mercadopago' && !creds.token) return 'Informe o Access Token do Mercado Pago';
+    if (gateway === 'pix_manual') {
+      if (!creds.pix_key_value?.trim()) return 'Informe a chave PIX';
+      if (!creds.pix_receiver_name?.trim()) return 'Informe o nome do titular';
+    }
+    return null;
+  };
+
   const handleSave = async () => {
     if (!organization) return;
+    const err = validate();
+    if (err) { toast.error(err); return; }
     setSaving(true);
     try {
-      const credPayload = gateway === 'asaas' ? { api_key: credential } : gateway === 'mercadopago' ? { token: credential } : {};
       const { error } = await supabase
         .from('empresa_config' as any)
-        .update({ gateway_clientes: gateway, gateway_clientes_credentials: credPayload })
+        .update({ gateway_clientes: gateway, gateway_clientes_credentials: gateway === 'none' ? {} : creds })
         .eq('organization_id', organization.id);
       if (error) throw error;
-      toast.success('Integração salva');
+      toast.success('Configurações de recebimento salvas');
     } catch (e: any) {
       toast.error(e.message ?? 'Falha ao salvar');
     } finally { setSaving(false); }
   };
 
   const handleTest = async () => {
+    const credential = gateway === 'asaas' ? creds.api_key : creds.token;
     if (!credential) { toast.error('Informe a credencial primeiro'); return; }
     setTesting(true);
     try {
       const { data, error } = await supabase.functions.invoke('test-tenant-gateway', {
-        body: { gateway, credential },
+        body: { gateway, credential, environment: creds.asaas_environment },
       });
       if (error) throw error;
       if ((data as any)?.ok) toast.success('Credenciais válidas ✓');
@@ -70,87 +106,105 @@ export function IntegracoesFinanceiras() {
 
   if (loading) return <div className="p-6"><Loader2 className="h-5 w-5 animate-spin" /></div>;
 
+  const optionCard = (id: Gateway, title: string, desc: string) => (
+    <label className={`border rounded-lg p-4 cursor-pointer transition ${gateway === id ? 'border-primary ring-2 ring-primary/30' : 'hover:border-primary/50'}`}>
+      <div className="flex items-center gap-2 mb-1">
+        <RadioGroupItem value={id} id={id} />
+        <span className="font-semibold">{title}</span>
+      </div>
+      <p className="text-xs text-muted-foreground">{desc}</p>
+    </label>
+  );
+
   return (
     <Card className="p-6 space-y-5">
       <div>
-        <h3 className="text-xl font-bold flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" /> Integrações Financeiras</h3>
-        <p className="text-sm text-muted-foreground">
-          Configure como você quer cobrar seus clientes. O dinheiro cai direto na sua conta.
-        </p>
+        <h3 className="text-xl font-bold flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" /> Configurações de Recebimento</h3>
+        <p className="text-sm text-muted-foreground">Escolha como sua oficina vai receber os pagamentos dos clientes finais.</p>
       </div>
 
-      <RadioGroup value={gateway} onValueChange={(v) => setGateway(v as any)} className="grid md:grid-cols-3 gap-3">
-        <label className={`border rounded-lg p-4 cursor-pointer ${gateway === 'asaas' ? 'border-primary ring-2 ring-primary/30' : ''}`}>
-          <div className="flex items-center gap-2 mb-1">
-            <RadioGroupItem value="asaas" id="asaas" />
-            <span className="font-semibold">Asaas</span>
-          </div>
-          <p className="text-xs text-muted-foreground">PIX, Boleto e Cartão. Ideal para recorrência.</p>
-        </label>
-        <label className={`border rounded-lg p-4 cursor-pointer ${gateway === 'mercadopago' ? 'border-primary ring-2 ring-primary/30' : ''}`}>
-          <div className="flex items-center gap-2 mb-1">
-            <RadioGroupItem value="mercadopago" id="mp" />
-            <span className="font-semibold">Mercado Pago</span>
-          </div>
-          <p className="text-xs text-muted-foreground">PIX, Boleto, Cartão e link de pagamento.</p>
-        </label>
-        <label className={`border rounded-lg p-4 cursor-pointer ${gateway === 'none' ? 'border-primary ring-2 ring-primary/30' : ''}`}>
-          <div className="flex items-center gap-2 mb-1">
-            <RadioGroupItem value="none" id="none" />
-            <span className="font-semibold">Ainda não tenho conta</span>
-          </div>
-          <p className="text-xs text-muted-foreground">Crie uma agora pelos links abaixo.</p>
-        </label>
+      <RadioGroup value={gateway} onValueChange={(v) => setGateway(v as Gateway)} className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">
+        {optionCard('asaas', 'Asaas', 'PIX, Boleto e Cartão automáticos')}
+        {optionCard('mercadopago', 'Mercado Pago', 'Checkout com PIX e Boleto')}
+        {optionCard('pix_manual', 'Apenas Chave PIX', 'Exibe sua chave para o cliente pagar')}
+        {optionCard('none', 'Desativado', 'Sem cobrança automática')}
       </RadioGroup>
 
       {gateway === 'asaas' && (
-        <div className="space-y-2">
-          <Label>API Key do Asaas</Label>
-          <Input type="password" value={credential} onChange={e => setCredential(e.target.value)} placeholder="$aas_..." />
-          <p className="text-xs text-muted-foreground">Encontre em: app.asaas.com → Configurações → Integrações → Gerar nova chave</p>
-        </div>
-      )}
-      {gateway === 'mercadopago' && (
-        <div className="space-y-2">
-          <Label>Access Token do Mercado Pago</Label>
-          <Input type="password" value={credential} onChange={e => setCredential(e.target.value)} placeholder="APP_USR-..." />
-          <p className="text-xs text-muted-foreground">Encontre em: mercadopago.com → Seu negócio → Configurações → Credenciais de produção</p>
+        <div className="space-y-3 border-l-2 border-primary/30 pl-4">
+          <div className="space-y-2">
+            <Label>Ambiente</Label>
+            <Select value={creds.asaas_environment ?? 'production'} onValueChange={(v) => update({ asaas_environment: v as any })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sandbox">Homologação (Sandbox)</SelectItem>
+                <SelectItem value="production">Produção</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Chave de API (Access Token)</Label>
+            <SecretInput value={creds.api_key ?? ''} onChange={(v) => update({ api_key: v })} placeholder="$aas_..." />
+            <a href="https://docs.asaas.com/" target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+              <ExternalLink className="h-3 w-3" /> Onde encontrar minha chave (docs.asaas.com)
+            </a>
+          </div>
         </div>
       )}
 
-      {gateway === 'none' && (
-        <div className="grid md:grid-cols-2 gap-3">
-          <a href={ASAAS_AFFILIATE_URL} target="_blank" rel="noreferrer">
-            <Card className="p-4 hover:border-primary transition-colors">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold">Criar conta no Asaas</h4>
-                  <p className="text-xs text-muted-foreground">Grátis · Aprovação rápida</p>
-                </div>
-                <ExternalLink className="h-4 w-4" />
-              </div>
-            </Card>
-          </a>
-          <a href={MP_AFFILIATE_URL} target="_blank" rel="noreferrer">
-            <Card className="p-4 hover:border-primary transition-colors">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold">Criar conta no Mercado Pago</h4>
-                  <p className="text-xs text-muted-foreground">Sem mensalidade</p>
-                </div>
-                <ExternalLink className="h-4 w-4" />
-              </div>
-            </Card>
-          </a>
+      {gateway === 'mercadopago' && (
+        <div className="space-y-3 border-l-2 border-primary/30 pl-4">
+          <div className="space-y-2">
+            <Label>Access Token</Label>
+            <SecretInput value={creds.token ?? ''} onChange={(v) => update({ token: v })} placeholder="APP_USR-..." />
+          </div>
+          <div className="space-y-2">
+            <Label>Public Key</Label>
+            <SecretInput value={creds.mp_public_key ?? ''} onChange={(v) => update({ mp_public_key: v })} placeholder="APP_USR-..." />
+            <a href="https://www.mercadopago.com.br/developers/panel/app" target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+              <ExternalLink className="h-3 w-3" /> Painel de Desenvolvedor do Mercado Pago
+            </a>
+          </div>
+        </div>
+      )}
+
+      {gateway === 'pix_manual' && (
+        <div className="space-y-3 border-l-2 border-primary/30 pl-4">
+          <div className="grid md:grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Tipo de Chave</Label>
+              <Select value={creds.pix_key_type ?? 'cpf'} onValueChange={(v) => update({ pix_key_type: v as PixKeyType })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cpf">CPF</SelectItem>
+                  <SelectItem value="cnpj">CNPJ</SelectItem>
+                  <SelectItem value="email">E-mail</SelectItem>
+                  <SelectItem value="telefone">Celular</SelectItem>
+                  <SelectItem value="aleatoria">Chave Aleatória</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Valor da Chave</Label>
+              <Input value={creds.pix_key_value ?? ''} onChange={(e) => update({ pix_key_value: e.target.value })} placeholder="Sua chave PIX" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Nome do Titular</Label>
+            <Input value={creds.pix_receiver_name ?? ''} onChange={(e) => update({ pix_receiver_name: e.target.value })} placeholder="Nome que aparece no recibo do PIX" />
+          </div>
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <KeyRound className="h-3 w-3" /> O cliente verá esses dados e poderá copiar a chave para pagar.
+          </p>
         </div>
       )}
 
       <div className="flex gap-2 pt-2">
         <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Salvar
+          {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Salvar Configurações
         </Button>
-        {gateway !== 'none' && (
-          <Button variant="outline" onClick={handleTest} disabled={testing || !credential}>
+        {(gateway === 'asaas' || gateway === 'mercadopago') && (
+          <Button variant="outline" onClick={handleTest} disabled={testing}>
             {testing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Testar credenciais
           </Button>
         )}

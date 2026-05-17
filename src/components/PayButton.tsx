@@ -48,7 +48,31 @@ export function PayButton(props: PayButtonProps) {
       <Dialog open={!!result} onOpenChange={() => setResult(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Cobrança gerada</DialogTitle></DialogHeader>
-          {result && (
+          {result && result.pix_manual && (
+            <div className="space-y-3">
+              <div className="rounded-lg border-2 border-primary/40 bg-primary/5 p-4 text-center">
+                <p className="text-xs uppercase text-muted-foreground">Pague via PIX direto para a oficina</p>
+                <p className="text-2xl font-bold mt-1">R$ {Number(result.valor).toFixed(2)}</p>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">Titular</span><span className="font-medium">{result.pix_receiver_name}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Tipo</span><span className="font-medium uppercase">{result.pix_key_type}</span></div>
+                <div className="space-y-1">
+                  <span className="text-muted-foreground text-xs">Chave PIX</span>
+                  <div className="flex gap-2">
+                    <code className="text-xs bg-muted p-2 rounded flex-1 break-all">{result.pix_key_value}</code>
+                    <Button size="icon" variant="outline" onClick={() => { navigator.clipboard.writeText(result.pix_key_value); toast.success('Chave copiada'); }}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <Button className="w-full" onClick={() => { navigator.clipboard.writeText(result.pix_key_value); toast.success('Chave PIX copiada'); }}>
+                <Copy className="h-4 w-4 mr-2" /> Copiar Chave PIX
+              </Button>
+            </div>
+          )}
+          {result && !result.pix_manual && (
             <div className="space-y-4">
               {result.pix_qr_image && (
                 <div>

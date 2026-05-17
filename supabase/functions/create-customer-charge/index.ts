@@ -32,7 +32,23 @@ Deno.serve(async (req) => {
       .eq('organization_id', profile.organization_id)
       .maybeSingle();
 
-    if (!cfg || cfg.gateway_clientes === 'none') return json({ error: 'Gateway não configurado' }, 400);
+    if (!cfg || !cfg.gateway_clientes || cfg.gateway_clientes === 'none') {
+      return json({ error: 'Gateway não configurado. Vá em Configurações → Recebimento.' }, 400);
+    }
+
+    // PIX Manual: não faz chamadas externas
+    if (cfg.gateway_clientes === 'pix_manual') {
+      const c = (cfg.gateway_clientes_credentials as any) || {};
+      if (!c.pix_key_value) return json({ error: 'Chave PIX não configurada' }, 400);
+      return json({
+        pix_manual: true,
+        pix_key_type: c.pix_key_type,
+        pix_key_value: c.pix_key_value,
+        pix_receiver_name: c.pix_receiver_name,
+        valor,
+        descricao: descricao || 'Pagamento',
+      });
+    }
 
     let cliente: any = null;
     if (cliente_id) {
@@ -45,19 +61,23 @@ Deno.serve(async (req) => {
     const dueISO = dueDate.toISOString().slice(0, 10);
 
     if (cfg.gateway_clientes === 'asaas') {
-      const apiKey = (cfg.gateway_clientes_credentials as any)?.api_key;
+      const credsAsaas = (cfg.gateway_clientes_credentials as any) || {};
+      const apiKey = credsAsaas.api_key;
+      const asaasBase = credsAsaas.asaas_environment === 'sandbox'
+        ? 'https://api-sandbox.asaas.com/v3'
+        : 'https://api.asaas.com/v3';
       if (!apiKey) return json({ error: 'API Key Asaas ausente' }, 400);
 
       // customer
       let custId: string | null = null;
       if (cliente?.email) {
-        const found = await fetch(`https://api.asaas.com/v3/customers?email=${encodeURIComponent(cliente.email)}`, {
+        const found = await fetch(`${asaasBase}/customers?email=${encodeURIComponent(cliente.email)}`, {
           headers: { 'access_token': apiKey },
         }).then(r => r.json());
         custId = found?.data?.[0]?.id || null;
       }
       if (!custId) {
-        const cust = await fetch('https://api.asaas.com/v3/customers', {
+        const cust = await fetch(`${asaasBase}/customers`, {
           method: 'POST',
           headers: { 'access_token': apiKey, 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -70,12 +90,12 @@ Deno.serve(async (req) => {
         custId = cust.id;
       }
 
-      const charge = await fetch('https://api.asaas.com/v3/payments', {
+      const charge = await fetch(`${asaasBase}/payments`, {
         method: 'POST',
         headers: { 'access_token': apiKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customer: custId,
-          billingType: 'UNDEFINED',
+          billingType: 'UNDEFINED', // permite PIX, Boleto e Cartão
           value: valor,
           dueDate: dueISO,
           description: descricao || 'Pagamento',
@@ -87,7 +107,7 @@ Deno.serve(async (req) => {
 
       let pix: any = {};
       try {
-        pix = await fetch(`https://api.asaas.com/v3/payments/${charge.id}/pixQrCode`, {
+        pix = await fetch(`${asaasBase}/payments/${charge.id}/pixQrCode`, {
           headers: { 'access_token': apiKey },
         }).then(r => r.json());
       } catch (_) {}
