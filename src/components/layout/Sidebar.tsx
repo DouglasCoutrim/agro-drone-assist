@@ -7,7 +7,7 @@ import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import logoIcon from "@/assets/logo-icon.png";
+import logo from "@/assets/logo.png";
 
 interface SidebarProps { className?: string; }
 
@@ -65,12 +65,9 @@ export function Sidebar({ className }: SidebarProps) {
       className
     )} style={{ width: "var(--sidebar-width)" }}>
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 py-5 border-b border-white/[0.06] mb-2">
-        <img src={logoIcon} alt="LivreOS" className="w-9 h-9 flex-shrink-0" />
-        <div>
-          <h2 className="font-display font-extrabold text-lg text-white leading-none tracking-tight">LivreOS</h2>
-          <p className="text-[10px] text-white/35 mt-0.5">Gestão de Oficina</p>
-        </div>
+      <div className="flex flex-col items-center gap-1 px-5 py-5 border-b border-white/[0.06] mb-2 bg-white/[0.03]">
+        <img src={logo} alt="LivreOS" className="h-12 w-auto drop-shadow-[0_2px_8px_rgba(57,255,20,0.25)]" />
+        <p className="text-[10px] text-white/45 tracking-wider uppercase">Gestão de Oficina</p>
       </div>
 
       {/* Navigation */}

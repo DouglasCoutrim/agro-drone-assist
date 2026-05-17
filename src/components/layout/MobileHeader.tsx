@@ -1,5 +1,5 @@
 import { Bell, Search } from "lucide-react";
-import logoIcon from "@/assets/logo-icon.png";
+import logo from "@/assets/logo.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
@@ -18,9 +18,8 @@ export function MobileHeader() {
 
   return (
     <header className="fixed top-0 left-0 right-0 h-[var(--header-height)] bg-card border-b border-border flex items-center justify-between px-4 z-[100] lg:hidden" style={{ boxShadow: "var(--shadow-xs)" }}>
-      <div className="flex items-center gap-2">
-        <img src={logoIcon} alt="LivreOS" className="w-7 h-7 flex-shrink-0" />
-        <span className="font-display font-extrabold text-lg text-primary">LivreOS</span>
+      <div className="flex items-center">
+        <img src={logo} alt="LivreOS" className="h-8 w-auto" />
       </div>
       <div className="flex items-center gap-1">
         <ThemeToggle />
