@@ -1,12 +1,13 @@
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, FileText, Package, BarChart3, DollarSign, Settings,
-  Users, Zap, CreditCard, UsersRound, Building2, ClipboardList, Route, LogOut
+  Users, CreditCard, UsersRound, Building2, ClipboardList, Route, LogOut
 } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import logoIcon from "@/assets/logo-icon.png";
 
 interface SidebarProps { className?: string; }
 
