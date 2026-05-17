@@ -1,4 +1,5 @@
-import { Zap, Bell, Search } from "lucide-react";
+import { Bell, Search } from "lucide-react";
+import logoIcon from "@/assets/logo-icon.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
@@ -18,9 +19,7 @@ export function MobileHeader() {
   return (
     <header className="fixed top-0 left-0 right-0 h-[var(--header-height)] bg-card border-b border-border flex items-center justify-between px-4 z-[100] lg:hidden" style={{ boxShadow: "var(--shadow-xs)" }}>
       <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-emerald-500 flex items-center justify-center flex-shrink-0">
-          <Zap className="h-3.5 w-3.5 text-white" />
-        </div>
+        <img src={logoIcon} alt="LivreOS" className="w-7 h-7 flex-shrink-0" />
         <span className="font-display font-extrabold text-lg text-primary">LivreOS</span>
       </div>
       <div className="flex items-center gap-1">

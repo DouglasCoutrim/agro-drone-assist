@@ -1,12 +1,13 @@
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, FileText, Package, BarChart3, DollarSign, Settings,
-  Users, Zap, CreditCard, UsersRound, Building2, ClipboardList, Route, LogOut
+  Users, CreditCard, UsersRound, Building2, ClipboardList, Route, LogOut
 } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import logoIcon from "@/assets/logo-icon.png";
 
 interface SidebarProps { className?: string; }
 
@@ -65,9 +66,7 @@ export function Sidebar({ className }: SidebarProps) {
     )} style={{ width: "var(--sidebar-width)" }}>
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 py-5 border-b border-white/[0.06] mb-2">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-emerald-500 flex items-center justify-center flex-shrink-0">
-          <Zap className="h-4 w-4 text-white" />
-        </div>
+        <img src={logoIcon} alt="LivreOS" className="w-9 h-9 flex-shrink-0" />
         <div>
           <h2 className="font-display font-extrabold text-lg text-white leading-none tracking-tight">LivreOS</h2>
           <p className="text-[10px] text-white/35 mt-0.5">Gestão de Oficina</p>
