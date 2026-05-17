@@ -66,15 +66,13 @@ export default function Wiki() {
   if (article) {
     return (
       <MainLayout>
-        <Joyride
-          steps={tourSteps}
-          run={runTour}
-          continuous
-          showSkipButton
-          showProgress
-          callback={(e) => { if (["finished", "skipped"].includes(e.status)) setRunTour(false); }}
-          
-        />
+        {runTour && tourSteps.length > 0 && (
+          <Joyride
+            steps={tourSteps}
+            continuous
+            onEvent={(e: any) => { if (e?.type === "tour:end" || e?.status === "finished" || e?.status === "skipped") setRunTour(false); }}
+          />
+        )}
         <div className="max-w-3xl mx-auto space-y-4">
           <Button variant="ghost" size="sm" onClick={() => navigate("/wiki")}>
             <ArrowLeft className="h-4 w-4 mr-1" />Voltar
