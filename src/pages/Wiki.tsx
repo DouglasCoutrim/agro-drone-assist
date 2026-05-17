@@ -73,7 +73,7 @@ export default function Wiki() {
           showSkipButton
           showProgress
           callback={(e) => { if (["finished", "skipped"].includes(e.status)) setRunTour(false); }}
-          styles={{ options: { primaryColor: "hsl(var(--primary))", zIndex: 10000 } }}
+          
         />
         <div className="max-w-3xl mx-auto space-y-4">
           <Button variant="ghost" size="sm" onClick={() => navigate("/wiki")}>
@@ -114,7 +114,7 @@ export default function Wiki() {
         run={runTour}
         continuous showSkipButton showProgress
         callback={(e) => { if (["finished", "skipped"].includes(e.status)) setRunTour(false); }}
-        styles={{ options: { primaryColor: "hsl(var(--primary))", zIndex: 10000 } }}
+        
       />
       <div className="space-y-6">
         <header className="space-y-2">
