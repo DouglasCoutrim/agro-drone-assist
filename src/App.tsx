@@ -27,6 +27,8 @@ import MensalidadeAtraso from "./pages/MensalidadeAtraso";
 import Assinatura from "./pages/Assinatura";
 import Landing from "./pages/Landing";
 import Suporte from "./pages/Suporte";
+import Notificacoes from "./pages/Notificacoes";
+import Wiki from "./pages/Wiki";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -61,6 +63,9 @@ const App = () => (
                 <Route path="/empresa" element={<ProtectedRoute requiredRole="admin"><EmpresaConfig /></ProtectedRoute>} />
                 <Route path="/assinatura" element={<ProtectedRoute allowBlocked requiredRole="admin"><Assinatura /></ProtectedRoute>} />
                 <Route path="/suporte" element={<ProtectedRoute><Suporte /></ProtectedRoute>} />
+                <Route path="/notificacoes" element={<ProtectedRoute><Notificacoes /></ProtectedRoute>} />
+                <Route path="/wiki" element={<ProtectedRoute><Wiki /></ProtectedRoute>} />
+                <Route path="/wiki/:slug" element={<ProtectedRoute><Wiki /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </EmpresaConfigProvider>
