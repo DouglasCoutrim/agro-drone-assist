@@ -608,7 +608,9 @@ export type Database = {
           blocked_reason: string | null
           created_at: string
           cycle_discount: number
+          expires_at: string | null
           id: string
+          is_vip: boolean
           max_os_per_month: number
           max_users: number
           monthly_fee: number
@@ -616,9 +618,11 @@ export type Database = {
           next_due_date: string | null
           owner_id: string
           plan: string
+          plan_id: string | null
           settings: Json | null
           slug: string
           status: string
+          subscription_status: string
           telefone: string | null
           trial_ends_at: string | null
         }
@@ -629,7 +633,9 @@ export type Database = {
           blocked_reason?: string | null
           created_at?: string
           cycle_discount?: number
+          expires_at?: string | null
           id?: string
+          is_vip?: boolean
           max_os_per_month?: number
           max_users?: number
           monthly_fee?: number
@@ -637,9 +643,11 @@ export type Database = {
           next_due_date?: string | null
           owner_id: string
           plan?: string
+          plan_id?: string | null
           settings?: Json | null
           slug: string
           status?: string
+          subscription_status?: string
           telefone?: string | null
           trial_ends_at?: string | null
         }
@@ -650,7 +658,9 @@ export type Database = {
           blocked_reason?: string | null
           created_at?: string
           cycle_discount?: number
+          expires_at?: string | null
           id?: string
+          is_vip?: boolean
           max_os_per_month?: number
           max_users?: number
           monthly_fee?: number
@@ -658,9 +668,11 @@ export type Database = {
           next_due_date?: string | null
           owner_id?: string
           plan?: string
+          plan_id?: string | null
           settings?: Json | null
           slug?: string
           status?: string
+          subscription_status?: string
           telefone?: string | null
           trial_ends_at?: string | null
         }
@@ -957,6 +969,7 @@ export type Database = {
       subscription_plans: {
         Row: {
           active: boolean
+          billing_cycle: string
           created_at: string
           features: Json
           id: string
@@ -966,9 +979,11 @@ export type Database = {
           name: string
           slug: string
           updated_at: string
+          yearly_price: number
         }
         Insert: {
           active?: boolean
+          billing_cycle?: string
           created_at?: string
           features?: Json
           id?: string
@@ -978,9 +993,11 @@ export type Database = {
           name: string
           slug: string
           updated_at?: string
+          yearly_price?: number
         }
         Update: {
           active?: boolean
+          billing_cycle?: string
           created_at?: string
           features?: Json
           id?: string
@@ -990,6 +1007,75 @@ export type Database = {
           name?: string
           slug?: string
           updated_at?: string
+          yearly_price?: number
+        }
+        Relationships: []
+      }
+      support_messages: {
+        Row: {
+          created_at: string
+          id: string
+          is_admin_reply: boolean
+          message: string
+          sender_id: string
+          ticket_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_admin_reply?: boolean
+          message: string
+          sender_id: string
+          ticket_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_admin_reply?: boolean
+          message?: string
+          sender_id?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          organization_id: string
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          status?: string
+          subject: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
