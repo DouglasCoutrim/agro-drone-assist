@@ -301,7 +301,7 @@ export default function Estoque() {
 
   return (
     <MainLayout>
-      <div className="space-y-4">
+      <div className="space-y-4" data-tour="estoque-page">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-lg font-bold flex items-center gap-2">

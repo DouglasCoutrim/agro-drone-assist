@@ -647,7 +647,7 @@ export default function OrdensServico() {
   // ======= RENDER =======
   return (
     <MainLayout>
-      <div className="space-y-4">
+      <div className="space-y-4" data-tour="os-page">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>

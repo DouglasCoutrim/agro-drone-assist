@@ -110,7 +110,7 @@ const Index = () => {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="space-y-6" data-tour="dashboard-content">
         {/* Page Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
