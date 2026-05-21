@@ -194,61 +194,79 @@ export default function Estoque() {
     try {
       console.log('Iniciando busca do produto ML:', mlId);
       
-      // Using AllOrigins proxy to bypass CORS
-      const targetUrl = `https://api.mercadolibre.com/items/${mlId}`;
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
-      
-      const response = await fetch(proxyUrl);
-      if (!response.ok) throw new Error(`Erro na requisição: ${response.statusText}`);
-      
-      const proxyData = await response.json();
-      const data = JSON.parse(proxyData.contents);
-      
-      if (data.error || !data.title) {
-        throw new Error(data.message || 'Produto não encontrado');
-      }
-
-      console.log('Dados recebidos do ML:', data);
-
-      const price = Number(data.price) || 0;
-      setFormData(prev => ({
-        ...prev,
-        descricao: data.title || prev.descricao,
-        custo_unitario: price,
-        preco_venda: Number((price * (1 + margemLucro / 100)).toFixed(2)),
-        categoria: data.category_id || prev.categoria,
-      }));
-      
-      toast.dismiss(loadingToast);
-      toast.success(`Produto importado: ${data.title}`);
-    } catch (err: any) {
-      console.error('Erro ao importar do Mercado Livre:', err);
-      toast.dismiss(loadingToast);
-      
-      // Fallback to Edge Function if browser-side fetch fails
+      // Prefer using Edge Function for reliability as it runs server-side
       try {
-        console.log('Tentando fallback via Edge Function...');
+        console.log('Tentando busca via Edge Function (mais confiável)...');
         const { data: edgeData, error: edgeError } = await supabase.functions.invoke('mercadolivre', {
           body: { mlId },
         });
 
-        if (edgeError || !edgeData || edgeData.ok === false) {
-          throw new Error(edgeData?.error || 'Falha no fallback');
+        if (edgeError) {
+          console.warn('Erro na Edge Function, tentando proxy client-side:', edgeError);
+          throw new Error(edgeError.message || 'Erro na Edge Function');
         }
 
-        const price = Number(edgeData.price) || 0;
+        if (edgeData && edgeData.ok) {
+          console.log('Dados recebidos via Edge Function:', edgeData);
+          const price = Number(edgeData.price) || 0;
+          setFormData(prev => ({
+            ...prev,
+            descricao: edgeData.title || prev.descricao,
+            custo_unitario: price,
+            preco_venda: Number((price * (1 + margemLucro / 100)).toFixed(2)),
+            categoria: edgeData.category_id || prev.categoria,
+          }));
+          toast.dismiss(loadingToast);
+          toast.success(`Produto importado: ${edgeData.title}`);
+          return;
+        } else {
+          throw new Error(edgeData?.error || 'Erro na resposta da Edge Function');
+        }
+      } catch (edgeErr: any) {
+        console.warn('Fallback para AllOrigins devido a:', edgeErr.message);
+        
+        // Backup: AllOrigins proxy (client-side)
+        const targetUrl = `https://api.mercadolibre.com/items/${mlId}`;
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+        
+        const response = await fetch(proxyUrl);
+        if (!response.ok) throw new Error(`Falha no proxy: ${response.statusText}`);
+        
+        const proxyData = await response.json();
+        if (!proxyData.contents) throw new Error("Resposta do proxy vazia");
+        
+        const data = JSON.parse(proxyData.contents);
+        if (data.error || !data.title) throw new Error(data.message || 'Produto não encontrado');
+
+        console.log('Dados recebidos via AllOrigins:', data);
+
+        const price = Number(data.price) || 0;
         setFormData(prev => ({
           ...prev,
-          descricao: edgeData.title || prev.descricao,
+          descricao: data.title || prev.descricao,
           custo_unitario: price,
           preco_venda: Number((price * (1 + margemLucro / 100)).toFixed(2)),
-          categoria: edgeData.category_id || prev.categoria,
+          categoria: data.category_id || prev.categoria,
         }));
-        toast.success(`Importado via servidor: ${edgeData.title}`);
-      } catch (fallbackErr: any) {
-        console.error('Erro total na importação:', fallbackErr);
-        toast.error(`Erro ao conectar com o Mercado Livre: ${err.message || 'Link inválido ou problema de conexão'}`);
+        
+        toast.dismiss(loadingToast);
+        toast.success(`Produto importado (proxy): ${data.title}`);
       }
+    } catch (finalErr: any) {
+      console.error('Erro total na importação:', finalErr);
+      toast.dismiss(loadingToast);
+      
+      let errorMsg = "Erro ao conectar com o Mercado Livre";
+      if (finalErr.message?.includes('Failed to fetch')) {
+        errorMsg = "Erro de conexão: Verifique sua internet ou se o link está correto.";
+      } else if (finalErr.message) {
+        errorMsg = `Erro: ${finalErr.message}`;
+      }
+      
+      toast.error(errorMsg, {
+        description: "Verifique o link ou tente preencher manualmente.",
+        duration: 5000
+      });
     } finally { setMlLoading(false); }
   };
 
