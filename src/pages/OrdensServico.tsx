@@ -368,7 +368,7 @@ export default function OrdensServico() {
 
   const handlePrintOS = async () => {
     if (!viewingOS) return;
-    // Ensure items are loaded (when called from row action, view dialog may not have populated yet)
+    
     let itemsForPdf = viewOsItems;
     if (itemsForPdf.length === 0) {
       const { data } = await supabase.from("itens_os").select("*").eq("ordem_servico_id", viewingOS.id);
@@ -378,12 +378,208 @@ export default function OrdensServico() {
       }));
       setViewOsItems(itemsForPdf);
     }
+
     const printWindow = window.open("", "_blank");
     if (!printWindow) { toast.error("Popup bloqueado. Permita popups para imprimir."); return; }
+    
     const fmtCur = (v: number | null) => formatCurrency(v);
     const fmtDt = (d: string | null) => formatDate(d);
     const os = viewingOS as any;
     const obsText = viewingOS.observacoes || "";
+    const cleanObs = obsText.replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").trim();
+    
+    // Mobility details extraction
+    const mobilityMatch = obsText.match(/\[MOBILIDADE:(\w+)\s*\|\s*Voltagem:(.*?)\s*\|\s*Bateria:(.*?)Ah\s*\|\s*Odômetro:(.*?)km\s*\|\s*Chave:(.*?)\s*\|\s*Carregador:(.*?)\s*\|\s*Checklist:(.*?)\]/);
+    let mobilityHtml = "";
+    if (mobilityMatch) {
+      mobilityHtml = `
+        <div style="margin-top: 10px; padding: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;">
+          <h3 style="font-size: 11px; margin: 0 0 8px 0; color: #16a34a; text-transform: uppercase;">Dados de Mobilidade (${TIPO_EQUIPAMENTO[mobilityMatch[1]] || mobilityMatch[1]})</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; font-size: 11px;">
+            <div><strong>Voltagem:</strong> ${mobilityMatch[2]}</div>
+            <div><strong>Capacidade:</strong> ${mobilityMatch[3]}Ah</div>
+            <div><strong>Odômetro:</strong> ${mobilityMatch[4]}km</div>
+            <div><strong>Chave:</strong> ${mobilityMatch[5]}</div>
+            <div><strong>Carregador:</strong> ${mobilityMatch[6]}</div>
+            <div><strong>Checklist:</strong> ${mobilityMatch[7]}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>OS ${os.numero}</title>
+          <style>
+            @page { size: A4; margin: 15mm; }
+            body { font-family: 'Inter', sans-serif; color: #1e293b; line-height: 1.4; margin: 0; padding: 0; font-size: 11px; }
+            .container { max-width: 100%; margin: 0 auto; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 2px solid #16a34a; padding-bottom: 10px; }
+            .logo-section { display: flex; align-items: center; gap: 12px; }
+            .logo-placeholder { width: 45px; height: 45px; background: #16a34a; color: white; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-weight: bold; font-size: 20px; }
+            .company-info h1 { font-size: 18px; margin: 0; color: #16a34a; font-weight: 800; }
+            .company-info p { margin: 2px 0; font-size: 10px; color: #64748b; }
+            .os-badge { text-align: right; }
+            .os-number { font-size: 22px; font-weight: 900; color: #1e293b; margin: 0; font-family: monospace; }
+            .os-date { font-size: 11px; color: #64748b; margin-top: 4px; }
+            .section { margin-bottom: 15px; }
+            .section-title { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #16a34a; margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; display: flex; justify-content: space-between; }
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+            .card { background: #f8fafc; border: 1px solid #f1f5f9; padding: 10px; border-radius: 6px; }
+            .label { font-size: 9px; color: #64748b; text-transform: uppercase; font-weight: 600; margin-bottom: 2px; }
+            .value { font-size: 11px; font-weight: 600; color: #1e293b; }
+            table { width: full; border-collapse: collapse; margin: 10px 0; font-size: 10px; width: 100%; }
+            th { text-align: left; background: #f8fafc; padding: 8px; border-bottom: 2px solid #e2e8f0; color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 9px; }
+            td { padding: 8px; border-bottom: 1px solid #f1f5f9; }
+            .total-row { background: #f8fafc; font-weight: 800; font-size: 12px; }
+            .footer { margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 15px; font-size: 9px; color: #64748b; }
+            .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; }
+            .sig-line { border-top: 1px solid #cbd5e1; text-align: center; padding-top: 8px; font-size: 9px; }
+            .terms { font-size: 8.5px; line-height: 1.3; color: #475569; background: #fff; border: 1px dashed #e2e8f0; padding: 10px; margin-top: 15px; border-radius: 4px; text-align: justify; }
+            .no-print { display: none; }
+            @media print { body { -webkit-print-color-adjust: exact; } .no-print { display: none; } }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <div class="logo-section">
+                <div class="logo-placeholder">${empresa?.nome?.charAt(0) || 'V'}</div>
+                <div class="company-info">
+                  <h1>${empresa?.nome || "VoltMaster"}</h1>
+                  <p>${empresa?.endereco || ""}</p>
+                  <p>${empresa?.telefone || ""} ${empresa?.email ? '• ' + empresa.email : ''}</p>
+                </div>
+              </div>
+              <div class="os-badge">
+                <div class="os-number">OS ${os.numero}</div>
+                <div class="os-date">Entrada: ${fmtDt(os.data_entrada)}</div>
+              </div>
+            </div>
+
+            <div class="grid">
+              <div class="section">
+                <div class="section-title">Dados do Cliente</div>
+                <div class="card">
+                  <div class="grid">
+                    <div><div class="label">Nome</div><div class="value">${os.clientes?.nome || "-"}</div></div>
+                    <div><div class="label">Telefone</div><div class="value">${os.clientes?.telefone || "-"}</div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="section">
+                <div class="section-title">Equipamento</div>
+                <div class="card">
+                  <div class="grid">
+                    <div><div class="label">Tipo</div><div class="value">${TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento}</div></div>
+                    <div><div class="label">Modelo</div><div class="value">${os.modelo_equipamento || "-"}</div></div>
+                    <div><div class="label">Nº de Série</div><div class="value">${os.numero_serie || "-"}</div></div>
+                    <div><div class="label">Status</div><div class="value" style="color: #16a34a">${getStatusLabel(os.status)}</div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            ${mobilityHtml}
+
+            <div class="section">
+              <div class="section-title">Problema Relatado</div>
+              <div class="card" style="background: #fff; border-style: dashed;">
+                <div class="value" style="font-weight: 400; font-size: 11px; white-space: pre-wrap;">${os.descricao_problema}</div>
+              </div>
+            </div>
+
+            ${os.diagnostico ? `
+            <div class="section">
+              <div class="section-title">Diagnóstico Técnico</div>
+              <div class="card" style="background: #fff; border-style: dashed;">
+                <div class="value" style="font-weight: 400; font-size: 11px; white-space: pre-wrap;">${os.diagnostico}</div>
+              </div>
+            </div>
+            ` : ''}
+
+            <div class="section">
+              <div class="section-title">Serviços e Peças</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Descrição</th>
+                    <th style="text-align: center;">Qtd</th>
+                    <th style="text-align: right;">Unitário</th>
+                    <th style="text-align: right;">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${itemsForPdf.map(item => `
+                    <tr>
+                      <td>${item.descricao}</td>
+                      <td style="text-align: center;">${item.quantidade}</td>
+                      <td style="text-align: right;">${fmtCur(item.valor_unitario)}</td>
+                      <td style="text-align: right;">${fmtCur(item.valor_total)}</td>
+                    </tr>
+                  `).join('')}
+                  ${itemsForPdf.length === 0 ? `
+                    <tr>
+                      <td colspan="3">Mão de obra e peças inclusas no valor total</td>
+                      <td style="text-align: right;">${fmtCur(os.valor_orcamento)}</td>
+                    </tr>
+                  ` : ''}
+                  <tr class="total-row">
+                    <td colspan="3" style="text-align: right; border-bottom: none;">Subtotal:</td>
+                    <td style="text-align: right; border-bottom: none;">${fmtCur(itemsForPdf.length > 0 ? itemsTotal : os.valor_orcamento)}</td>
+                  </tr>
+                  ${os.desconto > 0 ? `
+                  <tr class="total-row" style="color: #dc2626;">
+                    <td colspan="3" style="text-align: right; border-bottom: none;">Desconto:</td>
+                    <td style="text-align: right; border-bottom: none;">- ${fmtCur(os.desconto)}</td>
+                  </tr>
+                  ` : ''}
+                  <tr class="total-row" style="color: #16a34a; font-size: 14px;">
+                    <td colspan="3" style="text-align: right; border-bottom: none;">TOTAL:</td>
+                    <td style="text-align: right; border-bottom: none;">${fmtCur(itemsForPdf.length > 0 ? itemsTotal - os.desconto : os.valor_orcamento)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            ${cleanObs ? `
+            <div class="section">
+              <div class="section-title">Observações Gerais</div>
+              <div class="value" style="font-weight: 400; font-size: 10px;">${cleanObs}</div>
+            </div>
+            ` : ''}
+
+            <div class="terms">
+              <strong>CONDIÇÕES GERAIS:</strong> 1. O orçamento é válido por 5 dias. 2. A garantia é de 90 dias apenas sobre os serviços executados e peças substituídas. 3. Equipamentos não retirados em 90 dias após conclusão estão sujeitos a venda para custeio de despesas (Art. 1.275 Código Civil). 4. Não nos responsabilizamos por perda de dados em dispositivos eletrônicos. 5. A abertura do equipamento pode invalidar garantias de fábrica.
+            </div>
+
+            <div class="signatures">
+              <div class="sig-line">
+                <strong>Assinatura do Técnico</strong><br>
+                Responsável pelo Serviço
+              </div>
+              <div class="sig-line">
+                <strong>Assinatura do Cliente</strong><br>
+                Concordo com os termos e valores
+              </div>
+            </div>
+
+            <div class="footer">
+              Gerado em ${new Date().toLocaleString('pt-BR')} • Documento com validade legal de prestação de serviço.
+            </div>
+          </div>
+          <script>
+            window.onload = () => {
+              window.print();
+              // Optional: window.close();
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
     const mobilityMatch = obsText.match(/\[MOBILIDADE:(\w+)\s*\|\s*Voltagem:(.*?)\s*\|\s*Bateria:(.*?)Ah\s*\|\s*Odômetro:(.*?)km\s*\|\s*Chave:(.*?)\s*\|\s*Carregador:(.*?)\s*\|\s*Checklist:(.*?)\]/);
     const hasMobility = !!mobilityMatch;
     const cleanObs = obsText.replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").trim();

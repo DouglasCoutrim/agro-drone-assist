@@ -47,8 +47,10 @@ const Index = () => {
   const [viewingOS, setViewingOS] = useState<any | null>(null);
 
   useEffect(() => {
-    if (user && !orgLoading && isPlatformAdmin) {
-      navigate("/admin-master");
+    // Only redirect if we are specifically at the index/dashboard route
+    // and if the user is a platform admin.
+    if (user && !orgLoading && isPlatformAdmin && window.location.pathname === "/dashboard") {
+      navigate("/admin-master", { replace: true });
     }
   }, [user, isPlatformAdmin, orgLoading, navigate]);
 
