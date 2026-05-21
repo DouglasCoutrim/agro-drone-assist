@@ -119,7 +119,16 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* User footer */}
       <div className="border-t border-white/[0.06] px-3 py-3 space-y-2">
-        {/* Link para o painel administrativo removido para manter separação total */}
+        {isPlatformAdmin && (
+          <Link
+            to="/admin-master"
+            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 mb-2"
+          >
+            <ShieldCheck className="h-4 w-4 shrink-0" />
+            Painel Admin Master
+          </Link>
+        )}
+
         <div className="flex items-center gap-2.5">
           <div className="w-[34px] h-[34px] rounded-lg bg-gradient-to-br from-primary to-emerald-800 flex items-center justify-center text-[13px] font-bold text-white flex-shrink-0">
             {initials}
