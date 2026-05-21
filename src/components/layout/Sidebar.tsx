@@ -44,12 +44,7 @@ const navSections = [
   },
 ];
 
-const ADMIN_MASTER_SECTION = {
-  title: "PLATAFORMA",
-  items: [
-    { title: "Super Admin", icon: ShieldCheck, href: "/admin-master", roles: ["admin", "tecnico", "consulta"] },
-  ]
-};
+// Platform section removed from main sidebar as requested to avoid confusion with client dashboard
 
 export function Sidebar({ className }: SidebarProps) {
   const location = useLocation();
@@ -86,35 +81,7 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-1 space-y-1 overflow-y-auto scrollbar-thin">
-        {isPlatformAdmin && (
-          <div key="platform-admin">
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-white/25 px-2 pt-3 pb-1 mt-2">
-              {ADMIN_MASTER_SECTION.title}
-            </p>
-            {ADMIN_MASTER_SECTION.items.map((item) => {
-              const isActive = location.pathname === item.href;
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={cn(
-                    "relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-normal transition-all duration-150 border border-transparent",
-                    isActive
-                      ? "bg-primary/[0.12] text-emerald-400 font-medium border-emerald-400/15"
-                      : "text-white/60 hover:bg-white/[0.07] hover:text-white/90"
-                  )}
-                >
-                  {isActive && (
-                    <span className="absolute left-0 top-[20%] bottom-[20%] w-[3px] bg-emerald-500 rounded-r-sm" />
-                  )}
-                  <Icon className={cn("h-4 w-4 shrink-0", isActive ? "opacity-100" : "opacity-70")} />
-                  {item.title}
-                </Link>
-              );
-            })}
-          </div>
-        )}
+        {/* Regular navigation sections */}
         {navSections.map((section) => {
           const items = section.items.filter(item => role && item.roles.includes(role));
           if (items.length === 0) return null;
@@ -151,7 +118,16 @@ export function Sidebar({ className }: SidebarProps) {
       </nav>
 
       {/* User footer */}
-      <div className="border-t border-white/[0.06] px-3 py-3">
+      <div className="border-t border-white/[0.06] px-3 py-3 space-y-2">
+        {isPlatformAdmin && (
+          <Link
+            to="/admin-master"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all uppercase tracking-wider w-full"
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Painel da Plataforma
+          </Link>
+        )}
         <div className="flex items-center gap-2.5">
           <div className="w-[34px] h-[34px] rounded-lg bg-gradient-to-br from-primary to-emerald-800 flex items-center justify-center text-[13px] font-bold text-white flex-shrink-0">
             {initials}

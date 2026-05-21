@@ -11,9 +11,10 @@ interface ProtectedRouteProps {
   requiredRole?: 'admin' | 'tecnico' | 'consulta';
   requiredPermission?: 'acesso_os' | 'acesso_estoque' | 'acesso_financeiro';
   allowBlocked?: boolean;
+  requiredPlatformAdmin?: boolean;
 }
 
-export default function ProtectedRoute({ children, requiredRole, requiredPermission, allowBlocked }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, requiredRole, requiredPermission, allowBlocked, requiredPlatformAdmin }: ProtectedRouteProps) {
   const { user, role, loading } = useAuth();
   const { permissions, loading: permsLoading } = usePermissions();
   const { organization, isPlatformAdmin, loading: orgLoading } = useOrganization();
@@ -31,6 +32,10 @@ export default function ProtectedRoute({ children, requiredRole, requiredPermiss
 
   if (!user) {
     return <Navigate to="/auth" replace />;
+  }
+
+  if (requiredPlatformAdmin && !isPlatformAdmin) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   // Org blocked? (platform admin bypasses)
