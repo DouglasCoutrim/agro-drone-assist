@@ -1046,7 +1046,7 @@ export default function OrdensServico() {
                         previsao: viewingOS.data_previsao,
                         valorOrcamento: viewingOS.valor_orcamento
                       };
-                      openWhatsApp(viewingOS.clientes?.telefone || "", whatsappTemplates.osRecebida(whatsappOs, empresa?.nome || "LivreOS"));
+                      openWhatsApp(viewingOS.clientes?.telefone || "", whatsappTemplates.osRecebida(whatsappOs, empresa?.nome_empresa || "LivreOS"));
                     }} className="h-8 text-xs bg-green-500/10 text-green-600 border-green-200 hover:bg-green-500 hover:text-white shrink-0">
                       <MessageCircle className="h-3.5 w-3.5 mr-1.5" /> WhatsApp
                     </Button>
