@@ -194,51 +194,54 @@ export default function Estoque() {
     try {
       console.log('Iniciando busca do produto ML:', mlId);
       
-      // Prefer using Edge Function for reliability as it runs server-side
+      // Try Edge Function first (server-side, more stable for headers)
+      let edgeData: any = null;
+      let edgeError: any = null;
+
       try {
-        console.log('Tentando busca via Edge Function (mais confiável)...');
-        const { data: edgeData, error: edgeError } = await supabase.functions.invoke('mercadolivre', {
+        console.log('Solicitando via Edge Function:', mlId);
+        const response = await supabase.functions.invoke('mercadolivre', {
           body: { mlId },
         });
+        edgeData = response.data;
+        edgeError = response.error;
+      } catch (err: any) {
+        console.error('Erro de rede na Edge Function:', err);
+        edgeError = err;
+      }
 
-        if (edgeError) {
-          console.warn('Erro na Edge Function, tentando proxy client-side:', edgeError);
-          throw new Error(edgeError.message || 'Erro na Edge Function');
-        }
+      if (!edgeError && edgeData?.ok) {
+        console.log('Sucesso via Edge Function:', edgeData);
+        const price = Number(edgeData.price) || 0;
+        setFormData(prev => ({
+          ...prev,
+          descricao: edgeData.title || prev.descricao,
+          custo_unitario: price,
+          preco_venda: Number((price * (1 + margemLucro / 100)).toFixed(2)),
+          categoria: edgeData.category_id || prev.categoria,
+        }));
+        toast.dismiss(loadingToast);
+        toast.success(`Produto importado: ${edgeData.title}`);
+        return;
+      }
 
-        if (edgeData && edgeData.ok) {
-          console.log('Dados recebidos via Edge Function:', edgeData);
-          const price = Number(edgeData.price) || 0;
-          setFormData(prev => ({
-            ...prev,
-            descricao: edgeData.title || prev.descricao,
-            custo_unitario: price,
-            preco_venda: Number((price * (1 + margemLucro / 100)).toFixed(2)),
-            categoria: edgeData.category_id || prev.categoria,
-          }));
-          toast.dismiss(loadingToast);
-          toast.success(`Produto importado: ${edgeData.title}`);
-          return;
-        } else {
-          throw new Error(edgeData?.error || 'Erro na resposta da Edge Function');
-        }
-      } catch (edgeErr: any) {
-        console.warn('Fallback para AllOrigins devido a:', edgeErr.message);
-        
-        // Backup: AllOrigins proxy (client-side)
+      // If Edge Function failed, try client-side proxy (AllOrigins)
+      console.warn('Edge Function falhou ou retornou erro, tentando proxy AllOrigins...', edgeError);
+      
+      try {
         const targetUrl = `https://api.mercadolibre.com/items/${mlId}`;
         const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
         
         const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error(`Falha no proxy: ${response.statusText}`);
+        if (!response.ok) throw new Error(`Proxy indisponível (${response.status})`);
         
         const proxyData = await response.json();
         if (!proxyData.contents) throw new Error("Resposta do proxy vazia");
         
         const data = JSON.parse(proxyData.contents);
-        if (data.error || !data.title) throw new Error(data.message || 'Produto não encontrado');
+        if (data.error || !data.title) throw new Error(data.message || 'Produto não encontrado na API do ML');
 
-        console.log('Dados recebidos via AllOrigins:', data);
+        console.log('Sucesso via AllOrigins:', data);
 
         const price = Number(data.price) || 0;
         setFormData(prev => ({
@@ -250,23 +253,25 @@ export default function Estoque() {
         }));
         
         toast.dismiss(loadingToast);
-        toast.success(`Produto importado (proxy): ${data.title}`);
+        toast.success(`Produto importado via proxy: ${data.title}`);
+      } catch (proxyErr: any) {
+        console.error('Erro no proxy AllOrigins:', proxyErr);
+        
+        // Final fallback: show a more descriptive error based on the failure
+        toast.dismiss(loadingToast);
+        
+        let finalMessage = "Não foi possível conectar ao Mercado Livre.";
+        if (proxyErr.message?.includes('Failed to fetch') || edgeError?.message?.includes('Failed to fetch')) {
+          finalMessage = "Erro de conexão. Verifique sua internet ou tente novamente em instantes.";
+        } else if (edgeData?.error) {
+          finalMessage = edgeData.error;
+        }
+
+        toast.error(finalMessage, {
+          description: "O Mercado Livre pode estar bloqueando a conexão. Tente preencher manualmente.",
+          duration: 6000
+        });
       }
-    } catch (finalErr: any) {
-      console.error('Erro total na importação:', finalErr);
-      toast.dismiss(loadingToast);
-      
-      let errorMsg = "Erro ao conectar com o Mercado Livre";
-      if (finalErr.message?.includes('Failed to fetch')) {
-        errorMsg = "Erro de conexão: Verifique sua internet ou se o link está correto.";
-      } else if (finalErr.message) {
-        errorMsg = `Erro: ${finalErr.message}`;
-      }
-      
-      toast.error(errorMsg, {
-        description: "Verifique o link ou tente preencher manualmente.",
-        duration: 5000
-      });
     } finally { setMlLoading(false); }
   };
 
