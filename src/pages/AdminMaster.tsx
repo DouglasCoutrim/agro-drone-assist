@@ -43,12 +43,12 @@ export default function AdminMaster() {
   };
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden text-foreground selection:bg-primary/20 pb-[env(safe-area-inset-bottom)]">
+    <div className="flex flex-col md:flex-row min-h-screen w-full bg-background overflow-x-hidden text-foreground selection:bg-primary/20 pb-[env(safe-area-inset-bottom)]">
       <PlatformSidebar />
       
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0">
         {/* Header contextual */}
-        <header className="h-16 border-b border-border bg-card/30 flex items-center px-8 justify-between shrink-0 backdrop-blur-sm">
+        <header className="h-16 border-b border-border bg-card/30 flex items-center px-4 md:px-8 justify-between shrink-0 backdrop-blur-sm sticky top-0 z-10">
           <div>
             <h1 className="text-lg font-semibold text-foreground">
               {activeTab === 'config' ? 'Configurações da Plataforma' : 
@@ -69,7 +69,7 @@ export default function AdminMaster() {
         </header>
 
         {/* Content area */}
-        <div className="flex-1 overflow-y-auto p-8 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+        <div className="flex-1 p-4 md:p-8">
           <div className="max-w-[1400px] mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500">
             {renderContent()}
           </div>
