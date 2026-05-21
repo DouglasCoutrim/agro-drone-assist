@@ -134,7 +134,9 @@ export default function OrdensServico() {
 
   const isMobility = MOBILITY_CATEGORIES.includes(uiCategory);
   const isBateria = uiCategory === "bateria" || formData.modelo_equipamento?.toLowerCase().includes("bateria");
-  const totalOrcamento = Math.max(0, (formData.custo_pecas || 0) + (formData.custo_mao_obra || 0) - (formData.desconto || 0));
+  const itemsTotal = osItems.reduce((s, i) => s + (i.valor_total || 0), 0);
+  const totalOrcamento = Math.max(0, itemsTotal - (formData.desconto || 0));
+  const viewItemsTotal = viewOsItems.reduce((s, i) => s + (i.valor_total || 0), 0);
 
   useEffect(() => { fetchData(); }, []);
 
