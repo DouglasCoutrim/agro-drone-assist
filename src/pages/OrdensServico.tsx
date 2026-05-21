@@ -29,6 +29,8 @@ import { OSItemsSection, OSItem } from "@/components/os/OSItemsSection";
 import { formatCurrency, formatDate, getErrorMessage } from "@/lib/formatters";
 import { whatsappTemplates, openWhatsApp, WhatsAppOS } from "@/lib/whatsapp-templates";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
+import { generateOSPDF } from "@/components/ordens-servico/OSPDFGenerator";
+
 
 type OrdemServico = Tables<"ordens_servico"> & { clientes: { nome: string; telefone?: string } | null };
 type Cliente = Tables<"clientes">;
@@ -368,7 +370,7 @@ export default function OrdensServico() {
 
   const handlePrintOS = async () => {
     if (!viewingOS) return;
-    // Ensure items are loaded (when called from row action, view dialog may not have populated yet)
+    
     let itemsForPdf = viewOsItems;
     if (itemsForPdf.length === 0) {
       const { data } = await supabase.from("itens_os").select("*").eq("ordem_servico_id", viewingOS.id);
@@ -378,133 +380,19 @@ export default function OrdensServico() {
       }));
       setViewOsItems(itemsForPdf);
     }
+    
     const printWindow = window.open("", "_blank");
-    if (!printWindow) { toast.error("Popup bloqueado. Permita popups para imprimir."); return; }
-    const fmtCur = (v: number | null) => formatCurrency(v);
-    const fmtDt = (d: string | null) => formatDate(d);
-    const os = viewingOS as any;
-    const obsText = viewingOS.observacoes || "";
-    const mobilityMatch = obsText.match(/\[MOBILIDADE:(\w+)\s*\|\s*Voltagem:(.*?)\s*\|\s*Bateria:(.*?)Ah\s*\|\s*Odômetro:(.*?)km\s*\|\s*Chave:(.*?)\s*\|\s*Carregador:(.*?)\s*\|\s*Checklist:(.*?)\]/);
-    const hasMobility = !!mobilityMatch;
-    const cleanObs = obsText.replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").trim();
-    const mobilityCategory = mobilityMatch ? mobilityMatch[1] : "";
-    const displayType = TIPO_EQUIPAMENTO[mobilityCategory] || TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento;
-
-    const checklistItems: string[] = [];
-    if (!hasMobility) {
-      if (os.checklist_bateria) checklistItems.push("Bateria");
-      if (os.checklist_carregador) checklistItems.push("Carregador");
-      if (os.checklist_controle) checklistItems.push("Controle");
-      if (os.checklist_cabos) checklistItems.push("Cabos");
-      if (os.checklist_helices) checklistItems.push("Hélices");
-      if (os.checklist_outros) checklistItems.push("Outros");
+    if (!printWindow) {
+      toast.error("Popup bloqueado. Permita popups para imprimir.");
+      return;
     }
-
-    let mobilityHTML = "";
-    if (hasMobility && mobilityMatch) {
-      const mCheckItems = mobilityMatch[7] !== "Nenhum" ? mobilityMatch[7] : "";
-      mobilityHTML = `<div class="section"><div class="section-title">⚡ Dados da Mobilidade Elétrica</div><div class="grid">
-        <div class="field"><div class="field-label">Voltagem</div><div class="field-value">${mobilityMatch[2]}</div></div>
-        <div class="field"><div class="field-label">Capacidade Bateria</div><div class="field-value">${mobilityMatch[3]}Ah</div></div>
-        <div class="field"><div class="field-label">Odômetro</div><div class="field-value">${mobilityMatch[4]}km</div></div>
-        <div class="field"><div class="field-label">Chave Ignição</div><div class="field-value">${mobilityMatch[5]}</div></div>
-        <div class="field"><div class="field-label">Carregador</div><div class="field-value">${mobilityMatch[6]}</div></div>
-        ${mCheckItems ? `<div class="field full-width"><div class="field-label">Checklist</div><div class="field-value">${mCheckItems.replace(/,/g, ", ")}</div></div>` : ""}
-      </div></div>`;
-    }
-
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>OS ${viewingOS.numero}</title>
-      <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; padding: 40px; color: #333; max-width: 210mm; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #16a34a; padding-bottom: 16px; margin-bottom: 24px; }
-        .header h1 { font-size: 24px; color: #16a34a; }
-        .section { margin-bottom: 20px; }
-        .section-title { font-size: 14px; font-weight: bold; color: #16a34a; text-transform: uppercase; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-bottom: 12px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
-        .field { margin-bottom: 8px; }
-        .field-label { font-size: 11px; color: #888; text-transform: uppercase; }
-        .field-value { font-size: 14px; font-weight: 500; }
-        .full-width { grid-column: 1 / -1; }
-        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; background: #E8F5E9; color: #2E7D32; }
-        .footer { margin-top: 40px; border-top: 1px solid #ddd; padding-top: 16px; display: flex; justify-content: space-between; }
-        .signature { width: 200px; text-align: center; border-top: 1px solid #333; padding-top: 8px; font-size: 12px; }
-        @media print { body { padding: 20px; } }
-      </style></head><body>
-      <div class="header">
-        ${empresa.logo_url ? `<img src="${empresa.logo_url}" alt="Logo" style="max-height:50px" />` : ""}
-        <div><h1>${empresa.nome_empresa || "LivreOS"}</h1><p style="font-size:12px;color:#888">${empresa.cnpj ? "CNPJ: " + empresa.cnpj : ""} ${empresa.telefone ? "| Tel: " + empresa.telefone : ""}</p></div>
-        <div style="text-align:right"><div style="font-size:20px;font-weight:bold;">OS ${viewingOS.numero}</div><div class="status-badge">${getStatusLabel(viewingOS.status)}</div></div>
-      </div>
-      <div class="section"><div class="section-title">Cliente</div><div class="grid">
-        <div class="field"><div class="field-label">Nome</div><div class="field-value">${viewingOS.clientes?.nome || "-"}</div></div>
-      </div></div>
-      <div class="section"><div class="section-title">Equipamento</div><div class="grid">
-        <div class="field"><div class="field-label">Tipo</div><div class="field-value">${displayType}</div></div>
-        <div class="field"><div class="field-label">Marca</div><div class="field-value">${os.marca || "-"}</div></div>
-        <div class="field"><div class="field-label">Modelo</div><div class="field-value">${viewingOS.modelo_equipamento || "-"}</div></div>
-        <div class="field"><div class="field-label">Nº Série</div><div class="field-value">${viewingOS.numero_serie || "-"}</div></div>
-      </div></div>
-      ${mobilityHTML}
-      ${checklistItems.length > 0 ? `<div class="section"><div class="section-title">Checklist</div><div class="grid"><div class="field full-width"><div class="field-value">${checklistItems.join(", ")}</div></div>${os.condicao_visual ? `<div class="field full-width"><div class="field-label">Condição Visual</div><div class="field-value">${os.condicao_visual}</div></div>` : ""}</div></div>` : ""}
-      <div class="section"><div class="section-title">Diagnóstico</div><div class="grid">
-        <div class="field full-width"><div class="field-label">Defeito</div><div class="field-value">${viewingOS.descricao_problema}</div></div>
-        <div class="field full-width"><div class="field-label">Diagnóstico</div><div class="field-value">${viewingOS.diagnostico || "-"}</div></div>
-      </div></div>
-      ${(() => {
-        const produtos = itemsForPdf.filter(i => i.tipo === "produto");
-        const servicos = itemsForPdf.filter(i => i.tipo === "servico");
-        const tableStyle = `width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;table-layout:fixed;`;
-        const thStyle = `text-align:left;padding:6px 8px;background:#f3f4f6;border-bottom:1px solid #d1d5db;font-weight:600;`;
-        const tdStyle = `padding:6px 8px;border-bottom:1px solid #eee;vertical-align:top;word-wrap:break-word;`;
-        const renderTable = (title: string, list: typeof itemsForPdf) => list.length === 0 ? "" : `
-          <div class="section"><div class="section-title">${title}</div>
-            <table style="${tableStyle}">
-              <colgroup><col style="width:50%"><col style="width:12%"><col style="width:19%"><col style="width:19%"></colgroup>
-              <thead><tr>
-                <th style="${thStyle}">Descrição</th>
-                <th style="${thStyle}text-align:center">Qtd</th>
-                <th style="${thStyle}text-align:right">Unit.</th>
-                <th style="${thStyle}text-align:right">Total</th>
-              </tr></thead>
-              <tbody>
-                ${list.map(i => `<tr>
-                  <td style="${tdStyle}">${i.descricao}${i.codigo ? ` <span style="color:#888">(${i.codigo})</span>` : ""}</td>
-                  <td style="${tdStyle}text-align:center">${i.quantidade}</td>
-                  <td style="${tdStyle}text-align:right">${fmtCur(i.valor_unitario)}</td>
-                  <td style="${tdStyle}text-align:right;font-weight:600">${fmtCur(i.valor_total)}</td>
-                </tr>`).join("")}
-              </tbody>
-            </table>
-          </div>`;
-        const itensHtml = renderTable("Itens / Peças", produtos) + renderTable("Serviços executados", servicos);
-        const subtotal = itemsForPdf.reduce((s, i) => s + (i.valor_total || 0), 0);
-        const desconto = (os.desconto || 0);
-        const totalLine = itemsForPdf.length > 0 ? `
-          <div class="section" style="margin-top:6px">
-            <table style="width:100%;font-size:13px">
-              <tr><td style="text-align:right;padding:2px 8px">Subtotal:</td><td style="text-align:right;padding:2px 0;width:120px">${fmtCur(subtotal)}</td></tr>
-              ${desconto > 0 ? `<tr><td style="text-align:right;padding:2px 8px">Desconto:</td><td style="text-align:right;padding:2px 0">- ${fmtCur(desconto)}</td></tr>` : ""}
-              <tr><td style="text-align:right;padding:6px 8px;font-weight:700;font-size:15px">TOTAL:</td><td style="text-align:right;padding:6px 0;font-weight:700;font-size:15px;color:#16a34a">${fmtCur(Math.max(0, subtotal - desconto))}</td></tr>
-            </table>
-          </div>` : `
-          <div class="section"><div class="grid"><div class="field"><div class="field-label">Total</div><div class="field-value" style="font-weight:bold;color:#16a34a">${fmtCur(viewingOS.valor_orcamento)}</div></div></div></div>`;
-        return itensHtml + totalLine;
-      })()}
-      <div class="section"><div class="section-title">Datas</div><div class="grid">
-        <div class="field"><div class="field-label">Entrada</div><div class="field-value">${fmtDt(viewingOS.data_entrada)}</div></div>
-        <div class="field"><div class="field-label">Previsão</div><div class="field-value">${fmtDt(viewingOS.data_previsao)}</div></div>
-        <div class="field"><div class="field-label">Conclusão</div><div class="field-value">${fmtDt(viewingOS.data_conclusao)}</div></div>
-        <div class="field"><div class="field-label">Entrega</div><div class="field-value">${fmtDt(viewingOS.data_entrega)}</div></div>
-      </div></div>
-      ${cleanObs ? `<div class="section"><div class="section-title">Observações</div><p style="font-size:14px">${cleanObs}</p></div>` : ""}
-      <div class="footer"><div class="signature">Técnico Responsável</div><div class="signature">Cliente</div></div>
-      ${getLegalTermsHTML()}
-    </body></html>`);
+    
+    const html = generateOSPDF(viewingOS, itemsForPdf, empresa);
+    printWindow.document.write(html);
     printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => printWindow.print(), 300);
   };
+
+
 
   const handleWhatsAppTemplate = (template: keyof typeof whatsappTemplates) => {
     if (!viewingOS) return;
