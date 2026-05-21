@@ -529,6 +529,19 @@ export default function OrdensServico() {
     openWhatsApp(cliente.telefone, msg);
   };
 
+  const handleSendPdfWhatsApp = async () => {
+    if (!viewingOS) return;
+    const cliente = clientes.find(c => c.id === viewingOS.cliente_id);
+    if (!cliente?.telefone) { toast.error("Cliente sem telefone cadastrado"); return; }
+    // 1) Abre a janela de impressão para o usuário salvar o PDF
+    await handlePrintOS();
+    // 2) Abre o WhatsApp com mensagem amigável instruindo a anexar o PDF baixado
+    const nomeEmpresa = empresa.nome_empresa || "LivreOS";
+    const total = viewingOS.valor_orcamento ? formatCurrency(viewingOS.valor_orcamento) : "";
+    const msg = `Olá, *${viewingOS.clientes?.nome || "cliente"}*! 👋\n\n*${nomeEmpresa}*\n\n📋 *OS:* ${viewingOS.numero}${total ? `\n💰 *Total:* ${total}` : ""}\n\n📎 Segue em anexo o PDF completo da sua Ordem de Serviço.\n\n_Anexe nesta conversa o arquivo PDF que acabou de baixar._`;
+    setTimeout(() => openWhatsApp(cliente.telefone!, msg), 500);
+  };
+
   const handleCobrar = async () => {
     if (!viewingOS) return;
     const cliente = clientes.find(c => c.id === viewingOS.cliente_id);
