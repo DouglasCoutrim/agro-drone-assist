@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, FileText, Package, BarChart3, DollarSign, Settings,
-  Users, CreditCard, UsersRound, Building2, ClipboardList, Route, LogOut, LifeBuoy, BookOpen, Bell
+  Users, CreditCard, UsersRound, Building2, ClipboardList, Route, LogOut, LifeBuoy, BookOpen, Bell, ShieldCheck
 } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -44,16 +44,27 @@ const navSections = [
   },
 ];
 
+const ADMIN_MASTER_SECTION = {
+  title: "PLATAFORMA",
+  items: [
+    { title: "Super Admin", icon: ShieldCheck, href: "/admin-master", roles: ["admin", "tecnico", "consulta"] },
+  ]
+};
+
 export function Sidebar({ className }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { role, user, signOut } = useAuth();
   const [profile, setProfile] = useState<{ nome: string; avatar_url: string | null } | null>(null);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
 
   useEffect(() => {
     if (user) {
       supabase.from("profiles").select("nome, avatar_url").eq("id", user.id).maybeSingle()
         .then(({ data }) => { if (data) setProfile(data); });
+      
+      supabase.from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle()
+        .then(({ data }) => setIsPlatformAdmin(!!data));
     }
   }, [user]);
 
@@ -75,6 +86,35 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-1 space-y-1 overflow-y-auto scrollbar-thin">
+        {isPlatformAdmin && (
+          <div key="platform-admin">
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-white/25 px-2 pt-3 pb-1 mt-2">
+              {ADMIN_MASTER_SECTION.title}
+            </p>
+            {ADMIN_MASTER_SECTION.items.map((item) => {
+              const isActive = location.pathname === item.href;
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={cn(
+                    "relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-normal transition-all duration-150 border border-transparent",
+                    isActive
+                      ? "bg-primary/[0.12] text-emerald-400 font-medium border-emerald-400/15"
+                      : "text-white/60 hover:bg-white/[0.07] hover:text-white/90"
+                  )}
+                >
+                  {isActive && (
+                    <span className="absolute left-0 top-[20%] bottom-[20%] w-[3px] bg-emerald-500 rounded-r-sm" />
+                  )}
+                  <Icon className={cn("h-4 w-4 shrink-0", isActive ? "opacity-100" : "opacity-70")} />
+                  {item.title}
+                </Link>
+              );
+            })}
+          </div>
+        )}
         {navSections.map((section) => {
           const items = section.items.filter(item => role && item.roles.includes(role));
           if (items.length === 0) return null;
