@@ -118,7 +118,16 @@ export function Sidebar({ className }: SidebarProps) {
       </nav>
 
       {/* User footer */}
-      <div className="border-t border-white/[0.06] px-3 py-3">
+      <div className="border-t border-white/[0.06] px-3 py-3 space-y-2">
+        {isPlatformAdmin && (
+          <Link
+            to="/admin-master"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all uppercase tracking-wider w-full"
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Painel da Plataforma
+          </Link>
+        )}
         <div className="flex items-center gap-2.5">
           <div className="w-[34px] h-[34px] rounded-lg bg-gradient-to-br from-primary to-emerald-800 flex items-center justify-center text-[13px] font-bold text-white flex-shrink-0">
             {initials}
