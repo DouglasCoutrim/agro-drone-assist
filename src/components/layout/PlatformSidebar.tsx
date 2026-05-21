@@ -32,7 +32,7 @@ const navSections = [
   },
 ];
 
-export function PlatformSidebar({ className }: { className?: string }) {
+export function PlatformSidebar({ className, onNavigate }: { className?: string, onNavigate?: () => void }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -46,7 +46,7 @@ export function PlatformSidebar({ className }: { className?: string }) {
 
   return (
     <div className={cn(
-      "flex w-full md:w-64 flex-col bg-background border-b md:border-b-0 md:border-r border-border flex-shrink-0",
+      "flex h-full w-full md:w-64 flex-col bg-background md:border-r border-border flex-shrink-0",
       className
     )}>
       {/* Admin Branding */}
@@ -72,6 +72,7 @@ export function PlatformSidebar({ className }: { className?: string }) {
                   <Link
                     key={item.href}
                     to={item.href}
+                    onClick={() => onNavigate?.()}
                     className={cn(
                       "group flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all duration-200",
                       isActive
@@ -89,8 +90,9 @@ export function PlatformSidebar({ className }: { className?: string }) {
         ))}
 
         <div className="pt-4 border-t border-border">
-           <Link
+            <Link
             to="/dashboard"
+            onClick={() => onNavigate?.()}
             className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-emerald-400 hover:bg-emerald-500/10 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
