@@ -192,7 +192,7 @@ export default function Relatorios() {
                   {osByStatus.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Nenhuma OS no período</p>
                   ) : (
-                    <ResponsiveContainer width="100%" height={280}>
+                    <ResponsiveContainer width="100%" height={280} debounce={1}>
                       <PieChart>
                         <Pie data={osByStatus} cx="50%" cy="50%" outerRadius={100} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
                           {osByStatus.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
@@ -212,7 +212,7 @@ export default function Relatorios() {
                   {osByEquip.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Nenhuma OS no período</p>
                   ) : (
-                    <ResponsiveContainer width="100%" height={280}>
+                    <ResponsiveContainer width="100%" height={280} debounce={1}>
                       <BarChart data={osByEquip}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="name" tick={{ fontSize: 12 }} />
@@ -231,7 +231,7 @@ export default function Relatorios() {
               <Card className="shadow-soft">
                 <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><DollarSign className="h-5 w-5 text-success" />Financeiro por Categoria</CardTitle></CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
+                  <ResponsiveContainer width="100%" height={300} debounce={1}>
                     <BarChart data={finData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" tick={{ fontSize: 12 }} />
