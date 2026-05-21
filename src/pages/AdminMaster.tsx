@@ -47,7 +47,7 @@ export default function AdminMaster() {
         {/* Header contextual */}
         <header className="h-16 border-b border-slate-800 bg-slate-900/50 flex items-center px-8 justify-between shrink-0">
           <div>
-            <h1 className="text-lg font-semibold text-white capitalize">
+            <h1 className="text-lg font-semibold text-white">
               {activeTab === 'config' ? 'Configurações da Plataforma' : 
                activeTab === 'tenants' ? 'Gerenciamento de Clientes' : 
                activeTab === 'support' ? 'Suporte Global' : 
