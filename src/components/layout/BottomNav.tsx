@@ -68,7 +68,7 @@ export function BottomNav() {
       )}
 
       {/* Bottom Nav Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 h-[var(--bottom-nav-height)] bg-card border-t border-border flex items-center justify-around px-2 z-[100] lg:hidden" style={{ boxShadow: "0 -4px 20px rgba(0,0,0,0.06)" }}>
+      <nav className="fixed bottom-0 left-0 right-0 h-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom))] bg-card border-t border-border flex items-center justify-around px-2 pb-[env(safe-area-inset-bottom)] z-[100] lg:hidden w-full transition-all duration-300" style={{ boxShadow: "0 -4px 20px rgba(0,0,0,0.06)" }}>
         {mainItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.to;
