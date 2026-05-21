@@ -437,13 +437,50 @@ export default function OrdensServico() {
       </div></div>
       ${mobilityHTML}
       ${checklistItems.length > 0 ? `<div class="section"><div class="section-title">Checklist</div><div class="grid"><div class="field full-width"><div class="field-value">${checklistItems.join(", ")}</div></div>${os.condicao_visual ? `<div class="field full-width"><div class="field-label">Condição Visual</div><div class="field-value">${os.condicao_visual}</div></div>` : ""}</div></div>` : ""}
-      <div class="section"><div class="section-title">Diagnóstico e Orçamento</div><div class="grid">
+      <div class="section"><div class="section-title">Diagnóstico</div><div class="grid">
         <div class="field full-width"><div class="field-label">Defeito</div><div class="field-value">${viewingOS.descricao_problema}</div></div>
         <div class="field full-width"><div class="field-label">Diagnóstico</div><div class="field-value">${viewingOS.diagnostico || "-"}</div></div>
-        <div class="field"><div class="field-label">Peças</div><div class="field-value">${fmtCur(os.custo_pecas)}</div></div>
-        <div class="field"><div class="field-label">Mão de Obra</div><div class="field-value">${fmtCur(os.custo_mao_obra)}</div></div>
-        <div class="field"><div class="field-label">Total</div><div class="field-value" style="font-weight:bold;color:#16a34a">${fmtCur(viewingOS.valor_orcamento)}</div></div>
       </div></div>
+      ${(() => {
+        const produtos = viewOsItems.filter(i => i.tipo === "produto");
+        const servicos = viewOsItems.filter(i => i.tipo === "servico");
+        const tableStyle = `width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;table-layout:fixed;`;
+        const thStyle = `text-align:left;padding:6px 8px;background:#f3f4f6;border-bottom:1px solid #d1d5db;font-weight:600;`;
+        const tdStyle = `padding:6px 8px;border-bottom:1px solid #eee;vertical-align:top;word-wrap:break-word;`;
+        const renderTable = (title: string, list: typeof viewOsItems) => list.length === 0 ? "" : `
+          <div class="section"><div class="section-title">${title}</div>
+            <table style="${tableStyle}">
+              <colgroup><col style="width:50%"><col style="width:12%"><col style="width:19%"><col style="width:19%"></colgroup>
+              <thead><tr>
+                <th style="${thStyle}">Descrição</th>
+                <th style="${thStyle}text-align:center">Qtd</th>
+                <th style="${thStyle}text-align:right">Unit.</th>
+                <th style="${thStyle}text-align:right">Total</th>
+              </tr></thead>
+              <tbody>
+                ${list.map(i => `<tr>
+                  <td style="${tdStyle}">${i.descricao}${i.codigo ? ` <span style="color:#888">(${i.codigo})</span>` : ""}</td>
+                  <td style="${tdStyle}text-align:center">${i.quantidade}</td>
+                  <td style="${tdStyle}text-align:right">${fmtCur(i.valor_unitario)}</td>
+                  <td style="${tdStyle}text-align:right;font-weight:600">${fmtCur(i.valor_total)}</td>
+                </tr>`).join("")}
+              </tbody>
+            </table>
+          </div>`;
+        const itensHtml = renderTable("Itens / Peças", produtos) + renderTable("Serviços executados", servicos);
+        const subtotal = viewOsItems.reduce((s, i) => s + (i.valor_total || 0), 0);
+        const desconto = (os.desconto || 0);
+        const totalLine = viewOsItems.length > 0 ? `
+          <div class="section" style="margin-top:6px">
+            <table style="width:100%;font-size:13px">
+              <tr><td style="text-align:right;padding:2px 8px">Subtotal:</td><td style="text-align:right;padding:2px 0;width:120px">${fmtCur(subtotal)}</td></tr>
+              ${desconto > 0 ? `<tr><td style="text-align:right;padding:2px 8px">Desconto:</td><td style="text-align:right;padding:2px 0">- ${fmtCur(desconto)}</td></tr>` : ""}
+              <tr><td style="text-align:right;padding:6px 8px;font-weight:700;font-size:15px">TOTAL:</td><td style="text-align:right;padding:6px 0;font-weight:700;font-size:15px;color:#16a34a">${fmtCur(Math.max(0, subtotal - desconto))}</td></tr>
+            </table>
+          </div>` : `
+          <div class="section"><div class="grid"><div class="field"><div class="field-label">Total</div><div class="field-value" style="font-weight:bold;color:#16a34a">${fmtCur(viewingOS.valor_orcamento)}</div></div></div></div>`;
+        return itensHtml + totalLine;
+      })()}
       <div class="section"><div class="section-title">Datas</div><div class="grid">
         <div class="field"><div class="field-label">Entrada</div><div class="field-value">${fmtDt(viewingOS.data_entrada)}</div></div>
         <div class="field"><div class="field-label">Previsão</div><div class="field-value">${fmtDt(viewingOS.data_previsao)}</div></div>
