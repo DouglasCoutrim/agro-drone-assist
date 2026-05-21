@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, BookOpen, ChevronRight, Play, ArrowLeft, CheckCircle2, RotateCcw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Joyride, type Step } from "react-joyride";
+import Joyride, { type Step } from "react-joyride";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -108,7 +108,28 @@ export default function Wiki() {
     return (
       <MainLayout>
         {runTour && tourSteps.length > 0 && (
-          <Joyride steps={tourSteps} continuous onEvent={handleJoyrideEvent} />
+          <Joyride 
+            steps={tourSteps} 
+            continuous 
+            showProgress 
+            showSkipButton 
+            onEvent={handleJoyrideEvent} 
+            styles={{
+              options: {
+                primaryColor: 'hsl(var(--primary))',
+                backgroundColor: 'hsl(var(--background))',
+                textColor: 'hsl(var(--foreground))',
+                arrowColor: 'hsl(var(--background))',
+              }
+            }}
+            locale={{
+              back: 'Voltar',
+              close: 'Fechar',
+              last: 'Finalizar',
+              next: 'Próximo',
+              skip: 'Pular'
+            }}
+          />
         )}
         <div className="max-w-3xl mx-auto space-y-4">
           <Button variant="ghost" size="sm" onClick={() => navigate("/wiki")}>
@@ -164,7 +185,28 @@ export default function Wiki() {
   return (
     <MainLayout>
       {runTour && tourSteps.length > 0 && (
-        <Joyride steps={tourSteps} continuous onEvent={handleJoyrideEvent} />
+        <Joyride 
+          steps={tourSteps} 
+          continuous 
+          showProgress 
+          showSkipButton 
+          onEvent={handleJoyrideEvent}
+          styles={{
+            options: {
+              primaryColor: 'hsl(var(--primary))',
+              backgroundColor: 'hsl(var(--background))',
+              textColor: 'hsl(var(--foreground))',
+              arrowColor: 'hsl(var(--background))',
+            }
+          }}
+          locale={{
+            back: 'Voltar',
+            close: 'Fechar',
+            last: 'Finalizar',
+            next: 'Próximo',
+            skip: 'Pular'
+          }}
+        />
       )}
       <div className="space-y-6">
         <header className="space-y-2">
