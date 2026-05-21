@@ -59,7 +59,7 @@ const App = () => {
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/cadastro-empresa" element={<CadastroEmpresa />} />
                 <Route path="/mensalidade-em-atraso" element={<ProtectedRoute allowBlocked><MensalidadeAtraso /></ProtectedRoute>} />
-                <Route path="/admin-master" element={<AdminMaster />} />
+                <Route path="/admin-master" element={<ProtectedRoute requiredPlatformAdmin><AdminMaster /></ProtectedRoute>} />
                 <Route path="/" element={isPWA ? <Auth /> : <Landing />} />
                 <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                 <Route path="/ordens-servico" element={<ProtectedRoute requiredPermission="acesso_os"><OrdensServico /></ProtectedRoute>} />
