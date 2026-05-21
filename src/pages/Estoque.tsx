@@ -166,18 +166,24 @@ export default function Estoque() {
   };
 
   const extractMLId = (input: string): string | null => {
-    // Robust regex to find MLB followed by digits, optional hyphens or spaces
+    // 1. Check for Mercado Livre Product ID (MLB + digits)
     const mlbMatch = input.match(/MLB[- ]?(\d+)/i);
     if (mlbMatch) return `MLB${mlbMatch[1]}`;
     
-    // Check for common ML URL patterns if MLB prefix not found directly
-    // This handles short links like p.mercadolivre.com.br/p/MLB123...
+    // 2. Check for common ML URL patterns
     const urlMatch = input.match(/(?:item|produto)\.mercadolivre\.com\.br\/MLB-(\d+)/i) || 
                      input.match(/\/p\/MLB(\d+)/i);
     if (urlMatch) return `MLB${urlMatch[1]}`;
 
-    // Extract just numbers if they look like an ID (10 or more digits)
-    const numericMatch = input.match(/(\d{10,15})/);
+    // 3. Handle shortened URLs (p.mercadolivre.com.br, etc.)
+    // These need to be resolved or we can try to find an ID in them
+    if (input.includes('mercadolivre.com.br')) {
+      const genericId = input.match(/MLB[-]?(\d+)/i);
+      if (genericId) return `MLB${genericId[1]}`;
+    }
+
+    // 4. Extract just numbers if they look like an ID (9-12 digits)
+    const numericMatch = input.match(/(\d{9,12})/);
     if (numericMatch) return `MLB${numericMatch[1]}`;
     
     return null;
