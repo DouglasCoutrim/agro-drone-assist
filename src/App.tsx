@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/hooks/useTheme";
 import { EmpresaConfigProvider } from "@/hooks/useEmpresaConfig";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
+import { useEffect, useState } from "react";
 import Auth from "./pages/Auth";
 import OrdensServico from "./pages/OrdensServico";
 import Estoque from "./pages/Estoque";
@@ -33,7 +34,19 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  const [isPWA, setIsPWA] = useState(false);
+
+  useEffect(() => {
+    // Check if app is running in standalone mode (PWA)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+      || (window.navigator as any).standalone 
+      || document.referrer.includes('android-app://');
+    
+    setIsPWA(isStandalone);
+  }, []);
+
+  return (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <TooltipProvider>
@@ -47,7 +60,7 @@ const App = () => (
                 <Route path="/cadastro-empresa" element={<CadastroEmpresa />} />
                 <Route path="/mensalidade-em-atraso" element={<ProtectedRoute allowBlocked><MensalidadeAtraso /></ProtectedRoute>} />
                 <Route path="/admin-master" element={<AdminMaster />} />
-                <Route path="/" element={<Landing />} />
+                <Route path="/" element={isPWA ? <Auth /> : <Landing />} />
                 <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                 <Route path="/ordens-servico" element={<ProtectedRoute requiredPermission="acesso_os"><OrdensServico /></ProtectedRoute>} />
                 <Route path="/estoque" element={<ProtectedRoute requiredPermission="acesso_estoque"><Estoque /></ProtectedRoute>} />
@@ -75,5 +88,6 @@ const App = () => (
     </ThemeProvider>
   </QueryClientProvider>
 );
+};
 
 export default App;
