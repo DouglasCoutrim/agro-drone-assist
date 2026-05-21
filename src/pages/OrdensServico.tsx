@@ -366,8 +366,18 @@ export default function OrdensServico() {
     if (next) handleStatusChange(os.id, next);
   };
 
-  const handlePrintOS = () => {
+  const handlePrintOS = async () => {
     if (!viewingOS) return;
+    // Ensure items are loaded (when called from row action, view dialog may not have populated yet)
+    let itemsForPdf = viewOsItems;
+    if (itemsForPdf.length === 0) {
+      const { data } = await supabase.from("itens_os").select("*").eq("ordem_servico_id", viewingOS.id);
+      itemsForPdf = (data || []).map((d: any) => ({
+        id: d.id, tipo: d.tipo, produto_id: d.produto_id, servico_id: d.servico_id,
+        descricao: d.descricao, quantidade: d.quantidade, valor_unitario: d.valor_unitario, valor_total: d.valor_total,
+      }));
+      setViewOsItems(itemsForPdf);
+    }
     const printWindow = window.open("", "_blank");
     if (!printWindow) { toast.error("Popup bloqueado. Permita popups para imprimir."); return; }
     const fmtCur = (v: number | null) => formatCurrency(v);
