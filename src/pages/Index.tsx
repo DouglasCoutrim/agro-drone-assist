@@ -114,15 +114,16 @@ const Index = () => {
     <MainLayout>
       <div className="space-y-6" data-tour="dashboard-content">
         {/* Page Header */}
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="font-display text-2xl font-bold text-foreground leading-tight">Dashboard</h1>
             <p className="text-sm text-muted-foreground mt-0.5">Visão geral da oficina</p>
           </div>
-          <Button className="gradient-primary hidden lg:inline-flex" onClick={() => navigate("/ordens-servico")}>
+          <Button className="gradient-primary w-full sm:w-auto hidden sm:inline-flex" onClick={() => navigate("/ordens-servico")}>
             <Plus className="mr-1.5 h-4 w-4" />Nova OS
           </Button>
         </div>
+
 
         {/* KPI Grid */}
         {loading ? (
@@ -169,8 +170,9 @@ const Index = () => {
               ) : (
                 <>
                   {/* Desktop table */}
-                  <div className="hidden md:block overflow-x-auto">
+                  <div className="hidden md:block responsive-table-container">
                     <table className="w-full border-collapse">
+
                       <thead>
                         <tr>
                           <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground bg-background border-b border-border whitespace-nowrap">#</th>

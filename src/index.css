@@ -139,22 +139,32 @@
     @apply border-border;
   }
 
+  html {
+    font-size: 14px;
+    @screen md { font-size: 15px; }
+    @screen lg { font-size: 16px; }
+  }
+
   html, body {
     height: 100%;
     margin: 0;
     padding: 0;
+    overflow-x: hidden;
+    width: 100%;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
     line-height: 1.5;
-    overflow-x: hidden;
     transition: background-color 0.2s ease, color 0.15s ease;
-    width: 100vw;
     padding-bottom: env(safe-area-inset-bottom);
   }
+
+  h1 { font-size: clamp(1.5rem, 5vw, 2.5rem); }
+  h2 { font-size: clamp(1.25rem, 4vw, 2rem); }
+  h3 { font-size: clamp(1.1rem, 3vw, 1.5rem); }
+
 }
 
 @layer utilities {
@@ -229,20 +239,29 @@
   }
 
   /* Mobile table responsiveness */
+  .responsive-table-container {
+    @apply w-full overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0;
+    -webkit-overflow-scrolling: touch;
+  }
+
   @media (max-width: 767px) {
-    .responsive-table thead { display: none; }
-    .responsive-table tbody tr {
-      display: flex; flex-direction: column; padding: 0.75rem;
-      border: 1px solid hsl(var(--border)); border-radius: var(--radius); margin-bottom: 0.5rem;
+    .responsive-table:not(.no-stack) thead { display: none; }
+    .responsive-table:not(.no-stack) tbody tr {
+      display: flex; flex-direction: column; padding: 1rem;
+      border: 1px solid hsl(var(--border)); border-radius: var(--radius); margin-bottom: 0.75rem;
+      @apply bg-card shadow-sm;
     }
-    .responsive-table tbody td {
-      display: flex; justify-content: space-between; padding: 0.25rem 0; border: none;
+    .responsive-table:not(.no-stack) tbody td {
+      display: flex; justify-content: space-between; padding: 0.5rem 0; border: none;
+      text-align: right;
     }
-    .responsive-table tbody td::before {
-      content: attr(data-label); font-weight: 500; font-size: 0.75rem;
-      color: hsl(var(--muted-foreground)); margin-right: 0.5rem;
+    .responsive-table:not(.no-stack) tbody td::before {
+      content: attr(data-label); font-weight: 600; font-size: 0.75rem;
+      color: hsl(var(--muted-foreground)); margin-right: 1rem; text-align: left;
+      text-transform: uppercase; letter-spacing: 0.05em;
     }
   }
+
 }
 
 /* Remove Lovable badge */
