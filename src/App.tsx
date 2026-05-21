@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { EmpresaConfigProvider } from "@/hooks/useEmpresaConfig";
@@ -31,6 +31,7 @@ import Suporte from "./pages/Suporte";
 import Notificacoes from "./pages/Notificacoes";
 import Wiki from "./pages/Wiki";
 import NotFound from "./pages/NotFound";
+import AdminAuth from "./pages/AdminAuth";
 
 const queryClient = new QueryClient();
 
@@ -57,10 +58,12 @@ const App = () => {
             <EmpresaConfigProvider>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/admin/auth" element={<AdminAuth />} />
                 <Route path="/cadastro-empresa" element={<CadastroEmpresa />} />
                 <Route path="/mensalidade-em-atraso" element={<ProtectedRoute allowBlocked><MensalidadeAtraso /></ProtectedRoute>} />
                 <Route path="/admin-master" element={<ProtectedRoute requiredPlatformAdmin><AdminMaster /></ProtectedRoute>} />
-                <Route path="/" element={isPWA ? <Auth /> : <Landing />} />
+                <Route path="/admin" element={<Navigate to="/admin-master" replace />} />
+                <Route path="/" element={isPWA ? (window.location.pathname.startsWith('/admin') ? <AdminAuth /> : <Auth />) : <Landing />} />
                 <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                 <Route path="/ordens-servico" element={<ProtectedRoute requiredPermission="acesso_os"><OrdensServico /></ProtectedRoute>} />
                 <Route path="/estoque" element={<ProtectedRoute requiredPermission="acesso_estoque"><Estoque /></ProtectedRoute>} />

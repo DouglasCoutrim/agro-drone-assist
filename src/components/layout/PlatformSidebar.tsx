@@ -40,7 +40,7 @@ export function PlatformSidebar({ className }: { className?: string }) {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate("/auth");
+    navigate("/admin/auth");
   };
 
   return (
