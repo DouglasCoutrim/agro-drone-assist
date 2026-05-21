@@ -80,6 +80,7 @@ export default function OrdensServico() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todas");
   const [dialogOpen, setDialogOpen] = useState(false);
+
   const { canCreateOS, osUsed, osLimit, plan } = useUsageLimits();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -944,6 +945,7 @@ export default function OrdensServico() {
             </DialogHeader>
 
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+
               {viewingOS && (
               <div className="space-y-4">
                 {/* Status Pipeline */}
