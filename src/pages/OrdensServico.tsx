@@ -203,6 +203,8 @@ export default function OrdensServico() {
         ...restForm,
         tipo_equipamento: mapCategoryToDbEnum(uiCategory),
         observacoes: observacoesWithMobility || null,
+        custo_pecas: 0,
+        custo_mao_obra: 0,
         valor_orcamento: totalOrcamento || null,
         data_previsao: formData.data_previsao || null,
         diagnostico: formData.diagnostico || null,
