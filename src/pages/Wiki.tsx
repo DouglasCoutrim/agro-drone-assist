@@ -108,7 +108,7 @@ export default function Wiki() {
     return (
       <MainLayout>
         {runTour && tourSteps.length > 0 && (
-          <Joyride steps={tourSteps} continuous showSkipButton showProgress callback={handleJoyrideEvent} />
+          <Joyride steps={tourSteps} continuous onEvent={handleJoyrideEvent} />
         )}
         <div className="max-w-3xl mx-auto space-y-4">
           <Button variant="ghost" size="sm" onClick={() => navigate("/wiki")}>
@@ -164,7 +164,7 @@ export default function Wiki() {
   return (
     <MainLayout>
       {runTour && tourSteps.length > 0 && (
-        <Joyride steps={tourSteps} continuous showSkipButton showProgress callback={handleJoyrideEvent} />
+        <Joyride steps={tourSteps} continuous onEvent={handleJoyrideEvent} />
       )}
       <div className="space-y-6">
         <header className="space-y-2">
