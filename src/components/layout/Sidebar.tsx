@@ -44,12 +44,7 @@ const navSections = [
   },
 ];
 
-const ADMIN_MASTER_SECTION = {
-  title: "PLATAFORMA",
-  items: [
-    { title: "Super Admin", icon: ShieldCheck, href: "/admin-master", roles: ["admin", "tecnico", "consulta"] },
-  ]
-};
+// Platform section removed from main sidebar as requested to avoid confusion with client dashboard
 
 export function Sidebar({ className }: SidebarProps) {
   const location = useLocation();
