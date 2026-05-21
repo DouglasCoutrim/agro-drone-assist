@@ -66,68 +66,63 @@ export default function SiteTab() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Seção Hero */}
-        <Card className="bg-slate-900/50 border-slate-800">
+        <Card>
           <CardHeader>
-            <div className="flex items-center gap-2 text-indigo-400">
+            <div className="flex items-center gap-2 text-primary">
               <Sparkles className="h-5 w-5" />
-              <CardTitle className="text-white">Landing Page - Seção Hero</CardTitle>
+              <CardTitle>Landing Page - Seção Hero</CardTitle>
             </div>
-            <CardDescription className="text-slate-400">
+            <CardDescription>
               Gerencie os textos principais e chamadas do topo do site.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-slate-300">Título Principal</Label>
+              <Label>Título Principal</Label>
               <Input 
                 value={hero?.title || ''} 
                 onChange={(e) => setHero({...hero, title: e.target.value})}
-                className="bg-slate-950 border-slate-700 text-white"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-slate-300">Destaque Colorido</Label>
+              <Label>Destaque Colorido</Label>
               <Input 
                 value={hero?.highlight || ''} 
                 onChange={(e) => setHero({...hero, highlight: e.target.value})}
-                className="bg-slate-950 border-slate-700 text-white"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-slate-300">Descrição</Label>
+              <Label>Descrição</Label>
               <Textarea 
                 value={hero?.description || ''} 
                 onChange={(e) => setHero({...hero, description: e.target.value})}
-                className="bg-slate-950 border-slate-700 text-white min-h-[100px]"
+                className="min-h-[100px]"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">Botão Principal</Label>
+                <Label>Botão Principal</Label>
                 <Input 
                   value={hero?.cta_primary || ''} 
                   onChange={(e) => setHero({...hero, cta_primary: e.target.value})}
-                  className="bg-slate-950 border-slate-700 text-white"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-300">Botão Secundário</Label>
+                <Label>Botão Secundário</Label>
                 <Input 
                   value={hero?.cta_secondary || ''} 
                   onChange={(e) => setHero({...hero, cta_secondary: e.target.value})}
-                  className="bg-slate-950 border-slate-700 text-white"
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-slate-300">Texto do Badge (Topo)</Label>
+              <Label>Texto do Badge (Topo)</Label>
               <Input 
                 value={hero?.badge || ''} 
                 onChange={(e) => setHero({...hero, badge: e.target.value})}
-                className="bg-slate-950 border-slate-700 text-white"
               />
             </div>
-            <Button onClick={handleSaveHero} disabled={saving} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white border-none mt-4">
+            <Button onClick={handleSaveHero} disabled={saving} className="w-full mt-4">
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
               Salvar Seção Hero
             </Button>
@@ -135,63 +130,63 @@ export default function SiteTab() {
         </Card>
 
         {/* Seção Contato */}
-        <Card className="bg-slate-900/50 border-slate-800">
+        <Card>
           <CardHeader>
-            <div className="flex items-center gap-2 text-emerald-400">
+            <div className="flex items-center gap-2 text-primary">
               <Phone className="h-5 w-5" />
-              <CardTitle className="text-white">Informações de Contato</CardTitle>
+              <CardTitle>Informações de Contato</CardTitle>
             </div>
-            <CardDescription className="text-slate-400">
+            <CardDescription>
               Dados globais de contato, redes sociais e endereço.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-slate-300">WhatsApp (com DDD e DDI)</Label>
+              <Label>WhatsApp (com DDD e DDI)</Label>
               <div className="relative">
-                <Phone className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input 
                   value={contact?.whatsapp || ''} 
                   onChange={(e) => setContact({...contact, whatsapp: e.target.value})}
-                  className="bg-slate-950 border-slate-700 text-white pl-10"
+                  className="pl-10"
                   placeholder="5511999999999"
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-slate-300">E-mail de Contato</Label>
+              <Label>E-mail de Contato</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input 
                   value={contact?.email || ''} 
                   onChange={(e) => setContact({...contact, email: e.target.value})}
-                  className="bg-slate-950 border-slate-700 text-white pl-10"
+                  className="pl-10"
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-slate-300">Instagram</Label>
+              <Label>Instagram</Label>
               <div className="relative">
-                <Instagram className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                <Instagram className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input 
                   value={contact?.instagram || ''} 
                   onChange={(e) => setContact({...contact, instagram: e.target.value})}
-                  className="bg-slate-950 border-slate-700 text-white pl-10"
+                  className="pl-10"
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-slate-300">Endereço / Localização</Label>
+              <Label>Endereço / Localização</Label>
               <div className="relative">
-                <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input 
                   value={contact?.address || ''} 
                   onChange={(e) => setContact({...contact, address: e.target.value})}
-                  className="bg-slate-950 border-slate-700 text-white pl-10"
+                  className="pl-10"
                 />
               </div>
             </div>
-            <Button onClick={handleSaveContact} disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white border-none mt-8">
+            <Button onClick={handleSaveContact} disabled={saving} className="w-full mt-8">
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
               Salvar Contatos
             </Button>
@@ -199,7 +194,7 @@ export default function SiteTab() {
         </Card>
 
         {/* Gerenciamento de Imagens Placeholder */}
-        <Card className="border-border/50 lg:col-span-2">
+        <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center gap-2 text-primary">
               <Globe className="h-5 w-5" />
@@ -210,10 +205,10 @@ export default function SiteTab() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-             <div className="p-8 border border-dashed border-slate-700 rounded-lg text-center">
-                <LayoutList className="h-8 w-8 text-slate-600 mx-auto mb-2" />
-                <p className="text-slate-500 text-sm font-medium">Módulo de Upload de Imagens em Desenvolvimento</p>
-                <p className="text-slate-600 text-xs mt-1">Integração com Supabase Storage em andamento para permitir troca dinâmica de fotos.</p>
+             <div className="p-8 border border-dashed border-border rounded-lg text-center">
+                <LayoutList className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground text-sm font-medium">Módulo de Upload de Imagens em Desenvolvimento</p>
+                <p className="text-muted-foreground/60 text-xs mt-1">Integração com Supabase Storage em andamento para permitir troca dinâmica de fotos.</p>
              </div>
           </CardContent>
         </Card>
