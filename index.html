@@ -11,7 +11,17 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="LivreOS" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-    <link rel="manifest" href="/manifest.json" />
+    <link id="manifest-link" rel="manifest" href="/manifest.json" />
+    <script>
+      (function() {
+        const isAppAdmin = window.location.pathname.startsWith('/admin');
+        if (isAppAdmin) {
+          document.getElementById('manifest-link').href = '/admin-manifest.json';
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#2563eb');
+          document.title = 'Volt Control Admin';
+        }
+      })();
+    </script>
     <meta property="og:type" content="website" />
     <meta property="og:title" content="LivreOS - Gestão completa para seu negócio">
     <meta property="og:description" content="Pare de perder tempo com papel ou sistemas antigos. O LivreOS foi pensado para a nova geração de assistências técnicas.">
