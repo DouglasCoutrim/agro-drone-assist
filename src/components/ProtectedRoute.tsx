@@ -11,6 +11,7 @@ interface ProtectedRouteProps {
   requiredRole?: 'admin' | 'tecnico' | 'consulta';
   requiredPermission?: 'acesso_os' | 'acesso_estoque' | 'acesso_financeiro';
   allowBlocked?: boolean;
+  requiredPlatformAdmin?: boolean;
 }
 
 export default function ProtectedRoute({ children, requiredRole, requiredPermission, allowBlocked }: ProtectedRouteProps) {
