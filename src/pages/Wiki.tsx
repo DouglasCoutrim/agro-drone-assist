@@ -121,7 +121,7 @@ export default function Wiki() {
                 textColor: 'hsl(var(--foreground))',
                 arrowColor: 'hsl(var(--background))',
               }
-            }}
+            } as any}
             locale={{
               back: 'Voltar',
               close: 'Fechar',
@@ -198,7 +198,7 @@ export default function Wiki() {
               textColor: 'hsl(var(--foreground))',
               arrowColor: 'hsl(var(--background))',
             }
-          }}
+          } as any}
           locale={{
             back: 'Voltar',
             close: 'Fechar',
