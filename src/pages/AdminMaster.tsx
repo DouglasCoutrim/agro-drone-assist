@@ -1,9 +1,7 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrganization } from '@/hooks/useOrganization';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ShieldCheck, LogOut, LayoutDashboard, Building2, Package, LifeBuoy, Megaphone, BookOpen, Settings } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import OverviewTab from '@/components/admin/OverviewTab';
 import TenantsTab from '@/components/admin/TenantsTab';
 import PlansTab from '@/components/admin/PlansTab';
@@ -11,73 +9,67 @@ import SupportTab from '@/components/admin/SupportTab';
 import BroadcastTab from '@/components/admin/BroadcastTab';
 import WikiTab from '@/components/admin/WikiTab';
 import ConfigTab from '@/components/admin/ConfigTab';
+import { PlatformSidebar } from '@/components/layout/PlatformSidebar';
 
 export default function AdminMaster() {
-  const { signOut, loading: authLoading } = useAuth();
+  const { loading: authLoading } = useAuth();
   const { isPlatformAdmin, loading } = useOrganization();
+  const [searchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'overview';
 
   if (loading || authLoading)
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+        <Loader2 className="animate-spin text-indigo-500" />
       </div>
     );
+
   if (!isPlatformAdmin) return <Navigate to="/dashboard" replace />;
 
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'overview': return <OverviewTab />;
+      case 'tenants': return <TenantsTab />;
+      case 'plans': return <PlansTab />;
+      case 'support': return <SupportTab />;
+      case 'broadcast': return <BroadcastTab />;
+      case 'wiki': return <WikiTab />;
+      case 'config': return <ConfigTab />;
+      default: return <OverviewTab />;
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="max-w-[1400px] mx-auto px-4 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <ShieldCheck className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold leading-tight">Super Admin</h1>
-              <p className="text-xs text-muted-foreground">Painel global da plataforma</p>
+    <div className="flex h-screen bg-slate-950 overflow-hidden text-slate-200">
+      <PlatformSidebar />
+      
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Header contextual */}
+        <header className="h-16 border-b border-slate-800 bg-slate-900/50 flex items-center px-8 justify-between shrink-0">
+          <div>
+            <h1 className="text-lg font-semibold text-white capitalize">
+              {activeTab === 'config' ? 'Configurações da Plataforma' : 
+               activeTab === 'tenants' ? 'Gerenciamento de Clientes' : 
+               activeTab === 'support' ? 'Suporte Global' : 
+               activeTab === 'broadcast' ? 'Comunicados do Sistema' : 
+               activeTab === 'plans' ? 'Planos e Assinaturas' : 
+               activeTab === 'wiki' ? 'Wiki Administrativa' : 'Visão Geral'}
+            </h1>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20">
+              <span className="text-[11px] text-indigo-400 font-medium">Ambiente Seguro</span>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={signOut}>
-            <LogOut className="h-4 w-4 mr-2" />Sair
-          </Button>
+        </header>
+
+        {/* Content area */}
+        <div className="flex-1 overflow-y-auto p-8 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+          <div className="max-w-[1400px] mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {renderContent()}
+          </div>
         </div>
-      </header>
-
-      <div className="max-w-[1400px] mx-auto p-4 lg:p-8">
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 md:grid-cols-7 h-auto">
-            <TabsTrigger value="overview" className="gap-2 py-2.5">
-              <LayoutDashboard className="h-4 w-4" /> Visão Geral
-            </TabsTrigger>
-            <TabsTrigger value="tenants" className="gap-2 py-2.5">
-              <Building2 className="h-4 w-4" /> Clientes
-            </TabsTrigger>
-            <TabsTrigger value="plans" className="gap-2 py-2.5">
-              <Package className="h-4 w-4" /> Planos
-            </TabsTrigger>
-            <TabsTrigger value="support" className="gap-2 py-2.5">
-              <LifeBuoy className="h-4 w-4" /> Suporte
-            </TabsTrigger>
-            <TabsTrigger value="broadcast" className="gap-2 py-2.5">
-              <Megaphone className="h-4 w-4" /> Avisos
-            </TabsTrigger>
-            <TabsTrigger value="wiki" className="gap-2 py-2.5">
-              <BookOpen className="h-4 w-4" /> Wiki
-            </TabsTrigger>
-            <TabsTrigger value="config" className="gap-2 py-2.5">
-              <Settings className="h-4 w-4" /> Plataforma
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview"><OverviewTab /></TabsContent>
-          <TabsContent value="tenants"><TenantsTab /></TabsContent>
-          <TabsContent value="plans"><PlansTab /></TabsContent>
-          <TabsContent value="support"><SupportTab /></TabsContent>
-          <TabsContent value="broadcast"><BroadcastTab /></TabsContent>
-          <TabsContent value="wiki"><WikiTab /></TabsContent>
-          <TabsContent value="config"><ConfigTab /></TabsContent>
-        </Tabs>
-      </div>
+      </main>
     </div>
   );
 }
