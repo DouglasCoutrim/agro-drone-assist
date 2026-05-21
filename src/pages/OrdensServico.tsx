@@ -775,7 +775,7 @@ export default function OrdensServico() {
 
         {/* ===== WIZARD DIALOG ===== */}
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden w-[calc(100vw-1rem)] sm:w-full">
             <DialogHeader>
               <DialogTitle>{editingOS ? "Editar OS" : "Nova Ordem de Serviço"}</DialogTitle>
               <DialogDescription>
@@ -1006,7 +1006,7 @@ export default function OrdensServico() {
 
         {/* View OS Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden w-[calc(100vw-1rem)] sm:w-full">
             <DialogHeader>
               <DialogTitle className="flex items-center justify-between">
                 <span>OS {viewingOS?.numero}</span>
