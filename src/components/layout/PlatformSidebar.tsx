@@ -32,7 +32,7 @@ const navSections = [
   },
 ];
 
-export function PlatformSidebar({ className }: { className?: string }) {
+export function PlatformSidebar({ className, onNavigate }: { className?: string, onNavigate?: () => void }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -46,9 +46,9 @@ export function PlatformSidebar({ className }: { className?: string }) {
 
   return (
     <div className={cn(
-      "flex h-full flex-col bg-background border-r border-border overflow-hidden flex-shrink-0",
+      "flex h-full w-full md:w-64 flex-col bg-background md:border-r border-border flex-shrink-0",
       className
-    )} style={{ width: "260px" }}>
+    )}>
       {/* Admin Branding */}
       <div className="flex flex-col items-center gap-1 px-5 py-6 border-b border-border bg-card/30">
         <img src={logo} alt="LivreOS" className="h-10 w-auto" />
@@ -58,7 +58,7 @@ export function PlatformSidebar({ className }: { className?: string }) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto max-h-[400px] md:max-h-none">
         {navSections.map((section) => (
           <div key={section.title}>
             <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-muted-foreground px-3 mb-2">
@@ -72,6 +72,7 @@ export function PlatformSidebar({ className }: { className?: string }) {
                   <Link
                     key={item.href}
                     to={item.href}
+                    onClick={() => onNavigate?.()}
                     className={cn(
                       "group flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all duration-200",
                       isActive
@@ -89,8 +90,9 @@ export function PlatformSidebar({ className }: { className?: string }) {
         ))}
 
         <div className="pt-4 border-t border-border">
-           <Link
+            <Link
             to="/dashboard"
+            onClick={() => onNavigate?.()}
             className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-emerald-400 hover:bg-emerald-500/10 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
