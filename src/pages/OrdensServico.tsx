@@ -1097,6 +1097,8 @@ export default function OrdensServico() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={handleSendPdfWhatsApp}>📎 Enviar PDF da OS</DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => handleWhatsAppTemplate("osRecebida")}>📋 OS Recebida + Termos</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleWhatsAppTemplate("orcamentoAprovacao")}>💰 Orçamento p/ Aprovação</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleWhatsAppTemplate("osPronta")}>✅ Equipamento Pronto</DropdownMenuItem>
