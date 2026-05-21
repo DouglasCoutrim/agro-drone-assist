@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
+import { useOrganization } from '@/hooks/useOrganization';
 import {
   Zap, ClipboardList, Package, DollarSign, Users, MapPin,
   Smartphone, ShieldCheck, Sparkles, Check, ArrowRight, BarChart3, Wrench,
