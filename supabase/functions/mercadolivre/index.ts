@@ -55,33 +55,60 @@ async function tryOfficialApi(cleanId: string) {
 
 // Fallback: scrape the public product page
 async function tryScrape(cleanId: string) {
-  // Build canonical URL: MLB-2068438699
   const numericId = cleanId.replace(/^MLB/i, '');
-  const candidates = [
-    `https://produto.mercadolivre.com.br/MLB-${numericId}`,
-    `https://www.mercadolivre.com.br/p/${cleanId}`,
-  ];
+  // Using the most reliable mobile URL pattern which is often less protected
+  const url = `https://produto.mercadolivre.com.br/MLB-${numericId}`;
+  
+  console.log(`Scraping URL: ${url}`);
 
-  for (const url of candidates) {
-    try {
-      const res = await fetch(url, {
-        redirect: 'follow',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
-        },
-      });
-      if (!res.ok) continue;
-      const html = await res.text();
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
 
-      // Title: og:title or <h1>
-      const ogTitle = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i)?.[1];
-      const h1 = html.match(/<h1[^>]*>([^<]+)<\/h1>/i)?.[1]?.trim();
-      const title = ogTitle || h1 || '';
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'pt-BR,pt;q=0.9',
+        'Cache-Control': 'no-cache',
+      },
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!res.ok) {
+      console.log(`Scrape failed with status: ${res.status}`);
+      return null;
+    }
+    
+    const html = await res.text();
 
-      // Price: try JSON-LD or meta
-      let price = 0;
+    // Title: look for multiple patterns
+    let title = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i)?.[1];
+    if (!title) title = html.match(/<h1[^>]*>([^<]+)<\/h1>/i)?.[1]?.trim();
+    if (!title) title = html.match(/"name":\s*"([^"]+)"/)?.[1];
+
+    // Price: try Andes money fraction (most common in modern ML pages)
+    let price = 0;
+    
+    // Pattern 1: andes-money-amount__fraction
+    const fractionMatch = html.match(/class="andes-money-amount__fraction">([\d.,]+)</);
+    if (fractionMatch) {
+      const centsMatch = html.match(/class="andes-money-amount__cents[^>]*>(\d+)</);
+      const fraction = fractionMatch[1].replace(/\./g, '').replace(',', '.');
+      const cents = centsMatch ? centsMatch[1] : '00';
+      price = Number(`${fraction}.${cents}`);
+    }
+
+    // Pattern 2: meta price
+    if (!price) {
+      const priceMeta = html.match(/<meta\s+itemprop=["']price["']\s+content=["']([\d.]+)["']/i)?.[1];
+      if (priceMeta) price = Number(priceMeta);
+    }
+
+    // Pattern 3: JSON-LD
+    if (!price) {
       const jsonLdMatch = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i);
       if (jsonLdMatch) {
         try {
@@ -91,41 +118,31 @@ async function tryScrape(cleanId: string) {
           if (p) price = Number(p);
         } catch { /* ignore */ }
       }
-      if (!price) {
-        const priceMeta = html.match(/<meta\s+itemprop=["']price["']\s+content=["']([\d.]+)["']/i)?.[1];
-        if (priceMeta) price = Number(priceMeta);
-      }
-      if (!price) {
-        // Andes price fraction
-        const fraction = html.match(/"andes-money-amount__fraction"[^>]*>([\d.]+)</)?.[1]?.replace(/\./g, '');
-        const cents = html.match(/"andes-money-amount__cents"[^>]*>(\d+)</)?.[1] || '00';
-        if (fraction) price = Number(`${fraction}.${cents}`);
-      }
-
-      // Image: og:image
-      const picture_url = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i)?.[1] || '';
-
-      // Description: og:description
-      const description = html.match(/<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i)?.[1] || '';
-
-      if (!title) continue;
-
-      return {
-        title,
-        price: price || 0,
-        category_id: '',
-        thumbnail: picture_url,
-        picture_url,
-        description,
-        condition: '',
-        currency_id: 'BRL',
-        source: 'scrape',
-      };
-    } catch {
-      continue;
     }
+
+    // Image: og:image
+    const picture_url = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i)?.[1] || '';
+
+    // Description: og:description
+    const description = html.match(/<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i)?.[1] || '';
+
+    if (!title) return null;
+
+    return {
+      title,
+      price: price || 0,
+      category_id: '',
+      thumbnail: picture_url,
+      picture_url,
+      description,
+      condition: '',
+      currency_id: 'BRL',
+      source: 'scrape',
+    };
+  } catch (e) {
+    console.error(`Scrape error for ${cleanId}:`, e.message);
+    return null;
   }
-  return null;
 }
 
 serve(async (req) => {
