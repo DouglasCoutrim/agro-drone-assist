@@ -2,19 +2,24 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-// Ignore ResizeObserver loop limit exceeded error
+// Ignore ResizeObserver loop limit exceeded and loop completed notifications errors
 if (typeof window !== "undefined") {
-  const resizeObserverError = "ResizeObserver loop completed with undelivered notifications.";
+  const IGNORED_ERRORS = [
+    "ResizeObserver loop completed with undelivered notifications.",
+    "ResizeObserver loop limit exceeded",
+  ];
+
   const originalError = window.onerror;
   window.onerror = (message, source, lineno, colno, error) => {
-    if (message === resizeObserverError || message === `Script error. ${resizeObserverError}`) {
+    const msg = typeof message === "string" ? message : "";
+    if (IGNORED_ERRORS.some((err) => msg.includes(err))) {
       return true;
     }
     return originalError ? originalError(message, source, lineno, colno, error) : false;
   };
 
   window.addEventListener("error", (e) => {
-    if (e.message === resizeObserverError || e.message === `Script error. ${resizeObserverError}`) {
+    if (IGNORED_ERRORS.some((err) => e.message?.includes(err))) {
       e.stopImmediatePropagation();
     }
   });
