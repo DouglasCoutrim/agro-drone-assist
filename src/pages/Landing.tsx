@@ -40,6 +40,7 @@ const BENEFITS = [
 
 export default function Landing() {
   const { user } = useAuth();
+  const { isPlatformAdmin, loading: orgLoading } = useOrganization();
   const [plans, setPlans] = useState<Plan[]>([]);
 
   useEffect(() => {
@@ -47,6 +48,8 @@ export default function Landing() {
       .select('*').eq('active', true).order('monthly_price')
       .then(({ data }) => setPlans((data as any) || []));
   }, []);
+
+  const dashboardPath = isPlatformAdmin ? "/admin-master" : "/dashboard";
 
   return (
     <div className="min-h-screen bg-background">
@@ -63,7 +66,7 @@ export default function Landing() {
           </nav>
           <div className="flex items-center gap-2">
             {user ? (
-              <Button asChild size="sm"><Link to="/dashboard">Acessar Painel</Link></Button>
+              <Button asChild size="sm"><Link to={dashboardPath}>Acessar Painel</Link></Button>
             ) : (
               <>
                 <Button asChild variant="ghost" size="sm"><Link to="/auth">Entrar</Link></Button>
