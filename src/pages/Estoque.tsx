@@ -212,16 +212,25 @@ export default function Estoque() {
 
       if (!edgeError && edgeData?.ok) {
         console.log('Sucesso via Edge Function:', edgeData);
+        
+        // Final validation to avoid "ios" or empty titles
+        const title = edgeData.title?.trim();
+        if (!title || title.toLowerCase() === 'ios' || title.toLowerCase() === 'android') {
+          console.warn('Edge Function retornou título inválido:', title);
+          throw new Error('O Mercado Livre bloqueou a extração automática. Tente preencher manualmente.');
+        }
+
         const price = Number(edgeData.price) || 0;
         setFormData(prev => ({
           ...prev,
-          descricao: edgeData.title || prev.descricao,
+          descricao: title,
           custo_unitario: price,
           preco_venda: Number((price * (1 + margemLucro / 100)).toFixed(2)),
           categoria: edgeData.category_id || prev.categoria,
         }));
+        
         toast.dismiss(loadingToast);
-        toast.success(`Produto importado: ${edgeData.title}`);
+        toast.success(`Produto importado: ${title}`);
         return;
       }
 
