@@ -452,12 +452,12 @@ export default function OrdensServico() {
         <div class="field full-width"><div class="field-label">Diagnóstico</div><div class="field-value">${viewingOS.diagnostico || "-"}</div></div>
       </div></div>
       ${(() => {
-        const produtos = viewOsItems.filter(i => i.tipo === "produto");
-        const servicos = viewOsItems.filter(i => i.tipo === "servico");
+        const produtos = itemsForPdf.filter(i => i.tipo === "produto");
+        const servicos = itemsForPdf.filter(i => i.tipo === "servico");
         const tableStyle = `width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;table-layout:fixed;`;
         const thStyle = `text-align:left;padding:6px 8px;background:#f3f4f6;border-bottom:1px solid #d1d5db;font-weight:600;`;
         const tdStyle = `padding:6px 8px;border-bottom:1px solid #eee;vertical-align:top;word-wrap:break-word;`;
-        const renderTable = (title: string, list: typeof viewOsItems) => list.length === 0 ? "" : `
+        const renderTable = (title: string, list: typeof itemsForPdf) => list.length === 0 ? "" : `
           <div class="section"><div class="section-title">${title}</div>
             <table style="${tableStyle}">
               <colgroup><col style="width:50%"><col style="width:12%"><col style="width:19%"><col style="width:19%"></colgroup>
@@ -478,9 +478,9 @@ export default function OrdensServico() {
             </table>
           </div>`;
         const itensHtml = renderTable("Itens / Peças", produtos) + renderTable("Serviços executados", servicos);
-        const subtotal = viewOsItems.reduce((s, i) => s + (i.valor_total || 0), 0);
+        const subtotal = itemsForPdf.reduce((s, i) => s + (i.valor_total || 0), 0);
         const desconto = (os.desconto || 0);
-        const totalLine = viewOsItems.length > 0 ? `
+        const totalLine = itemsForPdf.length > 0 ? `
           <div class="section" style="margin-top:6px">
             <table style="width:100%;font-size:13px">
               <tr><td style="text-align:right;padding:2px 8px">Subtotal:</td><td style="text-align:right;padding:2px 0;width:120px">${fmtCur(subtotal)}</td></tr>
