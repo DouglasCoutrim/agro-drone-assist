@@ -46,12 +46,12 @@ export function PlatformSidebar({ className }: { className?: string }) {
 
   return (
     <div className={cn(
-      "flex h-full flex-col bg-slate-900 border-r border-border overflow-hidden flex-shrink-0",
+      "flex h-full flex-col bg-background border-r border-border overflow-hidden flex-shrink-0",
       className
     )} style={{ width: "260px" }}>
       {/* Admin Branding */}
-      <div className="flex flex-col items-center gap-1 px-5 py-6 border-b border-border bg-card/50">
-        <img src={logo} alt="LivreOS" className="h-10 w-auto brightness-110" />
+      <div className="flex flex-col items-center gap-1 px-5 py-6 border-b border-border bg-card/30">
+        <img src={logo} alt="LivreOS" className="h-10 w-auto" />
         <div className="mt-2 px-2 py-0.5 rounded bg-primary/10 border border-primary/20">
            <span className="text-[10px] text-primary font-bold tracking-widest uppercase">PLATFORM ADMIN</span>
         </div>
@@ -61,7 +61,7 @@ export function PlatformSidebar({ className }: { className?: string }) {
       <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
         {navSections.map((section) => (
           <div key={section.title}>
-            <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-slate-500 px-3 mb-2">
+            <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-muted-foreground px-3 mb-2">
               {section.title}
             </p>
             <div className="space-y-1">
@@ -111,7 +111,7 @@ export function PlatformSidebar({ className }: { className?: string }) {
           </div>
           <button
             onClick={handleSignOut}
-            className="p-1.5 rounded-md text-slate-500 hover:text-red-400 hover:bg-red-400/10 transition-all"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-all"
           >
             <LogOut className="h-3.5 w-3.5" />
           </button>

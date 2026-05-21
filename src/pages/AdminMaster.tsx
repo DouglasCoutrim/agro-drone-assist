@@ -43,12 +43,12 @@ export default function AdminMaster() {
   };
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden text-foreground">
+    <div className="flex h-screen bg-background overflow-hidden text-foreground selection:bg-primary/20">
       <PlatformSidebar />
       
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header contextual */}
-        <header className="h-16 border-b border-border bg-card/50 flex items-center px-8 justify-between shrink-0">
+        <header className="h-16 border-b border-border bg-card/30 flex items-center px-8 justify-between shrink-0 backdrop-blur-sm">
           <div>
             <h1 className="text-lg font-semibold text-foreground">
               {activeTab === 'config' ? 'Configurações da Plataforma' : 
