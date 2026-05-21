@@ -39,7 +39,7 @@ export function BottomNav() {
         <div className="fixed inset-0 z-[150] lg:hidden" onClick={() => setDrawerOpen(false)}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
           <div
-            className="absolute bottom-[var(--bottom-nav-height)] left-0 right-0 bg-card border-t border-border rounded-t-xl p-4 animate-in"
+            className="absolute bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom))] left-0 right-0 bg-card border-t border-border rounded-t-xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] animate-in"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-10 h-1 rounded-full bg-border mx-auto mb-4" />
