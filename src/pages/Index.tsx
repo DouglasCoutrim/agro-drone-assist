@@ -112,10 +112,10 @@ const Index = () => {
 
   return (
     <MainLayout>
-      <div className="space-y-6" data-tour="dashboard-content">
+      <div className="space-y-6 pb-20 lg:pb-0" data-tour="dashboard-content">
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
+          <div className="w-full">
             <h1 className="font-display text-2xl font-bold text-foreground leading-tight">Dashboard</h1>
             <p className="text-sm text-muted-foreground mt-0.5">Visão geral da oficina</p>
           </div>
@@ -290,7 +290,7 @@ const Index = () => {
 
         {/* View OS Dialog */}
         <Dialog open={!!viewingOS} onOpenChange={(open) => { if (!open) setViewingOS(null); }}>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto rounded-xl">
+          <DialogContent className="dialog-content-mobile-fix max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center justify-between text-base font-display">
                 <span>OS {viewingOS?.numero}</span>

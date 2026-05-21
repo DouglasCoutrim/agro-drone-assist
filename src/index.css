@@ -238,30 +238,50 @@
     }
   }
 
-  /* Mobile table responsiveness */
+  /* Mobile table responsiveness - Improved Version */
   .responsive-table-container {
-    @apply w-full overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0;
+    @apply w-full overflow-x-auto relative;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .responsive-table-container table {
+    @apply min-w-full divide-y divide-border;
   }
 
   @media (max-width: 767px) {
+    /* Stacked mobile list view as alternative to table */
+    .mobile-stack-list {
+      @apply space-y-3 py-2;
+    }
+    
+    .mobile-stack-item {
+      @apply bg-card border border-border rounded-xl p-4 shadow-sm transition-all;
+    }
+
     .responsive-table:not(.no-stack) thead { display: none; }
     .responsive-table:not(.no-stack) tbody tr {
-      display: flex; flex-direction: column; padding: 1rem;
-      border: 1px solid hsl(var(--border)); border-radius: var(--radius); margin-bottom: 0.75rem;
+      display: flex; flex-direction: column; padding: 1.25rem;
+      border: 1px solid hsl(var(--border)); border-radius: var(--radius); margin-bottom: 1rem;
       @apply bg-card shadow-sm;
     }
     .responsive-table:not(.no-stack) tbody td {
-      display: flex; justify-content: space-between; padding: 0.5rem 0; border: none;
+      display: flex; justify-content: space-between; align-items: center; 
+      padding: 0.75rem 0; border: none;
       text-align: right;
+      @apply border-b border-border-subtle last:border-0;
     }
     .responsive-table:not(.no-stack) tbody td::before {
-      content: attr(data-label); font-weight: 600; font-size: 0.75rem;
-      color: hsl(var(--muted-foreground)); margin-right: 1rem; text-align: left;
-      text-transform: uppercase; letter-spacing: 0.05em;
+      content: attr(data-label); font-weight: 700; font-size: 0.7rem;
+      color: hsl(var(--muted-foreground)); margin-right: 1.5rem; text-align: left;
+      text-transform: uppercase; letter-spacing: 0.1em;
     }
   }
 
+  /* Modal responsiveness fixes */
+  .dialog-content-mobile-fix {
+    @apply w-[95vw] max-w-lg mx-auto sm:w-full p-4 sm:p-6;
+  }
 }
 
 /* Remove Lovable badge */

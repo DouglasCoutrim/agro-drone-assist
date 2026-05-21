@@ -18,13 +18,13 @@ export function MainLayout({ children }: MainLayoutProps) {
         <Sidebar />
       </aside>
 
-      {/* Main Content */}
+      {/* Main Content Wrapper */}
       <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden relative">
         {/* Mobile Header */}
         <MobileHeader />
 
-        <main className="flex-1 overflow-y-auto px-4 pt-[calc(var(--header-height)+env(safe-area-inset-top)+16px)] pb-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom)+24px)] lg:pt-8 lg:pb-8 lg:px-8 w-full scroll-smooth">
-          <div className="mx-auto max-w-7xl animate-in fade-in duration-500">
+        <main className="flex-1 overflow-y-auto w-full scroll-smooth pt-[var(--header-height)] pb-[var(--bottom-nav-height)] lg:pt-0 lg:pb-0">
+          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 animate-in fade-in duration-500">
             {children}
           </div>
         </main>
