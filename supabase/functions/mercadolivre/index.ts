@@ -98,7 +98,10 @@ async function tryScrape(cleanId: string) {
     // Pattern B: meta og:title
     if (!title) {
       const ogTitle = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i);
-      if (ogTitle) title = ogTitle[1].trim();
+      if (ogTitle) {
+        // ML often puts site name in og:title, e.g. "Product Name | Mercado Livre"
+        title = ogTitle[1].split('|')[0].trim();
+      }
     }
 
     // Pattern C: any h1
@@ -107,8 +110,10 @@ async function tryScrape(cleanId: string) {
       if (genericH1) title = genericH1[1].replace(/<[^>]*>/g, '').trim();
     }
 
-    // Filter out common garbage titles
-    if (title.toLowerCase() === 'ios' || title.toLowerCase() === 'android' || title.length < 3) {
+    // Filter out metadata titles often found in scrape
+    const lowTitle = title.toLowerCase();
+    const blacklist = ['ios', 'android', 'mercadolivre', 'mercado livre', 'login', 'captcha'];
+    if (blacklist.some(b => lowTitle.includes(b)) || title.length < 3) {
       console.log(`Discarding suspicious title: "${title}"`);
       title = '';
     }
