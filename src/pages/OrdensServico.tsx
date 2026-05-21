@@ -1060,10 +1060,9 @@ export default function OrdensServico() {
                         <div className="space-y-2">
                           <div><p className="text-[10px] text-muted-foreground">Defeito</p><p className="text-sm">{viewingOS.descricao_problema}</p></div>
                           <div><p className="text-[10px] text-muted-foreground">Diagnóstico</p><p className="text-sm">{viewingOS.diagnostico || "-"}</p></div>
-                          <div className="grid grid-cols-3 gap-3">
-                            <div><p className="text-[10px] text-muted-foreground">Peças</p><p className="text-sm font-medium">{formatCurrency((viewingOS as any).custo_pecas)}</p></div>
-                            <div><p className="text-[10px] text-muted-foreground">M.O.</p><p className="text-sm font-medium">{formatCurrency((viewingOS as any).custo_mao_obra)}</p></div>
-                            <div><p className="text-[10px] text-muted-foreground">Total</p><p className="text-sm font-bold text-primary">{formatCurrency(viewingOS.valor_orcamento)}</p></div>
+                          <div className="flex items-center justify-between rounded-md bg-muted/30 border border-border/50 px-3 py-2">
+                            <p className="text-xs text-muted-foreground uppercase font-medium">Total da OS</p>
+                            <p className="text-base font-bold text-primary">{formatCurrency(viewItemsTotal > 0 ? viewItemsTotal - ((viewingOS as any).desconto || 0) : viewingOS.valor_orcamento)}</p>
                           </div>
                         </div>
                       </div>
