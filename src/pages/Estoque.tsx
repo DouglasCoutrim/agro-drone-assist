@@ -213,8 +213,8 @@ export default function Estoque() {
 
         if (!edgeError && edgeData?.ok) {
           const title = edgeData.title?.trim();
-          // Avoid "ios" / "android" or generic metadata
-          if (title && !['ios', 'android'].includes(title.toLowerCase()) && title.length > 3) {
+          // Minimal validation to allow generic names like "iOS" if that's the product name
+          if (title && title.length > 2) {
             importedTitle = title;
             importedPrice = Number(edgeData.price) || 0;
             importedCategory = edgeData.category_id || "";
