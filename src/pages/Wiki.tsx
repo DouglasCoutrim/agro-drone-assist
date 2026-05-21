@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, BookOpen, ChevronRight, Play, ArrowLeft, CheckCircle2, RotateCcw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Joyride, type Step } from "react-joyride";
+import Joyride, { type Step } from "react-joyride";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -186,26 +186,28 @@ export default function Wiki() {
     <MainLayout>
       {runTour && tourSteps.length > 0 && (
         <Joyride 
-          steps={tourSteps} 
-          continuous 
-          showProgress 
-          showSkipButton 
-          onEvent={handleJoyrideEvent}
-          styles={{
-            options: {
-              primaryColor: 'hsl(var(--primary))',
-              backgroundColor: 'hsl(var(--background))',
-              textColor: 'hsl(var(--foreground))',
-              arrowColor: 'hsl(var(--background))',
+          {...({
+            steps: tourSteps,
+            continuous: true,
+            showProgress: true,
+            showSkipButton: true,
+            onEvent: handleJoyrideEvent,
+            styles: {
+              options: {
+                primaryColor: 'hsl(var(--primary))',
+                backgroundColor: 'hsl(var(--background))',
+                textColor: 'hsl(var(--foreground))',
+                arrowColor: 'hsl(var(--background))',
+              }
+            },
+            locale: {
+              back: 'Voltar',
+              close: 'Fechar',
+              last: 'Finalizar',
+              next: 'Próximo',
+              skip: 'Pular'
             }
-          } as any}
-          locale={{
-            back: 'Voltar',
-            close: 'Fechar',
-            last: 'Finalizar',
-            next: 'Próximo',
-            skip: 'Pular'
-          }}
+          } as any)}
         />
       )}
       <div className="space-y-6">
