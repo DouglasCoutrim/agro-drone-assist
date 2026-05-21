@@ -8,7 +8,7 @@ import logo from "@/assets/logo.png";
 
 const navSections = [
   {
-    title: "GERENCIAMENTO",
+    title: "PRINCIPAL",
     items: [
       { title: "Visão Geral", icon: LayoutDashboard, href: "/admin-master?tab=overview" },
       { title: "Clientes (Tenants)", icon: Building2, href: "/admin-master?tab=tenants" },
@@ -46,14 +46,14 @@ export function PlatformSidebar({ className }: { className?: string }) {
 
   return (
     <div className={cn(
-      "flex h-full flex-col bg-slate-950 border-r border-slate-800 overflow-hidden flex-shrink-0",
+      "flex h-full flex-col bg-slate-900 border-r border-border overflow-hidden flex-shrink-0",
       className
     )} style={{ width: "260px" }}>
       {/* Admin Branding */}
-      <div className="flex flex-col items-center gap-1 px-5 py-6 border-b border-slate-800 bg-slate-900/50">
+      <div className="flex flex-col items-center gap-1 px-5 py-6 border-b border-border bg-card/50">
         <img src={logo} alt="LivreOS" className="h-10 w-auto brightness-110" />
-        <div className="mt-2 px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20">
-           <span className="text-[10px] text-indigo-400 font-bold tracking-widest uppercase">PLATFORM ADMIN</span>
+        <div className="mt-2 px-2 py-0.5 rounded bg-primary/10 border border-primary/20">
+           <span className="text-[10px] text-primary font-bold tracking-widest uppercase">PLATFORM ADMIN</span>
         </div>
       </div>
 
@@ -75,11 +75,11 @@ export function PlatformSidebar({ className }: { className?: string }) {
                     className={cn(
                       "group flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all duration-200",
                       isActive
-                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-900/20"
-                        : "text-slate-400 hover:text-white hover:bg-slate-900"
+                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
                     )}
                   >
-                    <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-white" : "text-slate-500 group-hover:text-indigo-400")} />
+                    <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-primary")} />
                     {item.title}
                   </Link>
                 );
@@ -88,7 +88,7 @@ export function PlatformSidebar({ className }: { className?: string }) {
           </div>
         ))}
 
-        <div className="pt-4 border-t border-slate-800">
+        <div className="pt-4 border-t border-border">
            <Link
             to="/dashboard"
             className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-emerald-400 hover:bg-emerald-500/10 transition-colors"
@@ -100,14 +100,14 @@ export function PlatformSidebar({ className }: { className?: string }) {
       </nav>
 
       {/* User info */}
-      <div className="p-4 bg-slate-900/80 border-t border-slate-800">
+      <div className="p-4 bg-card/80 border-t border-border">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded bg-indigo-600 flex items-center justify-center text-xs font-bold text-white uppercase">
+          <div className="w-8 h-8 rounded bg-primary flex items-center justify-center text-xs font-bold text-primary-foreground uppercase">
             {user?.email?.[0] || 'A'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-slate-200 truncate">{user?.email}</p>
-            <p className="text-[10px] text-slate-500">Super Administrator</p>
+            <p className="text-xs font-medium text-foreground truncate">{user?.email}</p>
+            <p className="text-[10px] text-muted-foreground">Super Administrator</p>
           </div>
           <button
             onClick={handleSignOut}

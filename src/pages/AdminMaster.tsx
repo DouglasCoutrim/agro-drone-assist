@@ -11,6 +11,7 @@ import WikiTab from '@/components/admin/WikiTab';
 import ConfigTab from '@/components/admin/ConfigTab';
 import SiteTab from '@/components/admin/SiteTab';
 import { PlatformSidebar } from '@/components/layout/PlatformSidebar';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function AdminMaster() {
   const { loading: authLoading } = useAuth();
@@ -20,8 +21,8 @@ export default function AdminMaster() {
 
   if (loading || authLoading)
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950">
-        <Loader2 className="animate-spin text-indigo-500" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="animate-spin text-primary" />
       </div>
     );
 
@@ -42,14 +43,14 @@ export default function AdminMaster() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-950 overflow-hidden text-slate-200 dark">
+    <div className="flex h-screen bg-background overflow-hidden text-foreground">
       <PlatformSidebar />
       
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header contextual */}
-        <header className="h-16 border-b border-slate-800 bg-slate-900/50 flex items-center px-8 justify-between shrink-0">
+        <header className="h-16 border-b border-border bg-card/50 flex items-center px-8 justify-between shrink-0">
           <div>
-            <h1 className="text-lg font-semibold text-white">
+            <h1 className="text-lg font-semibold text-foreground">
               {activeTab === 'config' ? 'Configurações da Plataforma' : 
                activeTab === 'tenants' ? 'Gerenciamento de Clientes' : 
                activeTab === 'support' ? 'Suporte Global' : 
@@ -60,14 +61,15 @@ export default function AdminMaster() {
             </h1>
           </div>
           <div className="flex items-center gap-4">
-            <div className="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20">
-              <span className="text-[11px] text-indigo-400 font-medium">Ambiente Seguro</span>
+            <ThemeToggle />
+            <div className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+              <span className="text-[11px] text-primary font-medium">Ambiente Seguro</span>
             </div>
           </div>
         </header>
 
         {/* Content area */}
-        <div className="flex-1 overflow-y-auto p-8 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+        <div className="flex-1 overflow-y-auto p-8 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
           <div className="max-w-[1400px] mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500">
             {renderContent()}
           </div>
