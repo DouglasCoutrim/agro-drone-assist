@@ -112,7 +112,7 @@ async function tryScrape(cleanId: string) {
 
     // Filter out metadata titles often found in scrape
     const lowTitle = title.toLowerCase();
-    const blacklist = ['ios', 'android', 'mercadolivre', 'mercado livre', 'login', 'captcha'];
+    const blacklist = ['login', 'captcha'];
     if (blacklist.some(b => lowTitle.includes(b)) || title.length < 3) {
       console.log(`Discarding suspicious title: "${title}"`);
       title = '';
