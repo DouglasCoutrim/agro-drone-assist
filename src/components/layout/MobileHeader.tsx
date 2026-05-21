@@ -32,7 +32,7 @@ export function MobileHeader() {
   }, [user]);
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-[calc(var(--header-height)+env(safe-area-inset-top))] bg-card border-b border-border flex items-center justify-between px-4 pt-[env(safe-area-inset-top)] z-[100] lg:hidden w-full transition-all duration-300" style={{ boxShadow: "var(--shadow-xs)" }}>
+    <header className="fixed top-0 left-0 right-0 h-[calc(var(--header-height)+env(safe-area-inset-top))] bg-card/80 backdrop-blur-md border-b border-border flex items-center justify-between px-4 pt-[env(safe-area-inset-top)] z-[100] lg:hidden w-full transition-all duration-300" style={{ boxShadow: "var(--shadow-xs)" }}>
       <div className="flex items-center">
         <img src={logo} alt="LivreOS" className="h-12 w-auto drop-shadow-[0_2px_8px_rgba(57,255,20,0.25)]" />
       </div>

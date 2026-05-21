@@ -80,6 +80,7 @@ export default function OrdensServico() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todas");
   const [dialogOpen, setDialogOpen] = useState(false);
+
   const { canCreateOS, osUsed, osLimit, plan } = useUsageLimits();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -907,8 +908,9 @@ export default function OrdensServico() {
 
         {/* View OS Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-          <DialogContent className="max-w-4xl w-[95vw] h-[90vh] flex flex-col p-0 overflow-hidden sm:rounded-xl">
+          <DialogContent className="max-w-4xl w-[95vw] sm:w-[90vw] h-[90vh] sm:h-[80vh] flex flex-col p-0 overflow-hidden rounded-xl">
             <DialogHeader className="p-4 sm:p-6 border-b shrink-0">
+
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="space-y-1">
                   <DialogTitle className="text-lg font-bold flex items-center gap-2">
@@ -944,6 +946,7 @@ export default function OrdensServico() {
             </DialogHeader>
 
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+
               {viewingOS && (
               <div className="space-y-4">
                 {/* Status Pipeline */}
