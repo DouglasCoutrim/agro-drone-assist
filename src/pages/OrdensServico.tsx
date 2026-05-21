@@ -1138,7 +1138,6 @@ export default function OrdensServico() {
                   </DropdownMenu>
                 </div>
               </div>
-            </div>
             )}
           {viewingOS && viewingOS.status !== "entregue" && viewingOS.status !== "cancelada" && (
             <div className="p-4 border-t bg-muted/30 shrink-0">
