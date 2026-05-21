@@ -1056,6 +1056,7 @@ export default function OrdensServico() {
             </DialogHeader>
 
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+              {viewingOS && (
               <div className="space-y-4">
                 {/* Status Pipeline */}
                 <StatusPipeline
@@ -1149,8 +1150,8 @@ export default function OrdensServico() {
                   </DropdownMenu>
                 </div>
               </div>
+              )}
             </div>
-            {")"}{"}"}
           {viewingOS && viewingOS.status !== "entregue" && viewingOS.status !== "cancelada" && (
             <div className="p-4 border-t bg-muted/30 shrink-0">
               <Button className="w-full gradient-primary" onClick={() => handleAdvanceStatus(viewingOS)}>
