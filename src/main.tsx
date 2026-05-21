@@ -20,11 +20,6 @@ if (typeof window !== "undefined") {
   });
 }
 
-// Register service worker for PWA
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
-  });
-}
+// PWA Registration is handled by vite-plugin-pwa via registerSW in components
 
 createRoot(document.getElementById("root")!).render(<App />);

@@ -1,3 +1,4 @@
+/// <reference types="vite-plugin-pwa/react" />
 import { useEffect } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { useToast } from '@/components/ui/use-toast';
@@ -12,7 +13,7 @@ export function ReloadPrompt() {
     updateServiceWorker,
   } = useRegisterSW({
     onRegistered(r) {
-      console.log('SW Registered: ' + r);
+      console.log('SW Registered');
     },
     onRegisterError(error) {
       console.log('SW registration error', error);
@@ -26,21 +27,24 @@ export function ReloadPrompt() {
 
   useEffect(() => {
     if (needRefresh) {
-      toast({
+      const { id, dismiss } = toast({
         title: "Nova versão disponível",
         description: "Uma nova atualização do sistema foi carregada.",
         action: (
           <Button 
-            variant="outline" 
+            variant="default" 
             size="sm" 
-            onClick={() => updateServiceWorker(true)}
-            className="flex items-center gap-2"
+            onClick={() => {
+              updateServiceWorker(true);
+              dismiss();
+            }}
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90"
           >
             <RefreshCw className="h-4 w-4" />
-            Atualizar
+            Atualizar Agora
           </Button>
         ),
-        duration: 0, // Keep until user interacts
+        duration: Infinity,
       });
     }
     
