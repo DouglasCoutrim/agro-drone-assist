@@ -31,6 +31,7 @@ import Suporte from "./pages/Suporte";
 import Notificacoes from "./pages/Notificacoes";
 import Wiki from "./pages/Wiki";
 import NotFound from "./pages/NotFound";
+import AdminAuth from "./pages/AdminAuth";
 
 const queryClient = new QueryClient();
 
