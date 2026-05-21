@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrganization } from "@/hooks/useOrganization";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,14 +17,22 @@ const passwordSchema = z.string().min(6, "Senha deve ter no mínimo 6 caracteres
 export default function Auth() {
   const navigate = useNavigate();
   const { signIn, user } = useAuth();
+  const { isPlatformAdmin, loading: orgLoading } = useOrganization();
   const [loading, setLoading] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
-  if (user) {
-    navigate("/dashboard");
-    return null;
-  }
+  useEffect(() => {
+    if (user && !orgLoading) {
+      if (isPlatformAdmin) {
+        navigate("/admin-master");
+      } else {
+        navigate("/dashboard");
+      }
+    }
+  }, [user, isPlatformAdmin, orgLoading, navigate]);
+
+  if (user && !orgLoading) return null;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +57,7 @@ export default function Auth() {
       return;
     }
     toast.success("Login realizado com sucesso!");
-    navigate("/dashboard");
+    // The useEffect will handle redirection based on platform admin status
   };
 
   return (
