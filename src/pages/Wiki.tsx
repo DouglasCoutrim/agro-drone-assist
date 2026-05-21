@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, BookOpen, ChevronRight, Play, ArrowLeft, CheckCircle2, RotateCcw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import Joyride, { Step } from "react-joyride";
+import { default as Joyride, Step } from "react-joyride";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
