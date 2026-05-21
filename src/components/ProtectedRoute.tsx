@@ -14,7 +14,7 @@ interface ProtectedRouteProps {
   requiredPlatformAdmin?: boolean;
 }
 
-export default function ProtectedRoute({ children, requiredRole, requiredPermission, allowBlocked }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, requiredRole, requiredPermission, allowBlocked, requiredPlatformAdmin }: ProtectedRouteProps) {
   const { user, role, loading } = useAuth();
   const { permissions, loading: permsLoading } = usePermissions();
   const { organization, isPlatformAdmin, loading: orgLoading } = useOrganization();
