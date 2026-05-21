@@ -66,7 +66,7 @@ export default function AdminMaster() {
                 <PlatformSidebar onNavigate={() => setIsSidebarOpen(false)} />
               </SheetContent>
             </Sheet>
-            <h1 className="text-base md:text-lg font-semibold text-foreground truncate max-w-[200px] md:max-w-none">
+            <h1 className="text-[clamp(0.9rem,4vw,1.125rem)] font-semibold text-foreground truncate max-w-[200px] md:max-w-none">
               {activeTab === 'config' ? 'Configurações da Plataforma' : 
                activeTab === 'tenants' ? 'Gerenciamento de Clientes' : 
                activeTab === 'support' ? 'Suporte Global' : 
@@ -85,7 +85,7 @@ export default function AdminMaster() {
         </header>
 
         {/* Content area */}
-        <div className="flex-1 p-4 md:p-8">
+        <div className="flex-1 p-4 md:p-8 pb-24 md:pb-12">
           <div className="max-w-[1400px] mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500">
             {renderContent()}
           </div>
