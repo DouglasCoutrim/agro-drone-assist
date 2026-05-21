@@ -83,57 +83,6 @@
     --bottom-nav-height: 64px;
   }
 
-  .dark {
-    --background: 216 28% 7%;
-    --foreground: 210 40% 96%;
-    --card: 221 27% 15%;
-    --card-foreground: 210 40% 96%;
-    --popover: 221 27% 15%;
-    --popover-foreground: 210 40% 96%;
-
-    --primary: 142 72% 37%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 96%;
-
-    --muted: 220 24% 12%;
-    --muted-foreground: 215 16% 47%;
-
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 96%;
-
-    --border: 216 24% 23%;
-    --border-subtle: 217 33% 17%;
-    --input: 217 19% 27%;
-    --ring: 142 72% 37%;
-
-    --sidebar-background: 222 37% 7%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 142 72% 37%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 26% 12%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 217 33% 17%;
-    --sidebar-ring: 142 72% 37%;
-
-    /* Dark status colors */
-    --green-light: 142 72% 37% / 0.15;
-    --green-text: 142 69% 68%;
-    --amber-light: 38 92% 44% / 0.15;
-    --amber-text: 48 96% 72%;
-    --red-light: 0 72% 51% / 0.15;
-    --red-text: 0 91% 82%;
-    --blue-light: 217 91% 53% / 0.15;
-    --blue-text: 213 94% 78%;
-    --slate-light: 215 16% 47% / 0.15;
-    --slate-text: 214 32% 83%;
-
-    --shadow-xs: 0 1px 2px rgba(0,0,0,0.3);
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
-    --shadow-md: 0 4px 12px rgba(0,0,0,0.5);
-    --shadow-lg: 0 10px 30px rgba(0,0,0,0.6);
-  }
 
   * {
     @apply border-border;

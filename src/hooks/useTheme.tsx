@@ -10,24 +10,17 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "light";
-    const saved = localStorage.getItem("voltcontrol-theme") as Theme;
-    if (saved === "dark" || saved === "light") return saved;
-    return "light";
-  });
+  const [theme] = useState<Theme>("light");
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-    localStorage.setItem("voltcontrol-theme", theme);
-  }, [theme]);
+    root.classList.remove("dark");
+    localStorage.setItem("voltcontrol-theme", "light");
+  }, []);
 
-  const toggleTheme = () => setTheme(prev => (prev === "dark" ? "light" : "dark"));
+  const toggleTheme = () => {
+    // Force light mode
+  };
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
