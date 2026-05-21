@@ -46,7 +46,7 @@ export function PlatformSidebar({ className }: { className?: string }) {
 
   return (
     <div className={cn(
-      "flex h-full flex-col bg-slate-950 dark:bg-slate-950 light:bg-slate-100 border-r border-slate-800 light:border-slate-200 overflow-hidden flex-shrink-0",
+      "flex h-full flex-col bg-slate-900 border-r border-border overflow-hidden flex-shrink-0",
       className
     )} style={{ width: "260px" }}>
       {/* Admin Branding */}

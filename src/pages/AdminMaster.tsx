@@ -11,6 +11,7 @@ import WikiTab from '@/components/admin/WikiTab';
 import ConfigTab from '@/components/admin/ConfigTab';
 import SiteTab from '@/components/admin/SiteTab';
 import { PlatformSidebar } from '@/components/layout/PlatformSidebar';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function AdminMaster() {
   const { loading: authLoading } = useAuth();
