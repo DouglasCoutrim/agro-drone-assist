@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
+import { useOrganization } from '@/hooks/useOrganization';
 import {
   Zap, ClipboardList, Package, DollarSign, Users, MapPin,
   Smartphone, ShieldCheck, Sparkles, Check, ArrowRight, BarChart3, Wrench,
@@ -40,6 +41,7 @@ const BENEFITS = [
 
 export default function Landing() {
   const { user } = useAuth();
+  const { isPlatformAdmin, loading: orgLoading } = useOrganization();
   const [plans, setPlans] = useState<Plan[]>([]);
 
   useEffect(() => {
@@ -47,6 +49,8 @@ export default function Landing() {
       .select('*').eq('active', true).order('monthly_price')
       .then(({ data }) => setPlans((data as any) || []));
   }, []);
+
+  const dashboardPath = isPlatformAdmin ? "/admin-master" : "/dashboard";
 
   return (
     <div className="min-h-screen bg-background">
@@ -63,7 +67,7 @@ export default function Landing() {
           </nav>
           <div className="flex items-center gap-2">
             {user ? (
-              <Button asChild size="sm"><Link to="/dashboard">Acessar Painel</Link></Button>
+              <Button asChild size="sm"><Link to={dashboardPath}>Acessar Painel</Link></Button>
             ) : (
               <>
                 <Button asChild variant="ghost" size="sm"><Link to="/auth">Entrar</Link></Button>

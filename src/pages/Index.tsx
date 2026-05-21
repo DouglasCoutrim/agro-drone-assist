@@ -12,6 +12,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrganization } from "@/hooks/useOrganization";
 
 const TIPO_EQUIPAMENTO: Record<string, string> = {
   drone_agricola: "Drone Agrícola", drone_convencional: "Drone de Consumo",
@@ -37,12 +38,19 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
 const Index = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isPlatformAdmin, loading: orgLoading } = useOrganization();
   const [stats, setStats] = useState({ osAbertas: 0, osConcluidas: 0, itensEstoqueBaixo: 0, totalClientes: 0, faturamentoMes: 0 });
   const [recentOS, setRecentOS] = useState<any[]>([]);
   const [overdueOS, setOverdueOS] = useState<any[]>([]);
   const [overduePayments, setOverduePayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewingOS, setViewingOS] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (user && !orgLoading && isPlatformAdmin) {
+      navigate("/admin-master");
+    }
+  }, [user, isPlatformAdmin, orgLoading, navigate]);
 
   useEffect(() => { if (user) fetchDashboardData(); }, [user]);
 
