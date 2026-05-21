@@ -134,7 +134,9 @@ export default function OrdensServico() {
 
   const isMobility = MOBILITY_CATEGORIES.includes(uiCategory);
   const isBateria = uiCategory === "bateria" || formData.modelo_equipamento?.toLowerCase().includes("bateria");
-  const totalOrcamento = Math.max(0, (formData.custo_pecas || 0) + (formData.custo_mao_obra || 0) - (formData.desconto || 0));
+  const itemsTotal = osItems.reduce((s, i) => s + (i.valor_total || 0), 0);
+  const totalOrcamento = Math.max(0, itemsTotal - (formData.desconto || 0));
+  const viewItemsTotal = viewOsItems.reduce((s, i) => s + (i.valor_total || 0), 0);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -201,6 +203,8 @@ export default function OrdensServico() {
         ...restForm,
         tipo_equipamento: mapCategoryToDbEnum(uiCategory),
         observacoes: observacoesWithMobility || null,
+        custo_pecas: 0,
+        custo_mao_obra: 0,
         valor_orcamento: totalOrcamento || null,
         data_previsao: formData.data_previsao || null,
         diagnostico: formData.diagnostico || null,
@@ -362,8 +366,18 @@ export default function OrdensServico() {
     if (next) handleStatusChange(os.id, next);
   };
 
-  const handlePrintOS = () => {
+  const handlePrintOS = async () => {
     if (!viewingOS) return;
+    // Ensure items are loaded (when called from row action, view dialog may not have populated yet)
+    let itemsForPdf = viewOsItems;
+    if (itemsForPdf.length === 0) {
+      const { data } = await supabase.from("itens_os").select("*").eq("ordem_servico_id", viewingOS.id);
+      itemsForPdf = (data || []).map((d: any) => ({
+        id: d.id, tipo: d.tipo, produto_id: d.produto_id, servico_id: d.servico_id,
+        descricao: d.descricao, quantidade: d.quantidade, valor_unitario: d.valor_unitario, valor_total: d.valor_total,
+      }));
+      setViewOsItems(itemsForPdf);
+    }
     const printWindow = window.open("", "_blank");
     if (!printWindow) { toast.error("Popup bloqueado. Permita popups para imprimir."); return; }
     const fmtCur = (v: number | null) => formatCurrency(v);
@@ -433,13 +447,50 @@ export default function OrdensServico() {
       </div></div>
       ${mobilityHTML}
       ${checklistItems.length > 0 ? `<div class="section"><div class="section-title">Checklist</div><div class="grid"><div class="field full-width"><div class="field-value">${checklistItems.join(", ")}</div></div>${os.condicao_visual ? `<div class="field full-width"><div class="field-label">Condição Visual</div><div class="field-value">${os.condicao_visual}</div></div>` : ""}</div></div>` : ""}
-      <div class="section"><div class="section-title">Diagnóstico e Orçamento</div><div class="grid">
+      <div class="section"><div class="section-title">Diagnóstico</div><div class="grid">
         <div class="field full-width"><div class="field-label">Defeito</div><div class="field-value">${viewingOS.descricao_problema}</div></div>
         <div class="field full-width"><div class="field-label">Diagnóstico</div><div class="field-value">${viewingOS.diagnostico || "-"}</div></div>
-        <div class="field"><div class="field-label">Peças</div><div class="field-value">${fmtCur(os.custo_pecas)}</div></div>
-        <div class="field"><div class="field-label">Mão de Obra</div><div class="field-value">${fmtCur(os.custo_mao_obra)}</div></div>
-        <div class="field"><div class="field-label">Total</div><div class="field-value" style="font-weight:bold;color:#16a34a">${fmtCur(viewingOS.valor_orcamento)}</div></div>
       </div></div>
+      ${(() => {
+        const produtos = itemsForPdf.filter(i => i.tipo === "produto");
+        const servicos = itemsForPdf.filter(i => i.tipo === "servico");
+        const tableStyle = `width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;table-layout:fixed;`;
+        const thStyle = `text-align:left;padding:6px 8px;background:#f3f4f6;border-bottom:1px solid #d1d5db;font-weight:600;`;
+        const tdStyle = `padding:6px 8px;border-bottom:1px solid #eee;vertical-align:top;word-wrap:break-word;`;
+        const renderTable = (title: string, list: typeof itemsForPdf) => list.length === 0 ? "" : `
+          <div class="section"><div class="section-title">${title}</div>
+            <table style="${tableStyle}">
+              <colgroup><col style="width:50%"><col style="width:12%"><col style="width:19%"><col style="width:19%"></colgroup>
+              <thead><tr>
+                <th style="${thStyle}">Descrição</th>
+                <th style="${thStyle}text-align:center">Qtd</th>
+                <th style="${thStyle}text-align:right">Unit.</th>
+                <th style="${thStyle}text-align:right">Total</th>
+              </tr></thead>
+              <tbody>
+                ${list.map(i => `<tr>
+                  <td style="${tdStyle}">${i.descricao}${i.codigo ? ` <span style="color:#888">(${i.codigo})</span>` : ""}</td>
+                  <td style="${tdStyle}text-align:center">${i.quantidade}</td>
+                  <td style="${tdStyle}text-align:right">${fmtCur(i.valor_unitario)}</td>
+                  <td style="${tdStyle}text-align:right;font-weight:600">${fmtCur(i.valor_total)}</td>
+                </tr>`).join("")}
+              </tbody>
+            </table>
+          </div>`;
+        const itensHtml = renderTable("Itens / Peças", produtos) + renderTable("Serviços executados", servicos);
+        const subtotal = itemsForPdf.reduce((s, i) => s + (i.valor_total || 0), 0);
+        const desconto = (os.desconto || 0);
+        const totalLine = itemsForPdf.length > 0 ? `
+          <div class="section" style="margin-top:6px">
+            <table style="width:100%;font-size:13px">
+              <tr><td style="text-align:right;padding:2px 8px">Subtotal:</td><td style="text-align:right;padding:2px 0;width:120px">${fmtCur(subtotal)}</td></tr>
+              ${desconto > 0 ? `<tr><td style="text-align:right;padding:2px 8px">Desconto:</td><td style="text-align:right;padding:2px 0">- ${fmtCur(desconto)}</td></tr>` : ""}
+              <tr><td style="text-align:right;padding:6px 8px;font-weight:700;font-size:15px">TOTAL:</td><td style="text-align:right;padding:6px 0;font-weight:700;font-size:15px;color:#16a34a">${fmtCur(Math.max(0, subtotal - desconto))}</td></tr>
+            </table>
+          </div>` : `
+          <div class="section"><div class="grid"><div class="field"><div class="field-label">Total</div><div class="field-value" style="font-weight:bold;color:#16a34a">${fmtCur(viewingOS.valor_orcamento)}</div></div></div></div>`;
+        return itensHtml + totalLine;
+      })()}
       <div class="section"><div class="section-title">Datas</div><div class="grid">
         <div class="field"><div class="field-label">Entrada</div><div class="field-value">${fmtDt(viewingOS.data_entrada)}</div></div>
         <div class="field"><div class="field-label">Previsão</div><div class="field-value">${fmtDt(viewingOS.data_previsao)}</div></div>
@@ -476,6 +527,19 @@ export default function OrdensServico() {
       ? whatsappTemplates.osRecebida(osData, nomeEmpresa, empresa.termos_servico || undefined)
       : whatsappTemplates[template](osData, nomeEmpresa);
     openWhatsApp(cliente.telefone, msg);
+  };
+
+  const handleSendPdfWhatsApp = async () => {
+    if (!viewingOS) return;
+    const cliente = clientes.find(c => c.id === viewingOS.cliente_id);
+    if (!cliente?.telefone) { toast.error("Cliente sem telefone cadastrado"); return; }
+    // 1) Abre a janela de impressão para o usuário salvar o PDF
+    await handlePrintOS();
+    // 2) Abre o WhatsApp com mensagem amigável instruindo a anexar o PDF baixado
+    const nomeEmpresa = empresa.nome_empresa || "LivreOS";
+    const total = viewingOS.valor_orcamento ? formatCurrency(viewingOS.valor_orcamento) : "";
+    const msg = `Olá, *${viewingOS.clientes?.nome || "cliente"}*! 👋\n\n*${nomeEmpresa}*\n\n📋 *OS:* ${viewingOS.numero}${total ? `\n💰 *Total:* ${total}` : ""}\n\n📎 Segue em anexo o PDF completo da sua Ordem de Serviço.\n\n_Anexe nesta conversa o arquivo PDF que acabou de baixar._`;
+    setTimeout(() => openWhatsApp(cliente.telefone!, msg), 500);
   };
 
   const handleCobrar = async () => {
@@ -724,7 +788,7 @@ export default function OrdensServico() {
 
         {/* ===== WIZARD DIALOG ===== */}
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden w-[calc(100vw-1rem)] sm:w-full">
             <DialogHeader>
               <DialogTitle>{editingOS ? "Editar OS" : "Nova Ordem de Serviço"}</DialogTitle>
               <DialogDescription>
@@ -897,19 +961,17 @@ export default function OrdensServico() {
                         <div className="space-y-1.5"><Label className="text-xs">Previsão de Entrega</Label><Input type="date" value={formData.data_previsao} onChange={(e) => setFormData({ ...formData, data_previsao: e.target.value })} className="h-9" /></div>
                       </div>
                       <Separator />
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div className="space-y-1.5"><Label className="text-xs">Peças (R$)</Label><NumberInput step="0.01" min="0" value={formData.custo_pecas} onChange={(v) => setFormData({ ...formData, custo_pecas: v })} className="h-9" placeholder="0,00" /></div>
-                        <div className="space-y-1.5"><Label className="text-xs">Mão de Obra (R$)</Label><NumberInput step="0.01" min="0" value={formData.custo_mao_obra} onChange={(v) => setFormData({ ...formData, custo_mao_obra: v })} className="h-9" placeholder="0,00" /></div>
-                        <div className="space-y-1.5"><Label className="text-xs">Desconto (R$)</Label><NumberInput step="0.01" min="0" value={formData.desconto} onChange={(v) => setFormData({ ...formData, desconto: v })} className="h-9" placeholder="0,00" /></div>
-                        <div className="space-y-1.5"><Label className="text-xs">Total</Label><Input type="text" value={totalOrcamento.toFixed(2)} readOnly disabled className="h-9 font-bold text-primary" /></div>
-                      </div>
-                      <div className="space-y-1.5"><Label className="text-xs">Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
-                      <Separator />
                       <OSItemsSection
                         items={osItems}
                         onChange={setOsItems}
                         organizationId={user ? undefined : undefined}
                       />
+                      <Separator />
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5"><Label className="text-xs">Desconto (R$)</Label><NumberInput step="0.01" min="0" value={formData.desconto} onChange={(v) => setFormData({ ...formData, desconto: v })} className="h-9" placeholder="0,00" /></div>
+                        <div className="space-y-1.5"><Label className="text-xs">Total da OS</Label><Input type="text" value={formatCurrency(totalOrcamento)} readOnly disabled className="h-9 font-bold text-primary" /></div>
+                      </div>
+                      <div className="space-y-1.5"><Label className="text-xs">Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
                     </CardContent>
                   </Card>
                 </div>
@@ -957,7 +1019,7 @@ export default function OrdensServico() {
 
         {/* View OS Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden w-[calc(100vw-1rem)] sm:w-full">
             <DialogHeader>
               <DialogTitle className="flex items-center justify-between">
                 <span>OS {viewingOS?.numero}</span>
@@ -1011,10 +1073,9 @@ export default function OrdensServico() {
                         <div className="space-y-2">
                           <div><p className="text-[10px] text-muted-foreground">Defeito</p><p className="text-sm">{viewingOS.descricao_problema}</p></div>
                           <div><p className="text-[10px] text-muted-foreground">Diagnóstico</p><p className="text-sm">{viewingOS.diagnostico || "-"}</p></div>
-                          <div className="grid grid-cols-3 gap-3">
-                            <div><p className="text-[10px] text-muted-foreground">Peças</p><p className="text-sm font-medium">{formatCurrency((viewingOS as any).custo_pecas)}</p></div>
-                            <div><p className="text-[10px] text-muted-foreground">M.O.</p><p className="text-sm font-medium">{formatCurrency((viewingOS as any).custo_mao_obra)}</p></div>
-                            <div><p className="text-[10px] text-muted-foreground">Total</p><p className="text-sm font-bold text-primary">{formatCurrency(viewingOS.valor_orcamento)}</p></div>
+                          <div className="flex items-center justify-between rounded-md bg-muted/30 border border-border/50 px-3 py-2">
+                            <p className="text-xs text-muted-foreground uppercase font-medium">Total da OS</p>
+                            <p className="text-base font-bold text-primary">{formatCurrency(viewItemsTotal > 0 ? viewItemsTotal - ((viewingOS as any).desconto || 0) : viewingOS.valor_orcamento)}</p>
                           </div>
                         </div>
                       </div>
@@ -1049,6 +1110,8 @@ export default function OrdensServico() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={handleSendPdfWhatsApp}>📎 Enviar PDF da OS</DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => handleWhatsAppTemplate("osRecebida")}>📋 OS Recebida + Termos</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleWhatsAppTemplate("orcamentoAprovacao")}>💰 Orçamento p/ Aprovação</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleWhatsAppTemplate("osPronta")}>✅ Equipamento Pronto</DropdownMenuItem>
