@@ -128,7 +128,7 @@ export default function Clientes() {
 
   return (
     <MainLayout>
-      <div className="space-y-4">
+      <div className="space-y-4" data-tour="clientes-page">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-lg font-bold font-display flex items-center gap-2"><Users className="h-5 w-5 text-primary" />Clientes</h1>

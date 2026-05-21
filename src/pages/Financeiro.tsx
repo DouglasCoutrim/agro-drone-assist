@@ -130,7 +130,7 @@ export default function Financeiro() {
 
   return (
     <MainLayout>
-      <div className="space-y-4">
+      <div className="space-y-4" data-tour="financeiro-page">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-lg font-bold flex items-center gap-2"><DollarSign className="h-5 w-5 text-primary" />Financeiro</h1>

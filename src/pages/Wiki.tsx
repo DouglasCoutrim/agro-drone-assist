@@ -108,7 +108,30 @@ export default function Wiki() {
     return (
       <MainLayout>
         {runTour && tourSteps.length > 0 && (
-          <Joyride steps={tourSteps} continuous onEvent={handleJoyrideEvent} />
+          <Joyride 
+            {...({
+              steps: tourSteps,
+              continuous: true,
+              showProgress: true,
+              showSkipButton: true,
+              onEvent: handleJoyrideEvent,
+              styles: {
+                options: {
+                  primaryColor: 'hsl(var(--primary))',
+                  backgroundColor: 'hsl(var(--background))',
+                  textColor: 'hsl(var(--foreground))',
+                  arrowColor: 'hsl(var(--background))',
+                }
+              },
+              locale: {
+                back: 'Voltar',
+                close: 'Fechar',
+                last: 'Finalizar',
+                next: 'Próximo',
+                skip: 'Pular'
+              }
+            } as any)}
+          />
         )}
         <div className="max-w-3xl mx-auto space-y-4">
           <Button variant="ghost" size="sm" onClick={() => navigate("/wiki")}>
@@ -164,7 +187,30 @@ export default function Wiki() {
   return (
     <MainLayout>
       {runTour && tourSteps.length > 0 && (
-        <Joyride steps={tourSteps} continuous onEvent={handleJoyrideEvent} />
+        <Joyride 
+          {...({
+            steps: tourSteps,
+            continuous: true,
+            showProgress: true,
+            showSkipButton: true,
+            onEvent: handleJoyrideEvent,
+            styles: {
+              options: {
+                primaryColor: 'hsl(var(--primary))',
+                backgroundColor: 'hsl(var(--background))',
+                textColor: 'hsl(var(--foreground))',
+                arrowColor: 'hsl(var(--background))',
+              }
+            },
+            locale: {
+              back: 'Voltar',
+              close: 'Fechar',
+              last: 'Finalizar',
+              next: 'Próximo',
+              skip: 'Pular'
+            }
+          } as any)}
+        />
       )}
       <div className="space-y-6">
         <header className="space-y-2">
