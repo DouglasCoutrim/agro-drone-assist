@@ -39,10 +39,14 @@ serve(async (req) => {
 
   const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
   const { data: roleData } = await serviceClient
-    .from('user_roles').select('role').eq('user_id', userId).single();
+    .from('user_roles').select('role').eq('user_id', userId).maybeSingle();
+
+  const { data: platformAdmin } = await serviceClient
+    .from('platform_admins').select('user_id').eq('user_id', userId).maybeSingle();
 
   const userRole = roleData?.role;
-  if (!userRole || !['admin', 'tecnico'].includes(userRole)) {
+  const isPlatformAdmin = !!platformAdmin;
+  if (!isPlatformAdmin && (!userRole || !['admin', 'tecnico'].includes(userRole))) {
     return new Response(JSON.stringify({ error: 'Forbidden: insufficient permissions' }), {
       status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
