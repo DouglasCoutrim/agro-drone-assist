@@ -135,7 +135,7 @@ export default function TenantsTab() {
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const statusBadge = (o: Org) => {
-    if (o.is_vip) return <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"><Crown className="h-3 w-3 mr-1" />VIP</Badge>;
+    if (o.is_vip) return <Badge className="bg-vc-amber-light text-vc-amber-text border-vc-amber/20"><Crown className="h-3 w-3 mr-1" />VIP</Badge>;
     if (o.status === 'blocked') return <Badge variant="destructive">Bloqueado</Badge>;
     const map: Record<string, string> = {
       active: 'bg-vc-green-light text-vc-green-text border-vc-green/20',
