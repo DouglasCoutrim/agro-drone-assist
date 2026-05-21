@@ -40,7 +40,7 @@ export default function AdminMaster() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-950 overflow-hidden text-slate-200">
+    <div className="flex h-screen bg-slate-950 overflow-hidden text-slate-200 dark">
       <PlatformSidebar />
       
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
