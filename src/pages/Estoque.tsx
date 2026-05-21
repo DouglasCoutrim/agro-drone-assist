@@ -165,12 +165,21 @@ export default function Estoque() {
     setDialogOpen(true);
   };
 
-  const extractMLId = (url: string): string | null => {
-    const match = url.match(/MLB[-\s]?(\d+)/i);
-    if (match) return `MLB${match[1]}`;
-    // Also try just the ID without prefix
-    const idOnly = url.match(/^(\d{10,13})$/);
-    if (idOnly) return `MLB${idOnly[1]}`;
+  const extractMLId = (input: string): string | null => {
+    // Robust regex to find MLB followed by digits, optional hyphens or spaces
+    const mlbMatch = input.match(/MLB[- ]?(\d+)/i);
+    if (mlbMatch) return `MLB${mlbMatch[1]}`;
+    
+    // Check for common ML URL patterns if MLB prefix not found directly
+    // This handles short links like p.mercadolivre.com.br/p/MLB123...
+    const urlMatch = input.match(/(?:item|produto)\.mercadolivre\.com\.br\/MLB-(\d+)/i) || 
+                     input.match(/\/p\/MLB(\d+)/i);
+    if (urlMatch) return `MLB${urlMatch[1]}`;
+
+    // Extract just numbers if they look like an ID (10 or more digits)
+    const numericMatch = input.match(/(\d{10,15})/);
+    if (numericMatch) return `MLB${numericMatch[1]}`;
+    
     return null;
   };
 
@@ -183,17 +192,23 @@ export default function Estoque() {
     const loadingToast = toast.loading('Buscando dados do Mercado Livre...');
 
     try {
-      const { data, error } = await supabase.functions.invoke('mercadolivre', {
-        body: { mlId },
-      });
-
-      toast.dismiss(loadingToast);
-
-      if (error || !data || data.ok === false) {
-        const msg = data?.error || 'Não foi possível extrair dados deste link. Por favor, preencha manualmente.';
-        toast.error(msg);
-        return;
+      console.log('Iniciando busca do produto ML:', mlId);
+      
+      // Using AllOrigins proxy to bypass CORS
+      const targetUrl = `https://api.mercadolibre.com/items/${mlId}`;
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+      
+      const response = await fetch(proxyUrl);
+      if (!response.ok) throw new Error(`Erro na requisição: ${response.statusText}`);
+      
+      const proxyData = await response.json();
+      const data = JSON.parse(proxyData.contents);
+      
+      if (data.error || !data.title) {
+        throw new Error(data.message || 'Produto não encontrado');
       }
+
+      console.log('Dados recebidos do ML:', data);
 
       const price = Number(data.price) || 0;
       setFormData(prev => ({
@@ -203,10 +218,37 @@ export default function Estoque() {
         preco_venda: Number((price * (1 + margemLucro / 100)).toFixed(2)),
         categoria: data.category_id || prev.categoria,
       }));
-      toast.success(`Produto importado: ${data.title}`);
-    } catch {
+      
       toast.dismiss(loadingToast);
-      toast.error('Não foi possível buscar os dados do Mercado Livre.');
+      toast.success(`Produto importado: ${data.title}`);
+    } catch (err: any) {
+      console.error('Erro ao importar do Mercado Livre:', err);
+      toast.dismiss(loadingToast);
+      
+      // Fallback to Edge Function if browser-side fetch fails
+      try {
+        console.log('Tentando fallback via Edge Function...');
+        const { data: edgeData, error: edgeError } = await supabase.functions.invoke('mercadolivre', {
+          body: { mlId },
+        });
+
+        if (edgeError || !edgeData || edgeData.ok === false) {
+          throw new Error(edgeData?.error || 'Falha no fallback');
+        }
+
+        const price = Number(edgeData.price) || 0;
+        setFormData(prev => ({
+          ...prev,
+          descricao: edgeData.title || prev.descricao,
+          custo_unitario: price,
+          preco_venda: Number((price * (1 + margemLucro / 100)).toFixed(2)),
+          categoria: edgeData.category_id || prev.categoria,
+        }));
+        toast.success(`Importado via servidor: ${edgeData.title}`);
+      } catch (fallbackErr: any) {
+        console.error('Erro total na importação:', fallbackErr);
+        toast.error(`Erro ao conectar com o Mercado Livre: ${err.message || 'Link inválido ou problema de conexão'}`);
+      }
     } finally { setMlLoading(false); }
   };
 
