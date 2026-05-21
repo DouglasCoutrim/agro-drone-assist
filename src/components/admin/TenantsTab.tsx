@@ -135,14 +135,14 @@ export default function TenantsTab() {
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const statusBadge = (o: Org) => {
-    if (o.is_vip) return <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"><Crown className="h-3 w-3 mr-1" />VIP</Badge>;
+    if (o.is_vip) return <Badge className="bg-vc-amber-light text-vc-amber-text border-vc-amber/20"><Crown className="h-3 w-3 mr-1" />VIP</Badge>;
     if (o.status === 'blocked') return <Badge variant="destructive">Bloqueado</Badge>;
     const map: Record<string, string> = {
-      active: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-      trial: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
-      overdue: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
-      past_due: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
-      canceled: 'bg-muted text-muted-foreground',
+      active: 'bg-vc-green-light text-vc-green-text border-vc-green/20',
+      trial: 'bg-vc-blue-light text-vc-blue-text border-vc-blue/20',
+      overdue: 'bg-vc-amber-light text-vc-amber-text border-vc-amber/20',
+      past_due: 'bg-vc-amber-light text-vc-amber-text border-vc-amber/20',
+      canceled: 'bg-muted text-muted-foreground border-border',
     };
     const s = o.subscription_status || o.status;
     return <Badge className={map[s] || ''}>{s}</Badge>;

@@ -46,14 +46,14 @@ export function PlatformSidebar({ className, onNavigate }: { className?: string,
 
   return (
     <div className={cn(
-      "flex h-full w-full md:w-64 flex-col bg-background md:border-r border-border flex-shrink-0",
+      "flex h-full w-full md:w-64 flex-col bg-sidebar md:border-r border-sidebar-border flex-shrink-0",
       className
     )}>
       {/* Admin Branding */}
-      <div className="flex flex-col items-center gap-1 px-5 py-6 border-b border-border bg-card/30">
+      <div className="flex flex-col items-center gap-1 px-5 py-6 border-b border-sidebar-border bg-sidebar-accent/30">
         <img src={logo} alt="LivreOS" className="h-10 w-auto" />
-        <div className="mt-2 px-2 py-0.5 rounded bg-primary/10 border border-primary/20">
-           <span className="text-[10px] text-primary font-bold tracking-widest uppercase">PLATFORM ADMIN</span>
+        <div className="mt-2 px-2 py-0.5 rounded bg-sidebar-primary/10 border border-sidebar-primary/20">
+           <span className="text-[10px] text-sidebar-primary font-bold tracking-widest uppercase">PLATFORM ADMIN</span>
         </div>
       </div>
 
@@ -61,7 +61,7 @@ export function PlatformSidebar({ className, onNavigate }: { className?: string,
       <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto max-h-[400px] md:max-h-none">
         {navSections.map((section) => (
           <div key={section.title}>
-            <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-muted-foreground px-3 mb-2">
+            <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-sidebar-foreground/50 px-3 mb-2">
               {section.title}
             </p>
             <div className="space-y-1">
@@ -76,11 +76,11 @@ export function PlatformSidebar({ className, onNavigate }: { className?: string,
                     className={cn(
                       "group flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all duration-200",
                       isActive
-                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/20"
+                        : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
                     )}
                   >
-                    <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-primary")} />
+                    <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-sidebar-primary-foreground" : "text-sidebar-foreground/40 group-hover:text-sidebar-primary")} />
                     {item.title}
                   </Link>
                 );
@@ -89,11 +89,11 @@ export function PlatformSidebar({ className, onNavigate }: { className?: string,
           </div>
         ))}
 
-        <div className="pt-4 border-t border-border">
+        <div className="pt-4 border-t border-sidebar-border">
             <Link
             to="/dashboard"
             onClick={() => onNavigate?.()}
-            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-primary hover:bg-sidebar-primary/10 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             Voltar ao Sistema
@@ -102,18 +102,18 @@ export function PlatformSidebar({ className, onNavigate }: { className?: string,
       </nav>
 
       {/* User info */}
-      <div className="p-4 bg-card/80 border-t border-border">
+      <div className="p-4 bg-sidebar-accent/50 border-t border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded bg-primary flex items-center justify-center text-xs font-bold text-primary-foreground uppercase">
+          <div className="w-8 h-8 rounded bg-sidebar-primary flex items-center justify-center text-xs font-bold text-sidebar-primary-foreground uppercase">
             {user?.email?.[0] || 'A'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-foreground truncate">{user?.email}</p>
-            <p className="text-[10px] text-muted-foreground">Super Administrator</p>
+            <p className="text-xs font-medium text-sidebar-foreground truncate">{user?.email}</p>
+            <p className="text-[10px] text-sidebar-foreground/50">Super Administrator</p>
           </div>
           <button
             onClick={handleSignOut}
-            className="p-1.5 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-all"
+            className="p-1.5 rounded-md text-sidebar-foreground/50 hover:text-red-400 hover:bg-red-400/10 transition-all"
           >
             <LogOut className="h-3.5 w-3.5" />
           </button>
