@@ -908,8 +908,9 @@ export default function OrdensServico() {
 
         {/* View OS Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-          <DialogContent className="max-w-4xl w-[95vw] h-[90vh] flex flex-col p-0 overflow-hidden sm:rounded-xl">
+          <DialogContent className="max-w-4xl w-[95vw] sm:w-[90vw] h-[90vh] sm:h-[80vh] flex flex-col p-0 overflow-hidden rounded-xl">
             <DialogHeader className="p-4 sm:p-6 border-b shrink-0">
+
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="space-y-1">
                   <DialogTitle className="text-lg font-bold flex items-center gap-2">
