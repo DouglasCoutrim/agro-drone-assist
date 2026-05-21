@@ -9,23 +9,28 @@ const corsHeaders = {
 const FRIENDLY_ERROR = 'Não foi possível extrair dados deste link. Por favor, preencha manualmente.';
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
-  // Always return 200 so the supabase-js client doesn't throw FunctionsHttpError.
-  // Errors are signaled via { ok: false, error } in the body.
   return new Response(JSON.stringify(body), {
     status: 200,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
 
-// Try the official ML API first (works without auth for many items)
+// Try the official ML API first
 async function tryOfficialApi(cleanId: string) {
   try {
+    console.log(`Trying API for ${cleanId}`);
     const res = await fetch(`https://api.mercadolibre.com/items/${cleanId}`, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.log(`API returned status ${res.status}`);
+      return null;
+    }
     const data = await res.json();
-    if (data?.error) return null;
+    if (data?.error) {
+      console.log(`API error: ${data.message}`);
+      return null;
+    }
 
     // Try to fetch description separately
     let description = '';
@@ -48,7 +53,8 @@ async function tryOfficialApi(cleanId: string) {
       currency_id: data.currency_id || 'BRL',
       source: 'api',
     };
-  } catch {
+  } catch (err) {
+    console.error(`API error for ${cleanId}:`, err.message);
     return null;
   }
 }
@@ -56,22 +62,20 @@ async function tryOfficialApi(cleanId: string) {
 // Fallback: scrape the public product page
 async function tryScrape(cleanId: string) {
   const numericId = cleanId.replace(/^MLB/i, '');
-  // Using the most reliable mobile URL pattern which is often less protected
   const url = `https://produto.mercadolivre.com.br/MLB-${numericId}`;
   
   console.log(`Scraping URL: ${url}`);
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
 
     const res = await fetch(url, {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'pt-BR,pt;q=0.9',
-        'Cache-Control': 'no-cache',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
       },
     });
     
@@ -84,49 +88,83 @@ async function tryScrape(cleanId: string) {
     
     const html = await res.text();
 
-    // Title: look for multiple patterns
-    let title = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i)?.[1];
-    if (!title) title = html.match(/<h1[^>]*>([^<]+)<\/h1>/i)?.[1]?.trim();
-    if (!title) title = html.match(/"name":\s*"([^"]+)"/)?.[1];
+    // 1. Title Extraction (Specific Order)
+    let title = '';
+    
+    // Pattern A: h1 with class ui-pdp-title
+    const h1Match = html.match(/<h1[^>]*class=["'][^"']*ui-pdp-title[^"']*["'][^>]*>([\s\S]*?)<\/h1>/i);
+    if (h1Match) title = h1Match[1].replace(/<[^>]*>/g, '').trim();
 
-    // Price: try Andes money fraction (most common in modern ML pages)
+    // Pattern B: meta og:title
+    if (!title) {
+      const ogTitle = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i);
+      if (ogTitle) title = ogTitle[1].trim();
+    }
+
+    // Pattern C: any h1
+    if (!title) {
+      const genericH1 = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+      if (genericH1) title = genericH1[1].replace(/<[^>]*>/g, '').trim();
+    }
+
+    // Filter out common garbage titles
+    if (title.toLowerCase() === 'ios' || title.toLowerCase() === 'android' || title.length < 3) {
+      console.log(`Discarding suspicious title: "${title}"`);
+      title = '';
+    }
+
+    // 2. Price Extraction
     let price = 0;
     
-    // Pattern 1: andes-money-amount__fraction
-    const fractionMatch = html.match(/class="andes-money-amount__fraction">([\d.,]+)</);
-    if (fractionMatch) {
-      const centsMatch = html.match(/class="andes-money-amount__cents[^>]*>(\d+)</);
-      const fraction = fractionMatch[1].replace(/\./g, '').replace(',', '.');
-      const cents = centsMatch ? centsMatch[1] : '00';
-      price = Number(`${fraction}.${cents}`);
+    // Pattern A: meta product:price:amount
+    const priceMeta = html.match(/<meta[^>]*property=["']product:price:amount["'][^>]*content=["']([\d.]+)["']/i);
+    if (priceMeta) price = Number(priceMeta[1]);
+
+    // Pattern B: meta itemprop="price"
+    if (!price) {
+      const itemPropPrice = html.match(/<meta[^>]*itemprop=["']price["'][^>]*content=["']([\d.]+)["']/i);
+      if (itemPropPrice) price = Number(itemPropPrice[1]);
     }
 
-    // Pattern 2: meta price
+    // Pattern C: JSON-LD
     if (!price) {
-      const priceMeta = html.match(/<meta\s+itemprop=["']price["']\s+content=["']([\d.]+)["']/i)?.[1];
-      if (priceMeta) price = Number(priceMeta);
-    }
-
-    // Pattern 3: JSON-LD
-    if (!price) {
-      const jsonLdMatch = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i);
-      if (jsonLdMatch) {
+      const jsonLdMatches = html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+      for (const match of jsonLdMatches) {
         try {
-          const ld = JSON.parse(jsonLdMatch[1]);
-          const offers = Array.isArray(ld) ? ld[0]?.offers : ld?.offers;
-          const p = Array.isArray(offers) ? offers[0]?.price : offers?.price;
-          if (p) price = Number(p);
+          const ld = JSON.parse(match[1]);
+          const offer = Array.isArray(ld) ? (ld[0]?.offers || ld[1]?.offers) : ld?.offers;
+          const p = Array.isArray(offer) ? offer[0]?.price : offer?.price;
+          if (p) {
+            price = Number(p);
+            break;
+          }
         } catch { /* ignore */ }
       }
     }
 
-    // Image: og:image
-    const picture_url = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i)?.[1] || '';
+    // Pattern D: DOM Scraping (Andes Money)
+    if (!price) {
+      const fractionMatch = html.match(/class=["'][^"']*andes-money-amount__fraction[^"']*["'][^>]*>([\d.,]+)</);
+      if (fractionMatch) {
+        const fraction = fractionMatch[1].replace(/\./g, '').replace(',', '.');
+        const centsMatch = html.match(/class=["'][^"']*andes-money-amount__cents[^"']*["'][^>]*>(\d+)</);
+        const cents = centsMatch ? centsMatch[1] : '00';
+        price = Number(`${fraction}.${cents}`);
+      }
+    }
 
-    // Description: og:description
-    const description = html.match(/<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i)?.[1] || '';
+    // 3. Image & Category
+    const picture_url = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)?.[1] || '';
+    
+    // Description (often meta)
+    const description = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i)?.[1] || '';
 
-    if (!title) return null;
+    if (!title) {
+       console.log('No title found after all attempts.');
+       return null;
+    }
+
+    console.log(`Scrape result: Title="${title}", Price=${price}`);
 
     return {
       title,
@@ -151,10 +189,9 @@ serve(async (req) => {
   }
 
   try {
-    // Auth check
     const authHeader = req.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return jsonResponse({ ok: false, error: 'Não autorizado' });
+      return jsonResponse({ ok: false, error: 'Não autorizado' }, 401);
     }
 
     const token = authHeader.replace('Bearer ', '');
@@ -166,7 +203,7 @@ serve(async (req) => {
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
-      return jsonResponse({ ok: false, error: 'Não autorizado' });
+      return jsonResponse({ ok: false, error: 'Sessão expirada' }, 401);
     }
 
     const body = await req.json().catch(() => ({}));
@@ -179,14 +216,14 @@ serve(async (req) => {
     const cleanId = idMatch ? `MLB${idMatch[1]}` : String(rawId).replace(/[^A-Za-z0-9]/g, '');
 
     if (!cleanId || !/^MLB\d+$/i.test(cleanId)) {
-      return jsonResponse({ ok: false, error: FRIENDLY_ERROR });
+      return jsonResponse({ ok: false, error: 'Formato de ID inválido. Use MLB... ou o link do produto.' });
     }
 
-    console.log(`Fetching ML product: ${cleanId}`);
+    console.log(`Processing ML request: ${cleanId}`);
 
     let result = await tryOfficialApi(cleanId);
     if (!result) {
-      console.log(`API failed for ${cleanId}, trying scrape...`);
+      console.log(`API failed for ${cleanId}, falling back to scrape...`);
       result = await tryScrape(cleanId);
     }
 
@@ -196,7 +233,7 @@ serve(async (req) => {
 
     return jsonResponse({ ok: true, ...result });
   } catch (error) {
-    console.error('ML fetch error:', error);
-    return jsonResponse({ ok: false, error: FRIENDLY_ERROR });
+    console.error('Edge Function Error:', error);
+    return jsonResponse({ ok: false, error: 'Erro interno ao processar requisição' });
   }
 });
