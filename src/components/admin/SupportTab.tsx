@@ -20,10 +20,10 @@ interface Message {
 
 const statusBadge = (s: string) => {
   const map: Record<string, string> = {
-    open: 'bg-red-500/15 text-red-600 dark:text-red-400',
-    in_progress: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
-    resolved: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-    closed: 'bg-muted text-muted-foreground',
+    open: 'bg-vc-red-light text-vc-red-text border-vc-red/20',
+    in_progress: 'bg-vc-amber-light text-vc-amber-text border-vc-amber/20',
+    resolved: 'bg-vc-green-light text-vc-green-text border-vc-green/20',
+    closed: 'bg-muted text-muted-foreground border-border',
   };
   const label: Record<string, string> = { open: 'Aberto', in_progress: 'Em andamento', resolved: 'Resolvido', closed: 'Fechado' };
   return <Badge className={map[s] || ''}>{label[s] || s}</Badge>;

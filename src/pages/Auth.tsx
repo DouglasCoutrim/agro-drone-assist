@@ -68,7 +68,7 @@ export default function Auth() {
       <Card className="w-full max-w-md shadow-strong relative z-10 border-primary/20">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
-            <img src={logo} alt="LivreOS" className="h-20 w-auto drop-shadow-[0_2px_12px_rgba(57,255,20,0.25)]" />
+            <img src={logo} alt="LivreOS" className="h-20 w-auto drop-shadow-[0_2px_12px_hsl(var(--primary)/0.25)]" />
           </div>
           <CardDescription>Gestão completa para sua assistência técnica</CardDescription>
         </CardHeader>

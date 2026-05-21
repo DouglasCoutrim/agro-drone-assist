@@ -199,13 +199,13 @@ export default function SiteTab() {
         </Card>
 
         {/* Gerenciamento de Imagens Placeholder */}
-        <Card className="bg-slate-900/50 border-slate-800 lg:col-span-2">
+        <Card className="border-border/50 lg:col-span-2">
           <CardHeader>
-            <div className="flex items-center gap-2 text-amber-400">
+            <div className="flex items-center gap-2 text-primary">
               <Globe className="h-5 w-5" />
-              <CardTitle className="text-white">Gerenciamento de Campanhas e Imagens</CardTitle>
+              <CardTitle>Gerenciamento de Campanhas e Imagens</CardTitle>
             </div>
-            <CardDescription className="text-slate-400">
+            <CardDescription>
               Configure banners de campanha e URLs de imagens globais do site.
             </CardDescription>
           </CardHeader>
