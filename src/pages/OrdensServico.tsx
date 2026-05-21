@@ -1138,6 +1138,7 @@ export default function OrdensServico() {
                   </DropdownMenu>
                 </div>
               </div>
+            )}
             </div>
             </div>
           {viewingOS && viewingOS.status !== "entregue" && viewingOS.status !== "cancelada" && (
