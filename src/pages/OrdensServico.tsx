@@ -948,19 +948,17 @@ export default function OrdensServico() {
                         <div className="space-y-1.5"><Label className="text-xs">Previsão de Entrega</Label><Input type="date" value={formData.data_previsao} onChange={(e) => setFormData({ ...formData, data_previsao: e.target.value })} className="h-9" /></div>
                       </div>
                       <Separator />
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div className="space-y-1.5"><Label className="text-xs">Peças (R$)</Label><NumberInput step="0.01" min="0" value={formData.custo_pecas} onChange={(v) => setFormData({ ...formData, custo_pecas: v })} className="h-9" placeholder="0,00" /></div>
-                        <div className="space-y-1.5"><Label className="text-xs">Mão de Obra (R$)</Label><NumberInput step="0.01" min="0" value={formData.custo_mao_obra} onChange={(v) => setFormData({ ...formData, custo_mao_obra: v })} className="h-9" placeholder="0,00" /></div>
-                        <div className="space-y-1.5"><Label className="text-xs">Desconto (R$)</Label><NumberInput step="0.01" min="0" value={formData.desconto} onChange={(v) => setFormData({ ...formData, desconto: v })} className="h-9" placeholder="0,00" /></div>
-                        <div className="space-y-1.5"><Label className="text-xs">Total</Label><Input type="text" value={totalOrcamento.toFixed(2)} readOnly disabled className="h-9 font-bold text-primary" /></div>
-                      </div>
-                      <div className="space-y-1.5"><Label className="text-xs">Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
-                      <Separator />
                       <OSItemsSection
                         items={osItems}
                         onChange={setOsItems}
                         organizationId={user ? undefined : undefined}
                       />
+                      <Separator />
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5"><Label className="text-xs">Desconto (R$)</Label><NumberInput step="0.01" min="0" value={formData.desconto} onChange={(v) => setFormData({ ...formData, desconto: v })} className="h-9" placeholder="0,00" /></div>
+                        <div className="space-y-1.5"><Label className="text-xs">Total da OS</Label><Input type="text" value={formatCurrency(totalOrcamento)} readOnly disabled className="h-9 font-bold text-primary" /></div>
+                      </div>
+                      <div className="space-y-1.5"><Label className="text-xs">Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
                     </CardContent>
                   </Card>
                 </div>
