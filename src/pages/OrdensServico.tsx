@@ -380,6 +380,17 @@ export default function OrdensServico() {
       }));
       setViewOsItems(itemsForPdf);
     }
+    
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Popup bloqueado. Permita popups para imprimir.");
+      return;
+    }
+    
+    const html = generateOSPDF(viewingOS, itemsForPdf, empresa);
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
 
   };
 
