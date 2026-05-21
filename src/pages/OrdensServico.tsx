@@ -392,7 +392,6 @@ export default function OrdensServico() {
     printWindow.document.close();
   };
 
-  };
 
 
   const handleWhatsAppTemplate = (template: keyof typeof whatsappTemplates) => {
