@@ -34,6 +34,10 @@ export default function ProtectedRoute({ children, requiredRole, requiredPermiss
     return <Navigate to="/auth" replace />;
   }
 
+  if (requiredPlatformAdmin && !isPlatformAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   // Org blocked? (platform admin bypasses)
   if (!allowBlocked && !isPlatformAdmin && organization && organization.status === 'blocked') {
     return <Navigate to="/mensalidade-em-atraso" replace />;
