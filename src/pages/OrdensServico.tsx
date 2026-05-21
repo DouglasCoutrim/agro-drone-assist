@@ -1122,8 +1122,17 @@ export default function OrdensServico() {
                 </div>
               </div>
             )}
-          </DialogContent>
-        </Dialog>
+          </div>
+          {viewingOS && viewingOS.status !== "entregue" && viewingOS.status !== "cancelada" && (
+            <div className="p-4 border-t bg-muted/30 shrink-0">
+              <Button className="w-full gradient-primary" onClick={() => handleAdvanceStatus(viewingOS)}>
+                Avançar para {getStatusLabel(getNextStatus(viewingOS.status) || "")}
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
         {/* Terms Dialog */}
         <Dialog open={termsDialogOpen} onOpenChange={(open) => { setTermsDialogOpen(open); if (!open) setLastCreatedOS(null); }}>
