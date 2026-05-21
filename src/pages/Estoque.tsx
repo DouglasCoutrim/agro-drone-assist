@@ -194,93 +194,81 @@ export default function Estoque() {
     try {
       console.log('Iniciando busca do produto ML:', mlId);
       
-      // Try Edge Function first (server-side, more stable for headers)
-      let edgeData: any = null;
-      let edgeError: any = null;
+      let importedTitle = "";
+      let importedPrice = 0;
+      let importedCategory = "";
 
+      // 1. Try Edge Function first (server-side, more stable)
       try {
         console.log('Solicitando via Edge Function:', mlId);
-        const response = await supabase.functions.invoke('mercadolivre', {
+        const { data: edgeData, error: edgeError } = await supabase.functions.invoke('mercadolivre', {
           body: { mlId },
         });
-        edgeData = response.data;
-        edgeError = response.error;
-      } catch (err: any) {
-        console.error('Erro de rede na Edge Function:', err);
-        edgeError = err;
+
+        if (!edgeError && edgeData?.ok) {
+          const title = edgeData.title?.trim();
+          // Avoid "ios" / "android" or generic metadata
+          if (title && !['ios', 'android'].includes(title.toLowerCase()) && title.length > 3) {
+            importedTitle = title;
+            importedPrice = Number(edgeData.price) || 0;
+            importedCategory = edgeData.category_id || "";
+            console.log('Dados obtidos via Edge Function:', edgeData);
+          }
+        } else if (edgeError) {
+          console.warn('Erro na Edge Function:', edgeError);
+        }
+      } catch (err) {
+        console.error('Falha ao chamar Edge Function:', err);
       }
 
-      if (!edgeError && edgeData?.ok) {
-        console.log('Sucesso via Edge Function:', edgeData);
-        
-        // Final validation to avoid "ios" or empty titles
-        const title = edgeData.title?.trim();
-        if (!title || title.toLowerCase() === 'ios' || title.toLowerCase() === 'android') {
-          console.warn('Edge Function retornou título inválido:', title);
-          throw new Error('O Mercado Livre bloqueou a extração automática. Tente preencher manualmente.');
+      // 2. Fallback to client-side proxy (AllOrigins) if Edge Function didn't get valid data
+      if (!importedTitle) {
+        console.warn('Edge Function sem resultado válido, tentando proxy AllOrigins...');
+        try {
+          const targetUrl = `https://api.mercadolibre.com/items/${mlId}`;
+          const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+          
+          const response = await fetch(proxyUrl);
+          if (response.ok) {
+            const proxyData = await response.json();
+            if (proxyData.contents) {
+              const data = JSON.parse(proxyData.contents);
+              if (data.title && !data.error) {
+                importedTitle = data.title;
+                importedPrice = Number(data.price) || 0;
+                importedCategory = data.category_id || "";
+                console.log('Dados obtidos via Proxy:', data);
+              }
+            }
+          }
+        } catch (proxyErr) {
+          console.error('Erro no proxy AllOrigins:', proxyErr);
         }
+      }
 
-        const price = Number(edgeData.price) || 0;
+      // 3. Apply results
+      if (importedTitle) {
         setFormData(prev => ({
           ...prev,
-          descricao: title,
-          custo_unitario: price,
-          preco_venda: Number((price * (1 + margemLucro / 100)).toFixed(2)),
-          categoria: edgeData.category_id || prev.categoria,
+          descricao: importedTitle,
+          custo_unitario: importedPrice,
+          preco_venda: Number((importedPrice * (1 + margemLucro / 100)).toFixed(2)),
+          categoria: importedCategory || prev.categoria,
         }));
         
         toast.dismiss(loadingToast);
-        toast.success(`Produto importado: ${title}`);
-        return;
+        toast.success(`Produto importado: ${importedTitle}`);
+      } else {
+        throw new Error('Não foi possível obter os dados do produto. O Mercado Livre pode estar bloqueando a conexão.');
       }
 
-      // If Edge Function failed, try client-side proxy (AllOrigins)
-      console.warn('Edge Function falhou ou retornou erro, tentando proxy AllOrigins...', edgeError);
-      
-      try {
-        const targetUrl = `https://api.mercadolibre.com/items/${mlId}`;
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
-        
-        const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error(`Proxy indisponível (${response.status})`);
-        
-        const proxyData = await response.json();
-        if (!proxyData.contents) throw new Error("Resposta do proxy vazia");
-        
-        const data = JSON.parse(proxyData.contents);
-        if (data.error || !data.title) throw new Error(data.message || 'Produto não encontrado na API do ML');
-
-        console.log('Sucesso via AllOrigins:', data);
-
-        const price = Number(data.price) || 0;
-        setFormData(prev => ({
-          ...prev,
-          descricao: data.title || prev.descricao,
-          custo_unitario: price,
-          preco_venda: Number((price * (1 + margemLucro / 100)).toFixed(2)),
-          categoria: data.category_id || prev.categoria,
-        }));
-        
-        toast.dismiss(loadingToast);
-        toast.success(`Produto importado via proxy: ${data.title}`);
-      } catch (proxyErr: any) {
-        console.error('Erro no proxy AllOrigins:', proxyErr);
-        
-        // Final fallback: show a more descriptive error based on the failure
-        toast.dismiss(loadingToast);
-        
-        let finalMessage = "Não foi possível conectar ao Mercado Livre.";
-        if (proxyErr.message?.includes('Failed to fetch') || edgeError?.message?.includes('Failed to fetch')) {
-          finalMessage = "Erro de conexão. Verifique sua internet ou tente novamente em instantes.";
-        } else if (edgeData?.error) {
-          finalMessage = edgeData.error;
-        }
-
-        toast.error(finalMessage, {
-          description: "O Mercado Livre pode estar bloqueando a conexão. Tente preencher manualmente.",
-          duration: 6000
-        });
-      }
+    } catch (err: any) {
+      console.error('Erro total na importação:', err);
+      toast.dismiss(loadingToast);
+      toast.error("Falha na importação", {
+        description: err.message || "Tente novamente ou preencha os dados manualmente.",
+        duration: 5000
+      });
     } finally { setMlLoading(false); }
   };
 
