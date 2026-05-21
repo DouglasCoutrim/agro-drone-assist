@@ -279,7 +279,7 @@ const Index = () => {
 
         {/* FAB mobile */}
         <button
-          className="fixed bottom-[calc(var(--bottom-nav-height)+16px)] right-5 w-[52px] h-[52px] rounded-full bg-primary text-primary-foreground flex items-center justify-center z-[90] transition-all hover:bg-vc-green-hover hover:scale-105 lg:hidden"
+          className="fixed bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom)+16px)] right-5 w-[52px] h-[52px] rounded-full bg-primary text-primary-foreground flex items-center justify-center z-[90] transition-all hover:bg-vc-green-hover hover:scale-105 lg:hidden"
           style={{ boxShadow: "0 4px 16px rgba(22,163,74,0.40)" }}
           onClick={() => navigate("/ordens-servico")}
         >

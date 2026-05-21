@@ -43,7 +43,7 @@ export default function AdminMaster() {
   };
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden text-foreground selection:bg-primary/20">
+    <div className="flex h-screen bg-background overflow-hidden text-foreground selection:bg-primary/20 pb-[env(safe-area-inset-bottom)]">
       <PlatformSidebar />
       
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">

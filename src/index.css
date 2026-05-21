@@ -153,6 +153,19 @@
     overflow-x: hidden;
     transition: background-color 0.2s ease, color 0.15s ease;
     width: 100vw;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .min-h-screen-safe {
+    min-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   }
 }
 
@@ -160,6 +173,17 @@
   /* Shadow utilities */
   .shadow-soft { box-shadow: var(--shadow-sm); }
   .shadow-medium { box-shadow: var(--shadow-md); }
+
+  /* Sonner toaster adjustment for BottomNav */
+  .toaster.group {
+    bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 0.5rem) !important;
+  }
+
+  @media (min-width: 1024px) {
+    .toaster.group {
+      bottom: 1rem !important;
+    }
+  }
 
   .gradient-primary {
     background: linear-gradient(135deg, hsl(var(--primary)), hsl(142 72% 44%));
