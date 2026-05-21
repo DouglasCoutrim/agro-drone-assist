@@ -1019,15 +1019,43 @@ export default function OrdensServico() {
 
         {/* View OS Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden w-[calc(100vw-1rem)] sm:w-full">
-            <DialogHeader>
-              <DialogTitle className="flex items-center justify-between">
-                <span>OS {viewingOS?.numero}</span>
-                {viewingOS && getStatusBadge(viewingOS.status)}
-              </DialogTitle>
+          <DialogContent className="max-w-4xl w-[95vw] h-[90vh] flex flex-col p-0 overflow-hidden sm:rounded-xl">
+            <DialogHeader className="p-4 sm:p-6 border-b shrink-0">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <DialogTitle className="text-lg font-bold flex items-center gap-2">
+                    OS {viewingOS?.numero}
+                    {viewingOS && <Badge className={STATUS_CONFIG[viewingOS.status]?.variant === 'destructive' ? 'bg-destructive' : 'bg-primary'}>{getStatusLabel(viewingOS.status)}</Badge>}
+                  </DialogTitle>
+                  <DialogDescription className="text-xs">
+                    Criada em {formatDate(viewingOS?.created_at || null)}
+                  </DialogDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handlePrintOS()} className="h-8 text-xs shrink-0">
+                    <Printer className="h-3.5 w-3.5 mr-1.5" /> PDF
+                  </Button>
+                  {viewingOS && (
+                    <Button variant="outline" size="sm" onClick={() => {
+                      const whatsappOs: any = {
+                        numero: viewingOS.numero,
+                        clienteNome: viewingOS.clientes?.nome || "",
+                        equipamento: TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento,
+                        modelo: viewingOS.modelo_equipamento || "",
+                        defeito: viewingOS.descricao_problema,
+                        previsao: viewingOS.data_previsao,
+                        valorOrcamento: viewingOS.valor_orcamento
+                      };
+                      openWhatsApp(viewingOS.clientes?.telefone || "", whatsappTemplates.osRecebida(whatsappOs, empresa?.nome_empresa || "LivreOS"));
+                    }} className="h-8 text-xs bg-green-500/10 text-green-600 border-green-200 hover:bg-green-500 hover:text-white shrink-0">
+                      <MessageCircle className="h-3.5 w-3.5 mr-1.5" /> WhatsApp
+                    </Button>
+                  )}
+                </div>
+              </div>
             </DialogHeader>
 
-            {viewingOS && (
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
               <div className="space-y-4">
                 {/* Status Pipeline */}
                 <StatusPipeline
@@ -1121,9 +1149,18 @@ export default function OrdensServico() {
                   </DropdownMenu>
                 </div>
               </div>
-            )}
-          </DialogContent>
-        </Dialog>
+            </div>
+            {")"}{"}"}
+          {viewingOS && viewingOS.status !== "entregue" && viewingOS.status !== "cancelada" && (
+            <div className="p-4 border-t bg-muted/30 shrink-0">
+              <Button className="w-full gradient-primary" onClick={() => handleAdvanceStatus(viewingOS)}>
+                Avançar para {getStatusLabel(getNextStatus(viewingOS.status) || "")}
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
         {/* Terms Dialog */}
         <Dialog open={termsDialogOpen} onOpenChange={(open) => { setTermsDialogOpen(open); if (!open) setLastCreatedOS(null); }}>
