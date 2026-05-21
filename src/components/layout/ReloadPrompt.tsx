@@ -1,5 +1,5 @@
-/// <reference types="vite-plugin-pwa/react" />
 import { useEffect } from 'react';
+// @ts-ignore: virtual:pwa-register/react is a virtual module from vite-plugin-pwa
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
