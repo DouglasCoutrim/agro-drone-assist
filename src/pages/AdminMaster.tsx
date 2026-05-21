@@ -9,6 +9,7 @@ import SupportTab from '@/components/admin/SupportTab';
 import BroadcastTab from '@/components/admin/BroadcastTab';
 import WikiTab from '@/components/admin/WikiTab';
 import ConfigTab from '@/components/admin/ConfigTab';
+import SiteTab from '@/components/admin/SiteTab';
 import { PlatformSidebar } from '@/components/layout/PlatformSidebar';
 
 export default function AdminMaster() {
@@ -35,6 +36,7 @@ export default function AdminMaster() {
       case 'broadcast': return <BroadcastTab />;
       case 'wiki': return <WikiTab />;
       case 'config': return <ConfigTab />;
+      case 'site': return <SiteTab />;
       default: return <OverviewTab />;
     }
   };
@@ -53,6 +55,7 @@ export default function AdminMaster() {
                activeTab === 'support' ? 'Suporte Global' : 
                activeTab === 'broadcast' ? 'Comunicados do Sistema' : 
                activeTab === 'plans' ? 'Planos e Assinaturas' : 
+               activeTab === 'site' ? 'Administração do Site' : 
                activeTab === 'wiki' ? 'Wiki Administrativa' : 'Visão Geral'}
             </h1>
           </div>

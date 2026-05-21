@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard, Building2, Package, LifeBuoy, Megaphone, BookOpen, Settings, LogOut, ShieldCheck, ArrowLeft
+  LayoutDashboard, Building2, Package, LifeBuoy, Megaphone, BookOpen, Settings, LogOut, ShieldCheck, ArrowLeft, Globe
 } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,6 +26,7 @@ const navSections = [
   {
     title: "SISTEMA",
     items: [
+      { title: "Gestão do Site", icon: Globe, href: "/admin-master?tab=site" },
       { title: "Configurações Asaas", icon: Settings, href: "/admin-master?tab=config" },
     ],
   },

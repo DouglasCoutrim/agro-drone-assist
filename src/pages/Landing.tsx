@@ -43,8 +43,18 @@ export default function Landing() {
   const { user } = useAuth();
   const { isPlatformAdmin, loading: orgLoading } = useOrganization();
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [hero, setHero] = useState<any>(null);
+  const [contact, setContact] = useState<any>(null);
 
   useEffect(() => {
+    supabase.from('site_config').select('*')
+      .then(({ data }) => {
+        if (data) {
+          setHero(data.find(c => c.key === 'landing_hero')?.value);
+          setContact(data.find(c => c.key === 'site_contact')?.value);
+        }
+      });
+
     supabase.from('subscription_plans' as any)
       .select('*').eq('active', true).order('monthly_price')
       .then(({ data }) => setPlans((data as any) || []));
@@ -84,21 +94,22 @@ export default function Landing() {
         <div className="container mx-auto px-4 py-20 lg:py-28 relative">
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <Badge variant="secondary" className="gap-1">
-              <Sparkles className="h-3 w-3" /> Novo: cobranças PIX em 1 clique
+              <Sparkles className="h-3 w-3" /> {hero?.badge || 'Novo: cobranças PIX em 1 clique'}
             </Badge>
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-              A gestão completa da sua{' '}
-              <span className="text-primary">assistência técnica</span>
+              {hero?.title?.split(hero?.highlight || '')[0]}
+              <span className="text-primary">{hero?.highlight || 'assistência técnica'}</span>
+              {hero?.title?.split(hero?.highlight || '')[1]}
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground">
-              Pare de perder tempo com papel ou sistemas antigos. O LivreOS foi pensado para a nova geração de assistências — perfeito para oficinas de eletrônica, drones, mobilidade urbana e prestadores de serviços que buscam faturamento, estoque e OS organizados em poucos cliques.
+              {hero?.description || 'Pare de perder tempo com papel ou sistemas antigos. O LivreOS foi pensado para a nova geração de assistências — perfeito para oficinas de eletrônica, drones, mobilidade urbana e prestadores de serviços que buscam faturamento, estoque e OS organizados em poucos cliques.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
               <Button asChild size="lg" className="gap-2">
-                <Link to="/cadastro-empresa">Começar 7 dias grátis <ArrowRight className="h-4 w-4" /></Link>
+                <Link to="/cadastro-empresa">{hero?.cta_primary || 'Começar 7 dias grátis'} <ArrowRight className="h-4 w-4" /></Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <a href="#planos">Ver planos</a>
+                <a href="#planos">{hero?.cta_secondary || 'Ver planos'}</a>
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">Sem cartão de crédito • Configure em 1 minuto</p>
