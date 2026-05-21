@@ -81,35 +81,7 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-1 space-y-1 overflow-y-auto scrollbar-thin">
-        {isPlatformAdmin && (
-          <div key="platform-admin">
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-white/25 px-2 pt-3 pb-1 mt-2">
-              {ADMIN_MASTER_SECTION.title}
-            </p>
-            {ADMIN_MASTER_SECTION.items.map((item) => {
-              const isActive = location.pathname === item.href;
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={cn(
-                    "relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-normal transition-all duration-150 border border-transparent",
-                    isActive
-                      ? "bg-primary/[0.12] text-emerald-400 font-medium border-emerald-400/15"
-                      : "text-white/60 hover:bg-white/[0.07] hover:text-white/90"
-                  )}
-                >
-                  {isActive && (
-                    <span className="absolute left-0 top-[20%] bottom-[20%] w-[3px] bg-emerald-500 rounded-r-sm" />
-                  )}
-                  <Icon className={cn("h-4 w-4 shrink-0", isActive ? "opacity-100" : "opacity-70")} />
-                  {item.title}
-                </Link>
-              );
-            })}
-          </div>
-        )}
+        {/* Regular navigation sections */}
         {navSections.map((section) => {
           const items = section.items.filter(item => role && item.roles.includes(role));
           if (items.length === 0) return null;
