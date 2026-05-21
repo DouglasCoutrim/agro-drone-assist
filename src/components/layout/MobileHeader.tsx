@@ -32,9 +32,9 @@ export function MobileHeader() {
   }, [user]);
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-[calc(var(--header-height)+env(safe-area-inset-top))] bg-card/80 backdrop-blur-md border-b border-border flex items-center justify-between px-4 pt-[env(safe-area-inset-top)] z-[100] lg:hidden w-full transition-all duration-300" style={{ boxShadow: "var(--shadow-xs)" }}>
+    <header className="fixed top-0 left-0 right-0 h-[var(--header-height)] bg-card/90 backdrop-blur-xl border-b border-border flex items-center justify-between px-5 z-[100] lg:hidden w-full transition-all duration-300 shadow-sm">
       <div className="flex items-center">
-        <img src={logo} alt="LivreOS" className="h-12 w-auto drop-shadow-[0_2px_8px_rgba(57,255,20,0.25)]" />
+        <img src={logo} alt="LivreOS" className="h-9 w-auto drop-shadow-[0_2px_8px_rgba(57,255,20,0.2)]" />
       </div>
       <div className="flex items-center gap-1">
         <ThemeToggle />
