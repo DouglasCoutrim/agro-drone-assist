@@ -36,15 +36,32 @@ import AdminAuth from "./pages/AdminAuth";
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [isPWA, setIsPWA] = useState(false);
+  const [isPWA, setIsPWA] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const fromQuery = new URLSearchParams(window.location.search).get('pwa') === '1';
+    if (fromQuery) {
+      try { sessionStorage.setItem('isPWA', '1'); } catch {}
+      return true;
+    }
+    if (sessionStorage.getItem('isPWA') === '1') return true;
+    return window.matchMedia('(display-mode: standalone)').matches
+      || (window.navigator as any).standalone === true
+      || document.referrer.includes('android-app://');
+  });
 
   useEffect(() => {
-    // Check if app is running in standalone mode (PWA)
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
-      || (window.navigator as any).standalone 
-      || document.referrer.includes('android-app://');
-    
-    setIsPWA(isStandalone);
+    const check = () => {
+      const standalone = window.matchMedia('(display-mode: standalone)').matches
+        || (window.navigator as any).standalone === true;
+      if (standalone) {
+        try { sessionStorage.setItem('isPWA', '1'); } catch {}
+        setIsPWA(true);
+      }
+    };
+    check();
+    const mq = window.matchMedia('(display-mode: standalone)');
+    mq.addEventListener?.('change', check);
+    return () => mq.removeEventListener?.('change', check);
   }, []);
 
   return (
