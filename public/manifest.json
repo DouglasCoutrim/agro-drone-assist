@@ -2,7 +2,7 @@
   "name": "LivreOS - Gestão de Oficina",
   "short_name": "LivreOS",
   "description": "Sistema completo de gestão para oficina de drones e equipamentos",
-  "start_url": "/",
+  "start_url": "/?pwa=1",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#22c55e",
