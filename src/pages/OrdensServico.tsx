@@ -425,6 +425,26 @@ export default function OrdensServico() {
     if (next) handleStatusChange(os.id, next);
   };
 
+  const handleDeleteOS = async (os: OrdemServico) => {
+    const ok = await confirm({
+      title: `Deletar OS ${os.numero}?`,
+      description: "Tem certeza que deseja deletar esta Ordem de Serviço? Esta ação não poderá ser desfeita e removerá itens, histórico e anexos vinculados.",
+      variant: "destructive",
+      confirmText: "Sim, deletar OS",
+    });
+    if (!ok) return;
+    try {
+      const { error } = await supabase.from("ordens_servico").delete().eq("id", os.id);
+      if (error) throw error;
+      toast.success(`OS ${os.numero} deletada.`);
+      if (editingOS?.id === os.id) { setDialogOpen(false); resetForm(); }
+      if (viewingOS?.id === os.id) { setViewDialogOpen(false); setViewingOS(null); }
+      fetchData();
+    } catch (err: any) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
   const handlePrintOS = async () => {
     if (!viewingOS) return;
     const printWindow = window.open("", "_blank");
