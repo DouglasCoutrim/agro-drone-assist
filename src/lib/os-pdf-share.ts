@@ -28,21 +28,24 @@ export async function htmlToPdfBlob(html: string, filename: string): Promise<Blo
     const pdf = new jsPDF("p", "mm", "a4");
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
-    const imgW = pageW;
+    const MARGIN = 10; // mm on all sides
+    const contentW = pageW - MARGIN * 2;
+    const contentH = pageH - MARGIN * 2;
+    const imgW = contentW;
     const imgH = (canvas.height * imgW) / canvas.width;
-
-    let heightLeft = imgH;
-    let position = 0;
     const imgData = canvas.toDataURL("image/jpeg", 0.95);
 
-    pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
-    heightLeft -= pageH;
+    let heightLeft = imgH;
+    let position = MARGIN;
+
+    pdf.addImage(imgData, "JPEG", MARGIN, position, imgW, imgH);
+    heightLeft -= contentH;
 
     while (heightLeft > 0) {
-      position = heightLeft - imgH;
+      position = MARGIN - (imgH - heightLeft);
       pdf.addPage();
-      pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
-      heightLeft -= pageH;
+      pdf.addImage(imgData, "JPEG", MARGIN, position, imgW, imgH);
+      heightLeft -= contentH;
     }
 
     return pdf.output("blob");
