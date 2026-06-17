@@ -23,6 +23,16 @@ export default function Auth() {
   const [loginPassword, setLoginPassword] = useState("");
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("expired") === "1") {
+      toast.error("Sua sessão expirou por inatividade. Por favor, faça login novamente.");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("expired");
+      window.history.replaceState({}, "", url.pathname + url.search);
+    }
+  }, []);
+
+  useEffect(() => {
     if (user && !orgLoading) {
       if (isPlatformAdmin) {
         navigate("/admin-master", { replace: true });

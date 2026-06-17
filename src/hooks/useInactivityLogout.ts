@@ -48,9 +48,9 @@ export function useInactivityLogout() {
       }, untilWarn);
 
       logoutTimer.current = window.setTimeout(async () => {
-        await signOut();
-        toast.error("Sessão encerrada por inatividade.");
-        navigate("/auth");
+        try { await signOut(); } catch {}
+        try { localStorage.removeItem(STORAGE_KEY); } catch {}
+        navigate("/auth?expired=1", { replace: true });
       }, untilLogout);
     };
 
