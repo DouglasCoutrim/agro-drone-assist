@@ -422,45 +422,50 @@ export default function OrdensServico() {
     openWhatsApp(cliente.telefone, msg);
   };
 
-  const handleSendPdfWhatsApp = async () => {
-    if (!viewingOS) return;
-    const cliente = clientes.find(c => c.id === viewingOS.cliente_id);
-    if (!cliente?.telefone) { toast.error("Cliente sem telefone cadastrado"); return; }
+  const buildShareMessage = (os: any, cliente: any) => {
+    const nomeEmpresa = empresa.nome_empresa || "Volt Master";
+    const tipo = TIPO_EQUIPAMENTO[detectUiCategory(os)] || TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento;
+    const marca = os.marca || os.modelo_equipamento || "-";
+    const defeito = os.descricao_problema || "-";
+    const nome = cliente?.nome || os.clientes?.nome || "cliente";
+    return `Olá, ${nome}! 👋\nAqui é da ${nomeEmpresa}.\n\nSua Ordem de Serviço foi gerada com sucesso!\n\n🛠️ OS: ${os.numero}\n📱 Equipamento: ${tipo} - ${marca}\n🔧 Defeito Relatado: ${defeito}\n\nSegue em anexo o PDF detalhado com o diagnóstico, valores, prazos e nossos termos de serviço para sua conferência.\n\nQualquer dúvida, estamos à disposição! 🔧`;
+  };
 
+  const shareOsAsPdf = async (os: any, cliente: any) => {
+    if (!cliente?.telefone) { toast.error("Cliente sem telefone cadastrado"); return; }
     const t = toast.loading("Gerando PDF da OS...");
     try {
-      // Carrega itens (se ainda não estiverem em memória)
-      let itemsForPdf = viewOsItems;
+      let itemsForPdf = viewingOS?.id === os.id ? viewOsItems : [];
       if (itemsForPdf.length === 0) {
-        const { data } = await supabase.from("itens_os").select("*").eq("ordem_servico_id", viewingOS.id);
+        const { data } = await supabase.from("itens_os").select("*").eq("ordem_servico_id", os.id);
         itemsForPdf = (data || []).map((d: any) => ({
           id: d.id, tipo: d.tipo, produto_id: d.produto_id, servico_id: d.servico_id,
           descricao: d.descricao, quantidade: d.quantidade, valor_unitario: d.valor_unitario, valor_total: d.valor_total,
         }));
-        setViewOsItems(itemsForPdf);
+        if (viewingOS?.id === os.id) setViewOsItems(itemsForPdf);
       }
-
-      const html = generateOSPDF(viewingOS, itemsForPdf, empresa);
+      const osComCliente = { ...os, clientes: os.clientes || { nome: cliente.nome, telefone: cliente.telefone } };
+      const html = generateOSPDF(osComCliente, itemsForPdf, empresa);
       const { htmlToPdfBlob, sharePdfOnWhatsApp } = await import("@/lib/os-pdf-share");
-      const filename = `OS_${viewingOS.numero}.pdf`;
+      const filename = `OS_${os.numero}.pdf`;
       const blob = await htmlToPdfBlob(html, filename);
-
-      const nomeEmpresa = empresa.nome_empresa || "LivreOS";
-      const total = viewingOS.valor_orcamento ? formatCurrency(viewingOS.valor_orcamento) : "";
-      const msg = `Olá, *${viewingOS.clientes?.nome || "cliente"}*! 👋\n\n*${nomeEmpresa}*\n\n📋 *OS:* ${viewingOS.numero}${total ? `\n💰 *Total:* ${total}` : ""}\n\n📎 Segue o PDF completo da sua Ordem de Serviço.`;
-
+      const msg = buildShareMessage(os, cliente);
       const result = await sharePdfOnWhatsApp({ blob, filename, telefone: cliente.telefone, message: msg });
       toast.dismiss(t);
-      if (result === "shared") {
-        toast.success("PDF compartilhado!");
-      } else {
-        toast.success("PDF baixado. Anexe-o na conversa do WhatsApp que abriu.");
-      }
+      if (result === "shared") toast.success("PDF compartilhado!");
+      else toast.success("PDF baixado. Anexe-o na conversa do WhatsApp que abriu.");
     } catch (err: any) {
       toast.dismiss(t);
       toast.error("Erro ao gerar PDF: " + (err?.message || err));
     }
   };
+
+  const handleSendPdfWhatsApp = async () => {
+    if (!viewingOS) return;
+    const cliente = clientes.find(c => c.id === viewingOS.cliente_id);
+    await shareOsAsPdf(viewingOS, cliente);
+  };
+
 
   const handleCobrar = async () => {
     if (!viewingOS) return;
@@ -502,21 +507,15 @@ export default function OrdensServico() {
     } catch (err: any) { toast.error(getErrorMessage(err)); } finally { setCobrarLoading(false); }
   };
 
-  const handleSendTermsWhatsApp = () => {
+  const handleSendTermsWhatsApp = async () => {
     if (!lastCreatedOS) return;
     const cliente = clientes.find(c => c.id === lastCreatedOS.cliente_id);
     if (!cliente) { toast.error("Cliente não encontrado"); return; }
-    const osData: WhatsAppOS = {
-      numero: lastCreatedOS.numero,
-      clienteNome: cliente.nome,
-      equipamento: TIPO_EQUIPAMENTO[uiCategory] || TIPO_EQUIPAMENTO[lastCreatedOS.tipo_equipamento] || lastCreatedOS.tipo_equipamento,
-      modelo: lastCreatedOS.modelo_equipamento || undefined,
-    };
-    const msg = whatsappTemplates.osRecebida(osData, empresa.nome_empresa || "LivreOS", empresa.termos_servico || undefined);
-    openWhatsApp(cliente.telefone, msg);
+    await shareOsAsPdf(lastCreatedOS, cliente);
     setTermsDialogOpen(false);
     setLastCreatedOS(null);
   };
+
 
   const resetMobilityData = () => setMobilityData({ voltagem: "", capacidade_bateria: "", odometro: "", chave_ignicao: false, carregador_entregue: false, check_display: false, check_acelerador: false, check_freios: false, check_pneus: false, check_controladora: false, check_iluminacao: false, check_carenagem: false });
 
