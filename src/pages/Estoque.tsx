@@ -26,12 +26,14 @@ import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
 import { SearchableInput } from "@/components/ui/searchable-input";
 import { CatalogAutocomplete } from "@/components/ui/catalog-autocomplete";
+import { useOrganization } from "@/hooks/useOrganization";
 
 type ItemEstoque = Tables<"itens_estoque">;
 
 const DEFAULT_MARGIN = 30;
 
 export default function Estoque() {
+  const { organization } = useOrganization();
   const [itens, setItens] = useState<ItemEstoque[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -51,14 +53,15 @@ export default function Estoque() {
   });
 
   useEffect(() => {
-    fetchItens();
+    if (organization?.id) fetchItens();
     const savedMargin = localStorage.getItem('volt_margin');
     if (savedMargin) setMargemLucro(Number(savedMargin));
-  }, []);
+  }, [organization?.id]);
 
   const fetchItens = async () => {
+    if (!organization?.id) return;
     try {
-      const { data, error } = await supabase.from('itens_estoque').select('*').order('descricao');
+      const { data, error } = await supabase.from('itens_estoque').select('*').eq('organization_id', organization.id).order('descricao');
       if (error) throw error;
       setItens(data || []);
     } catch (error: any) { toast.error('Erro ao carregar estoque'); } finally { setLoading(false); }
@@ -67,7 +70,7 @@ export default function Estoque() {
   // Auto-generate code for new items
   const generateCode = async () => {
     try {
-      const { data } = await supabase.from('itens_estoque').select('codigo').order('codigo', { ascending: false });
+      const { data } = await supabase.from('itens_estoque').select('codigo').eq('organization_id', organization?.id || '').order('codigo', { ascending: false });
       const codes = (data || []).map(i => i.codigo).filter(c => /^P-\d+$/.test(c));
       let nextNum = 1;
       if (codes.length > 0) {
@@ -97,7 +100,7 @@ export default function Estoque() {
   const handleBulkApplyMargin = async () => {
     setBulkLoading(true);
     try {
-      const { data, error } = await supabase.from('itens_estoque').select('id, custo_unitario');
+      const { data, error } = await supabase.from('itens_estoque').select('id, custo_unitario').eq('organization_id', organization?.id || '');
       if (error) throw error;
       if (!data || data.length === 0) { toast.info('Nenhum produto no estoque'); return; }
 
@@ -125,7 +128,7 @@ export default function Estoque() {
         if (error) throw error;
         toast.success('Item atualizado com sucesso!');
       } else {
-        const { error } = await supabase.from('itens_estoque').insert(formData);
+        const { error } = await supabase.from('itens_estoque').insert({ ...formData, organization_id: organization?.id } as any);
         if (error) throw error;
         toast.success('Item criado com sucesso!');
       }

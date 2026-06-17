@@ -16,10 +16,12 @@ import { UF_LIST } from "@/lib/constants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmptyState } from "@/components/os/EmptyState";
 import { formatCpfCnpj, formatPhone, validateCpfCnpj, getErrorMessage } from "@/lib/formatters";
+import { useOrganization } from "@/hooks/useOrganization";
 
 type Cliente = Tables<"clientes">;
 
 export default function Clientes() {
+  const { organization } = useOrganization();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const { fetchCep, loading: cepLoading } = useViaCep();
@@ -35,11 +37,12 @@ export default function Clientes() {
     endereco: "", cidade: "", estado: "", cep: "", observacoes: ""
   });
 
-  useEffect(() => { fetchClientes(); }, []);
+  useEffect(() => { if (organization?.id) fetchClientes(); }, [organization?.id]);
 
   const fetchClientes = async () => {
+    if (!organization?.id) return;
     try {
-      const { data, error } = await supabase.from('clientes').select('*').order('nome');
+      const { data, error } = await supabase.from('clientes').select('*').eq('organization_id', organization.id).order('nome');
       if (error) throw error;
       setClientes(data || []);
     } catch { toast.error('Erro ao carregar clientes'); } finally { setLoading(false); }
@@ -83,7 +86,7 @@ export default function Clientes() {
         toast.success('Cliente atualizado!');
         if (!(editingCliente as any).asaas_id) createAsaasCustomer(formData, editingCliente.id);
       } else {
-        const { data, error } = await supabase.from('clientes').insert(formData).select('id').single();
+        const { data, error } = await supabase.from('clientes').insert({ ...formData, organization_id: organization?.id } as any).select('id').single();
         if (error) throw error;
         toast.success('Cliente criado!');
         if (data?.id) createAsaasCustomer(formData, data.id);

@@ -16,12 +16,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrganization } from "@/hooks/useOrganization";
 import { formatCurrency } from "@/lib/formatters";
 
 type Transacao = Tables<"financeiro">;
 
 export default function Financeiro() {
   const { user } = useAuth();
+  const { organization } = useOrganization();
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -36,11 +38,12 @@ export default function Financeiro() {
     data_transacao: new Date().toISOString().split('T')[0], observacoes: ""
   });
 
-  useEffect(() => { fetchTransacoes(); }, []);
+  useEffect(() => { if (organization?.id) fetchTransacoes(); }, [organization?.id]);
 
   const fetchTransacoes = async () => {
+    if (!organization?.id) return;
     try {
-      const { data, error } = await supabase.from('financeiro').select('*').order('data_transacao', { ascending: false });
+      const { data, error } = await supabase.from('financeiro').select('*').eq('organization_id', organization.id).order('data_transacao', { ascending: false });
       if (error) throw error;
       setTransacoes(data || []);
     } catch {
@@ -57,7 +60,7 @@ export default function Financeiro() {
     if (!user) { toast.error('Usuário não autenticado'); return; }
     setFormLoading(true);
     try {
-      const transacaoData = { ...formData, usuario_id: user.id, observacoes: formData.observacoes || null, categoria: formData.categoria || null };
+      const transacaoData = { ...formData, usuario_id: user.id, organization_id: organization?.id, observacoes: formData.observacoes || null, categoria: formData.categoria || null };
       if (editingTransacao) {
         const { error } = await supabase.from('financeiro').update(transacaoData).eq('id', editingTransacao.id);
         if (error) throw error;
