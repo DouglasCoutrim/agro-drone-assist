@@ -111,8 +111,6 @@ export default function OrdensServico() {
     diagnostico: "",
     prioridade: "media",
     data_previsao: "",
-    custo_pecas: 0,
-    custo_mao_obra: 0,
     desconto: 0,
     valor_orcamento: 0,
     observacoes: "",
@@ -202,13 +200,16 @@ export default function OrdensServico() {
         observacoesWithMobility = observacoesWithMobility ? `${observacoesWithMobility}\n${mobilityTag}` : mobilityTag;
       }
 
+      // valor_orcamento é calculado pelos itens; quando não houver itens, preservar o valor existente (compat. com OS antigas)
+      const valorOrcamentoFinal = osItems.length > 0
+        ? (totalOrcamento || null)
+        : (formData.valor_orcamento || null);
+
       const osData: any = {
         ...restForm,
         tipo_equipamento: mapCategoryToDbEnum(uiCategory),
         observacoes: observacoesWithMobility || null,
-        custo_pecas: 0,
-        custo_mao_obra: 0,
-        valor_orcamento: totalOrcamento || null,
+        valor_orcamento: valorOrcamentoFinal,
         data_previsao: formData.data_previsao || null,
         diagnostico: formData.diagnostico || null,
         ciclos_carga_entrada: isBateria ? ciclos_carga_entrada || null : null,
@@ -301,8 +302,6 @@ export default function OrdensServico() {
       diagnostico: os.diagnostico || "",
       prioridade: os.prioridade,
       data_previsao: os.data_previsao || "",
-      custo_pecas: (os as any).custo_pecas || 0,
-      custo_mao_obra: (os as any).custo_mao_obra || 0,
       desconto: (os as any).desconto || 0,
       valor_orcamento: os.valor_orcamento || 0,
       observacoes: cleanObs,
@@ -490,7 +489,7 @@ export default function OrdensServico() {
   const resetMobilityData = () => setMobilityData({ voltagem: "", capacidade_bateria: "", odometro: "", chave_ignicao: false, carregador_entregue: false, check_display: false, check_acelerador: false, check_freios: false, check_pneus: false, check_controladora: false, check_iluminacao: false, check_carenagem: false });
 
   const resetForm = () => {
-    setFormData({ cliente_id: "", tipo_equipamento: "bateria", marca: "", modelo_equipamento: "", numero_serie: "", descricao_problema: "", diagnostico: "", prioridade: "media", data_previsao: "", custo_pecas: 0, custo_mao_obra: 0, desconto: 0, valor_orcamento: 0, observacoes: "", tecnico_id: "", checklist_bateria: false, checklist_carregador: false, checklist_controle: false, checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "", ciclos_carga_entrada: 0, ciclos_carga_saida: 0 });
+    setFormData({ cliente_id: "", tipo_equipamento: "bateria", marca: "", modelo_equipamento: "", numero_serie: "", descricao_problema: "", diagnostico: "", prioridade: "media", data_previsao: "", desconto: 0, valor_orcamento: 0, observacoes: "", tecnico_id: "", checklist_bateria: false, checklist_carregador: false, checklist_controle: false, checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "", ciclos_carga_entrada: 0, ciclos_carga_saida: 0 });
     setUiCategory("bateria");
     resetMobilityData();
     setEditingOS(null);
