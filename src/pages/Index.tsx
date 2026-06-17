@@ -47,11 +47,8 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [viewingOS, setViewingOS] = useState<any | null>(null);
 
-  useEffect(() => {
-    if (user && !orgLoading && isPlatformAdmin && window.location.pathname === "/dashboard") {
-      navigate("/admin-master", { replace: true });
-    }
-  }, [user, isPlatformAdmin, orgLoading, navigate]);
+
+
 
   useEffect(() => { if (user && organization?.id) fetchDashboardData(); }, [user, organization?.id]);
 
