@@ -111,8 +111,6 @@ export default function OrdensServico() {
     diagnostico: "",
     prioridade: "media",
     data_previsao: "",
-    custo_pecas: 0,
-    custo_mao_obra: 0,
     desconto: 0,
     valor_orcamento: 0,
     observacoes: "",
