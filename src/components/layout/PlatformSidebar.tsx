@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard, Building2, Package, LifeBuoy, Megaphone, BookOpen, Settings, LogOut, ShieldCheck, ArrowLeft, Globe
+  LayoutDashboard, Building2, Package, LifeBuoy, Megaphone, BookOpen, Settings, LogOut, ShieldCheck, Globe
 } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,24 +10,24 @@ const navSections = [
   {
     title: "PRINCIPAL",
     items: [
-      { title: "Visão Geral", icon: LayoutDashboard, href: "/admin-master?tab=overview" },
-      { title: "Clientes (Tenants)", icon: Building2, href: "/admin-master?tab=tenants" },
-      { title: "Planos & Preços", icon: Package, href: "/admin-master?tab=plans" },
+      { title: "Visão Geral", icon: LayoutDashboard, href: "/admin/dashboard?tab=overview" },
+      { title: "Clientes (Tenants)", icon: Building2, href: "/admin/dashboard?tab=tenants" },
+      { title: "Planos & Preços", icon: Package, href: "/admin/dashboard?tab=plans" },
     ],
   },
   {
     title: "OPERACIONAL",
     items: [
-      { title: "Suporte Global", icon: LifeBuoy, href: "/admin-master?tab=support" },
-      { title: "Comunicados", icon: Megaphone, href: "/admin-master?tab=broadcast" },
-      { title: "Wiki do Sistema", icon: BookOpen, href: "/admin-master?tab=wiki" },
+      { title: "Suporte Global", icon: LifeBuoy, href: "/admin/dashboard?tab=support" },
+      { title: "Comunicados", icon: Megaphone, href: "/admin/dashboard?tab=broadcast" },
+      { title: "Wiki do Sistema", icon: BookOpen, href: "/admin/dashboard?tab=wiki" },
     ],
   },
   {
     title: "SISTEMA",
     items: [
-      { title: "Gestão do Site", icon: Globe, href: "/admin-master?tab=site" },
-      { title: "Configurações Asaas", icon: Settings, href: "/admin-master?tab=config" },
+      { title: "Gestão do Site", icon: Globe, href: "/admin/dashboard?tab=site" },
+      { title: "Configurações Asaas", icon: Settings, href: "/admin/dashboard?tab=config" },
     ],
   },
 ];
@@ -41,7 +41,7 @@ export function PlatformSidebar({ className, onNavigate }: { className?: string,
 
   const handleSignOut = async () => {
     await signOut();
-    navigate("/admin/auth");
+    navigate("/admin/login");
   };
 
   return (
@@ -66,7 +66,7 @@ export function PlatformSidebar({ className, onNavigate }: { className?: string,
             </p>
             <div className="space-y-1">
               {section.items.map((item) => {
-                const isActive = location.pathname === "/admin-master" && (item.href.includes(`tab=${currentTab}`));
+                const isActive = location.pathname === "/admin/dashboard" && (item.href.includes(`tab=${currentTab}`));
                 const Icon = item.icon;
                 return (
                   <Link
@@ -88,17 +88,6 @@ export function PlatformSidebar({ className, onNavigate }: { className?: string,
             </div>
           </div>
         ))}
-
-        <div className="pt-4 border-t border-sidebar-border">
-            <Link
-            to="/dashboard"
-            onClick={() => onNavigate?.()}
-            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-primary hover:bg-sidebar-primary/10 transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Voltar ao Sistema
-          </Link>
-        </div>
       </nav>
 
       {/* User info */}

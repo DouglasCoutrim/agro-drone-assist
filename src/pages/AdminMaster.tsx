@@ -1,27 +1,27 @@
-import { Navigate, useSearchParams, Link } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { useOrganization } from '@/hooks/useOrganization';
-import { Loader2, Menu, Building2 } from 'lucide-react';
-import OverviewTab from '@/components/admin/OverviewTab';
-import TenantsTab from '@/components/admin/TenantsTab';
-import PlansTab from '@/components/admin/PlansTab';
-import SupportTab from '@/components/admin/SupportTab';
-import BroadcastTab from '@/components/admin/BroadcastTab';
-import WikiTab from '@/components/admin/WikiTab';
-import ConfigTab from '@/components/admin/ConfigTab';
-import SiteTab from '@/components/admin/SiteTab';
-import { PlatformSidebar } from '@/components/layout/PlatformSidebar';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { Navigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useOrganization } from "@/hooks/useOrganization";
+import { Loader2, Menu } from "lucide-react";
+import OverviewTab from "@/components/admin/OverviewTab";
+import TenantsTab from "@/components/admin/TenantsTab";
+import PlansTab from "@/components/admin/PlansTab";
+import SupportTab from "@/components/admin/SupportTab";
+import BroadcastTab from "@/components/admin/BroadcastTab";
+import WikiTab from "@/components/admin/WikiTab";
+import ConfigTab from "@/components/admin/ConfigTab";
+import SiteTab from "@/components/admin/SiteTab";
+import { PlatformSidebar } from "@/components/layout/PlatformSidebar";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from 'react';
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 export default function AdminMaster() {
   const { loading: authLoading } = useAuth();
-  const { isPlatformAdmin, organization, loading } = useOrganization();
+  const { isPlatformAdmin, loading } = useOrganization();
   const [searchParams] = useSearchParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const activeTab = searchParams.get('tab') || 'overview';
+  const activeTab = searchParams.get("tab") || "overview";
 
   if (loading || authLoading)
     return (
@@ -30,18 +30,18 @@ export default function AdminMaster() {
       </div>
     );
 
-  if (!isPlatformAdmin) return <Navigate to="/dashboard" replace />;
+  if (!isPlatformAdmin) return <Navigate to="/auth" replace />;
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'overview': return <OverviewTab />;
-      case 'tenants': return <TenantsTab />;
-      case 'plans': return <PlansTab />;
-      case 'support': return <SupportTab />;
-      case 'broadcast': return <BroadcastTab />;
-      case 'wiki': return <WikiTab />;
-      case 'config': return <ConfigTab />;
-      case 'site': return <SiteTab />;
+      case "overview": return <OverviewTab />;
+      case "tenants": return <TenantsTab />;
+      case "plans": return <PlansTab />;
+      case "support": return <SupportTab />;
+      case "broadcast": return <BroadcastTab />;
+      case "wiki": return <WikiTab />;
+      case "config": return <ConfigTab />;
+      case "site": return <SiteTab />;
       default: return <OverviewTab />;
     }
   };
@@ -67,24 +67,16 @@ export default function AdminMaster() {
               </SheetContent>
             </Sheet>
             <h1 className="text-[clamp(0.9rem,4vw,1.125rem)] font-semibold text-foreground truncate max-w-[200px] md:max-w-none">
-              {activeTab === 'config' ? 'Configurações da Plataforma' : 
-               activeTab === 'tenants' ? 'Gerenciamento de Clientes' : 
-               activeTab === 'support' ? 'Suporte Global' : 
-               activeTab === 'broadcast' ? 'Comunicados do Sistema' : 
-               activeTab === 'plans' ? 'Planos e Assinaturas' : 
-               activeTab === 'site' ? 'Administração do Site' : 
-               activeTab === 'wiki' ? 'Wiki Administrativa' : 'Visão Geral'}
+              {activeTab === "config" ? "Configurações da Plataforma" : 
+               activeTab === "tenants" ? "Gerenciamento de Clientes" : 
+               activeTab === "support" ? "Suporte Global" : 
+               activeTab === "broadcast" ? "Comunicados do Sistema" : 
+               activeTab === "plans" ? "Planos e Assinaturas" : 
+               activeTab === "site" ? "Administração do Site" : 
+               activeTab === "wiki" ? "Wiki Administrativa" : "Visão Geral"}
             </h1>
           </div>
           <div className="flex items-center gap-2 md:gap-4">
-            {organization && (
-              <Button asChild variant="outline" size="sm" className="gap-1.5">
-                <Link to="/dashboard">
-                  <Building2 className="h-4 w-4" />
-                  <span className="hidden sm:inline">Minha Empresa</span>
-                </Link>
-              </Button>
-            )}
             <ThemeToggle />
             <div className="hidden md:block px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
               <span className="text-[11px] text-primary font-medium">Ambiente Seguro</span>

@@ -7,20 +7,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, Mail, Lock, ShieldCheck } from "lucide-react";
+import { Loader2, Lock, ShieldCheck } from "lucide-react";
 import { z } from "zod";
 import logo from "@/assets/logo.png";
 
-const emailSchema = z.string().email("Email inválido");
-const passwordSchema = z.string().min(6, "Senha deve ter no mínimo 6 caracteres");
+const usernameSchema = z.string().min(1, "Usuário é obrigatório");
+const passwordSchema = z.string().min(6, "Senha é obrigatória");
+
+// Master admin config - map username to email
+const ADMIN_USER_EMAIL_MAP: Record<string, string> = {
+  admin: "admin@plataforma.com",
+};
 
 export default function AdminAuth() {
   const navigate = useNavigate();
   const { signIn, signOut, user } = useAuth();
   const { isPlatformAdmin, loading: orgLoading } = useOrganization();
   const [loading, setLoading] = useState(false);
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
 
   useEffect(() => {
     // If user is already logged in but is NOT a platform admin, sign them out
@@ -28,15 +33,15 @@ export default function AdminAuth() {
       toast.error("Acesso restrito a administradores da plataforma");
       signOut();
     } else if (user && !orgLoading && isPlatformAdmin) {
-      navigate("/admin-master");
+      navigate("/admin/dashboard");
     }
   }, [user, isPlatformAdmin, orgLoading, navigate, signOut]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      emailSchema.parse(loginEmail);
-      passwordSchema.parse(loginPassword);
+      usernameSchema.parse(username);
+      passwordSchema.parse(password);
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
@@ -44,14 +49,21 @@ export default function AdminAuth() {
       }
     }
     
+    // Map username to hidden master email
+    const masterEmail = ADMIN_USER_EMAIL_MAP[username.toLowerCase()];
+    if (!masterEmail) {
+      toast.error("Usuário ou senha incorretos");
+      return;
+    }
+    
     setLoading(true);
-    const { error } = await signIn(loginEmail, loginPassword);
+    const { error } = await signIn(masterEmail, password);
     
     // We don't navigate yet, we wait for the useEffect to check isPlatformAdmin
     if (error) {
       setLoading(false);
       if (error.message.includes("Invalid login credentials")) {
-        toast.error("Email ou senha incorretos");
+        toast.error("Usuário ou senha incorretos");
       } else {
         toast.error("Erro ao fazer login: " + error.message);
       }
@@ -78,32 +90,33 @@ export default function AdminAuth() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="login-email" className="text-gray-300">Email Administrativo</Label>
+              <Label htmlFor="admin-username" className="text-gray-300">Usuário</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                 <Input
-                  id="login-email"
-                  type="email"
-                  placeholder="admin@voltcontrol.com"
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
+                  id="admin-username"
+                  type="text"
+                  placeholder="admin"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   className="pl-10 bg-black/50 border-gray-800 focus:border-blue-500 text-white"
                   required
+                  autoComplete="username"
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="login-password" className="text-gray-300">Senha de Acesso</Label>
+              <Label htmlFor="admin-password" className="text-gray-300">Senha</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                 <Input
-                  id="login-password"
+                  id="admin-password"
                   type="password"
                   placeholder="••••••••"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 bg-black/50 border-gray-800 focus:border-blue-500 text-white"
                   required
+                  autoComplete="current-password"
                 />
               </div>
             </div>

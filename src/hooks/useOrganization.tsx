@@ -38,22 +38,28 @@ export function useOrganization() {
         .select('user_id')
         .eq('user_id', user.id)
         .maybeSingle();
-      setIsPlatformAdmin(!!pa);
+      const isPA = !!pa;
+      setIsPlatformAdmin(isPA);
 
-      // organization
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('organization_id')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (profile?.organization_id) {
-        const { data: org } = await supabase
-          .from('organizations' as any)
-          .select('*')
-          .eq('id', profile.organization_id)
+      // only fetch organization if NOT platform admin
+      if (!isPA) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('organization_id')
+          .eq('id', user.id)
           .maybeSingle();
-        setOrganization(org as any);
+
+        if (profile?.organization_id) {
+          const { data: org } = await supabase
+            .from('organizations' as any)
+            .select('*')
+            .eq('id', profile.organization_id)
+            .maybeSingle();
+          setOrganization(org as any);
+        }
+      } else {
+        // platform admin - no organization
+        setOrganization(null);
       }
       setLoading(false);
     })();

@@ -89,12 +89,12 @@ const App = () => {
               <Suspense fallback={<PageFallback />}>
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
-                  <Route path="/admin/auth" element={<AdminAuth />} />
+                  <Route path="/admin/login" element={<AdminAuth />} />
                   <Route path="/cadastro-empresa" element={<CadastroEmpresa />} />
                   <Route path="/mensalidade-em-atraso" element={<ProtectedRoute allowBlocked><MensalidadeAtraso /></ProtectedRoute>} />
-                  <Route path="/admin-master" element={<ProtectedRoute requiredPlatformAdmin><AdminMaster /></ProtectedRoute>} />
-                  <Route path="/admin" element={<Navigate to="/admin-master" replace />} />
-                  <Route path="/" element={window.location.pathname.startsWith('/admin') ? <AdminAuth /> : <Auth />} />
+                  <Route path="/admin/dashboard" element={<ProtectedRoute requiredPlatformAdmin><AdminMaster /></ProtectedRoute>} />
+                  <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
+                  <Route path="/" element={window.location.pathname.startsWith('/admin') ? <Navigate to="/admin/login" replace /> : <Auth />} />
                   <Route path="/landing" element={<Landing />} />
                   <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                   <Route path="/ordens-servico" element={<ProtectedRoute requiredPermission="acesso_os"><OrdensServico /></ProtectedRoute>} />
