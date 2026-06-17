@@ -261,7 +261,7 @@ export default function OrdensServico() {
 
       const osData: any = {
         ...restForm,
-        organization_id: organizationId,
+        organization_id: editingOS?.organization_id || organizationId,
         tipo_equipamento: mapCategoryToDbEnum(uiCategory),
         observacoes: observacoesWithMobility || null,
         valor_orcamento: valorOrcamentoFinal,
@@ -306,7 +306,7 @@ export default function OrdensServico() {
             quantidade: item.quantidade,
             valor_unitario: item.valor_unitario,
             valor_total: item.valor_total,
-            organization_id: organizationId,
+            organization_id: editingOS?.organization_id || organizationId,
           }));
           const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInsert);
           if (itemsError) {
