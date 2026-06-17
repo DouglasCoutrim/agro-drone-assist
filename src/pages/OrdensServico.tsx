@@ -947,19 +947,9 @@ export default function OrdensServico() {
                     <Printer className="h-3.5 w-3.5 mr-1.5" /> PDF
                   </Button>
                   {viewingOS && (
-                    <Button variant="outline" size="sm" onClick={() => {
-                      const whatsappOs: any = {
-                        numero: viewingOS.numero,
-                        clienteNome: viewingOS.clientes?.nome || "",
-                        equipamento: TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento,
-                        modelo: viewingOS.modelo_equipamento || "",
-                        defeito: viewingOS.descricao_problema,
-                        previsao: viewingOS.data_previsao,
-                        valorOrcamento: viewingOS.valor_orcamento
-                      };
-                      openWhatsApp(viewingOS.clientes?.telefone || "", whatsappTemplates.osRecebida(whatsappOs, empresa?.nome_empresa || "LivreOS"));
-                    }} className="h-8 text-xs bg-green-500/10 text-green-600 border-green-200 hover:bg-green-500 hover:text-white shrink-0">
-                      <MessageCircle className="h-3.5 w-3.5 mr-1.5" /> WhatsApp
+                    <Button variant="outline" size="sm" onClick={handleSendPdfWhatsApp}
+                      className="h-8 text-xs bg-green-500/10 text-green-600 border-green-200 hover:bg-green-500 hover:text-white shrink-0">
+                      <MessageCircle className="h-3.5 w-3.5 mr-1.5" /> Enviar PDF
                     </Button>
                   )}
                 </div>
