@@ -439,33 +439,28 @@ export default function OrdensServico() {
     if (!viewingOS.valor_orcamento || viewingOS.valor_orcamento <= 0) { toast.error("OS sem valor de orçamento."); return; }
     setCobrarLoading(true);
     try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
-      if (!token) { toast.error("Sessão expirada"); return; }
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 3);
       const dueDateStr = dueDate.toISOString().split("T")[0];
-      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/asaas?action=create_payment`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, apikey: anonKey, "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const { data: result, error } = await supabase.functions.invoke('asaas', {
+        body: {
+          action: 'create_payment',
           customer: asaasId, billingType: "PIX", value: viewingOS.valor_orcamento, dueDate: dueDateStr,
           description: `OS ${viewingOS.numero}`, externalReference: viewingOS.numero,
-        }),
+        },
       });
-      const result = await res.json();
-      if (result.id) {
+      if (error) throw error;
+      if (result?.id) {
         toast.success("Cobrança criada!");
         const telefone = cliente?.telefone || "";
         const fmtCurLocal = (v: number) => formatCurrency(v);
         let invoiceLink = result.invoiceUrl || "";
         if (!invoiceLink && result.id) {
           try {
-            const linkRes = await fetch(`https://${projectId}.supabase.co/functions/v1/asaas?action=get_payment&id=${result.id}`, { headers: { Authorization: `Bearer ${token}`, apikey: anonKey } });
-            const linkData = await linkRes.json();
-            invoiceLink = linkData.invoiceUrl || "";
+            const { data: linkData } = await supabase.functions.invoke('asaas', {
+              body: { action: 'get_payment', id: result.id },
+            });
+            invoiceLink = linkData?.invoiceUrl || "";
           } catch {}
         }
         const texto = `Olá, *${viewingOS.clientes?.nome}*! 👋\n\n*${empresa.nome_empresa || "LivreOS"}*\n\n📋 *OS:* ${viewingOS.numero}\n💰 *Valor:* ${fmtCurLocal(viewingOS.valor_orcamento)}\n📅 *Vencimento:* ${new Date(dueDateStr + "T00:00:00").toLocaleDateString("pt-BR")}\n⚡ Pix${invoiceLink ? `\n\n🔗 ${invoiceLink}` : ""}`;
