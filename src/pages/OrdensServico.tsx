@@ -416,12 +416,14 @@ export default function OrdensServico() {
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
       toast.error("Popup bloqueado. Permita popups para imprimir.");
+      toast.dismiss(t);
       return;
     }
     
     const html = generateOSPDF(viewingOS, itemsForPdf, empresa);
     printWindow.document.write(html);
     printWindow.document.close();
+    toast.dismiss(t);
   };
 
 
