@@ -248,6 +248,7 @@ export default function OrdensServico() {
 
       const osData: any = {
         ...restForm,
+        organization_id: organization?.id || null,
         tipo_equipamento: mapCategoryToDbEnum(uiCategory),
         observacoes: observacoesWithMobility || null,
         valor_orcamento: valorOrcamentoFinal,
@@ -407,23 +408,22 @@ export default function OrdensServico() {
 
   const handlePrintOS = async () => {
     if (!viewingOS) return;
-    const t = toast.loading("Carregando itens da OS para o PDF...");
-    
-    const itemsForPdf = await fetchOSItems(viewingOS.id, viewingOS.organization_id);
-    setViewOsItems(itemsForPdf);
-    toast.dismiss(t);
-    
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
       toast.error("Popup bloqueado. Permita popups para imprimir.");
-      toast.dismiss(t);
       return;
     }
-    
-    const html = generateOSPDF(viewingOS, itemsForPdf, empresa);
-    printWindow.document.write(html);
-    printWindow.document.close();
-    toast.dismiss(t);
+
+    const t = toast.loading("Carregando itens da OS para o PDF...");
+    try {
+      const itemsForPdf = await fetchOSItems(viewingOS.id, viewingOS.organization_id);
+      setViewOsItems(itemsForPdf);
+      const html = generateOSPDF(viewingOS, itemsForPdf, empresa);
+      printWindow.document.write(html);
+      printWindow.document.close();
+    } finally {
+      toast.dismiss(t);
+    }
   };
 
 
