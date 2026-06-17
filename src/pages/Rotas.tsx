@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/formatters";
 import { Tables } from "@/integrations/supabase/types";
+import { useOrganization } from "@/hooks/useOrganization";
 
 type Cliente = Tables<"clientes">;
 
@@ -30,6 +31,7 @@ interface RotaDB {
 }
 
 export default function Rotas() {
+  const { organization } = useOrganization();
   const [rotas, setRotas] = useState<RotaDB[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,13 +51,14 @@ export default function Rotas() {
     observacoes: "",
   });
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { if (organization?.id) fetchData(); }, [organization?.id]);
 
   const fetchData = async () => {
+    if (!organization?.id) return;
     try {
       const [rotasRes, cliRes] = await Promise.all([
-        supabase.from("rotas").select("*, clientes(nome, telefone)").order("created_at", { ascending: false }),
-        supabase.from("clientes").select("*").order("nome"),
+        supabase.from("rotas").select("*, clientes(nome, telefone)").eq("organization_id", organization.id).order("created_at", { ascending: false }),
+        supabase.from("clientes").select("*").eq("organization_id", organization.id).order("nome"),
       ]);
       if (rotasRes.error) throw rotasRes.error;
       if (cliRes.error) throw cliRes.error;
@@ -93,7 +96,7 @@ export default function Rotas() {
         if (error) throw error;
         toast.success("Rota atualizada!");
       } else {
-        const { error } = await supabase.from("rotas").insert(payload);
+        const { error } = await supabase.from("rotas").insert({ ...payload, organization_id: organization?.id } as any);
         if (error) throw error;
         toast.success("Rota registrada!");
       }
