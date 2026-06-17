@@ -12,6 +12,7 @@ import { CreditCard, Plus, Search, DollarSign, Clock, CheckCircle, XCircle, Aler
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
+import { formatCurrency } from "@/lib/formatters";
 
 type Cliente = Tables<"clientes">;
 
@@ -100,7 +101,7 @@ export default function Cobrancas() {
     return tipos[tipo] || tipo;
   };
 
-  const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  
 
   const filteredPayments = payments.filter(p =>
     (p.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||

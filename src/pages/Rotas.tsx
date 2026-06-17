@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Plus, MapPin, Loader2, Edit, Trash2, Eye, MessageCircle, Navigation, DollarSign, Search, Route } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/formatters";
 import { Tables } from "@/integrations/supabase/types";
 
 type Cliente = Tables<"clientes">;
@@ -131,7 +132,7 @@ export default function Rotas() {
     setEditingRota(null);
   };
 
-  const formatCurrency = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+  
 
   const totalKm = rotas.reduce((a, r) => a + Number(r.distancia_km), 0);
   const totalCusto = rotas.reduce((a, r) => a + Number(r.custo_rota), 0);

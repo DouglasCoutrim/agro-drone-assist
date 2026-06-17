@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { MapPin, Navigation, Plus, DollarSign, Loader2, Route, Calculator } from "lucide-react";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/formatters";
 
 interface Deslocamento {
   id: string;
@@ -119,7 +120,7 @@ export default function Deslocamentos() {
     toast.success(`Deslocamento registrado! Total: ${formatCurrency(valorTotal)}`);
   };
 
-  const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+  
 
   const totalKm = deslocamentos.reduce((a, d) => a + d.distanciaKm, 0);
   const totalValor = deslocamentos.reduce((a, d) => a + d.valorTotal, 0);
