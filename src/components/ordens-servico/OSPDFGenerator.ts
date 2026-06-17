@@ -60,8 +60,6 @@ export const generateOSPDF = (
       </div>`;
   }
 
-  const produtos = itemsForPdf.filter(i => i.tipo === "produto");
-  const servicos = itemsForPdf.filter(i => i.tipo === "servico");
   const subtotal = itemsForPdf.reduce((s, i) => s + (i.valor_total || 0), 0);
   const desconto = (os.desconto || 0);
   // Total: prioriza soma de itens; cai para valor_orcamento salvo (OS antigas sem itens)
@@ -73,9 +71,9 @@ export const generateOSPDF = (
   const thStyle = `text-align:left;padding:6px 8px;background:#f3f4f6;border-bottom:1px solid #d1d5db;font-weight:600;`;
   const tdStyle = `padding:6px 8px;border-bottom:1px solid #eee;vertical-align:top;word-wrap:break-word;`;
 
-  const renderTable = (title: string, list: typeof itemsForPdf) => list.length === 0 ? "" : `
+  const renderItemsTable = (list: typeof itemsForPdf) => `
     <div class="section">
-      <div class="section-title">${title}</div>
+      <div class="section-title">Itens / Peças e Serviços</div>
       <table style="${tableStyle}">
         <colgroup><col style="width:50%"><col style="width:12%"><col style="width:19%"><col style="width:19%"></colgroup>
         <thead><tr>
@@ -85,17 +83,17 @@ export const generateOSPDF = (
           <th style="${thStyle}text-align:right">Total</th>
         </tr></thead>
         <tbody>
-          ${list.map(i => `<tr>
+          ${list.length > 0 ? list.map(i => `<tr>
             <td style="${tdStyle}">${i.descricao}${i.codigo ? ` <span style="color:#888">(${i.codigo})</span>` : ""}</td>
             <td style="${tdStyle}text-align:center">${i.quantidade}</td>
             <td style="${tdStyle}text-align:right">${fmtCur(i.valor_unitario)}</td>
             <td style="${tdStyle}text-align:right;font-weight:600">${fmtCur(i.valor_total)}</td>
-          </tr>`).join("")}
+          </tr>`).join("") : `<tr><td style="${tdStyle}color:#777;text-align:center" colspan="4">Nenhum item, peça ou serviço foi encontrado para esta OS.</td></tr>`}
         </tbody>
       </table>
     </div>`;
 
-  const itensHtml = renderTable("Itens / Peças", produtos) + renderTable("Serviços executados", servicos);
+  const itensHtml = renderItemsTable(itemsForPdf);
   const totalLine = `
     <div class="section" style="margin-top:6px">
       <table style="width:100%;font-size:13px">

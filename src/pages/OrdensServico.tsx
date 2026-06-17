@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +37,19 @@ import { getAvailableTypes, findTypeByValue, SEGMENTOS } from "@/lib/equipment-s
 
 type OrdemServico = Tables<"ordens_servico"> & { clientes: { nome: string; telefone?: string } | null };
 type Cliente = Tables<"clientes">;
+type ItemOSRow = Tables<"itens_os">;
+
+const mapDbItemsToOSItems = (data: ItemOSRow[] | null | undefined): OSItem[] =>
+  (data || []).map((d: ItemOSRow) => ({
+    id: d.id,
+    tipo: d.tipo === "servico" ? "servico" : "produto",
+    produto_id: d.produto_id,
+    servico_id: d.servico_id,
+    descricao: d.descricao,
+    quantidade: Number(d.quantidade) || 0,
+    valor_unitario: Number(d.valor_unitario) || 0,
+    valor_total: Number(d.valor_total) || 0,
+  }));
 
 const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
   recebido: { label: "Recebido", variant: "outline" },
@@ -75,7 +88,7 @@ const detectUiCategory = (os: any): string => {
 
 export default function OrdensServico() {
   const { user } = useAuth();
-  const { organization } = useOrganization();
+  const { organization, isPlatformAdmin } = useOrganization();
   const { config: empresa } = useEmpresaConfig();
   const { tecnicos } = useTeamMembers();
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
@@ -98,6 +111,7 @@ export default function OrdensServico() {
   const [quickClientPreName, setQuickClientPreName] = useState("");
   const [osItems, setOsItems] = useState<OSItem[]>([]);
   const [viewOsItems, setViewOsItems] = useState<OSItem[]>([]);
+  const [viewOsItemsLoading, setViewOsItemsLoading] = useState(false);
 
   // Wizard step
   const [wizardStep, setWizardStep] = useState(0);
@@ -165,6 +179,26 @@ export default function OrdensServico() {
     }
   };
 
+  const fetchOSItems = useCallback(async (osId: string, osOrgId?: string | null): Promise<OSItem[]> => {
+    let query = supabase
+      .from("itens_os")
+      .select("*")
+      .eq("ordem_servico_id", osId)
+      .order("created_at", { ascending: true });
+
+    const orgId = osOrgId || organization?.id;
+    if (orgId && !isPlatformAdmin) query = query.eq("organization_id", orgId);
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("Erro ao carregar itens da OS:", error);
+      toast.error("Não foi possível carregar os itens/serviços desta OS: " + error.message);
+      return [];
+    }
+
+    return mapDbItemsToOSItems(data as ItemOSRow[]);
+  }, [organization?.id, isPlatformAdmin]);
+
   const clienteOptions: SmartSelectOption[] = clientes.map(c => ({
     id: c.id,
     label: c.nome,
@@ -191,6 +225,19 @@ export default function OrdensServico() {
 
     setFormLoading(true);
     try {
+      let organizationId = organization?.id || null;
+      if (!organizationId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("organization_id")
+          .eq("id", user.id)
+          .maybeSingle();
+        organizationId = profile?.organization_id || null;
+      }
+      if (!organizationId && !isPlatformAdmin) {
+        throw new Error("Sua conta não está vinculada a uma empresa. Contate o administrador.");
+      }
+
       const { ciclos_carga_entrada, ciclos_carga_saida, ...restForm } = formData;
       let observacoesWithMobility = (restForm.observacoes || "").replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").trim();
 
@@ -214,6 +261,7 @@ export default function OrdensServico() {
 
       const osData: any = {
         ...restForm,
+        organization_id: editingOS?.organization_id || organizationId,
         tipo_equipamento: mapCategoryToDbEnum(uiCategory),
         observacoes: observacoesWithMobility || null,
         valor_orcamento: valorOrcamentoFinal,
@@ -245,7 +293,8 @@ export default function OrdensServico() {
       // Save OS items
       if (osId) {
         // Delete existing items for this OS
-        await supabase.from("itens_os").delete().eq("ordem_servico_id", osId);
+        const { error: deleteItemsError } = await supabase.from("itens_os").delete().eq("ordem_servico_id", osId);
+        if (deleteItemsError) throw deleteItemsError;
         // Insert new items
         if (osItems.length > 0) {
           const itemsToInsert = osItems.map(item => ({
@@ -257,12 +306,12 @@ export default function OrdensServico() {
             quantidade: item.quantidade,
             valor_unitario: item.valor_unitario,
             valor_total: item.valor_total,
-            organization_id: organization?.id || null,
+            organization_id: editingOS?.organization_id || organizationId,
           }));
           const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInsert);
           if (itemsError) {
             console.error("Erro ao salvar itens:", itemsError);
-            toast.error("Erro ao salvar itens da OS: " + itemsError.message);
+            throw itemsError;
           }
         }
       }
@@ -276,8 +325,9 @@ export default function OrdensServico() {
     }
   };
 
-  const handleEdit = (os: OrdemServico) => {
+  const handleEdit = async (os: OrdemServico) => {
     setEditingOS(os);
+    setOsItems([]);
     const detectedCategory = detectUiCategory(os);
     setUiCategory(detectedCategory);
     const obs = os.observacoes || "";
@@ -326,27 +376,22 @@ export default function OrdensServico() {
       ciclos_carga_saida: (os as any).ciclos_carga_saida || 0,
       tecnico_id: os.tecnico_id || "",
     });
-    // Load items for this OS
-    supabase.from("itens_os").select("*").eq("ordem_servico_id", os.id).then(({ data }) => {
-      setOsItems((data || []).map((d: any) => ({
-        id: d.id, tipo: d.tipo, produto_id: d.produto_id, servico_id: d.servico_id,
-        descricao: d.descricao, quantidade: d.quantidade, valor_unitario: d.valor_unitario, valor_total: d.valor_total,
-      })));
-    });
+    setOsItems(await fetchOSItems(os.id, os.organization_id));
     setWizardStep(0);
     setDialogOpen(true);
   };
 
-  const handleView = (os: OrdemServico) => {
+  const handleView = async (os: OrdemServico) => {
     setViewingOS(os);
+    setViewOsItems([]);
+    setViewOsItemsLoading(true);
     setViewDialogOpen(true);
-    // Load items for view
-    supabase.from("itens_os").select("*").eq("ordem_servico_id", os.id).then(({ data }) => {
-      setViewOsItems((data || []).map((d: any) => ({
-        id: d.id, tipo: d.tipo, produto_id: d.produto_id, servico_id: d.servico_id,
-        descricao: d.descricao, quantidade: d.quantidade, valor_unitario: d.valor_unitario, valor_total: d.valor_total,
-      })));
-    });
+    try {
+      const items = await fetchOSItems(os.id, os.organization_id);
+      setViewOsItems(items);
+    } finally {
+      setViewOsItemsLoading(false);
+    }
   };
 
   const handleStatusChange = async (osId: string, newStatus: string) => {
@@ -380,26 +425,22 @@ export default function OrdensServico() {
 
   const handlePrintOS = async () => {
     if (!viewingOS) return;
-    
-    let itemsForPdf = viewOsItems;
-    if (itemsForPdf.length === 0) {
-      const { data } = await supabase.from("itens_os").select("*").eq("ordem_servico_id", viewingOS.id);
-      itemsForPdf = (data || []).map((d: any) => ({
-        id: d.id, tipo: d.tipo, produto_id: d.produto_id, servico_id: d.servico_id,
-        descricao: d.descricao, quantidade: d.quantidade, valor_unitario: d.valor_unitario, valor_total: d.valor_total,
-      }));
-      setViewOsItems(itemsForPdf);
-    }
-    
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
       toast.error("Popup bloqueado. Permita popups para imprimir.");
       return;
     }
-    
-    const html = generateOSPDF(viewingOS, itemsForPdf, empresa);
-    printWindow.document.write(html);
-    printWindow.document.close();
+
+    const t = toast.loading("Carregando itens da OS para o PDF...");
+    try {
+      const itemsForPdf = await fetchOSItems(viewingOS.id, viewingOS.organization_id);
+      setViewOsItems(itemsForPdf);
+      const html = generateOSPDF(viewingOS, itemsForPdf, empresa);
+      printWindow.document.write(html);
+      printWindow.document.close();
+    } finally {
+      toast.dismiss(t);
+    }
   };
 
 
@@ -440,15 +481,8 @@ export default function OrdensServico() {
     if (!cliente?.telefone) { toast.error("Cliente sem telefone cadastrado"); return; }
     const t = toast.loading("Gerando PDF da OS...");
     try {
-      let itemsForPdf = viewingOS?.id === os.id ? viewOsItems : [];
-      if (itemsForPdf.length === 0) {
-        const { data } = await supabase.from("itens_os").select("*").eq("ordem_servico_id", os.id);
-        itemsForPdf = (data || []).map((d: any) => ({
-          id: d.id, tipo: d.tipo, produto_id: d.produto_id, servico_id: d.servico_id,
-          descricao: d.descricao, quantidade: d.quantidade, valor_unitario: d.valor_unitario, valor_total: d.valor_total,
-        }));
-        if (viewingOS?.id === os.id) setViewOsItems(itemsForPdf);
-      }
+      const itemsForPdf = await fetchOSItems(os.id, os.organization_id);
+      if (viewingOS?.id === os.id) setViewOsItems(itemsForPdf);
       const osComCliente = { ...os, clientes: os.clientes || { nome: cliente.nome, telefone: cliente.telefone } };
       const html = generateOSPDF(osComCliente, itemsForPdf, empresa);
       const { htmlToPdfBlob, sharePdfOnWhatsApp } = await import("@/lib/os-pdf-share");
@@ -1027,8 +1061,16 @@ export default function OrdensServico() {
                       </div>
                       <Separator />
                       {/* Items da OS */}
-                      {viewOsItems.length > 0 && (
+                      {viewOsItemsLoading ? (
+                        <div className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando itens, peças e serviços...
+                        </div>
+                      ) : viewOsItems.length > 0 ? (
                         <OSItemsSection items={viewOsItems} onChange={() => {}} disabled />
+                      ) : (
+                        <div className="rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                          Nenhum item, peça ou serviço encontrado para esta OS.
+                        </div>
                       )}
                       <Separator />
                       <div className="grid grid-cols-2 gap-3">
