@@ -507,21 +507,15 @@ export default function OrdensServico() {
     } catch (err: any) { toast.error(getErrorMessage(err)); } finally { setCobrarLoading(false); }
   };
 
-  const handleSendTermsWhatsApp = () => {
+  const handleSendTermsWhatsApp = async () => {
     if (!lastCreatedOS) return;
     const cliente = clientes.find(c => c.id === lastCreatedOS.cliente_id);
     if (!cliente) { toast.error("Cliente não encontrado"); return; }
-    const osData: WhatsAppOS = {
-      numero: lastCreatedOS.numero,
-      clienteNome: cliente.nome,
-      equipamento: TIPO_EQUIPAMENTO[uiCategory] || TIPO_EQUIPAMENTO[lastCreatedOS.tipo_equipamento] || lastCreatedOS.tipo_equipamento,
-      modelo: lastCreatedOS.modelo_equipamento || undefined,
-    };
-    const msg = whatsappTemplates.osRecebida(osData, empresa.nome_empresa || "LivreOS", empresa.termos_servico || undefined);
-    openWhatsApp(cliente.telefone, msg);
+    await shareOsAsPdf(lastCreatedOS, cliente);
     setTermsDialogOpen(false);
     setLastCreatedOS(null);
   };
+
 
   const resetMobilityData = () => setMobilityData({ voltagem: "", capacidade_bateria: "", odometro: "", chave_ignicao: false, carregador_entregue: false, check_display: false, check_acelerador: false, check_freios: false, check_pneus: false, check_controladora: false, check_iluminacao: false, check_carenagem: false });
 
