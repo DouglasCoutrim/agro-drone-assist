@@ -77,30 +77,26 @@ export function IntegracoesFinanceiras() {
     if (err) { toast.error(err); return; }
     setSaving(true);
     try {
-      const payload = {
-        gateway_clientes: gateway,
-        gateway_clientes_credentials: gateway === 'none' ? {} : creds,
-      };
-      const { data: existing, error: selErr } = await supabase
-        .from('empresa_config' as any)
-        .select('id')
-        .eq('organization_id', organization.id)
-        .maybeSingle();
-      if (selErr) throw selErr;
-
-      if (existing) {
-        const { error } = await supabase
-          .from('empresa_config' as any)
-          .update(payload)
-          .eq('organization_id', organization.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('empresa_config' as any)
-          .insert({ organization_id: organization.id, ...payload });
-        if (error) throw error;
+      // Build a clean credentials object (no undefined/null/empty leaking into JSONB)
+      const cleanCreds: Record<string, unknown> = {};
+      if (gateway !== 'none') {
+        Object.entries(creds).forEach(([k, v]) => {
+          if (v !== undefined && v !== null && v !== '') cleanCreds[k] = v;
+        });
       }
-      toast.success('Configurações de recebimento salvas');
+
+      const payload = {
+        organization_id: organization.id,
+        gateway_clientes: gateway,
+        gateway_clientes_credentials: cleanCreds,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from('empresa_config' as any)
+        .upsert(payload, { onConflict: 'organization_id' });
+      if (error) throw error;
+      toast.success('Configurações de recebimento salvas com sucesso');
     } catch (e: any) {
       toast.error(e.message ?? 'Falha ao salvar');
     } finally { setSaving(false); }
