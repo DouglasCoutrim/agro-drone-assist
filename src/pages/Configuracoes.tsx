@@ -15,6 +15,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
+import { SEGMENTOS } from "@/lib/equipment-segments";
+import { useOrgSegments } from "@/hooks/useOrgSegments";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Profile = Tables<"profiles">;
 type UserRole = Tables<"user_roles">;
