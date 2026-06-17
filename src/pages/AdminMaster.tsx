@@ -76,9 +76,17 @@ export default function AdminMaster() {
                activeTab === 'wiki' ? 'Wiki Administrativa' : 'Visão Geral'}
             </h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
+            {organization && (
+              <Button asChild variant="outline" size="sm" className="gap-1.5">
+                <Link to="/dashboard">
+                  <Building2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Minha Empresa</span>
+                </Link>
+              </Button>
+            )}
             <ThemeToggle />
-            <div className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+            <div className="hidden md:block px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
               <span className="text-[11px] text-primary font-medium">Ambiente Seguro</span>
             </div>
           </div>
