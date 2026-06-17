@@ -92,6 +92,7 @@ export default function OrdensServico() {
   const { organization, isPlatformAdmin } = useOrganization();
   const { config: empresa } = useEmpresaConfig();
   const { tecnicos } = useTeamMembers();
+  const confirm = useConfirm();
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
