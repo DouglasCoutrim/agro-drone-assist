@@ -299,8 +299,6 @@ export default function OrdensServico() {
       diagnostico: os.diagnostico || "",
       prioridade: os.prioridade,
       data_previsao: os.data_previsao || "",
-      custo_pecas: (os as any).custo_pecas || 0,
-      custo_mao_obra: (os as any).custo_mao_obra || 0,
       desconto: (os as any).desconto || 0,
       valor_orcamento: os.valor_orcamento || 0,
       observacoes: cleanObs,
