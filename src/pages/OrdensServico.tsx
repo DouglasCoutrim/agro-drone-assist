@@ -698,236 +698,196 @@ export default function OrdensServico() {
           </CardContent>
         </Card>
 
-        {/* ===== WIZARD DIALOG ===== */}
+        {/* ===== OS FORM DIALOG (single-scroll) ===== */}
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden w-[calc(100vw-1rem)] sm:w-full">
-            <DialogHeader>
-              <DialogTitle>{editingOS ? "Editar OS" : "Nova Ordem de Serviço"}</DialogTitle>
-              <DialogDescription>
-                {editingOS ? "Altere os dados da OS" : `Passo ${wizardStep + 1} de ${WIZARD_STEPS.length}: ${WIZARD_STEPS[wizardStep]}`}
+          <DialogContent className="max-w-2xl w-[calc(100vw-1rem)] sm:w-full h-[95dvh] sm:h-[90dvh] p-0 flex flex-col overflow-hidden">
+            <DialogHeader className="p-4 border-b shrink-0">
+              <DialogTitle>{editingOS ? `Editar OS ${editingOS.numero}` : "Nova Ordem de Serviço"}</DialogTitle>
+              <DialogDescription className="text-xs">
+                Preencha os dados abaixo. Você pode salvar a qualquer momento.
               </DialogDescription>
             </DialogHeader>
 
-            {/* Wizard progress */}
-            {!editingOS && (
-              <div className="flex items-center gap-1 mb-2">
-                {WIZARD_STEPS.map((step, i) => (
-                  <div key={step} className="flex items-center gap-1 flex-1">
-                    <div className={`h-1.5 flex-1 rounded-full transition-colors ${i <= wizardStep ? "bg-primary" : "bg-muted"}`} />
+            <form
+              onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}
+              className="flex-1 overflow-y-auto p-4 space-y-4"
+              style={{ paddingBottom: "140px" }}
+            >
+              {/* Cliente */}
+              <Card>
+                <CardHeader className="pb-3"><CardTitle className="text-sm">1. Cliente</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <SmartSelect
+                    label="Selecionar Cliente"
+                    placeholder="Buscar por nome, telefone ou CPF..."
+                    options={clienteOptions}
+                    value={formData.cliente_id}
+                    onSelect={(opt) => setFormData({ ...formData, cliente_id: opt.id })}
+                    onClear={() => setFormData({ ...formData, cliente_id: "" })}
+                    onCreateNew={(name) => { setQuickClientPreName(name); setQuickClientOpen(true); }}
+                    createLabel="Cadastrar cliente"
+                    required
+                  />
+                  {selectedCliente && (
+                    <div className="p-3 rounded-md bg-muted/30 border border-border/50 text-xs space-y-1">
+                      <p><span className="text-muted-foreground">Tel:</span> {selectedCliente.telefone}</p>
+                      {selectedCliente.email && <p><span className="text-muted-foreground">Email:</span> {selectedCliente.email}</p>}
+                      {selectedCliente.cidade && <p><span className="text-muted-foreground">Cidade:</span> {selectedCliente.cidade}/{selectedCliente.estado}</p>}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Equipamento */}
+              <Card>
+                <CardHeader className="pb-3"><CardTitle className="text-sm">2. Equipamento</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Tipo *</Label>
+                      <Select value={uiCategory} onValueChange={(v) => { setUiCategory(v); setFormData({ ...formData, tipo_equipamento: mapCategoryToDbEnum(v) as Enums<"tipo_equipamento"> }); }}>
+                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="drone_agricola">Drone Agrícola</SelectItem>
+                          <SelectItem value="drone_convencional">Drone Consumo/Enterprise</SelectItem>
+                          <SelectItem value="bateria">Bateria Avulsa</SelectItem>
+                          <SelectItem value="controle">Controle Remoto</SelectItem>
+                          <SelectItem value="outro">Gerador/Carregador/Outro</SelectItem>
+                          <SelectItem value="patinete_eletrico">Patinete Elétrico</SelectItem>
+                          <SelectItem value="bicicleta_eletrica">Bicicleta Elétrica</SelectItem>
+                          <SelectItem value="moto_eletrica">Moto Elétrica</SelectItem>
+                          <SelectItem value="outros_autopropelidos">Outros Autopropelidos</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Marca</Label>
+                      <Input value={formData.marca} onChange={(e) => setFormData({ ...formData, marca: e.target.value })} className="h-9" placeholder={isMobility ? "Ex: Xiaomi" : "Ex: DJI"} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Modelo</Label>
+                      <Input value={formData.modelo_equipamento} onChange={(e) => setFormData({ ...formData, modelo_equipamento: e.target.value })} className="h-9" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Nº Série</Label>
+                      <Input value={formData.numero_serie} onChange={(e) => setFormData({ ...formData, numero_serie: e.target.value })} className="h-9 font-mono" />
+                    </div>
                   </div>
-                ))}
-              </div>
-            )}
 
-            <form onSubmit={(e) => { e.preventDefault(); if (!editingOS && wizardStep < WIZARD_STEPS.length - 1) return; handleSubmit(); }}>
-              {/* STEP 0: Cliente */}
-              {(editingOS || wizardStep === 0) && (
-                <div className={editingOS ? "" : wizardStep !== 0 ? "hidden" : ""}>
-                  <Card>
-                    <CardHeader className="pb-3"><CardTitle className="text-sm">Cliente</CardTitle></CardHeader>
-                    <CardContent className="space-y-3">
-                      <SmartSelect
-                        label="Selecionar Cliente"
-                        placeholder="Buscar por nome, telefone ou CPF..."
-                        options={clienteOptions}
-                        value={formData.cliente_id}
-                        onSelect={(opt) => setFormData({ ...formData, cliente_id: opt.id })}
-                        onClear={() => setFormData({ ...formData, cliente_id: "" })}
-                        onCreateNew={(name) => { setQuickClientPreName(name); setQuickClientOpen(true); }}
-                        createLabel="Cadastrar cliente"
-                        required
-                      />
-                      {selectedCliente && (
-                        <div className="p-3 rounded-md bg-muted/30 border border-border/50 text-xs space-y-1">
-                          <p><span className="text-muted-foreground">Tel:</span> {selectedCliente.telefone}</p>
-                          {selectedCliente.email && <p><span className="text-muted-foreground">Email:</span> {selectedCliente.email}</p>}
-                          {selectedCliente.cidade && <p><span className="text-muted-foreground">Cidade:</span> {selectedCliente.cidade}/{selectedCliente.estado}</p>}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
+                  {isBateria && !isMobility && (
+                    <div className="grid grid-cols-2 gap-3 p-3 rounded-md border border-dashed border-primary/30 bg-primary/5">
+                      <div className="space-y-1.5"><Label className="text-xs">Ciclos Entrada</Label><NumberInput min="0" value={formData.ciclos_carga_entrada} onChange={(v) => setFormData({ ...formData, ciclos_carga_entrada: v })} className="h-9" placeholder="0" /></div>
+                      <div className="space-y-1.5"><Label className="text-xs">Ciclos Saída</Label><NumberInput min="0" value={formData.ciclos_carga_saida} onChange={(v) => setFormData({ ...formData, ciclos_carga_saida: v })} className="h-9" placeholder="0" /></div>
+                    </div>
+                  )}
 
-              {/* STEP 1: Equipamento + Checklist */}
-              {(editingOS || wizardStep === 1) && (
-                <div className={editingOS ? "mt-4" : wizardStep !== 1 ? "hidden" : ""}>
-                  <Card>
-                    <CardHeader className="pb-3"><CardTitle className="text-sm">Equipamento</CardTitle></CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {isMobility && (
+                    <div className="p-3 rounded-md border border-dashed border-primary/30 bg-primary/5 space-y-3">
+                      <p className="text-xs font-semibold text-primary">⚡ Mobilidade Elétrica</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="space-y-1.5">
-                          <Label className="text-xs">Tipo *</Label>
-                          <Select value={uiCategory} onValueChange={(v) => { setUiCategory(v); setFormData({ ...formData, tipo_equipamento: mapCategoryToDbEnum(v) as Enums<"tipo_equipamento"> }); }}>
-                            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="drone_agricola">Drone Agrícola</SelectItem>
-                              <SelectItem value="drone_convencional">Drone Consumo/Enterprise</SelectItem>
-                              <SelectItem value="bateria">Bateria Avulsa</SelectItem>
-                              <SelectItem value="controle">Controle Remoto</SelectItem>
-                              <SelectItem value="outro">Gerador/Carregador/Outro</SelectItem>
-                              <SelectItem value="patinete_eletrico">Patinete Elétrico</SelectItem>
-                              <SelectItem value="bicicleta_eletrica">Bicicleta Elétrica</SelectItem>
-                              <SelectItem value="moto_eletrica">Moto Elétrica</SelectItem>
-                              <SelectItem value="outros_autopropelidos">Outros Autopropelidos</SelectItem>
-                            </SelectContent>
+                          <Label className="text-xs">Voltagem</Label>
+                          <Select value={mobilityData.voltagem} onValueChange={(v) => setMobilityData({ ...mobilityData, voltagem: v })}>
+                            <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                            <SelectContent>{["36V", "48V", "60V", "72V"].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Marca</Label>
-                          <Input value={formData.marca} onChange={(e) => setFormData({ ...formData, marca: e.target.value })} className="h-9" placeholder={isMobility ? "Ex: Xiaomi" : "Ex: DJI"} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Modelo</Label>
-                          <Input value={formData.modelo_equipamento} onChange={(e) => setFormData({ ...formData, modelo_equipamento: e.target.value })} className="h-9" />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Nº Série</Label>
-                          <Input value={formData.numero_serie} onChange={(e) => setFormData({ ...formData, numero_serie: e.target.value })} className="h-9 font-mono" />
-                        </div>
+                        <div className="space-y-1.5"><Label className="text-xs">Bateria (Ah)</Label><Input value={mobilityData.capacidade_bateria} onChange={(e) => setMobilityData({ ...mobilityData, capacidade_bateria: e.target.value })} className="h-9" /></div>
+                        <div className="space-y-1.5"><Label className="text-xs">Odômetro (km)</Label><Input value={mobilityData.odometro} onChange={(e) => setMobilityData({ ...mobilityData, odometro: e.target.value })} className="h-9" /></div>
                       </div>
-
-                      {/* Battery fields */}
-                      {isBateria && !isMobility && (
-                        <div className="grid grid-cols-2 gap-3 p-3 rounded-md border border-dashed border-primary/30 bg-primary/5">
-                          <div className="space-y-1.5"><Label className="text-xs">Ciclos Entrada</Label><NumberInput min="0" value={formData.ciclos_carga_entrada} onChange={(v) => setFormData({ ...formData, ciclos_carga_entrada: v })} className="h-9" placeholder="0" /></div>
-                          <div className="space-y-1.5"><Label className="text-xs">Ciclos Saída</Label><NumberInput min="0" value={formData.ciclos_carga_saida} onChange={(v) => setFormData({ ...formData, ciclos_carga_saida: v })} className="h-9" placeholder="0" /></div>
-                        </div>
-                      )}
-
-                      {/* Mobility fields */}
-                      {isMobility && (
-                        <div className="p-3 rounded-md border border-dashed border-primary/30 bg-primary/5 space-y-3">
-                          <p className="text-xs font-semibold text-primary">⚡ Mobilidade Elétrica</p>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Voltagem</Label>
-                              <Select value={mobilityData.voltagem} onValueChange={(v) => setMobilityData({ ...mobilityData, voltagem: v })}>
-                                <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                                <SelectContent>{["36V", "48V", "60V", "72V"].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-1.5"><Label className="text-xs">Bateria (Ah)</Label><Input value={mobilityData.capacidade_bateria} onChange={(e) => setMobilityData({ ...mobilityData, capacidade_bateria: e.target.value })} className="h-9" /></div>
-                            <div className="space-y-1.5"><Label className="text-xs">Odômetro (km)</Label><Input value={mobilityData.odometro} onChange={(e) => setMobilityData({ ...mobilityData, odometro: e.target.value })} className="h-9" /></div>
-                          </div>
-                          <div className="flex gap-4">
-                            <div className="flex items-center space-x-2"><Checkbox id="chave" checked={mobilityData.chave_ignicao} onCheckedChange={(c) => setMobilityData({ ...mobilityData, chave_ignicao: !!c })} /><Label htmlFor="chave" className="text-xs cursor-pointer">Chave entregue</Label></div>
-                            <div className="flex items-center space-x-2"><Checkbox id="carreg_mob" checked={mobilityData.carregador_entregue} onCheckedChange={(c) => setMobilityData({ ...mobilityData, carregador_entregue: !!c })} /><Label htmlFor="carreg_mob" className="text-xs cursor-pointer">Carregador</Label></div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Checklist */}
-                      <Separator />
-                      <p className="text-xs font-semibold text-muted-foreground uppercase">Checklist de Entrada</p>
-                      {isMobility ? (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                          {(["check_display|Display", "check_acelerador|Acelerador", "check_freios|Freios", "check_pneus|Pneus", "check_controladora|Controladora", "check_iluminacao|Iluminação", "check_carenagem|Carenagem"] as const).map(item => {
-                            const [key, label] = item.split("|");
-                            return (<div key={key} className="flex items-center space-x-1.5"><Checkbox id={key} checked={(mobilityData as any)[key]} onCheckedChange={(c) => setMobilityData({ ...mobilityData, [key]: !!c })} /><Label htmlFor={key} className="text-xs cursor-pointer">{label}</Label></div>);
-                          })}
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {([["checklist_bateria", "Bateria"], ["checklist_carregador", "Carregador"], ["checklist_controle", "Controle"], ["checklist_cabos", "Cabos"], ["checklist_helices", "Hélices"], ["checklist_outros", "Outros"]] as const).map(([key, label]) => (
-                            <div key={key} className="flex items-center space-x-1.5"><Checkbox id={key} checked={(formData as any)[key]} onCheckedChange={(c) => setFormData({ ...formData, [key]: !!c })} /><Label htmlFor={key} className="text-xs cursor-pointer">{label}</Label></div>
-                          ))}
-                        </div>
-                      )}
-                      <div className="space-y-1.5"><Label className="text-xs">Condição Visual</Label><Textarea value={formData.condicao_visual} onChange={(e) => setFormData({ ...formData, condicao_visual: e.target.value })} rows={2} className="text-sm" placeholder="Riscos, amassados, lacres..." /></div>
-                      <Separator />
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Técnico Responsável</Label>
-                        <Select value={formData.tecnico_id || ""} onValueChange={(v) => setFormData({ ...formData, tecnico_id: v } as any)}>
-                          <SelectTrigger className="h-9"><SelectValue placeholder="Selecionar técnico..." /></SelectTrigger>
-                          <SelectContent>
-                            {tecnicos.map(t => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                      <div className="flex gap-4">
+                        <div className="flex items-center space-x-2"><Checkbox id="chave" checked={mobilityData.chave_ignicao} onCheckedChange={(c) => setMobilityData({ ...mobilityData, chave_ignicao: !!c })} /><Label htmlFor="chave" className="text-xs cursor-pointer">Chave entregue</Label></div>
+                        <div className="flex items-center space-x-2"><Checkbox id="carreg_mob" checked={mobilityData.carregador_entregue} onCheckedChange={(c) => setMobilityData({ ...mobilityData, carregador_entregue: !!c })} /><Label htmlFor="carreg_mob" className="text-xs cursor-pointer">Carregador</Label></div>
                       </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
-
-              {/* STEP 2: Problema */}
-              {(editingOS || wizardStep === 2) && (
-                <div className={editingOS ? "mt-4" : wizardStep !== 2 ? "hidden" : ""}>
-                  <Card>
-                    <CardHeader className="pb-3"><CardTitle className="text-sm">Diagnóstico e Orçamento</CardTitle></CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="space-y-1.5"><Label className="text-xs">Defeito Relatado *</Label><Textarea value={formData.descricao_problema} onChange={(e) => setFormData({ ...formData, descricao_problema: e.target.value })} rows={3} required placeholder="Descreva o defeito..." /></div>
-                      <div className="space-y-1.5"><Label className="text-xs">Diagnóstico Técnico</Label><Textarea value={formData.diagnostico} onChange={(e) => setFormData({ ...formData, diagnostico: e.target.value })} rows={2} placeholder="Resultado da análise..." /></div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Prioridade</Label>
-                          <div className="flex gap-2">
-                            {[{ v: "baixa", l: "Baixa", c: "border-muted-foreground/30" }, { v: "media", l: "Média", c: "border-amber-500/30" }, { v: "alta", l: "Alta", c: "border-destructive/30" }].map(p => (
-                              <button key={p.v} type="button" onClick={() => setFormData({ ...formData, prioridade: p.v })}
-                                className={`flex-1 py-1.5 rounded-md text-xs font-medium border-2 transition-colors ${formData.prioridade === p.v ? (p.v === "alta" ? "border-destructive bg-destructive/10 text-destructive" : p.v === "media" ? "border-amber-500 bg-amber-500/10 text-amber-700" : "border-primary bg-primary/10 text-primary") : "border-border bg-muted/20 text-muted-foreground"}`}>
-                                {p.l}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="space-y-1.5"><Label className="text-xs">Previsão de Entrega</Label><Input type="date" value={formData.data_previsao} onChange={(e) => setFormData({ ...formData, data_previsao: e.target.value })} className="h-9" /></div>
-                      </div>
-                      <Separator />
-                      <OSItemsSection
-                        items={osItems}
-                        onChange={setOsItems}
-                        organizationId={user ? undefined : undefined}
-                      />
-                      <Separator />
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5"><Label className="text-xs">Desconto (R$)</Label><NumberInput step="0.01" min="0" value={formData.desconto} onChange={(v) => setFormData({ ...formData, desconto: v })} className="h-9" placeholder="0,00" /></div>
-                        <div className="space-y-1.5"><Label className="text-xs">Total da OS</Label><Input type="text" value={formatCurrency(totalOrcamento)} readOnly disabled className="h-9 font-bold text-primary" /></div>
-                      </div>
-                      <div className="space-y-1.5"><Label className="text-xs">Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
-
-              {/* STEP 3: Revisão */}
-              {!editingOS && wizardStep === 3 && (
-                <Card>
-                  <CardHeader className="pb-3"><CardTitle className="text-sm">Revisão Final</CardTitle></CardHeader>
-                  <CardContent className="space-y-3 text-sm">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div><p className="text-[10px] text-muted-foreground uppercase">Cliente</p><p className="font-medium">{selectedCliente?.nome || "—"}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground uppercase">Equipamento</p><p className="font-medium">{TIPO_EQUIPAMENTO[uiCategory] || uiCategory}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground uppercase">Marca/Modelo</p><p className="font-medium">{formData.marca || "—"} {formData.modelo_equipamento || ""}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground uppercase">Nº Série</p><p className="font-mono">{formData.numero_serie || "—"}</p></div>
-                      <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase">Defeito</p><p>{formData.descricao_problema}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground uppercase">Prioridade</p><Badge variant={formData.prioridade === "alta" ? "destructive" : "secondary"}>{formData.prioridade}</Badge></div>
-                      <div><p className="text-[10px] text-muted-foreground uppercase">Total Orçamento</p><p className="font-bold text-primary">{formatCurrency(totalOrcamento || null)}</p></div>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+                  )}
 
-              {/* Navigation */}
-              <div className="flex justify-between items-center mt-4">
-                {!editingOS && wizardStep > 0 ? (
-                  <Button type="button" variant="outline" size="sm" onClick={() => setWizardStep(s => s - 1)}>Voltar</Button>
-                ) : (
-                  <Button type="button" variant="outline" size="sm" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                )}
-                {!editingOS && wizardStep < WIZARD_STEPS.length - 1 ? (
-                  <Button type="button" size="sm" className="gradient-primary" disabled={!canAdvance(wizardStep)} onClick={() => setWizardStep(s => s + 1)}>
-                    Próximo <ChevronRight className="ml-1 h-3.5 w-3.5" />
-                  </Button>
-                ) : (
-                  <Button type="button" size="sm" className="gradient-primary" disabled={formLoading} onClick={() => handleSubmit()}>
-                    {formLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                    {editingOS ? "Salvar" : "Criar OS"}
-                  </Button>
-                )}
-              </div>
+                  <Separator />
+                  <p className="text-xs font-semibold text-muted-foreground uppercase">Checklist de Entrada</p>
+                  {isMobility ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {(["check_display|Display", "check_acelerador|Acelerador", "check_freios|Freios", "check_pneus|Pneus", "check_controladora|Controladora", "check_iluminacao|Iluminação", "check_carenagem|Carenagem"] as const).map(item => {
+                        const [key, label] = item.split("|");
+                        return (<div key={key} className="flex items-center space-x-1.5"><Checkbox id={key} checked={(mobilityData as any)[key]} onCheckedChange={(c) => setMobilityData({ ...mobilityData, [key]: !!c })} /><Label htmlFor={key} className="text-xs cursor-pointer">{label}</Label></div>);
+                      })}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {([["checklist_bateria", "Bateria"], ["checklist_carregador", "Carregador"], ["checklist_controle", "Controle"], ["checklist_cabos", "Cabos"], ["checklist_helices", "Hélices"], ["checklist_outros", "Outros"]] as const).map(([key, label]) => (
+                        <div key={key} className="flex items-center space-x-1.5"><Checkbox id={key} checked={(formData as any)[key]} onCheckedChange={(c) => setFormData({ ...formData, [key]: !!c })} /><Label htmlFor={key} className="text-xs cursor-pointer">{label}</Label></div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="space-y-1.5"><Label className="text-xs">Condição Visual</Label><Textarea value={formData.condicao_visual} onChange={(e) => setFormData({ ...formData, condicao_visual: e.target.value })} rows={2} className="text-sm" placeholder="Riscos, amassados, lacres..." /></div>
+                  <Separator />
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Técnico Responsável</Label>
+                    <Select value={formData.tecnico_id || ""} onValueChange={(v) => setFormData({ ...formData, tecnico_id: v } as any)}>
+                      <SelectTrigger className="h-9"><SelectValue placeholder="Selecionar técnico..." /></SelectTrigger>
+                      <SelectContent>
+                        {tecnicos.map(t => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Diagnóstico, peças e serviços */}
+              <Card>
+                <CardHeader className="pb-3"><CardTitle className="text-sm">3. Diagnóstico, Peças e Serviços</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-1.5"><Label className="text-xs">Defeito Relatado *</Label><Textarea value={formData.descricao_problema} onChange={(e) => setFormData({ ...formData, descricao_problema: e.target.value })} rows={3} required placeholder="Descreva o defeito..." /></div>
+                  <div className="space-y-1.5"><Label className="text-xs">Diagnóstico / Solução Técnica</Label><Textarea value={formData.diagnostico} onChange={(e) => setFormData({ ...formData, diagnostico: e.target.value })} rows={2} placeholder="Resultado da análise..." /></div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Prioridade</Label>
+                      <div className="flex gap-2">
+                        {[{ v: "baixa", l: "Baixa" }, { v: "media", l: "Média" }, { v: "alta", l: "Alta" }].map(p => (
+                          <button key={p.v} type="button" onClick={() => setFormData({ ...formData, prioridade: p.v })}
+                            className={`flex-1 py-1.5 rounded-md text-xs font-medium border-2 transition-colors ${formData.prioridade === p.v ? (p.v === "alta" ? "border-destructive bg-destructive/10 text-destructive" : p.v === "media" ? "border-amber-500 bg-amber-500/10 text-amber-700" : "border-primary bg-primary/10 text-primary") : "border-border bg-muted/20 text-muted-foreground"}`}>
+                            {p.l}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5"><Label className="text-xs">Previsão de Entrega</Label><Input type="date" value={formData.data_previsao} onChange={(e) => setFormData({ ...formData, data_previsao: e.target.value })} className="h-9" /></div>
+                  </div>
+                  <Separator />
+                  <OSItemsSection items={osItems} onChange={setOsItems} />
+                </CardContent>
+              </Card>
+
+              {/* Observações + Resumo financeiro */}
+              <Card>
+                <CardHeader className="pb-3"><CardTitle className="text-sm">4. Observações e Resumo</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-1.5"><Label className="text-xs">Observações Técnicas / Internas</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={3} /></div>
+                  <Separator />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5"><Label className="text-xs">Desconto (R$)</Label><NumberInput step="0.01" min="0" value={formData.desconto} onChange={(v) => setFormData({ ...formData, desconto: v })} className="h-9" placeholder="0,00" /></div>
+                    <div className="space-y-1.5"><Label className="text-xs">Total Geral da OS</Label><Input type="text" value={formatCurrency(totalOrcamento)} readOnly disabled className="h-9 font-bold text-primary" /></div>
+                  </div>
+                </CardContent>
+              </Card>
             </form>
+
+            {/* Sticky bottom save bar */}
+            <div className="border-t bg-background p-3 shrink-0 flex items-center justify-between gap-2 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+              <Button type="button" variant="outline" size="sm" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+              <div className="flex items-center gap-3">
+                <div className="text-right hidden sm:block">
+                  <p className="text-[10px] text-muted-foreground uppercase leading-none">Total</p>
+                  <p className="text-sm font-bold text-primary leading-tight">{formatCurrency(totalOrcamento)}</p>
+                </div>
+                <Button type="button" size="lg" className="gradient-primary min-w-[140px]" disabled={formLoading} onClick={() => handleSubmit()}>
+                  {formLoading && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+                  {editingOS ? "Salvar Alterações" : "Criar OS"}
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
+
 
         {/* View OS Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
