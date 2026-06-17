@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -288,19 +288,21 @@ export default function Estoque() {
     return { status: 'Ok', variant: 'default' as const, icon: TrendingUp };
   };
 
-  const filteredItens = itens.filter(item =>
-    item.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.categoria.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredItens = useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    return itens.filter(item =>
+      item.descricao.toLowerCase().includes(term) ||
+      item.codigo.toLowerCase().includes(term) ||
+      item.categoria.toLowerCase().includes(term)
+    );
+  }, [itens, searchTerm]);
 
-  const itensEstoqueBaixo = itens.filter(item => item.quantidade <= item.estoque_minimo);
-  const valorTotal = itens.reduce((acc, item) => acc + (item.quantidade * item.custo_unitario), 0);
+  const itensEstoqueBaixo = useMemo(() => itens.filter(item => item.quantidade <= item.estoque_minimo), [itens]);
+  const valorTotal = useMemo(() => itens.reduce((acc, item) => acc + (item.quantidade * item.custo_unitario), 0), [itens]);
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-  // Get unique categories for SearchableInput
-  const categorias = [...new Set(itens.map(i => i.categoria).filter(Boolean))];
-  const fornecedores = [...new Set(itens.map(i => i.fornecedor).filter(Boolean) as string[])];
+  const categorias = useMemo(() => [...new Set(itens.map(i => i.categoria).filter(Boolean))], [itens]);
+  const fornecedores = useMemo(() => [...new Set(itens.map(i => i.fornecedor).filter(Boolean) as string[])], [itens]);
 
   return (
     <MainLayout>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -122,12 +122,15 @@ export default function Clientes() {
     setDuplicateWarning(null);
   };
 
-  const filteredClientes = clientes.filter(c =>
-    c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.telefone.includes(searchTerm) ||
-    c.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.cpf_cnpj?.includes(searchTerm)
-  );
+  const filteredClientes = useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    return clientes.filter(c =>
+      c.nome.toLowerCase().includes(term) ||
+      c.telefone.includes(searchTerm) ||
+      c.email?.toLowerCase().includes(term) ||
+      c.cpf_cnpj?.includes(searchTerm)
+    );
+  }, [clientes, searchTerm]);
 
   return (
     <MainLayout>
