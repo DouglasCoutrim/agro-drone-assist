@@ -102,6 +102,9 @@ export default function OrdensServico() {
   const WIZARD_STEPS = ["Cliente", "Equipamento", "Problema", "Revisão"];
 
   const [uiCategory, setUiCategory] = useState("bateria");
+  const { segmentos: orgSegmentos, tipos_custom: orgCustomTypes, save: saveSegments } = useOrgSegments();
+  const availableTypes = getAvailableTypes(orgSegmentos, orgCustomTypes);
+  const [newCustomLabel, setNewCustomLabel] = useState("");
 
   const [formData, setFormData] = useState({
     cliente_id: "",
