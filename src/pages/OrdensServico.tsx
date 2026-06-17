@@ -75,6 +75,7 @@ const detectUiCategory = (os: any): string => {
 
 export default function OrdensServico() {
   const { user } = useAuth();
+  const { organization } = useOrganization();
   const { config: empresa } = useEmpresaConfig();
   const { tecnicos } = useTeamMembers();
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
