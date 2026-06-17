@@ -179,6 +179,26 @@ export default function OrdensServico() {
     }
   };
 
+  const fetchOSItems = useCallback(async (osId: string, osOrgId?: string | null): Promise<OSItem[]> => {
+    let query = supabase
+      .from("itens_os")
+      .select("*")
+      .eq("ordem_servico_id", osId)
+      .order("created_at", { ascending: true });
+
+    const orgId = osOrgId || organization?.id;
+    if (orgId && !isPlatformAdmin) query = query.eq("organization_id", orgId);
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("Erro ao carregar itens da OS:", error);
+      toast.error("Não foi possível carregar os itens/serviços desta OS: " + error.message);
+      return [];
+    }
+
+    return mapDbItemsToOSItems(data as ItemOSRow[]);
+  }, [organization?.id, isPlatformAdmin]);
+
   const clienteOptions: SmartSelectOption[] = clientes.map(c => ({
     id: c.id,
     label: c.nome,
