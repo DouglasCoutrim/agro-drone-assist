@@ -407,16 +407,11 @@ export default function OrdensServico() {
 
   const handlePrintOS = async () => {
     if (!viewingOS) return;
+    const t = toast.loading("Carregando itens da OS para o PDF...");
     
-    let itemsForPdf = viewOsItems;
-    if (itemsForPdf.length === 0) {
-      const { data } = await supabase.from("itens_os").select("*").eq("ordem_servico_id", viewingOS.id);
-      itemsForPdf = (data || []).map((d: any) => ({
-        id: d.id, tipo: d.tipo, produto_id: d.produto_id, servico_id: d.servico_id,
-        descricao: d.descricao, quantidade: d.quantidade, valor_unitario: d.valor_unitario, valor_total: d.valor_total,
-      }));
-      setViewOsItems(itemsForPdf);
-    }
+    const itemsForPdf = await fetchOSItems(viewingOS.id, viewingOS.organization_id);
+    setViewOsItems(itemsForPdf);
+    toast.dismiss(t);
     
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
@@ -467,15 +462,8 @@ export default function OrdensServico() {
     if (!cliente?.telefone) { toast.error("Cliente sem telefone cadastrado"); return; }
     const t = toast.loading("Gerando PDF da OS...");
     try {
-      let itemsForPdf = viewingOS?.id === os.id ? viewOsItems : [];
-      if (itemsForPdf.length === 0) {
-        const { data } = await supabase.from("itens_os").select("*").eq("ordem_servico_id", os.id);
-        itemsForPdf = (data || []).map((d: any) => ({
-          id: d.id, tipo: d.tipo, produto_id: d.produto_id, servico_id: d.servico_id,
-          descricao: d.descricao, quantidade: d.quantidade, valor_unitario: d.valor_unitario, valor_total: d.valor_total,
-        }));
-        if (viewingOS?.id === os.id) setViewOsItems(itemsForPdf);
-      }
+      const itemsForPdf = await fetchOSItems(os.id, os.organization_id);
+      if (viewingOS?.id === os.id) setViewOsItems(itemsForPdf);
       const osComCliente = { ...os, clientes: os.clientes || { nome: cliente.nome, telefone: cliente.telefone } };
       const html = generateOSPDF(osComCliente, itemsForPdf, empresa);
       const { htmlToPdfBlob, sharePdfOnWhatsApp } = await import("@/lib/os-pdf-share");
