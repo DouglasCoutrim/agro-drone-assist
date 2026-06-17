@@ -26,6 +26,7 @@ import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { generateOrcamentoPDF, shareOrcamentoViaWhatsApp } from "@/lib/orcamento-pdf";
 import { formatCurrency } from "@/lib/formatters";
 import { PayButton } from "@/components/PayButton";
+import { useConfirm } from "@/hooks/useConfirm";
 
 type Cliente = Tables<"clientes">;
 
@@ -58,6 +59,7 @@ export default function Orcamentos() {
   const [convertId, setConvertId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [orgId, setOrgId] = useState<string | null>(null);
+  const confirm = useConfirm();
 
   const [formData, setFormData] = useState({
     cliente_id: "",
@@ -136,7 +138,7 @@ export default function Orcamentos() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Excluir este orçamento?")) return;
+    if (!await confirm({ title: 'Excluir orçamento', description: 'Esta ação não pode ser desfeita.', variant: 'destructive', confirmText: 'Excluir' })) return;
     try {
       const { error } = await supabase.from("orcamentos").delete().eq("id", id);
       if (error) throw error;
