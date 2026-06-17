@@ -162,25 +162,62 @@ export default function OrdensServico() {
   const totalOrcamento = Math.max(0, itemsTotal - (formData.desconto || 0));
   const viewItemsTotal = viewOsItems.reduce((s, i) => s + (i.valor_total || 0), 0);
 
-  useEffect(() => { fetchData(); }, [organization?.id, isPlatformAdmin]);
+  useEffect(() => {
+    if (orgLoading) return;
+    if (!isPlatformAdmin && !organization?.id) {
+      setLoading(false);
+      return;
+    }
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organization?.id, isPlatformAdmin, orgLoading]);
 
   const fetchData = async () => {
+    let didToast = false;
     try {
-      let ordensQuery = supabase.from("ordens_servico").select("*, clientes(nome, telefone), tecnico:profiles!ordens_servico_tecnico_id_fkey(nome)").order("created_at", { ascending: false });
+      let ordensQuery = supabase
+        .from("ordens_servico")
+        .select("*, clientes(nome, telefone), tecnico:profiles!ordens_servico_tecnico_id_fkey(nome)")
+        .order("created_at", { ascending: false });
       let clientesQuery = supabase.from("clientes").select("*").order("nome");
-      
+
       if (organization?.id && !isPlatformAdmin) {
         ordensQuery = ordensQuery.eq("organization_id", organization.id);
         clientesQuery = clientesQuery.eq("organization_id", organization.id);
       }
-      
+
       const [ordensRes, clientesRes] = await Promise.all([ordensQuery, clientesQuery]);
-      if (ordensRes.error) throw ordensRes.error;
-      if (clientesRes.error) throw clientesRes.error;
-      setOrdens(ordensRes.data || []);
-      setClientes(clientesRes.data || []);
+
+      if (ordensRes.error) {
+        console.error("Erro detalhado do Supabase (ordens_servico):", ordensRes.error);
+        // Fallback: retry without the profiles join in case RLS blocks it
+        let retry = supabase
+          .from("ordens_servico")
+          .select("*, clientes(nome, telefone)")
+          .order("created_at", { ascending: false });
+        if (organization?.id && !isPlatformAdmin) {
+          retry = retry.eq("organization_id", organization.id);
+        }
+        const retryRes = await retry;
+        if (retryRes.error) {
+          console.error("Erro detalhado do Supabase (retry ordens_servico):", retryRes.error);
+          if (!didToast) { toast.error(getErrorMessage(retryRes.error)); didToast = true; }
+        } else {
+          setOrdens(retryRes.data || []);
+        }
+      } else {
+        setOrdens(ordensRes.data || []);
+      }
+
+      if (clientesRes.error) {
+        console.error("Erro detalhado do Supabase (clientes):", clientesRes.error);
+        if (!didToast) { toast.error(getErrorMessage(clientesRes.error)); didToast = true; }
+      } else {
+        setClientes(clientesRes.data || []);
+      }
     } catch (err) {
-      toast.error(getErrorMessage(err));
+      console.error("Erro detalhado do Supabase:", err);
+      if (!didToast) toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
