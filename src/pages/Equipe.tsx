@@ -31,6 +31,7 @@ interface UserWithRoleAndPerms extends Profile {
 
 export default function Equipe() {
   const { user, role, isAdmin } = useAuth();
+  const confirm = useConfirm();
   const [users, setUsers] = useState<UserWithRoleAndPerms[]>([]);
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
