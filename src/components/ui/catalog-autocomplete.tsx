@@ -127,12 +127,23 @@ export function CatalogAutocomplete({
     if (!name.trim()) return;
     setAdding(true);
     try {
+      let orgId = organizationId || null;
+      if (!orgId) {
+        const { data: auth } = await supabase.auth.getUser();
+        if (!auth.user) throw new Error("Sessão expirada. Faça login novamente.");
+        const { data: profile } = await supabase
+          .from("profiles").select("organization_id").eq("id", auth.user.id).maybeSingle();
+        orgId = profile?.organization_id || null;
+      }
+      if (!orgId) {
+        throw new Error("Sua conta não está vinculada a uma empresa. Contate o administrador.");
+      }
       const table = source === "servicos" ? "servicos" : "produtos";
       if (table === "produtos") {
         const { data, error } = await supabase.from("produtos").insert({
           descricao: name.trim(), preco_venda: 0, custo_unitario: 0,
           categoria: "geral", codigo: "",
-          organization_id: organizationId || null,
+          organization_id: orgId,
         }).select("id, descricao, preco_venda, codigo, categoria").single();
         if (error) throw error;
         const newItem: CatalogResult = {
@@ -146,7 +157,7 @@ export function CatalogAutocomplete({
       } else {
         const { data, error } = await supabase.from("servicos").insert({
           descricao: name.trim(), preco: 0,
-          organization_id: organizationId || null,
+          organization_id: orgId,
         }).select("id, descricao, preco").single();
         if (error) throw error;
         const newItem: CatalogResult = {
