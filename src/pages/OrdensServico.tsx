@@ -372,9 +372,12 @@ export default function OrdensServico() {
     setViewOsItems([]);
     setViewOsItemsLoading(true);
     setViewDialogOpen(true);
-    const items = await fetchOSItems(os.id, os.organization_id);
-    setViewOsItems(items);
-    setViewOsItemsLoading(false);
+    try {
+      const items = await fetchOSItems(os.id, os.organization_id);
+      setViewOsItems(items);
+    } finally {
+      setViewOsItemsLoading(false);
+    }
   };
 
   const handleStatusChange = async (osId: string, newStatus: string) => {
