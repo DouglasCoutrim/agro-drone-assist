@@ -200,13 +200,16 @@ export default function OrdensServico() {
         observacoesWithMobility = observacoesWithMobility ? `${observacoesWithMobility}\n${mobilityTag}` : mobilityTag;
       }
 
+      // valor_orcamento é calculado pelos itens; quando não houver itens, preservar o valor existente (compat. com OS antigas)
+      const valorOrcamentoFinal = osItems.length > 0
+        ? (totalOrcamento || null)
+        : (formData.valor_orcamento || null);
+
       const osData: any = {
         ...restForm,
         tipo_equipamento: mapCategoryToDbEnum(uiCategory),
         observacoes: observacoesWithMobility || null,
-        custo_pecas: 0,
-        custo_mao_obra: 0,
-        valor_orcamento: totalOrcamento || null,
+        valor_orcamento: valorOrcamentoFinal,
         data_previsao: formData.data_previsao || null,
         diagnostico: formData.diagnostico || null,
         ciclos_carga_entrada: isBateria ? ciclos_carga_entrada || null : null,
