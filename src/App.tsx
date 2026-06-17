@@ -94,7 +94,8 @@ const App = () => {
                   <Route path="/mensalidade-em-atraso" element={<ProtectedRoute allowBlocked><MensalidadeAtraso /></ProtectedRoute>} />
                   <Route path="/admin-master" element={<ProtectedRoute requiredPlatformAdmin><AdminMaster /></ProtectedRoute>} />
                   <Route path="/admin" element={<Navigate to="/admin-master" replace />} />
-                  <Route path="/" element={isPWA ? (window.location.pathname.startsWith('/admin') ? <AdminAuth /> : <Auth />) : <Landing />} />
+                  <Route path="/" element={window.location.pathname.startsWith('/admin') ? <AdminAuth /> : <Auth />} />
+                  <Route path="/landing" element={<Landing />} />
                   <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                   <Route path="/ordens-servico" element={<ProtectedRoute requiredPermission="acesso_os"><OrdensServico /></ProtectedRoute>} />
                   <Route path="/estoque" element={<ProtectedRoute requiredPermission="acesso_estoque"><Estoque /></ProtectedRoute>} />
