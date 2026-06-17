@@ -225,6 +225,19 @@ export default function OrdensServico() {
 
     setFormLoading(true);
     try {
+      let organizationId = organization?.id || null;
+      if (!organizationId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("organization_id")
+          .eq("id", user.id)
+          .maybeSingle();
+        organizationId = profile?.organization_id || null;
+      }
+      if (!organizationId && !isPlatformAdmin) {
+        throw new Error("Sua conta não está vinculada a uma empresa. Contate o administrador.");
+      }
+
       const { ciclos_carga_entrada, ciclos_carga_saida, ...restForm } = formData;
       let observacoesWithMobility = (restForm.observacoes || "").replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").trim();
 
@@ -248,7 +261,7 @@ export default function OrdensServico() {
 
       const osData: any = {
         ...restForm,
-        organization_id: organization?.id || null,
+        organization_id: organizationId,
         tipo_equipamento: mapCategoryToDbEnum(uiCategory),
         observacoes: observacoesWithMobility || null,
         valor_orcamento: valorOrcamentoFinal,
@@ -292,7 +305,7 @@ export default function OrdensServico() {
             quantidade: item.quantidade,
             valor_unitario: item.valor_unitario,
             valor_total: item.valor_total,
-            organization_id: organization?.id || null,
+            organization_id: organizationId,
           }));
           const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInsert);
           if (itemsError) {
