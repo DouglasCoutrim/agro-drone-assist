@@ -1044,8 +1044,16 @@ export default function OrdensServico() {
                       </div>
                       <Separator />
                       {/* Items da OS */}
-                      {viewOsItems.length > 0 && (
+                      {viewOsItemsLoading ? (
+                        <div className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando itens, peças e serviços...
+                        </div>
+                      ) : viewOsItems.length > 0 ? (
                         <OSItemsSection items={viewOsItems} onChange={() => {}} disabled />
+                      ) : (
+                        <div className="rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                          Nenhum item, peça ou serviço encontrado para esta OS.
+                        </div>
                       )}
                       <Separator />
                       <div className="grid grid-cols-2 gap-3">
