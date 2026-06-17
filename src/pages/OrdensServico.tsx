@@ -310,8 +310,9 @@ export default function OrdensServico() {
     }
   };
 
-  const handleEdit = (os: OrdemServico) => {
+  const handleEdit = async (os: OrdemServico) => {
     setEditingOS(os);
+    setOsItems([]);
     const detectedCategory = detectUiCategory(os);
     setUiCategory(detectedCategory);
     const obs = os.observacoes || "";
@@ -360,27 +361,19 @@ export default function OrdensServico() {
       ciclos_carga_saida: (os as any).ciclos_carga_saida || 0,
       tecnico_id: os.tecnico_id || "",
     });
-    // Load items for this OS
-    supabase.from("itens_os").select("*").eq("ordem_servico_id", os.id).then(({ data }) => {
-      setOsItems((data || []).map((d: any) => ({
-        id: d.id, tipo: d.tipo, produto_id: d.produto_id, servico_id: d.servico_id,
-        descricao: d.descricao, quantidade: d.quantidade, valor_unitario: d.valor_unitario, valor_total: d.valor_total,
-      })));
-    });
+    setOsItems(await fetchOSItems(os.id, os.organization_id));
     setWizardStep(0);
     setDialogOpen(true);
   };
 
-  const handleView = (os: OrdemServico) => {
+  const handleView = async (os: OrdemServico) => {
     setViewingOS(os);
+    setViewOsItems([]);
+    setViewOsItemsLoading(true);
     setViewDialogOpen(true);
-    // Load items for view
-    supabase.from("itens_os").select("*").eq("ordem_servico_id", os.id).then(({ data }) => {
-      setViewOsItems((data || []).map((d: any) => ({
-        id: d.id, tipo: d.tipo, produto_id: d.produto_id, servico_id: d.servico_id,
-        descricao: d.descricao, quantidade: d.quantidade, valor_unitario: d.valor_unitario, valor_total: d.valor_total,
-      })));
-    });
+    const items = await fetchOSItems(os.id, os.organization_id);
+    setViewOsItems(items);
+    setViewOsItemsLoading(false);
   };
 
   const handleStatusChange = async (osId: string, newStatus: string) => {
