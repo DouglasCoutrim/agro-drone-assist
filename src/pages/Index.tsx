@@ -39,7 +39,7 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
 const Index = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isPlatformAdmin, loading: orgLoading } = useOrganization();
+  const { organization, isPlatformAdmin, loading: orgLoading } = useOrganization();
   const [stats, setStats] = useState({ osAbertas: 0, osConcluidas: 0, itensEstoqueBaixo: 0, totalClientes: 0, faturamentoMes: 0 });
   const [recentOS, setRecentOS] = useState<any[]>([]);
   const [overdueOS, setOverdueOS] = useState<any[]>([]);
@@ -48,49 +48,57 @@ const Index = () => {
   const [viewingOS, setViewingOS] = useState<any | null>(null);
 
   useEffect(() => {
-    // Only redirect if we are specifically at the index/dashboard route
-    // and if the user is a platform admin.
     if (user && !orgLoading && isPlatformAdmin && window.location.pathname === "/dashboard") {
       navigate("/admin-master", { replace: true });
     }
   }, [user, isPlatformAdmin, orgLoading, navigate]);
 
-  useEffect(() => { if (user) fetchDashboardData(); }, [user]);
+  useEffect(() => { if (user && organization?.id) fetchDashboardData(); }, [user, organization?.id]);
 
   const fetchDashboardData = async () => {
+    if (!organization?.id) return;
     try {
-      const { data: osAbertas } = await supabase.from("ordens_servico").select("id", { count: "exact" }).in("status", ["aberta", "em_andamento", "aguardando_peca", "recebido", "aguardando_diagnostico", "aguardando_aprovacao"]);
-      const { data: osConcluidas } = await supabase.from("ordens_servico").select("id", { count: "exact" }).in("status", ["concluida", "pronto_retirada", "entregue"]);
-      const { data: itensEstoque } = await supabase.from("itens_estoque").select("*");
-      const itensEstoqueBaixo = itensEstoque?.filter(item => item.quantidade <= item.estoque_minimo).length || 0;
-      const { count: totalClientes } = await supabase.from("clientes").select("*", { count: "exact", head: true });
-      const { data: recentOSData } = await supabase.from("ordens_servico").select("*, clientes (nome, telefone)").order("created_at", { ascending: false }).limit(5);
+      const orgId = organization.id;
       const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
-      const { data: receitas } = await supabase.from("financeiro").select("valor").eq("tipo", "receita").gte("data_transacao", startOfMonth.toISOString());
-      const faturamentoMes = receitas?.reduce((acc, r) => acc + Number(r.valor), 0) || 0;
-
       const today = new Date().toISOString();
-      const { data: overdueOSData } = await supabase
-        .from("ordens_servico").select("*, clientes (nome, telefone)")
-        .not("data_previsao", "is", null).lt("data_previsao", today)
-        .not("status", "in", '("entregue","cancelada","pronto_retirada","concluida")')
-        .order("data_previsao", { ascending: true }).limit(10);
 
-      try {
-        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-        const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-        const session = await supabase.auth.getSession();
-        const token = session.data.session?.access_token;
-        if (token) {
-          const res = await fetch(`https://${projectId}.supabase.co/functions/v1/asaas?action=list_payments&status=OVERDUE`, { headers: { Authorization: `Bearer ${token}`, apikey: anonKey } });
-          const result = await res.json();
-          setOverduePayments(result?.data || []);
-        }
-      } catch { /* silent */ }
+      const [osAbertasRes, osConcluidasRes, itensEstoqueRes, totalClientesRes, recentOSRes, receitasRes, overdueOSRes] = await Promise.all([
+        supabase.from("ordens_servico").select("id", { count: "exact", head: true }).eq("organization_id", orgId).in("status", ["aberta", "em_andamento", "aguardando_peca", "recebido", "aguardando_diagnostico", "aguardando_aprovacao"]),
+        supabase.from("ordens_servico").select("id", { count: "exact", head: true }).eq("organization_id", orgId).in("status", ["concluida", "pronto_retirada", "entregue"]),
+        supabase.from("itens_estoque").select("quantidade, estoque_minimo").eq("organization_id", orgId),
+        supabase.from("clientes").select("*", { count: "exact", head: true }).eq("organization_id", orgId),
+        supabase.from("ordens_servico").select("*, clientes (nome, telefone)").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(5),
+        supabase.from("financeiro").select("valor").eq("organization_id", orgId).eq("tipo", "receita").gte("data_transacao", startOfMonth.toISOString()),
+        supabase.from("ordens_servico").select("*, clientes (nome, telefone)").eq("organization_id", orgId).not("data_previsao", "is", null).lt("data_previsao", today).not("status", "in", '("entregue","cancelada","pronto_retirada","concluida")').order("data_previsao", { ascending: true }).limit(10),
+      ]);
 
-      setStats({ osAbertas: osAbertas?.length || 0, osConcluidas: osConcluidas?.length || 0, itensEstoqueBaixo, totalClientes: totalClientes || 0, faturamentoMes });
-      setRecentOS(recentOSData || []);
-      setOverdueOS(overdueOSData || []);
+      const itensEstoqueBaixo = (itensEstoqueRes.data || []).filter(item => item.quantidade <= item.estoque_minimo).length;
+      const faturamentoMes = (receitasRes.data || []).reduce((acc, r) => acc + Number(r.valor), 0);
+
+      // Asaas overdue payments (best-effort, parallel)
+      (async () => {
+        try {
+          const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+          const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+          const session = await supabase.auth.getSession();
+          const token = session.data.session?.access_token;
+          if (token) {
+            const res = await fetch(`https://${projectId}.supabase.co/functions/v1/asaas?action=list_payments&status=OVERDUE`, { headers: { Authorization: `Bearer ${token}`, apikey: anonKey } });
+            const result = await res.json();
+            setOverduePayments(result?.data || []);
+          }
+        } catch { /* silent */ }
+      })();
+
+      setStats({
+        osAbertas: osAbertasRes.count || 0,
+        osConcluidas: osConcluidasRes.count || 0,
+        itensEstoqueBaixo,
+        totalClientes: totalClientesRes.count || 0,
+        faturamentoMes,
+      });
+      setRecentOS(recentOSRes.data || []);
+      setOverdueOS(overdueOSRes.data || []);
     } catch (error) {
       console.error("Dashboard error:", error);
     } finally {
