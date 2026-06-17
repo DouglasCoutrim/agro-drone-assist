@@ -25,10 +25,8 @@ export default function Auth() {
   useEffect(() => {
     if (user && !orgLoading) {
       if (isPlatformAdmin) {
-        console.log("Platform admin detected, redirecting to /admin-master");
         navigate("/admin-master", { replace: true });
       } else {
-        console.log("Regular user detected, redirecting to /dashboard");
         navigate("/dashboard", { replace: true });
       }
     }
