@@ -32,6 +32,7 @@ import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { generateOSPDF } from "@/components/ordens-servico/OSPDFGenerator";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useOrgSegments } from "@/hooks/useOrgSegments";
+import { useConfirm } from "@/hooks/useConfirm";
 import { getAvailableTypes, findTypeByValue, SEGMENTOS } from "@/lib/equipment-segments";
 
 
@@ -91,6 +92,7 @@ export default function OrdensServico() {
   const { organization, isPlatformAdmin } = useOrganization();
   const { config: empresa } = useEmpresaConfig();
   const { tecnicos } = useTeamMembers();
+  const confirm = useConfirm();
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -423,6 +425,26 @@ export default function OrdensServico() {
     if (next) handleStatusChange(os.id, next);
   };
 
+  const handleDeleteOS = async (os: OrdemServico) => {
+    const ok = await confirm({
+      title: `Deletar OS ${os.numero}?`,
+      description: "Tem certeza que deseja deletar esta Ordem de Serviço? Esta ação não poderá ser desfeita e removerá itens, histórico e anexos vinculados.",
+      variant: "destructive",
+      confirmText: "Sim, deletar OS",
+    });
+    if (!ok) return;
+    try {
+      const { error } = await supabase.from("ordens_servico").delete().eq("id", os.id);
+      if (error) throw error;
+      toast.success(`OS ${os.numero} deletada.`);
+      if (editingOS?.id === os.id) { setDialogOpen(false); resetForm(); }
+      if (viewingOS?.id === os.id) { setViewDialogOpen(false); setViewingOS(null); }
+      fetchData();
+    } catch (err: any) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
   const handlePrintOS = async () => {
     if (!viewingOS) return;
     const printWindow = window.open("", "_blank");
@@ -730,6 +752,10 @@ export default function OrdensServico() {
                             <DropdownMenuItem onClick={() => { setViewingOS(os); setTimeout(handlePrintOS, 100); }}>
                               <Printer className="mr-2 h-3.5 w-3.5" />Imprimir OS
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleDeleteOS(os)} className="text-destructive focus:text-destructive">
+                              <Trash2 className="mr-2 h-3.5 w-3.5" />Deletar OS
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -960,7 +986,14 @@ export default function OrdensServico() {
 
             {/* Sticky bottom save bar */}
             <div className="border-t bg-background p-3 shrink-0 flex items-center justify-between gap-2 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
-              <Button type="button" variant="outline" size="sm" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+                {editingOS && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => handleDeleteOS(editingOS)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                    <Trash2 className="h-4 w-4 sm:mr-1.5" /><span className="hidden sm:inline">Deletar</span>
+                  </Button>
+                )}
+              </div>
               <div className="flex items-center gap-3">
                 <div className="text-right hidden sm:block">
                   <p className="text-[10px] text-muted-foreground uppercase leading-none">Total</p>

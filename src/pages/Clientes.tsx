@@ -109,12 +109,27 @@ export default function Clientes() {
     setDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!await confirm({ title: 'Excluir cliente', description: 'Esta ação não pode ser desfeita.', variant: 'destructive', confirmText: 'Excluir' })) return;
+  const handleDelete = async (cliente: Cliente) => {
     try {
-      const { error } = await supabase.from('clientes').delete().eq('id', id);
+      const { count: osCount } = await supabase
+        .from('ordens_servico')
+        .select('id', { count: 'exact', head: true })
+        .eq('cliente_id', cliente.id);
+      const impacto = osCount && osCount > 0
+        ? `Este cliente possui ${osCount} Ordem(ns) de Serviço vinculada(s). `
+        : '';
+      const ok = await confirm({
+        title: `⚠️ Deletar ${cliente.nome}?`,
+        description: `Atenção: ${impacto}Deletar este cliente irá apagar permanentemente todas as Ordens de Serviço, itens, históricos e anexos vinculados a ele. Esta ação não pode ser desfeita. Deseja continuar?`,
+        variant: 'destructive',
+        confirmText: 'Sim, deletar tudo',
+        cancelText: 'Cancelar',
+      });
+      if (!ok) return;
+      const { error } = await supabase.from('clientes').delete().eq('id', cliente.id);
       if (error) throw error;
-      toast.success('Cliente excluído!'); fetchClientes();
+      toast.success('Cliente e dados vinculados excluídos.');
+      fetchClientes();
     } catch (error: any) { toast.error(getErrorMessage(error)); }
   };
 
@@ -267,7 +282,7 @@ export default function Clientes() {
                     </div>
                     <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleEdit(cliente)}><Edit className="h-3.5 w-3.5" /></Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(cliente.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(cliente)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                     </div>
                   </div>
                 ))}
