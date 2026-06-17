@@ -651,6 +651,8 @@ export default function OrdensServico() {
                           {os.modelo_equipamento ? ` · ${os.modelo_equipamento}` : ""}
                           <span className="ml-2">{formatDate(os.data_entrada)}</span>
                         </p>
+                        <p className="text-sm font-bold text-primary mt-1">{formatCurrency((os as any).valor_orcamento)}</p>
+
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         {/* Quick advance button */}
