@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { EmpresaConfigProvider } from "@/hooks/useEmpresaConfig";
+import { ConfirmProvider } from "@/hooks/useConfirm";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useEffect, useState, lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
@@ -84,6 +85,7 @@ const App = () => {
         <BrowserRouter>
           <AuthProvider>
             <EmpresaConfigProvider>
+              <ConfirmProvider>
               <Suspense fallback={<PageFallback />}>
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
