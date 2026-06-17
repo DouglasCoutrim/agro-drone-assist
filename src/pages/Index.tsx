@@ -21,19 +21,19 @@ const TIPO_EQUIPAMENTO: Record<string, string> = {
 };
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  recebido: { label: "Recebido", className: "bg-vc-amber-light text-vc-amber-text" },
-  aguardando_diagnostico: { label: "Aguard. Diagnóstico", className: "bg-vc-slate-light text-vc-slate-text" },
-  aguardando_aprovacao: { label: "Aguard. Aprovação", className: "bg-vc-slate-light text-vc-slate-text" },
-  aprovado: { label: "Aprovado", className: "bg-vc-blue-light text-vc-blue-text" },
-  em_reparo: { label: "Em Reparo", className: "bg-vc-blue-light text-vc-blue-text" },
-  em_testes: { label: "Em Testes", className: "bg-vc-blue-light text-vc-blue-text" },
-  pronto_retirada: { label: "Pronto p/ Retirada", className: "bg-vc-green-light text-vc-green-text" },
-  entregue: { label: "Entregue", className: "bg-vc-slate-light text-vc-slate-text opacity-70" },
-  cancelada: { label: "Cancelado", className: "bg-vc-red-light text-vc-red-text" },
-  aberta: { label: "Aberta", className: "bg-vc-amber-light text-vc-amber-text" },
-  em_andamento: { label: "Em Andamento", className: "bg-vc-blue-light text-vc-blue-text" },
-  aguardando_peca: { label: "Aguardando Peça", className: "bg-vc-slate-light text-vc-slate-text" },
-  concluida: { label: "Concluída", className: "bg-vc-green-light text-vc-green-text" },
+  recebido: { label: "Recebido", className: "bg-amber-100 text-amber-800" },
+  aguardando_diagnostico: { label: "Aguard. Diagnóstico", className: "bg-slate-100 text-slate-800" },
+  aguardando_aprovacao: { label: "Aguard. Aprovação", className: "bg-slate-100 text-slate-800" },
+  aprovado: { label: "Aprovado", className: "bg-blue-100 text-blue-800" },
+  em_reparo: { label: "Em Reparo", className: "bg-blue-100 text-blue-800" },
+  em_testes: { label: "Em Testes", className: "bg-blue-100 text-blue-800" },
+  pronto_retirada: { label: "Pronto p/ Retirada", className: "bg-green-100 text-green-800" },
+  entregue: { label: "Entregue", className: "bg-slate-100 text-slate-800 opacity-70" },
+  cancelada: { label: "Cancelado", className: "bg-red-100 text-red-800" },
+  aberta: { label: "Aberta", className: "bg-amber-100 text-amber-800" },
+  em_andamento: { label: "Em Andamento", className: "bg-blue-100 text-blue-800" },
+  aguardando_peca: { label: "Aguardando Peça", className: "bg-slate-100 text-slate-800" },
+  concluida: { label: "Concluída", className: "bg-green-100 text-green-800" },
 };
 
 const Index = () => {
@@ -46,6 +46,7 @@ const Index = () => {
   const [overduePayments, setOverduePayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewingOS, setViewingOS] = useState<any | null>(null);
+
 
 
 
@@ -101,7 +102,7 @@ const Index = () => {
   const getStatusBadge = (status: string) => {
     const config = STATUS_CONFIG[status] || { label: status, className: "bg-muted text-muted-foreground" };
     return (
-      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${config.className}`}>
+      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${config.className}`}>
         <span className="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0" />
         {config.label}
       </span>
@@ -113,7 +114,7 @@ const Index = () => {
 
   return (
     <MainLayout>
-      <div className="space-y-6 pb-20 lg:pb-0" data-tour="dashboard-content">
+      <div className="space-y-6 pb-28" data-tour="dashboard-content">
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="w-full">
@@ -207,21 +208,21 @@ const Index = () => {
                   <div className="md:hidden space-y-2">
                     {recentOS.map(os => {
                       const statusKey = os.status;
-                      const borderColor = statusKey.includes("reparo") || statusKey.includes("teste") ? "border-l-vc-blue"
-                        : statusKey.includes("pronto") || statusKey === "concluida" ? "border-l-primary"
-                        : statusKey === "cancelada" ? "border-l-destructive"
-                        : "border-l-warning";
+                      const borderColor = statusKey.includes("reparo") || statusKey.includes("teste") ? "border-l-blue-500"
+                        : statusKey.includes("pronto") || statusKey === "concluida" ? "border-l-green-500"
+                        : statusKey === "cancelada" ? "border-l-red-500"
+                        : "border-l-amber-500";
                       return (
                         <div
                           key={os.id}
-                          className={`bg-card border border-border rounded-xl p-3.5 border-l-4 ${borderColor} transition-all hover:shadow-soft cursor-pointer`}
+                          className={`bg-card border border-border rounded-xl p-3 border-l-4 ${borderColor} transition-all hover:shadow-soft cursor-pointer`}
                           onClick={() => setViewingOS(os)}
                         >
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="font-mono text-xs text-vc-green-text font-medium">{os.numero}</span>
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-sm font-semibold text-slate-800">{os.clientes?.nome || "Cliente"}</p>
                             {getStatusBadge(os.status)}
                           </div>
-                          <p className="text-sm font-medium text-foreground mb-1">{os.clientes?.nome || "Cliente"}</p>
+                          <span className="font-mono text-xs text-slate-500 block mb-1">#{os.numero}</span>
                           <p className="text-xs text-muted-foreground">{TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento}</p>
                         </div>
                       );
@@ -239,11 +240,11 @@ const Index = () => {
                 <AlertTriangle className="h-4 w-4 text-warning" />Alertas
               </h3>
             </div>
-            <div className="p-5 space-y-2">
+            <div className="p-5 space-y-3">
               {overdueOS.length > 0 && (
-                <div className="flex items-start gap-3 p-3 rounded-lg border border-destructive bg-vc-red-light text-vc-red-text text-[13px] cursor-pointer" onClick={() => navigate("/ordens-servico")}>
-                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <div>
+                <div className="flex items-start gap-3 p-3 rounded-lg border border-red-200 bg-red-50 text-red-800 text-[13px] cursor-pointer hover:bg-red-100 transition-colors" onClick={() => navigate("/ordens-servico")}>
+                  <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
                     <p className="font-medium">{overdueOS.length} OS em Atraso</p>
                     {overdueOS.slice(0, 2).map(os => (
                       <p key={os.id} className="text-xs mt-0.5 opacity-80">• {os.numero} - {os.clientes?.nome || "N/A"}</p>
@@ -252,9 +253,9 @@ const Index = () => {
                 </div>
               )}
               {overduePayments.length > 0 && (
-                <div className="flex items-start gap-3 p-3 rounded-lg border border-destructive bg-vc-red-light text-vc-red-text text-[13px] cursor-pointer" onClick={() => navigate("/cobrancas")}>
-                  <DollarSign className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <div>
+                <div className="flex items-start gap-3 p-3 rounded-lg border border-red-200 bg-red-50 text-red-800 text-[13px] cursor-pointer hover:bg-red-100 transition-colors" onClick={() => navigate("/cobrancas")}>
+                  <DollarSign className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
                     <p className="font-medium">{overduePayments.length} Cobranças Vencidas</p>
                     <p className="text-xs font-medium mt-0.5">
                       Total: {formatCurrency(overduePayments.reduce((a: number, p: any) => a + (p?.value || 0), 0))}
@@ -263,16 +264,16 @@ const Index = () => {
                 </div>
               )}
               {stats.itensEstoqueBaixo > 0 && (
-                <div className="flex items-start gap-3 p-3 rounded-lg border border-warning bg-vc-amber-light text-vc-amber-text text-[13px] cursor-pointer" onClick={() => navigate("/estoque")}>
-                  <Package className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <div>
+                <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-[13px] cursor-pointer hover:bg-amber-100 transition-colors" onClick={() => navigate("/estoque")}>
+                  <Package className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
                     <p className="font-medium">{stats.itensEstoqueBaixo} Itens com Estoque Baixo</p>
                   </div>
                 </div>
               )}
               {overdueOS.length === 0 && overduePayments.length === 0 && stats.itensEstoqueBaixo === 0 && (
-                <div className="flex items-start gap-3 p-3 rounded-lg border border-primary bg-vc-green-light text-vc-green-text text-[13px]">
-                  <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <div className="flex items-start gap-3 p-3 rounded-lg border border-green-200 bg-green-50 text-green-800 text-[13px]">
+                  <CheckCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
                   <p className="font-medium">Tudo em dia!</p>
                 </div>
               )}
