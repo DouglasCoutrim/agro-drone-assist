@@ -499,7 +499,9 @@ export default function OrdensServico() {
     try {
       const itemsForPdf = await fetchOSItems(viewingOS.id, viewingOS.organization_id);
       setViewOsItems(itemsForPdf);
-      const html = generateOSPDF(viewingOS, itemsForPdf, empresa);
+      const empresaForPdf = { ...empresa, nome_empresa: empresa.nome_empresa || organization?.name || "Nome da Empresa" };
+      console.log("Dados da Empresa para PDF:", empresaForPdf);
+      const html = generateOSPDF(viewingOS, itemsForPdf, empresaForPdf);
       printWindow.document.write(html);
       printWindow.document.close();
     } finally {
