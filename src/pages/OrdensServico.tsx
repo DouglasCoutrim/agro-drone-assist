@@ -30,6 +30,8 @@ import { formatCurrency, formatDate, getErrorMessage } from "@/lib/formatters";
 import { whatsappTemplates, openWhatsApp, WhatsAppOS } from "@/lib/whatsapp-templates";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { generateOSPDF } from "@/components/ordens-servico/OSPDFGenerator";
+import { useOrgSegments } from "@/hooks/useOrgSegments";
+import { getAvailableTypes, findTypeByValue, SEGMENTOS } from "@/lib/equipment-segments";
 
 
 type OrdemServico = Tables<"ordens_servico"> & { clientes: { nome: string; telefone?: string } | null };
