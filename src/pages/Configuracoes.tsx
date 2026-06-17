@@ -15,6 +15,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
+import { SEGMENTOS } from "@/lib/equipment-segments";
+import { useOrgSegments } from "@/hooks/useOrgSegments";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Profile = Tables<"profiles">;
 type UserRole = Tables<"user_roles">;
@@ -261,7 +264,10 @@ export default function Configuracoes() {
           </CardContent>
         </Card>
 
+        <SegmentosCard />
+
         <Card className="shadow-soft">
+
           <CardHeader><CardTitle className="flex items-center gap-2"><Database className="h-5 w-5 text-primary" />Integrações</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -276,5 +282,80 @@ export default function Configuracoes() {
         </Card>
       </div>
     </MainLayout>
+  );
+}
+
+function SegmentosCard() {
+  const { segmentos, tipos_custom, save, loading } = useOrgSegments();
+  const [saving, setSaving] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+
+  const toggle = async (key: string) => {
+    const next = segmentos.includes(key) ? segmentos.filter(s => s !== key) : [...segmentos, key];
+    setSaving(true);
+    try { await save({ segmentos: next }); toast.success("Segmentos atualizados"); }
+    catch (e: any) { toast.error(e.message ?? "Falha ao salvar"); }
+    finally { setSaving(false); }
+  };
+
+  const addCustom = async () => {
+    const label = newLabel.trim();
+    if (!label) return;
+    const value = `custom_${label.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${Date.now().toString(36)}`;
+    setSaving(true);
+    try { await save({ tipos_custom: [...tipos_custom, { value, label }] }); setNewLabel(""); toast.success("Tipo adicionado"); }
+    catch (e: any) { toast.error(e.message ?? "Falha ao salvar"); }
+    finally { setSaving(false); }
+  };
+
+  const removeCustom = async (value: string) => {
+    setSaving(true);
+    try { await save({ tipos_custom: tipos_custom.filter(t => t.value !== value) }); toast.success("Tipo removido"); }
+    catch (e: any) { toast.error(e.message ?? "Falha ao salvar"); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Card className="shadow-soft">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><Zap className="h-5 w-5 text-primary" />Segmentos de Atuação</CardTitle>
+        <p className="text-xs text-muted-foreground">Selecione os nichos da sua empresa. O cadastro de OS mostrará apenas os tipos de equipamento desses segmentos.</p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+          <>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {SEGMENTOS.map(s => (
+                <label key={s.key} className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition ${segmentos.includes(s.key) ? 'border-primary bg-primary/5' : 'hover:border-primary/40'}`}>
+                  <Checkbox checked={segmentos.includes(s.key)} onCheckedChange={() => toggle(s.key)} disabled={saving} />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{s.label}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{s.types.map(t => t.label).join(', ')}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <div className="space-y-2 pt-2 border-t">
+              <Label className="text-xs uppercase text-muted-foreground">Tipos personalizados</Label>
+              <div className="flex gap-2">
+                <Input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="Ex: Esteira Elétrica" />
+                <Button type="button" onClick={addCustom} disabled={saving || !newLabel.trim()}>Adicionar</Button>
+              </div>
+              {tipos_custom.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {tipos_custom.map(t => (
+                    <Badge key={t.value} variant="secondary" className="gap-1.5">
+                      {t.label}
+                      <button type="button" onClick={() => removeCustom(t.value)} className="hover:text-destructive">×</button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
