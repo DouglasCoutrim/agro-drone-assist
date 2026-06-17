@@ -162,14 +162,19 @@ export default function OrdensServico() {
   const totalOrcamento = Math.max(0, itemsTotal - (formData.desconto || 0));
   const viewItemsTotal = viewOsItems.reduce((s, i) => s + (i.valor_total || 0), 0);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [organization?.id, isPlatformAdmin]);
 
   const fetchData = async () => {
     try {
-      const [ordensRes, clientesRes] = await Promise.all([
-        supabase.from("ordens_servico").select("*, clientes(nome, telefone)").order("created_at", { ascending: false }),
-        supabase.from("clientes").select("*").order("nome"),
-      ]);
+      let ordensQuery = supabase.from("ordens_servico").select("*, clientes(nome, telefone)").order("created_at", { ascending: false });
+      let clientesQuery = supabase.from("clientes").select("*").order("nome");
+      
+      if (organization?.id && !isPlatformAdmin) {
+        ordensQuery = ordensQuery.eq("organization_id", organization.id);
+        clientesQuery = clientesQuery.eq("organization_id", organization.id);
+      }
+      
+      const [ordensRes, clientesRes] = await Promise.all([ordensQuery, clientesQuery]);
       if (ordensRes.error) throw ordensRes.error;
       if (clientesRes.error) throw clientesRes.error;
       setOrdens(ordensRes.data || []);

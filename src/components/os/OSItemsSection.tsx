@@ -80,17 +80,25 @@ function ItemSearchRow({
       try {
         const term = `%${search.trim()}%`;
         if (tipo === "produto") {
-          const { data } = await supabase.from("produtos").select("id, descricao, preco_venda, codigo, categoria").or(`descricao.ilike.${term},codigo.ilike.${term}`).limit(8);
+          let query = supabase.from("produtos").select("id, descricao, preco_venda, codigo, categoria").or(`descricao.ilike.${term},codigo.ilike.${term}`).limit(8);
+          if (organizationId) {
+            query = query.eq("organization_id", organizationId);
+          }
+          const { data } = await query;
           setResults((data || []).map(p => ({ id: p.id, descricao: p.descricao, preco: p.preco_venda, tipo: "produto" as const, codigo: p.codigo || undefined, categoria: p.categoria || undefined })));
         } else {
-          const { data } = await supabase.from("servicos").select("id, descricao, preco").ilike("descricao", term).limit(8);
+          let query = supabase.from("servicos").select("id, descricao, preco").ilike("descricao", term).limit(8);
+          if (organizationId) {
+            query = query.eq("organization_id", organizationId);
+          }
+          const { data } = await query;
           setResults((data || []).map(s => ({ id: s.id, descricao: s.descricao, preco: s.preco, tipo: "servico" as const })));
         }
       } catch (err) { console.error(err); }
       finally { setLoading(false); }
     }, 250);
     return () => clearTimeout(timeout);
-  }, [search, tipo]);
+  }, [search, tipo, organizationId]);
 
   const handleSelect = (cat: CatalogItem) => {
     onAdd({
@@ -254,36 +262,36 @@ function ItemCard({
   disabled?: boolean;
 }) {
   return (
-    <div className="rounded-md border border-border/60 bg-card/50 px-2.5 py-2 space-y-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          <span className="text-[11px] font-bold text-muted-foreground shrink-0">{index + 1}.</span>
-          <p className="text-[13px] font-medium truncate flex-1">{item.descricao}</p>
+    <div className="rounded-md border border-border/60 bg-card/50 px-2 py-1.5 space-y-1">
+      <div className="flex items-center justify-between gap-1.5">
+        <div className="flex items-center gap-1 min-w-0 flex-1">
+          <span className="text-[10px] font-bold text-muted-foreground shrink-0">{index + 1}.</span>
+          <p className="text-[12px] font-medium truncate flex-1">{item.descricao}</p>
         </div>
         {!disabled && (
           <Button type="button" size="icon" variant="ghost"
-            className="h-6 w-6 text-destructive/60 hover:text-destructive shrink-0"
+            className="h-5 w-5 text-destructive/60 hover:text-destructive shrink-0 p-0"
             onClick={onRemove}>
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-3 w-3" />
           </Button>
         )}
       </div>
-      <div className="grid grid-cols-[22%_40%_1fr] gap-1.5 items-center">
+      <div className="grid grid-cols-[22%_40%_1fr] gap-1 items-center">
         <NumberInput
           min="1"
           value={item.quantidade}
           onChange={(v) => onUpdate("quantidade", Math.max(1, v))}
-          className="h-8 text-xs px-2 w-full min-w-0 text-center" disabled={disabled}
+          className="h-7 text-[11px] px-1.5 w-full min-w-0 text-center" disabled={disabled}
           placeholder="Qtd"
         />
         <NumberInput
           step="0.01" min="0"
           value={item.valor_unitario}
           onChange={(v) => onUpdate("valor_unitario", v)}
-          className="h-8 text-xs px-2 w-full min-w-0" disabled={disabled}
+          className="h-7 text-[11px] px-1.5 w-full min-w-0" disabled={disabled}
           placeholder="Unit."
         />
-        <div className="h-8 flex items-center justify-end text-xs font-semibold text-primary px-1 truncate">
+        <div className="h-7 flex items-center justify-end text-[11px] font-semibold text-primary px-1 truncate">
           {formatCurrency(item.valor_total)}
         </div>
       </div>
