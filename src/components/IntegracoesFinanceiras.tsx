@@ -23,6 +23,37 @@ interface Credentials {
   pix_receiver_name?: string;
 }
 
+const DEFAULT_CREDS: Credentials = { asaas_environment: 'production', pix_key_type: 'cpf' };
+
+const normalizeStoredCredentials = (value: unknown): Credentials => {
+  if (!value) return { ...DEFAULT_CREDS };
+
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return normalizeStoredCredentials(parsed);
+    } catch {
+      return { ...DEFAULT_CREDS };
+    }
+  }
+
+  if (typeof value !== 'object' || Array.isArray(value)) return { ...DEFAULT_CREDS };
+
+  return { ...DEFAULT_CREDS, ...(value as Record<string, string>) };
+};
+
+const buildJsonbCredentials = (gateway: Gateway, credentials: Credentials): Record<string, string> => {
+  if (gateway === 'none') return {};
+
+  return Object.entries(credentials).reduce<Record<string, string>>((acc, [key, value]) => {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed) acc[key] = trimmed;
+    }
+    return acc;
+  }, {});
+};
+
 function SecretInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   const [show, setShow] = useState(false);
   return (
@@ -38,7 +69,7 @@ function SecretInput({ value, onChange, placeholder }: { value: string; onChange
 export function IntegracoesFinanceiras() {
   const { organization } = useOrganization();
   const [gateway, setGateway] = useState<Gateway>('none');
-  const [creds, setCreds] = useState<Credentials>({ asaas_environment: 'production', pix_key_type: 'cpf' });
+  const [creds, setCreds] = useState<Credentials>(DEFAULT_CREDS);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -53,7 +84,7 @@ export function IntegracoesFinanceiras() {
         .maybeSingle();
       if (data) {
         setGateway(((data as any).gateway_clientes as Gateway) || 'none');
-        setCreds({ asaas_environment: 'production', pix_key_type: 'cpf', ...((data as any).gateway_clientes_credentials || {}) });
+        setCreds(normalizeStoredCredentials((data as any).gateway_clientes_credentials));
       }
       setLoading(false);
     })();
@@ -77,24 +108,32 @@ export function IntegracoesFinanceiras() {
     if (err) { toast.error(err); return; }
     setSaving(true);
     try {
-      // Build a clean credentials object (no undefined/null/empty leaking into JSONB)
-      const cleanCreds: Record<string, unknown> = {};
-      if (gateway !== 'none') {
-        Object.entries(creds).forEach(([k, v]) => {
-          if (v !== undefined && v !== null && v !== '') cleanCreds[k] = v;
-        });
-      }
+      const cleanCreds = buildJsonbCredentials(gateway, creds);
 
       const payload = {
-        organization_id: organization.id,
         gateway_clientes: gateway,
         gateway_clientes_credentials: cleanCreds,
         updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
+      const { data: existing, error: lookupError } = await supabase
         .from('empresa_config' as any)
-        .upsert(payload, { onConflict: 'organization_id' });
+        .select('id')
+        .eq('organization_id', organization.id)
+        .maybeSingle();
+      if (lookupError) throw lookupError;
+      const existingConfig = existing as unknown as { id: string } | null;
+
+      const query = existingConfig?.id
+        ? supabase
+            .from('empresa_config' as any)
+            .update(payload)
+            .eq('organization_id', organization.id)
+        : supabase
+            .from('empresa_config' as any)
+            .insert({ ...payload, organization_id: organization.id });
+
+      const { error } = await query;
       if (error) throw error;
       toast.success('Configurações de recebimento salvas com sucesso');
     } catch (e: any) {
