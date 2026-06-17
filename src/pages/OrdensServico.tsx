@@ -89,7 +89,7 @@ const detectUiCategory = (os: any): string => {
 
 export default function OrdensServico() {
   const { user } = useAuth();
-  const { organization, isPlatformAdmin } = useOrganization();
+  const { organization, isPlatformAdmin, loading: orgLoading } = useOrganization();
   const { config: empresa } = useEmpresaConfig();
   const { tecnicos } = useTeamMembers();
   const confirm = useConfirm();
