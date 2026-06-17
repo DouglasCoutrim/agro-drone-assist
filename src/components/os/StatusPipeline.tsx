@@ -40,7 +40,7 @@ export function StatusPipeline({ currentStatus, onStatusChange, compact }: Statu
   }
 
   return (
-    <div className={cn("flex items-center overflow-x-auto pb-1 gap-0", compact ? "gap-0" : "gap-0")}>
+    <div className={cn("flex items-start overflow-x-auto overflow-y-hidden pb-1 gap-0 scroll-smooth scrollbar-none -mx-1 px-1 max-w-full", compact ? "gap-0" : "gap-0")}>
       {STATUS_FLOW.map((step, index) => {
         const isDone = index < currentIndex;
         const isCurrent = index === currentIndex;

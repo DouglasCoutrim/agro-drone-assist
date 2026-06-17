@@ -23,8 +23,8 @@ export function MainLayout({ children }: MainLayoutProps) {
         {/* Mobile Header */}
         <MobileHeader />
 
-        <main className="flex-1 overflow-y-auto w-full scroll-smooth pt-[var(--header-height)] pb-[var(--bottom-nav-height)] lg:pt-0 lg:pb-0">
-          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 animate-in fade-in duration-500">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full scroll-smooth pt-[var(--header-height)] pb-[calc(var(--bottom-nav-height)+5rem)] lg:pt-0 lg:pb-0">
+          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 animate-in fade-in duration-500 min-w-0">
             {children}
           </div>
         </main>

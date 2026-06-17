@@ -555,7 +555,7 @@ export default function OrdensServico() {
         <UpgradePlanModal open={showUpgrade} onOpenChange={setShowUpgrade} reason="os" currentPlan={plan} />
 
         {/* Stats */}
-        <div className="grid gap-2 grid-cols-4">
+        <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
           {[
             { label: "Recebidas", value: stats.recebidas, icon: Clock, color: "text-blue-500" },
             { label: "Em Reparo", value: stats.emReparo, icon: Wrench, color: "text-amber-500" },

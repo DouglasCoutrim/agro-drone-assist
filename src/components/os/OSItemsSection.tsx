@@ -262,14 +262,14 @@ function ItemCard({
           </Button>
         )}
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <div className="space-y-1 min-w-0">
           <Label className="text-[10px] text-muted-foreground uppercase">Qtd</Label>
           <NumberInput
             min="1"
             value={item.quantidade}
             onChange={(v) => onUpdate("quantidade", Math.max(1, v))}
-            className="h-8 text-sm text-center w-full min-w-0 px-1" disabled={disabled}
+            className="h-9 text-sm w-full min-w-0" disabled={disabled}
             placeholder="1"
           />
         </div>
@@ -279,13 +279,13 @@ function ItemCard({
             step="0.01" min="0"
             value={item.valor_unitario}
             onChange={(v) => onUpdate("valor_unitario", v)}
-            className="h-8 text-sm text-center w-full min-w-0 px-1" disabled={disabled}
+            className="h-9 text-sm w-full min-w-0" disabled={disabled}
             placeholder="0,00"
           />
         </div>
         <div className="space-y-1 min-w-0">
           <Label className="text-[10px] text-muted-foreground uppercase">Total</Label>
-          <div className="h-8 flex items-center justify-center text-xs font-semibold text-primary bg-muted/30 rounded-md border border-border/50 px-1 truncate">
+          <div className="h-9 flex items-center justify-end sm:justify-center text-sm font-semibold text-primary bg-muted/30 rounded-md border border-border/50 px-2 truncate">
             {formatCurrency(item.valor_total)}
           </div>
         </div>
