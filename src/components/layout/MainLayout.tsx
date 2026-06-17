@@ -12,9 +12,9 @@ interface MainLayoutProps {
 export function MainLayout({ children }: MainLayoutProps) {
   useInactivityLogout();
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background">
+    <div className="flex h-[100dvh] w-full max-w-[100vw] overflow-hidden bg-background">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:block sticky top-0 h-screen z-50">
+      <aside className="hidden lg:block sticky top-0 h-[100dvh] z-50">
         <Sidebar />
       </aside>
 
@@ -23,8 +23,8 @@ export function MainLayout({ children }: MainLayoutProps) {
         {/* Mobile Header */}
         <MobileHeader />
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full scroll-smooth pt-[var(--header-height)] pb-[calc(var(--bottom-nav-height)+5rem)] lg:pt-0 lg:pb-0">
-          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 animate-in fade-in duration-500 min-w-0">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full scroll-smooth pt-[var(--header-height)] pb-[calc(var(--bottom-nav-height)+5rem)] lg:pt-0 lg:pb-0 overscroll-contain">
+          <div className="mx-auto w-full max-w-7xl min-w-0 px-3 py-4 sm:px-6 sm:py-6 lg:px-8 animate-in fade-in duration-500">
             {children}
           </div>
         </main>
