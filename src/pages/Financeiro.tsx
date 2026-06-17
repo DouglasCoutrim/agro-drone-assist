@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
+import { formatCurrency } from "@/lib/formatters";
 
 type Transacao = Tables<"financeiro">;
 
@@ -103,7 +104,7 @@ export default function Financeiro() {
     setEditingTransacao(null);
   };
 
-  const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  
 
   const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
   const thisMonthTransacoes = transacoes.filter(t => new Date(t.data_transacao) >= startOfMonth);
