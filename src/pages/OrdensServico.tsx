@@ -750,18 +750,61 @@ export default function OrdensServico() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label className="text-xs">Tipo *</Label>
-                      <Select value={uiCategory} onValueChange={(v) => { setUiCategory(v); setFormData({ ...formData, tipo_equipamento: mapCategoryToDbEnum(v) as Enums<"tipo_equipamento"> }); }}>
-                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <Select
+                        value={uiCategory}
+                        onValueChange={(v) => {
+                          setUiCategory(v);
+                          const t = findTypeByValue(v, orgSegmentos, orgCustomTypes);
+                          const dbEnum = t?.dbEnum ?? mapCategoryToDbEnum(v);
+                          setFormData({ ...formData, tipo_equipamento: dbEnum as Enums<"tipo_equipamento"> });
+                        }}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder={availableTypes.length ? "Selecione" : "Configure os segmentos da sua empresa"} />
+                        </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="drone_agricola">Drone Agrícola</SelectItem>
-                          <SelectItem value="drone_convencional">Drone Consumo/Enterprise</SelectItem>
-                          <SelectItem value="bateria">Bateria Avulsa</SelectItem>
-                          <SelectItem value="controle">Controle Remoto</SelectItem>
-                          <SelectItem value="outro">Gerador/Carregador/Outro</SelectItem>
-                          <SelectItem value="patinete_eletrico">Patinete Elétrico</SelectItem>
-                          <SelectItem value="bicicleta_eletrica">Bicicleta Elétrica</SelectItem>
-                          <SelectItem value="moto_eletrica">Moto Elétrica</SelectItem>
-                          <SelectItem value="outros_autopropelidos">Outros Autopropelidos</SelectItem>
+                          {availableTypes.length === 0 && (
+                            <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                              Nenhum segmento configurado. Vá em Configurações → Segmentos.
+                            </div>
+                          )}
+                          {availableTypes.map(t => (
+                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                          ))}
+                          {availableTypes.length > 0 && (
+                            <div className="border-t mt-1 p-2 space-y-1">
+                              <p className="text-[10px] text-muted-foreground uppercase">Adicionar tipo personalizado</p>
+                              <div className="flex gap-1">
+                                <Input
+                                  value={newCustomLabel}
+                                  onChange={(e) => setNewCustomLabel(e.target.value)}
+                                  placeholder="Ex: Esteira Elétrica"
+                                  className="h-8 text-xs"
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="h-8"
+                                  onClick={async () => {
+                                    const label = newCustomLabel.trim();
+                                    if (!label) return;
+                                    const value = `custom_${label.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${Date.now().toString(36)}`;
+                                    try {
+                                      await saveSegments({ tipos_custom: [...(orgCustomTypes || []), { value, label }] });
+                                      setUiCategory(value);
+                                      setFormData({ ...formData, tipo_equipamento: 'outro' as Enums<"tipo_equipamento"> });
+                                      setNewCustomLabel("");
+                                      toast.success(`Tipo "${label}" adicionado`);
+                                    } catch (e: any) {
+                                      toast.error(e.message ?? 'Falha ao adicionar');
+                                    }
+                                  }}
+                                >+
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -769,6 +812,7 @@ export default function OrdensServico() {
                       <Label className="text-xs">Marca</Label>
                       <Input value={formData.marca} onChange={(e) => setFormData({ ...formData, marca: e.target.value })} className="h-9" placeholder={isMobility ? "Ex: Xiaomi" : "Ex: DJI"} />
                     </div>
+
                     <div className="space-y-1.5">
                       <Label className="text-xs">Modelo</Label>
                       <Input value={formData.modelo_equipamento} onChange={(e) => setFormData({ ...formData, modelo_equipamento: e.target.value })} className="h-9" />
