@@ -1,59 +1,78 @@
-import { useEffect } from 'react';
-// @ts-ignore: virtual:pwa-register/react is a virtual module from vite-plugin-pwa
-import { useRegisterSW } from 'virtual:pwa-register/react';
-import { useToast } from '@/components/ui/use-toast';
-import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
+import { useEffect } from "react";
+// @ts-ignore: virtual module from vite-plugin-pwa
+import { registerSW } from "virtual:pwa-register";
+
+const SW_URL = "/sw.js";
+
+function isRefusedContext(): boolean {
+  if (!import.meta.env.PROD) return true;
+  if (typeof window === "undefined") return true;
+  try {
+    if (window.top !== window.self) return true;
+  } catch {
+    return true;
+  }
+  const host = window.location.hostname;
+  if (
+    host.startsWith("id-preview--") ||
+    host.startsWith("preview--") ||
+    host === "lovableproject.com" ||
+    host.endsWith(".lovableproject.com") ||
+    host === "lovableproject-dev.com" ||
+    host.endsWith(".lovableproject-dev.com") ||
+    host === "beta.lovable.dev" ||
+    host.endsWith(".beta.lovable.dev")
+  ) {
+    return true;
+  }
+  if (new URLSearchParams(window.location.search).get("sw") === "off") {
+    return true;
+  }
+  return false;
+}
+
+async function unregisterMatching() {
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const r of regs) {
+      const url = r.active?.scriptURL || r.installing?.scriptURL || r.waiting?.scriptURL || "";
+      if (url.endsWith(SW_URL)) await r.unregister();
+    }
+  } catch {}
+}
 
 export function ReloadPrompt() {
-  const { toast } = useToast();
-  const {
-    offlineReady: [offlineReady, setOfflineReady],
-    needRefresh: [needRefresh, setNeedRefresh],
-    updateServiceWorker,
-  } = useRegisterSW({
-    onRegistered() {},
-    onRegisterError(error) {
-      console.error('SW registration error', error);
-    },
-  });
-
-  const close = () => {
-    setOfflineReady(false);
-    setNeedRefresh(false);
-  };
-
   useEffect(() => {
-    if (needRefresh) {
-      const { id, dismiss } = toast({
-        title: "Nova versão disponível",
-        description: "Uma nova atualização do sistema foi carregada.",
-        action: (
-          <Button 
-            variant="default" 
-            size="sm" 
-            onClick={() => {
-              updateServiceWorker(true);
-              dismiss();
-            }}
-            className="flex items-center gap-2 bg-primary hover:bg-primary/90"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Atualizar Agora
-          </Button>
-        ),
-        duration: Infinity,
-      });
+    if (isRefusedContext()) {
+      void unregisterMatching();
+      return;
     }
-    
-    if (offlineReady) {
-      toast({
-        title: "App pronto para uso offline",
-        description: "O sistema agora pode ser acessado sem internet.",
-      });
-      setOfflineReady(false);
-    }
-  }, [needRefresh, offlineReady, updateServiceWorker, toast, setOfflineReady, setNeedRefresh]);
+    const updateSW = registerSW({
+      immediate: true,
+      onNeedRefresh() {
+        // Auto-update: SW already skipWaiting'd; reload to pick up new assets.
+        updateSW(true);
+      },
+      onRegisteredSW(_swUrl: string, registration?: ServiceWorkerRegistration) {
+        if (!registration) return;
+        // Poll for updates every 30 minutes.
+        setInterval(() => registration.update().catch(() => {}), 30 * 60 * 1000);
+      },
+    });
+
+    // Reload once the new SW takes control.
+    let reloaded = false;
+    const onControllerChange = () => {
+      if (reloaded) return;
+      reloaded = true;
+      window.location.reload();
+    };
+    navigator.serviceWorker?.addEventListener("controllerchange", onControllerChange);
+    return () => {
+      navigator.serviceWorker?.removeEventListener("controllerchange", onControllerChange);
+    };
+  }, []);
 
   return null;
 }
