@@ -166,7 +166,7 @@ export default function OrdensServico() {
 
   const fetchData = async () => {
     try {
-      let ordensQuery = supabase.from("ordens_servico").select("*, clientes(nome, telefone)").order("created_at", { ascending: false });
+      let ordensQuery = supabase.from("ordens_servico").select("*, clientes(nome, telefone), tecnico:profiles!ordens_servico_tecnico_id_fkey(nome)").order("created_at", { ascending: false });
       let clientesQuery = supabase.from("clientes").select("*").order("nome");
       
       if (organization?.id && !isPlatformAdmin) {

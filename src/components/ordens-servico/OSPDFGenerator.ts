@@ -3,7 +3,10 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import { getStatusLabel } from "@/components/os/StatusPipeline";
 import { getLegalTermsHTML } from "@/components/os/LegalTermsFooter";
 
-type OrdemServico = Tables<"ordens_servico"> & { clientes: { nome: string; telefone?: string } | null };
+type OrdemServico = Tables<"ordens_servico"> & { 
+  clientes: { nome: string; telefone?: string } | null,
+  tecnico?: { nome: string } | null
+};
 
 const TIPO_EQUIPAMENTO: Record<string, string> = {
   drone_agricola: "Drone Agrícola",
@@ -22,16 +25,21 @@ export const generateOSPDF = (
   itemsForPdf: any[],
   empresa: any
 ) => {
-  const fmtCur = (v: number | null) => formatCurrency(v);
-  const fmtDt = (d: string | null) => formatDate(d);
+  const fmtCur = (v: number | null | undefined) => formatCurrency(v || 0);
+  const fmtDt = (d: string | null | undefined) => formatDate(d || "");
   const os = viewingOS as any;
   const obsText = viewingOS.observacoes || "";
   
+  // Extract mobility data
   const mobilityMatch = obsText.match(/\[MOBILIDADE:(\w+)\s*\|\s*Voltagem:(.*?)\s*\|\s*Bateria:(.*?)Ah\s*\|\s*Odômetro:(.*?)km\s*\|\s*Chave:(.*?)\s*\|\s*Carregador:(.*?)\s*\|\s*Checklist:(.*?)\]/);
   const hasMobility = !!mobilityMatch;
   const cleanObs = obsText.replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").trim();
   const mobilityCategory = mobilityMatch ? mobilityMatch[1] : "";
-  const displayType = TIPO_EQUIPAMENTO[mobilityCategory] || TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento;
+  // Get display type, fall back to tipo_equipamento
+  const displayType = TIPO_EQUIPAMENTO[mobilityCategory] 
+    || TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] 
+    || viewingOS.tipo_equipamento 
+    || "Não informado";
 
   const checklistItems: string[] = [];
   if (!hasMobility) {
@@ -45,16 +53,16 @@ export const generateOSPDF = (
 
   let mobilityHTML = "";
   if (hasMobility && mobilityMatch) {
-    const mCheckItems = mobilityMatch[7] !== "Nenhum" ? mobilityMatch[7] : "";
+    const mCheckItems = mobilityMatch[7] && mobilityMatch[7] !== "Nenhum" ? mobilityMatch[7] : "";
     mobilityHTML = `
       <div class="section">
-        <div class="section-title">⚡ Dados da Mobilidade Elétrica</div>
+        <div class="section-title">⚡ Dados do Equipamento / Mobilidade</div>
         <div class="grid">
-          <div class="field"><div class="field-label">Voltagem</div><div class="field-value">${mobilityMatch[2]}</div></div>
-          <div class="field"><div class="field-label">Capacidade Bateria</div><div class="field-value">${mobilityMatch[3]}Ah</div></div>
-          <div class="field"><div class="field-label">Odômetro</div><div class="field-value">${mobilityMatch[4]}km</div></div>
-          <div class="field"><div class="field-label">Chave Ignição</div><div class="field-value">${mobilityMatch[5]}</div></div>
-          <div class="field"><div class="field-label">Carregador</div><div class="field-value">${mobilityMatch[6]}</div></div>
+          <div class="field"><div class="field-label">Voltagem</div><div class="field-value">${mobilityMatch[2] || "Não informado"}</div></div>
+          <div class="field"><div class="field-label">Capacidade Bateria</div><div class="field-value">${mobilityMatch[3] || "Não informado"}Ah</div></div>
+          <div class="field"><div class="field-label">Odômetro</div><div class="field-value">${mobilityMatch[4] || "Não informado"}km</div></div>
+          <div class="field"><div class="field-label">Chave Ignição</div><div class="field-value">${mobilityMatch[5] || "Não informado"}</div></div>
+          <div class="field"><div class="field-label">Carregador</div><div class="field-value">${mobilityMatch[6] || "Não informado"}</div></div>
           ${mCheckItems ? `<div class="field full-width"><div class="field-label">Checklist</div><div class="field-value">${mCheckItems.replace(/,/g, ", ")}</div></div>` : ""}
         </div>
       </div>`;
@@ -62,7 +70,6 @@ export const generateOSPDF = (
 
   const subtotal = itemsForPdf.reduce((s, i) => s + (i.valor_total || 0), 0);
   const desconto = (os.desconto || 0);
-  // Total: prioriza soma de itens; cai para valor_orcamento salvo (OS antigas sem itens)
   const totalFinal = subtotal > 0
     ? Math.max(0, subtotal - desconto)
     : (Number(viewingOS.valor_orcamento) || 0);
@@ -84,8 +91,8 @@ export const generateOSPDF = (
         </tr></thead>
         <tbody>
           ${list.length > 0 ? list.map(i => `<tr>
-            <td style="${tdStyle}">${i.descricao}${i.codigo ? ` <span style="color:#888">(${i.codigo})</span>` : ""}</td>
-            <td style="${tdStyle}text-align:center">${i.quantidade}</td>
+            <td style="${tdStyle}">${i.descricao || "Item sem descrição"}${i.codigo ? ` <span style="color:#888">(${i.codigo})</span>` : ""}</td>
+            <td style="${tdStyle}text-align:center">${i.quantidade || 0}</td>
             <td style="${tdStyle}text-align:right">${fmtCur(i.valor_unitario)}</td>
             <td style="${tdStyle}text-align:right;font-weight:600">${fmtCur(i.valor_total)}</td>
           </tr>`).join("") : `<tr><td style="${tdStyle}color:#777;text-align:center" colspan="4">Nenhum item, peça ou serviço foi encontrado para esta OS.</td></tr>`}
@@ -98,15 +105,18 @@ export const generateOSPDF = (
     <div class="section" style="margin-top:6px">
       <table style="width:100%;font-size:13px">
         ${subtotal > 0 ? `<tr><td style="text-align:right;padding:2px 8px">Subtotal:</td><td style="text-align:right;padding:2px 0;width:120px">${fmtCur(subtotal)}</td></tr>` : ""}
-        ${subtotal > 0 && desconto > 0 ? `<tr><td style="text-align:right;padding:2px 8px">Desconto:</td><td style="text-align:right;padding:2px 0">- ${fmtCur(desconto)}</td></tr>` : ""}
+        ${subtotal > 0 && desconto > 0 ? `<tr><td style="text-align:right;padding:2px 8px">Desconto:</td><td style="text-align:right;padding:2px 0;width:120px">- ${fmtCur(desconto)}</td></tr>` : ""}
         <tr><td style="text-align:right;padding:6px 8px;font-weight:700;font-size:15px">TOTAL:</td><td style="text-align:right;padding:6px 0;font-weight:700;font-size:15px;color:#16a34a;width:120px">${fmtCur(totalFinal)}</td></tr>
       </table>
     </div>`;
 
+  // Get technician name
+  const tecnicoNome = os.tecnico?.nome || "Não informado";
+
   return `<!DOCTYPE html>
 <html>
 <head>
-  <title>OS ${viewingOS.numero}</title>
+  <title>OS ${viewingOS.numero || "Sem número"}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: Arial, sans-serif; padding: 30px; color: #333; max-width: 210mm; margin: 0 auto; font-size: 12px; }
@@ -140,16 +150,16 @@ export const generateOSPDF = (
       </div>
     </div>
     <div style="text-align:right">
-      <div style="font-size:18px;font-weight:bold;">OS ${viewingOS.numero}</div>
-      <div class="status-badge">${getStatusLabel(viewingOS.status)}</div>
+      <div style="font-size:18px;font-weight:bold;">OS ${viewingOS.numero || "Sem número"}</div>
+      <div class="status-badge">${getStatusLabel(viewingOS.status) || "Status não informado"}</div>
     </div>
   </div>
 
   <div class="section">
     <div class="section-title">Cliente</div>
     <div class="grid">
-      <div class="field"><div class="field-label">Nome</div><div class="field-value">${viewingOS.clientes?.nome || "-"}</div></div>
-      <div class="field"><div class="field-label">Telefone</div><div class="field-value">${viewingOS.clientes?.telefone || "-"}</div></div>
+      <div class="field"><div class="field-label">Nome</div><div class="field-value">${viewingOS.clientes?.nome || "Não informado"}</div></div>
+      <div class="field"><div class="field-label">Telefone</div><div class="field-value">${viewingOS.clientes?.telefone || "Não informado"}</div></div>
     </div>
   </div>
 
@@ -157,9 +167,9 @@ export const generateOSPDF = (
     <div class="section-title">Equipamento</div>
     <div class="grid">
       <div class="field"><div class="field-label">Tipo</div><div class="field-value">${displayType}</div></div>
-      <div class="field"><div class="field-label">Marca</div><div class="field-value">${os.marca || "-"}</div></div>
-      <div class="field"><div class="field-label">Modelo</div><div class="field-value">${viewingOS.modelo_equipamento || "-"}</div></div>
-      <div class="field"><div class="field-label">Nº Série</div><div class="field-value">${viewingOS.numero_serie || "-"}</div></div>
+      <div class="field"><div class="field-label">Marca</div><div class="field-value">${os.marca || "Não informado"}</div></div>
+      <div class="field"><div class="field-label">Modelo</div><div class="field-value">${viewingOS.modelo_equipamento || "Não informado"}</div></div>
+      <div class="field"><div class="field-label">Nº Série</div><div class="field-value">${viewingOS.numero_serie || "Não informado"}</div></div>
     </div>
   </div>
 
@@ -177,8 +187,8 @@ export const generateOSPDF = (
   <div class="section">
     <div class="section-title">Diagnóstico</div>
     <div class="grid">
-      <div class="field full-width"><div class="field-label">Defeito Relatado</div><div class="field-value" style="white-space: pre-wrap;">${viewingOS.descricao_problema}</div></div>
-      ${viewingOS.diagnostico ? `<div class="field full-width"><div class="field-label">Diagnóstico Técnico</div><div class="field-value" style="white-space: pre-wrap;">${viewingOS.diagnostico}</div></div>` : ""}
+      <div class="field full-width"><div class="field-label">Defeito Relatado</div><div class="field-value" style="white-space: pre-wrap;">${viewingOS.descricao_problema || "Não informado"}</div></div>
+      ${viewingOS.diagnostico ? `<div class="field full-width"><div class="field-label">Diagnóstico Técnico</div><div class="field-value" style="white-space: pre-wrap;">${viewingOS.diagnostico || "Não informado"}</div></div>` : ""}
     </div>
   </div>
 
@@ -198,12 +208,17 @@ export const generateOSPDF = (
   ${cleanObs ? `<div class="section"><div class="section-title">Observações</div><p style="font-size:12px; white-space: pre-wrap;">${cleanObs}</p></div>` : ""}
 
   <div class="footer-sigs">
-    <div class="signature">Técnico Responsável</div>
-    <div class="signature">Cliente</div>
+    <div class="signature">
+      ${tecnicoNome}<br/>
+      Técnico Responsável
+    </div>
+    <div class="signature">
+      ${viewingOS.clientes?.nome || "Cliente"}
+    </div>
   </div>
 
   <div class="legal-terms">
-    ${getLegalTermsHTML().replace(/<[^>]*>?/gm, ' ')}
+    ${getLegalTermsHTML().replace(/<[^>]*>?/gm, " ")}
   </div>
   
   <div style="margin-top: 15px; text-align: center; font-size: 8px; color: #999;">
