@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +37,19 @@ import { getAvailableTypes, findTypeByValue, SEGMENTOS } from "@/lib/equipment-s
 
 type OrdemServico = Tables<"ordens_servico"> & { clientes: { nome: string; telefone?: string } | null };
 type Cliente = Tables<"clientes">;
+type ItemOSRow = Tables<"itens_os">;
+
+const mapDbItemsToOSItems = (data: ItemOSRow[] | null | undefined): OSItem[] =>
+  (data || []).map((d: ItemOSRow) => ({
+    id: d.id,
+    tipo: d.tipo === "servico" ? "servico" : "produto",
+    produto_id: d.produto_id,
+    servico_id: d.servico_id,
+    descricao: d.descricao,
+    quantidade: Number(d.quantidade) || 0,
+    valor_unitario: Number(d.valor_unitario) || 0,
+    valor_total: Number(d.valor_total) || 0,
+  }));
 
 const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
   recebido: { label: "Recebido", variant: "outline" },
@@ -75,7 +88,7 @@ const detectUiCategory = (os: any): string => {
 
 export default function OrdensServico() {
   const { user } = useAuth();
-  const { organization } = useOrganization();
+  const { organization, isPlatformAdmin } = useOrganization();
   const { config: empresa } = useEmpresaConfig();
   const { tecnicos } = useTeamMembers();
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
@@ -98,6 +111,7 @@ export default function OrdensServico() {
   const [quickClientPreName, setQuickClientPreName] = useState("");
   const [osItems, setOsItems] = useState<OSItem[]>([]);
   const [viewOsItems, setViewOsItems] = useState<OSItem[]>([]);
+  const [viewOsItemsLoading, setViewOsItemsLoading] = useState(false);
 
   // Wizard step
   const [wizardStep, setWizardStep] = useState(0);
