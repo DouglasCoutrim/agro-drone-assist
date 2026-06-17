@@ -293,7 +293,8 @@ export default function OrdensServico() {
       // Save OS items
       if (osId) {
         // Delete existing items for this OS
-        await supabase.from("itens_os").delete().eq("ordem_servico_id", osId);
+        const { error: deleteItemsError } = await supabase.from("itens_os").delete().eq("ordem_servico_id", osId);
+        if (deleteItemsError) throw deleteItemsError;
         // Insert new items
         if (osItems.length > 0) {
           const itemsToInsert = osItems.map(item => ({
@@ -310,7 +311,7 @@ export default function OrdensServico() {
           const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInsert);
           if (itemsError) {
             console.error("Erro ao salvar itens:", itemsError);
-            toast.error("Erro ao salvar itens da OS: " + itemsError.message);
+            throw itemsError;
           }
         }
       }
