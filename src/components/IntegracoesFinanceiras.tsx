@@ -122,7 +122,7 @@ export function IntegracoesFinanceiras() {
         .eq('organization_id', organization.id)
         .maybeSingle();
       if (lookupError) throw lookupError;
-      const existingConfig = existing as { id: string } | null;
+      const existingConfig = existing as unknown as { id: string } | null;
 
       const query = existingConfig?.id
         ? supabase
