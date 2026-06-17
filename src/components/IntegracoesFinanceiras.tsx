@@ -77,11 +77,29 @@ export function IntegracoesFinanceiras() {
     if (err) { toast.error(err); return; }
     setSaving(true);
     try {
-      const { error } = await supabase
+      const payload = {
+        gateway_clientes: gateway,
+        gateway_clientes_credentials: gateway === 'none' ? {} : creds,
+      };
+      const { data: existing, error: selErr } = await supabase
         .from('empresa_config' as any)
-        .update({ gateway_clientes: gateway, gateway_clientes_credentials: gateway === 'none' ? {} : creds })
-        .eq('organization_id', organization.id);
-      if (error) throw error;
+        .select('id')
+        .eq('organization_id', organization.id)
+        .maybeSingle();
+      if (selErr) throw selErr;
+
+      if (existing) {
+        const { error } = await supabase
+          .from('empresa_config' as any)
+          .update(payload)
+          .eq('organization_id', organization.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('empresa_config' as any)
+          .insert({ organization_id: organization.id, ...payload });
+        if (error) throw error;
+      }
       toast.success('Configurações de recebimento salvas');
     } catch (e: any) {
       toast.error(e.message ?? 'Falha ao salvar');
