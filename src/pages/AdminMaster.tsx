@@ -1,7 +1,7 @@
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrganization } from '@/hooks/useOrganization';
-import { Loader2, Menu } from 'lucide-react';
+import { Loader2, Menu, Building2 } from 'lucide-react';
 import OverviewTab from '@/components/admin/OverviewTab';
 import TenantsTab from '@/components/admin/TenantsTab';
 import PlansTab from '@/components/admin/PlansTab';
@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 
 export default function AdminMaster() {
   const { loading: authLoading } = useAuth();
-  const { isPlatformAdmin, loading } = useOrganization();
+  const { isPlatformAdmin, organization, loading } = useOrganization();
   const [searchParams] = useSearchParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const activeTab = searchParams.get('tab') || 'overview';
@@ -76,9 +76,17 @@ export default function AdminMaster() {
                activeTab === 'wiki' ? 'Wiki Administrativa' : 'Visão Geral'}
             </h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
+            {organization && (
+              <Button asChild variant="outline" size="sm" className="gap-1.5">
+                <Link to="/dashboard">
+                  <Building2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Minha Empresa</span>
+                </Link>
+              </Button>
+            )}
             <ThemeToggle />
-            <div className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+            <div className="hidden md:block px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
               <span className="text-[11px] text-primary font-medium">Ambiente Seguro</span>
             </div>
           </div>
