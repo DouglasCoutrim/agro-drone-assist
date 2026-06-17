@@ -30,6 +30,7 @@ import { formatCurrency, formatDate, getErrorMessage } from "@/lib/formatters";
 import { whatsappTemplates, openWhatsApp, WhatsAppOS } from "@/lib/whatsapp-templates";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { generateOSPDF } from "@/components/ordens-servico/OSPDFGenerator";
+import { useOrganization } from "@/hooks/useOrganization";
 import { useOrgSegments } from "@/hooks/useOrgSegments";
 import { getAvailableTypes, findTypeByValue, SEGMENTOS } from "@/lib/equipment-segments";
 
@@ -74,6 +75,7 @@ const detectUiCategory = (os: any): string => {
 
 export default function OrdensServico() {
   const { user } = useAuth();
+  const { organization } = useOrganization();
   const { config: empresa } = useEmpresaConfig();
   const { tecnicos } = useTeamMembers();
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
@@ -255,10 +257,13 @@ export default function OrdensServico() {
             quantidade: item.quantidade,
             valor_unitario: item.valor_unitario,
             valor_total: item.valor_total,
-            organization_id: osData.organization_id || null,
+            organization_id: organization?.id || null,
           }));
           const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInsert);
-          if (itemsError) console.error("Erro ao salvar itens:", itemsError);
+          if (itemsError) {
+            console.error("Erro ao salvar itens:", itemsError);
+            toast.error("Erro ao salvar itens da OS: " + itemsError.message);
+          }
         }
       }
       setDialogOpen(false);
