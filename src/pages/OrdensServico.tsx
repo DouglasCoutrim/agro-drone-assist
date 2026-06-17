@@ -257,10 +257,13 @@ export default function OrdensServico() {
             quantidade: item.quantidade,
             valor_unitario: item.valor_unitario,
             valor_total: item.valor_total,
-            organization_id: osData.organization_id || null,
+            organization_id: organization?.id || null,
           }));
           const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInsert);
-          if (itemsError) console.error("Erro ao salvar itens:", itemsError);
+          if (itemsError) {
+            console.error("Erro ao salvar itens:", itemsError);
+            toast.error("Erro ao salvar itens da OS: " + itemsError.message);
+          }
         }
       }
       setDialogOpen(false);
