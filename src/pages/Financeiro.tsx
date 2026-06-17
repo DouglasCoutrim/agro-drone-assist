@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -109,12 +109,14 @@ export default function Financeiro() {
 
   
 
-  const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
-  const thisMonthTransacoes = transacoes.filter(t => new Date(t.data_transacao) >= startOfMonth);
-  const receitaMensal = thisMonthTransacoes.filter(t => t.tipo === 'receita').reduce((acc, t) => acc + Number(t.valor), 0);
-  const despesaMensal = thisMonthTransacoes.filter(t => t.tipo === 'despesa' || t.tipo === 'salario').reduce((acc, t) => acc + Number(t.valor), 0);
-  const comissoesMensal = thisMonthTransacoes.filter(t => t.tipo === 'comissao').reduce((acc, t) => acc + Number(t.valor), 0);
-  const lucroLiquido = receitaMensal - despesaMensal - comissoesMensal;
+  const { receitaMensal, despesaMensal, comissoesMensal, lucroLiquido } = useMemo(() => {
+    const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
+    const thisMonth = transacoes.filter(t => new Date(t.data_transacao) >= startOfMonth);
+    const r = thisMonth.filter(t => t.tipo === 'receita').reduce((acc, t) => acc + Number(t.valor), 0);
+    const d = thisMonth.filter(t => t.tipo === 'despesa' || t.tipo === 'salario').reduce((acc, t) => acc + Number(t.valor), 0);
+    const c = thisMonth.filter(t => t.tipo === 'comissao').reduce((acc, t) => acc + Number(t.valor), 0);
+    return { receitaMensal: r, despesaMensal: d, comissoesMensal: c, lucroLiquido: r - d - c };
+  }, [transacoes]);
 
   const getTipoConfig = (tipo: string) => {
     const config: Record<string, { label: string; color: string; badgeVariant: "default" | "secondary" | "outline" | "destructive" }> = {
@@ -126,11 +128,14 @@ export default function Financeiro() {
     return config[tipo] || { label: tipo, color: 'text-foreground', badgeVariant: 'outline' as const };
   };
 
-  const filteredTransacoes = transacoes.filter(t =>
-    t.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.categoria?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.observacoes?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredTransacoes = useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    return transacoes.filter(t =>
+      t.descricao.toLowerCase().includes(term) ||
+      t.categoria?.toLowerCase().includes(term) ||
+      t.observacoes?.toLowerCase().includes(term)
+    );
+  }, [transacoes, searchTerm]);
 
   return (
     <MainLayout>
