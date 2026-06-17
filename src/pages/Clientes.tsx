@@ -17,11 +17,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EmptyState } from "@/components/os/EmptyState";
 import { formatCpfCnpj, formatPhone, validateCpfCnpj, getErrorMessage } from "@/lib/formatters";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useConfirm } from "@/hooks/useConfirm";
 
 type Cliente = Tables<"clientes">;
 
 export default function Clientes() {
   const { organization } = useOrganization();
+  const confirm = useConfirm();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const { fetchCep, loading: cepLoading } = useViaCep();
@@ -108,7 +110,7 @@ export default function Clientes() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Excluir este cliente? Esta ação não pode ser desfeita.')) return;
+    if (!await confirm({ title: 'Excluir cliente', description: 'Esta ação não pode ser desfeita.', variant: 'destructive', confirmText: 'Excluir' })) return;
     try {
       const { error } = await supabase.from('clientes').delete().eq('id', id);
       if (error) throw error;

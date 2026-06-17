@@ -78,15 +78,10 @@ const Index = () => {
       // Asaas overdue payments (best-effort, parallel)
       (async () => {
         try {
-          const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-          const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-          const session = await supabase.auth.getSession();
-          const token = session.data.session?.access_token;
-          if (token) {
-            const res = await fetch(`https://${projectId}.supabase.co/functions/v1/asaas?action=list_payments&status=OVERDUE`, { headers: { Authorization: `Bearer ${token}`, apikey: anonKey } });
-            const result = await res.json();
-            setOverduePayments(result?.data || []);
-          }
+          const { data: result } = await supabase.functions.invoke('asaas', {
+            body: { action: 'list_payments', status: 'OVERDUE' },
+          });
+          setOverduePayments(result?.data || []);
         } catch { /* silent */ }
       })();
 

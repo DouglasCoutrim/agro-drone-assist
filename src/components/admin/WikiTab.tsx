@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Upload, Image as ImageIcon, FileText, FolderTree } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useConfirm } from "@/hooks/useConfirm";
 
 interface Category { id: string; slug: string; name: string; description: string | null; icon: string; sort_order: number; }
 interface Article {
@@ -25,6 +26,7 @@ const slugify = (s: string) =>
 
 export default function WikiTab() {
   const { user } = useAuth();
+  const confirm = useConfirm();
   const [cats, setCats] = useState<Category[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [editingCat, setEditingCat] = useState<Partial<Category> | null>(null);
@@ -61,7 +63,7 @@ export default function WikiTab() {
   };
 
   const deleteCat = async (id: string) => {
-    if (!confirm("Apagar categoria e todos os artigos dela?")) return;
+    if (!await confirm({ title: 'Apagar categoria', description: 'A categoria e todos os artigos dela serão removidos.', variant: 'destructive', confirmText: 'Apagar' })) return;
     await supabase.from("wiki_categories").delete().eq("id", id);
     load();
   };
@@ -92,7 +94,7 @@ export default function WikiTab() {
   };
 
   const deleteArt = async (id: string) => {
-    if (!confirm("Apagar artigo?")) return;
+    if (!await confirm({ title: 'Apagar artigo', description: 'Esta ação não pode ser desfeita.', variant: 'destructive', confirmText: 'Apagar' })) return;
     await supabase.from("wiki_articles").delete().eq("id", id);
     load();
   };

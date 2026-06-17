@@ -64,7 +64,16 @@ serve(async (req) => {
     : 'https://sandbox.asaas.com/api/v3';
 
   const url = new URL(req.url);
-  const action = url.searchParams.get('action');
+
+  // Parse body once if present (invoke always sends JSON POST)
+  let body: any = {};
+  if (req.method !== 'GET' && req.method !== 'DELETE') {
+    try { body = await req.json(); } catch { body = {}; }
+  }
+
+  // Accept action/params from body OR query string (backward compat)
+  const action = body.action || url.searchParams.get('action');
+  const getParam = (k: string) => body[k] ?? url.searchParams.get(k);
 
   const asaasHeaders = {
     'Content-Type': 'application/json',
@@ -72,12 +81,8 @@ serve(async (req) => {
   };
 
   try {
-    if (action === 'create_customer' && req.method === 'POST') {
-      const body = await req.json();
-      
-      // Clean CPF/CNPJ - remove dots, dashes, slashes
+    if (action === 'create_customer') {
       const cleanCpfCnpj = body.cpfCnpj ? body.cpfCnpj.replace(/[.\-\/\s]/g, '') : undefined;
-      
       const customerData = {
         name: body.name,
         email: body.email || undefined,
@@ -97,26 +102,23 @@ serve(async (req) => {
       });
       const data = await res.json();
 
-      // If CPF/CNPJ already exists, search for existing customer and return it
       if (!res.ok && data.errors) {
-        const cpfError = data.errors.find((e: any) => 
-          e.description?.toLowerCase().includes('cpfcnpj') || 
+        const cpfError = data.errors.find((e: any) =>
+          e.description?.toLowerCase().includes('cpfcnpj') ||
           e.description?.toLowerCase().includes('já existe') ||
           e.description?.toLowerCase().includes('already') ||
           e.code === 'invalid_cpfCnpj_duplicate'
         );
-        
+
         if (cpfError && cleanCpfCnpj) {
-          // Search existing customer by CPF/CNPJ
           const searchRes = await fetch(
             `${baseUrl}/customers?cpfCnpj=${cleanCpfCnpj}`,
             { headers: asaasHeaders }
           );
           const searchData = await searchRes.json();
-          
+
           if (searchData.data && searchData.data.length > 0) {
-            const existingCustomer = searchData.data[0];
-            return new Response(JSON.stringify(existingCustomer), {
+            return new Response(JSON.stringify(searchData.data[0]), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
               status: 200,
             });
@@ -130,15 +132,14 @@ serve(async (req) => {
       });
     }
 
-    if (action === 'list_customers' && req.method === 'GET') {
-      const search = url.searchParams.get('search') || '';
+    if (action === 'list_customers') {
+      const search = getParam('search') || '';
       const res = await fetch(`${baseUrl}/customers?name=${encodeURIComponent(search)}&limit=50`, { headers: asaasHeaders });
       const data = await res.json();
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    if (action === 'create_payment' && req.method === 'POST') {
-      const body = await req.json();
+    if (action === 'create_payment') {
       const res = await fetch(`${baseUrl}/payments`, {
         method: 'POST',
         headers: asaasHeaders,
@@ -155,10 +156,10 @@ serve(async (req) => {
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: res.status });
     }
 
-    if (action === 'list_payments' && req.method === 'GET') {
-      const status = url.searchParams.get('status') || '';
-      const offset = url.searchParams.get('offset') || '0';
-      const limit = url.searchParams.get('limit') || '50';
+    if (action === 'list_payments') {
+      const status = getParam('status') || '';
+      const offset = getParam('offset') || '0';
+      const limit = getParam('limit') || '50';
       let fetchUrl = `${baseUrl}/payments?offset=${offset}&limit=${limit}`;
       if (status) fetchUrl += `&status=${status}`;
       const res = await fetch(fetchUrl, { headers: asaasHeaders });
@@ -166,32 +167,32 @@ serve(async (req) => {
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    if (action === 'get_payment' && req.method === 'GET') {
-      const paymentId = url.searchParams.get('id');
+    if (action === 'get_payment') {
+      const paymentId = getParam('id');
       if (!paymentId) return new Response(JSON.stringify({ error: 'Payment ID required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       const res = await fetch(`${baseUrl}/payments/${paymentId}`, { headers: asaasHeaders });
       const data = await res.json();
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    if (action === 'pix_qrcode' && req.method === 'GET') {
-      const paymentId = url.searchParams.get('id');
+    if (action === 'pix_qrcode') {
+      const paymentId = getParam('id');
       if (!paymentId) return new Response(JSON.stringify({ error: 'Payment ID required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       const res = await fetch(`${baseUrl}/payments/${paymentId}/pixQrCode`, { headers: asaasHeaders });
       const data = await res.json();
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    if (action === 'delete_payment' && req.method === 'DELETE') {
-      const paymentId = url.searchParams.get('id');
+    if (action === 'delete_payment') {
+      const paymentId = getParam('id');
       if (!paymentId) return new Response(JSON.stringify({ error: 'Payment ID required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       const res = await fetch(`${baseUrl}/payments/${paymentId}`, { method: 'DELETE', headers: asaasHeaders });
       const data = await res.json();
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: res.status });
     }
 
-    if (action === 'payment_link' && req.method === 'GET') {
-      const paymentId = url.searchParams.get('id');
+    if (action === 'payment_link') {
+      const paymentId = getParam('id');
       if (!paymentId) return new Response(JSON.stringify({ error: 'Payment ID required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       const res = await fetch(`${baseUrl}/payments/${paymentId}/identificationField`, { headers: asaasHeaders });
       const data = await res.json();

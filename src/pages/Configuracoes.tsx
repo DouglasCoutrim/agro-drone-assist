@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
 
@@ -24,6 +25,7 @@ interface UserWithRole extends Profile {
 
 export default function Configuracoes() {
   const { user, role } = useAuth();
+  const confirm = useConfirm();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -110,7 +112,7 @@ export default function Configuracoes() {
 
   const handleDeleteUser = async (userId: string) => {
     if (userId === user?.id) { toast.error('Você não pode excluir seu próprio usuário'); return; }
-    if (!confirm('Tem certeza que deseja remover este usuário?')) return;
+    if (!await confirm({ title: 'Remover usuário', description: 'Esta ação não pode ser desfeita.', variant: 'destructive', confirmText: 'Remover' })) return;
     try {
       // Remove role and profile (cascade will handle auth user)
       await supabase.from('user_roles').delete().eq('user_id', userId);

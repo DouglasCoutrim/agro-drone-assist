@@ -27,6 +27,7 @@ import { Tables } from "@/integrations/supabase/types";
 import { SearchableInput } from "@/components/ui/searchable-input";
 import { CatalogAutocomplete } from "@/components/ui/catalog-autocomplete";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useConfirm } from "@/hooks/useConfirm";
 
 type ItemEstoque = Tables<"itens_estoque">;
 
@@ -34,6 +35,7 @@ const DEFAULT_MARGIN = 30;
 
 export default function Estoque() {
   const { organization } = useOrganization();
+  const confirm = useConfirm();
   const [itens, setItens] = useState<ItemEstoque[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -148,7 +150,7 @@ export default function Estoque() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este item?')) return;
+    if (!await confirm({ title: 'Excluir item', description: 'Esta ação não pode ser desfeita.', variant: 'destructive', confirmText: 'Excluir' })) return;
     try {
       const { error } = await supabase.from('itens_estoque').delete().eq('id', id);
       if (error) throw error;

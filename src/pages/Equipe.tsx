@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
 import { useUsageLimits } from "@/hooks/useUsageLimits";
 import { UpgradePlanModal } from "@/components/UpgradePlanModal";
+import { useConfirm } from "@/hooks/useConfirm";
 
 type Profile = Tables<"profiles">;
 
@@ -30,6 +31,7 @@ interface UserWithRoleAndPerms extends Profile {
 
 export default function Equipe() {
   const { user, role, isAdmin } = useAuth();
+  const confirm = useConfirm();
   const [users, setUsers] = useState<UserWithRoleAndPerms[]>([]);
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -91,7 +93,7 @@ export default function Equipe() {
 
   const handleDeleteUser = async (userId: string) => {
     if (userId === user?.id) { toast.error('Você não pode excluir seu próprio usuário'); return; }
-    if (!confirm('Tem certeza que deseja remover este membro?')) return;
+    if (!await confirm({ title: 'Remover membro', description: 'Esta ação não pode ser desfeita.', variant: 'destructive', confirmText: 'Remover' })) return;
     try {
       await supabase.from('user_permissions').delete().eq('user_id', userId);
       await supabase.from('user_roles').delete().eq('user_id', userId);

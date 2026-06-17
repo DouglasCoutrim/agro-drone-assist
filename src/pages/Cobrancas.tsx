@@ -48,16 +48,12 @@ export default function Cobrancas() {
   const fetchPayments = async () => {
     setLoading(true);
     try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
-      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/asaas?action=list_payments`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'apikey': anonKey },
+      const { data: result, error } = await supabase.functions.invoke('asaas', {
+        body: { action: 'list_payments' },
       });
-      const result = await res.json();
-      if (result.data) setPayments(result.data);
-      else if (result.error) toast.error('Erro: ' + result.error);
+      if (error) throw error;
+      if (result?.data) setPayments(result.data);
+      else if (result?.error) toast.error('Erro: ' + result.error);
     } catch (error: any) { console.error('Error fetching payments:', error); } finally { setLoading(false); }
   };
 
@@ -68,18 +64,20 @@ export default function Cobrancas() {
     if (!asaasId) { toast.error('Cliente sem ID Asaas. Recadastre para sincronizar.'); return; }
     setFormLoading(true);
     try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
-      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/asaas?action=create_payment`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'apikey': anonKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customer: asaasId, billingType: formData.tipo, value: formData.valor, dueDate: formData.vencimento, description: formData.descricao, externalReference: formData.externalReference || undefined }),
+      const { data: result, error } = await supabase.functions.invoke('asaas', {
+        body: {
+          action: 'create_payment',
+          customer: asaasId,
+          billingType: formData.tipo,
+          value: formData.valor,
+          dueDate: formData.vencimento,
+          description: formData.descricao,
+          externalReference: formData.externalReference || undefined,
+        },
       });
-      const result = await res.json();
-      if (result.id) { toast.success('Cobrança criada!'); setDialogOpen(false); setFormData({ clienteId: "", valor: 0, vencimento: "", tipo: "PIX", descricao: "", externalReference: "" }); fetchPayments(); }
-      else toast.error('Erro: ' + JSON.stringify(result.errors || result));
+      if (error) throw error;
+      if (result?.id) { toast.success('Cobrança criada!'); setDialogOpen(false); setFormData({ clienteId: "", valor: 0, vencimento: "", tipo: "PIX", descricao: "", externalReference: "" }); fetchPayments(); }
+      else toast.error('Erro: ' + JSON.stringify(result?.errors || result));
     } catch (error: any) { toast.error('Erro: ' + error.message); } finally { setFormLoading(false); }
   };
 

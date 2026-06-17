@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
+import { useConfirm } from "@/hooks/useConfirm";
 import { useOrganization } from "@/hooks/useOrganization";
 import { formatCurrency } from "@/lib/formatters";
 
@@ -23,6 +24,7 @@ type Transacao = Tables<"financeiro">;
 
 export default function Financeiro() {
   const { user } = useAuth();
+  const confirm = useConfirm();
   const { organization } = useOrganization();
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,7 +93,7 @@ export default function Financeiro() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Excluir esta transação?')) return;
+    if (!await confirm({ title: 'Excluir transação', description: 'Esta ação não pode ser desfeita.', variant: 'destructive', confirmText: 'Excluir' })) return;
     try {
       const { error } = await supabase.from('financeiro').delete().eq('id', id);
       if (error) throw error;
