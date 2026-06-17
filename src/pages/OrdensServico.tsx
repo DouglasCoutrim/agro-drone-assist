@@ -499,7 +499,9 @@ export default function OrdensServico() {
     try {
       const itemsForPdf = await fetchOSItems(viewingOS.id, viewingOS.organization_id);
       setViewOsItems(itemsForPdf);
-      const html = generateOSPDF(viewingOS, itemsForPdf, empresa);
+      const empresaForPdf = { ...empresa, nome_empresa: empresa.nome_empresa || organization?.name || "Nome da Empresa" };
+      console.log("Dados da Empresa para PDF:", empresaForPdf);
+      const html = generateOSPDF(viewingOS, itemsForPdf, empresaForPdf);
       printWindow.document.write(html);
       printWindow.document.close();
     } finally {
@@ -548,7 +550,9 @@ export default function OrdensServico() {
       const itemsForPdf = await fetchOSItems(os.id, os.organization_id);
       if (viewingOS?.id === os.id) setViewOsItems(itemsForPdf);
       const osComCliente = { ...os, clientes: os.clientes || { nome: cliente.nome, telefone: cliente.telefone } };
-      const html = generateOSPDF(osComCliente, itemsForPdf, empresa);
+      const empresaForPdf = { ...empresa, nome_empresa: empresa.nome_empresa || organization?.name || "Nome da Empresa" };
+      console.log("Dados da Empresa para PDF (share):", empresaForPdf);
+      const html = generateOSPDF(osComCliente, itemsForPdf, empresaForPdf);
       const { htmlToPdfBlob, sharePdfOnWhatsApp } = await import("@/lib/os-pdf-share");
       const filename = `OS_${os.numero}.pdf`;
       const blob = await htmlToPdfBlob(html, filename);
