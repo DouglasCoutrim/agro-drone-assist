@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
+import { formatCurrency } from "@/lib/formatters";
 
 const TIPO_EQUIPAMENTO: Record<string, string> = {
   drone_agricola: "Drone Agrícola", drone_convencional: "Drone de Consumo",
@@ -107,7 +108,7 @@ const Index = () => {
     );
   };
 
-  const formatCurrency = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+  
   const formatDate = (d: string | null) => d ? new Date(d).toLocaleDateString("pt-BR") : "-";
 
   return (

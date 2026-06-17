@@ -198,7 +198,7 @@ export default function Estoque() {
     const loadingToast = toast.loading('Buscando dados do Mercado Livre...');
 
     try {
-      console.log('Iniciando busca do produto ML:', mlId);
+      
       
       let importedTitle = "";
       let importedPrice = 0;
@@ -206,7 +206,7 @@ export default function Estoque() {
 
       // 1. Try Edge Function first (server-side, more stable)
       try {
-        console.log('Solicitando via Edge Function:', mlId);
+        
         const { data: edgeData, error: edgeError } = await supabase.functions.invoke('mercadolivre', {
           body: { mlId },
         });
@@ -218,7 +218,7 @@ export default function Estoque() {
             importedTitle = title;
             importedPrice = Number(edgeData.price) || 0;
             importedCategory = edgeData.category_id || "";
-            console.log('Dados obtidos via Edge Function:', edgeData);
+            
           }
         } else if (edgeError) {
           console.warn('Erro na Edge Function:', edgeError);
@@ -243,7 +243,7 @@ export default function Estoque() {
                 importedTitle = data.title;
                 importedPrice = Number(data.price) || 0;
                 importedCategory = data.category_id || "";
-                console.log('Dados obtidos via Proxy:', data);
+                
               }
             }
           }
