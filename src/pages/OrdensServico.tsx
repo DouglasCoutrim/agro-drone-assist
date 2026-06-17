@@ -421,13 +421,40 @@ export default function OrdensServico() {
     if (!viewingOS) return;
     const cliente = clientes.find(c => c.id === viewingOS.cliente_id);
     if (!cliente?.telefone) { toast.error("Cliente sem telefone cadastrado"); return; }
-    // 1) Abre a janela de impressão para o usuário salvar o PDF
-    await handlePrintOS();
-    // 2) Abre o WhatsApp com mensagem amigável instruindo a anexar o PDF baixado
-    const nomeEmpresa = empresa.nome_empresa || "LivreOS";
-    const total = viewingOS.valor_orcamento ? formatCurrency(viewingOS.valor_orcamento) : "";
-    const msg = `Olá, *${viewingOS.clientes?.nome || "cliente"}*! 👋\n\n*${nomeEmpresa}*\n\n📋 *OS:* ${viewingOS.numero}${total ? `\n💰 *Total:* ${total}` : ""}\n\n📎 Segue em anexo o PDF completo da sua Ordem de Serviço.\n\n_Anexe nesta conversa o arquivo PDF que acabou de baixar._`;
-    setTimeout(() => openWhatsApp(cliente.telefone!, msg), 500);
+
+    const t = toast.loading("Gerando PDF da OS...");
+    try {
+      // Carrega itens (se ainda não estiverem em memória)
+      let itemsForPdf = viewOsItems;
+      if (itemsForPdf.length === 0) {
+        const { data } = await supabase.from("itens_os").select("*").eq("ordem_servico_id", viewingOS.id);
+        itemsForPdf = (data || []).map((d: any) => ({
+          id: d.id, tipo: d.tipo, produto_id: d.produto_id, servico_id: d.servico_id,
+          descricao: d.descricao, quantidade: d.quantidade, valor_unitario: d.valor_unitario, valor_total: d.valor_total,
+        }));
+        setViewOsItems(itemsForPdf);
+      }
+
+      const html = generateOSPDF(viewingOS, itemsForPdf, empresa);
+      const { htmlToPdfBlob, sharePdfOnWhatsApp } = await import("@/lib/os-pdf-share");
+      const filename = `OS_${viewingOS.numero}.pdf`;
+      const blob = await htmlToPdfBlob(html, filename);
+
+      const nomeEmpresa = empresa.nome_empresa || "LivreOS";
+      const total = viewingOS.valor_orcamento ? formatCurrency(viewingOS.valor_orcamento) : "";
+      const msg = `Olá, *${viewingOS.clientes?.nome || "cliente"}*! 👋\n\n*${nomeEmpresa}*\n\n📋 *OS:* ${viewingOS.numero}${total ? `\n💰 *Total:* ${total}` : ""}\n\n📎 Segue o PDF completo da sua Ordem de Serviço.`;
+
+      const result = await sharePdfOnWhatsApp({ blob, filename, telefone: cliente.telefone, message: msg });
+      toast.dismiss(t);
+      if (result === "shared") {
+        toast.success("PDF compartilhado!");
+      } else {
+        toast.success("PDF baixado. Anexe-o na conversa do WhatsApp que abriu.");
+      }
+    } catch (err: any) {
+      toast.dismiss(t);
+      toast.error("Erro ao gerar PDF: " + (err?.message || err));
+    }
   };
 
   const handleCobrar = async () => {
@@ -920,19 +947,9 @@ export default function OrdensServico() {
                     <Printer className="h-3.5 w-3.5 mr-1.5" /> PDF
                   </Button>
                   {viewingOS && (
-                    <Button variant="outline" size="sm" onClick={() => {
-                      const whatsappOs: any = {
-                        numero: viewingOS.numero,
-                        clienteNome: viewingOS.clientes?.nome || "",
-                        equipamento: TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento,
-                        modelo: viewingOS.modelo_equipamento || "",
-                        defeito: viewingOS.descricao_problema,
-                        previsao: viewingOS.data_previsao,
-                        valorOrcamento: viewingOS.valor_orcamento
-                      };
-                      openWhatsApp(viewingOS.clientes?.telefone || "", whatsappTemplates.osRecebida(whatsappOs, empresa?.nome_empresa || "LivreOS"));
-                    }} className="h-8 text-xs bg-green-500/10 text-green-600 border-green-200 hover:bg-green-500 hover:text-white shrink-0">
-                      <MessageCircle className="h-3.5 w-3.5 mr-1.5" /> WhatsApp
+                    <Button variant="outline" size="sm" onClick={handleSendPdfWhatsApp}
+                      className="h-8 text-xs bg-green-500/10 text-green-600 border-green-200 hover:bg-green-500 hover:text-white shrink-0">
+                      <MessageCircle className="h-3.5 w-3.5 mr-1.5" /> Enviar PDF
                     </Button>
                   )}
                 </div>
