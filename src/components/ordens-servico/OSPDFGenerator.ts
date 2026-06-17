@@ -2,6 +2,7 @@ import { Tables } from "@/integrations/supabase/types";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { getStatusLabel } from "@/components/os/StatusPipeline";
 import { getLegalTermsHTML } from "@/components/os/LegalTermsFooter";
+import { EmpresaConfig } from "@/hooks/useEmpresaConfig";
 
 type OrdemServico = Tables<"ordens_servico"> & { 
   clientes: { nome: string; telefone?: string } | null,
@@ -23,7 +24,7 @@ const TIPO_EQUIPAMENTO: Record<string, string> = {
 export const generateOSPDF = (
   viewingOS: OrdemServico,
   itemsForPdf: any[],
-  empresa: any
+  empresa: EmpresaConfig
 ) => {
   const fmtCur = (v: number | null | undefined) => formatCurrency(v || 0);
   const fmtDt = (d: string | null | undefined) => formatDate(d || "");
@@ -144,9 +145,9 @@ export const generateOSPDF = (
     <div style="display: flex; align-items: center; gap: 15px;">
       ${empresa.logo_url ? `<img src="${empresa.logo_url}" alt="Logo" style="max-height:45px" />` : ""}
       <div>
-        <h1>${empresa.nome_empresa || "LivreOS"}</h1>
-        <p style="font-size:10px;color:#888">${empresa.cnpj ? "CNPJ: " + empresa.cnpj : ""} ${empresa.telefone ? "| Tel: " + empresa.telefone : ""}</p>
-        <p style="font-size:10px;color:#888">${empresa.endereco || ""}</p>
+        <h1>${empresa.nome_empresa || "Nome da Empresa"}</h1>
+        ${empresa.cnpj || empresa.telefone ? `<p style="font-size:10px;color:#888">${empresa.cnpj ? "CNPJ: " + empresa.cnpj : ""} ${empresa.cnpj && empresa.telefone ? " | " : ""} ${empresa.telefone ? "Tel: " + empresa.telefone : ""}</p>` : ""}
+        ${empresa.endereco ? `<p style="font-size:10px;color:#888">${empresa.endereco}</p>` : ""}
       </div>
     </div>
     <div style="text-align:right">
