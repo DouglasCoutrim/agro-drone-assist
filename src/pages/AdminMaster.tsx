@@ -1,7 +1,7 @@
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrganization } from '@/hooks/useOrganization';
-import { Loader2, Menu } from 'lucide-react';
+import { Loader2, Menu, Building2 } from 'lucide-react';
 import OverviewTab from '@/components/admin/OverviewTab';
 import TenantsTab from '@/components/admin/TenantsTab';
 import PlansTab from '@/components/admin/PlansTab';
