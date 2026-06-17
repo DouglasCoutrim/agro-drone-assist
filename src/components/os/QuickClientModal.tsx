@@ -44,7 +44,18 @@ export function QuickClientModal({ open, onOpenChange, onClientCreated }: Props)
     e.preventDefault();
     setSaving(true);
     try {
-      const { data, error } = await supabase.from("clientes").insert(form).select("id").single();
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) throw new Error("Sessão expirada. Faça login novamente.");
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("organization_id")
+        .eq("id", auth.user.id)
+        .maybeSingle();
+      if (!profile?.organization_id) {
+        throw new Error("Sua conta não está vinculada a uma empresa. Contate o administrador.");
+      }
+      const payload = { ...form, organization_id: profile.organization_id };
+      const { data, error } = await supabase.from("clientes").insert(payload).select("id").single();
       if (error) throw error;
       toast.success("Cliente criado com sucesso!");
       onClientCreated(data.id);
