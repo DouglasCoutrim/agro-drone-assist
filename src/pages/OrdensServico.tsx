@@ -32,6 +32,7 @@ import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { generateOSPDF } from "@/components/ordens-servico/OSPDFGenerator";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useOrgSegments } from "@/hooks/useOrgSegments";
+import { useConfirm } from "@/hooks/useConfirm";
 import { getAvailableTypes, findTypeByValue, SEGMENTOS } from "@/lib/equipment-segments";
 
 
