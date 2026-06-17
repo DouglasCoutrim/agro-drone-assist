@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 
 export default function AdminMaster() {
   const { loading: authLoading } = useAuth();
-  const { isPlatformAdmin, loading } = useOrganization();
+  const { isPlatformAdmin, organization, loading } = useOrganization();
   const [searchParams] = useSearchParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const activeTab = searchParams.get('tab') || 'overview';
