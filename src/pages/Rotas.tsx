@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { formatCurrency } from "@/lib/formatters";
 import { Tables } from "@/integrations/supabase/types";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useConfirm } from "@/hooks/useConfirm";
 
 type Cliente = Tables<"clientes">;
 
@@ -32,6 +33,7 @@ interface RotaDB {
 
 export default function Rotas() {
   const { organization } = useOrganization();
+  const confirm = useConfirm();
   const [rotas, setRotas] = useState<RotaDB[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,7 +116,7 @@ export default function Rotas() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Excluir esta rota?")) return;
+    if (!await confirm({ title: 'Excluir rota', description: 'Esta ação não pode ser desfeita.', variant: 'destructive', confirmText: 'Excluir' })) return;
     try {
       const { error } = await supabase.from("rotas").delete().eq("id", id);
       if (error) throw error;
