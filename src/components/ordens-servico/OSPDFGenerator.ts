@@ -64,7 +64,11 @@ export const generateOSPDF = (
   const servicos = itemsForPdf.filter(i => i.tipo === "servico");
   const subtotal = itemsForPdf.reduce((s, i) => s + (i.valor_total || 0), 0);
   const desconto = (os.desconto || 0);
-  
+  // Total: prioriza soma de itens; cai para valor_orcamento salvo (OS antigas sem itens)
+  const totalFinal = subtotal > 0
+    ? Math.max(0, subtotal - desconto)
+    : (Number(viewingOS.valor_orcamento) || 0);
+
   const tableStyle = `width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;table-layout:fixed;`;
   const thStyle = `text-align:left;padding:6px 8px;background:#f3f4f6;border-bottom:1px solid #d1d5db;font-weight:600;`;
   const tdStyle = `padding:6px 8px;border-bottom:1px solid #eee;vertical-align:top;word-wrap:break-word;`;
@@ -92,21 +96,13 @@ export const generateOSPDF = (
     </div>`;
 
   const itensHtml = renderTable("Itens / Peças", produtos) + renderTable("Serviços executados", servicos);
-  const totalLine = itemsForPdf.length > 0 ? `
+  const totalLine = `
     <div class="section" style="margin-top:6px">
       <table style="width:100%;font-size:13px">
-        <tr><td style="text-align:right;padding:2px 8px">Subtotal:</td><td style="text-align:right;padding:2px 0;width:120px">${fmtCur(subtotal)}</td></tr>
-        ${desconto > 0 ? `<tr><td style="text-align:right;padding:2px 8px">Desconto:</td><td style="text-align:right;padding:2px 0">- ${fmtCur(desconto)}</td></tr>` : ""}
-        <tr><td style="text-align:right;padding:6px 8px;font-weight:700;font-size:15px">TOTAL:</td><td style="text-align:right;padding:6px 0;font-weight:700;font-size:15px;color:#16a34a">${fmtCur(Math.max(0, subtotal - desconto))}</td></tr>
+        ${subtotal > 0 ? `<tr><td style="text-align:right;padding:2px 8px">Subtotal:</td><td style="text-align:right;padding:2px 0;width:120px">${fmtCur(subtotal)}</td></tr>` : ""}
+        ${subtotal > 0 && desconto > 0 ? `<tr><td style="text-align:right;padding:2px 8px">Desconto:</td><td style="text-align:right;padding:2px 0">- ${fmtCur(desconto)}</td></tr>` : ""}
+        <tr><td style="text-align:right;padding:6px 8px;font-weight:700;font-size:15px">TOTAL:</td><td style="text-align:right;padding:6px 0;font-weight:700;font-size:15px;color:#16a34a;width:120px">${fmtCur(totalFinal)}</td></tr>
       </table>
-    </div>` : `
-    <div class="section">
-      <div class="grid">
-        <div class="field">
-          <div class="field-label">Total</div>
-          <div class="field-value" style="font-weight:bold;color:#16a34a">${fmtCur(viewingOS.valor_orcamento)}</div>
-        </div>
-      </div>
     </div>`;
 
   return `<!DOCTYPE html>
