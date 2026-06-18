@@ -17,6 +17,7 @@ const passwordSchema = z.string().min(6, "Senha é obrigatória");
 // Master admin config - map username to email
 const ADMIN_USER_EMAIL_MAP: Record<string, string> = {
   admin: "admin@plataforma.com",
+  douglas: "douglas@admin.local",
 };
 
 export default function AdminAuth() {
