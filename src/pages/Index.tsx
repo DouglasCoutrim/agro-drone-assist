@@ -72,7 +72,7 @@ const Index = () => {
         supabase.from("ordens_servico").select("id", { count: "exact", head: true }).eq("organization_id", orgId).in("status", ["concluida", "pronto_retirada", "entregue"]),
         supabase.from("itens_estoque").select("quantidade, estoque_minimo").eq("organization_id", orgId),
         supabase.from("clientes").select("*", { count: "exact", head: true }).eq("organization_id", orgId),
-        supabase.from("ordens_servico").select("*, clientes (nome, telefone)").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(5),
+        supabase.from("ordens_servico").select("*, clientes(nome, telefone)").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(5),
         supabase.from("financeiro").select("valor").eq("organization_id", orgId).eq("tipo", "receita").gte("data_transacao", startOfMonth.toISOString()),
         supabase.from("ordens_servico").select("*, clientes(nome, telefone)").eq("organization_id", orgId).not("data_previsao", "is", null).lt("data_previsao", today).not("status", "in", "(entregue,cancelada,pronto_retirada,concluida)").order("data_previsao", { ascending: true }).limit(10),
       ]);
