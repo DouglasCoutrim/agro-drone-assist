@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, FileText, Package, BarChart3, DollarSign, Settings,
-  Users, CreditCard, UsersRound, Building2, ClipboardList, Route, LogOut, LifeBuoy, BookOpen, Bell, ShieldCheck
+  Users, CreditCard, UsersRound, Building2, ClipboardList, Route, LogOut, LifeBuoy, BookOpen, Bell, ShieldCheck, Wrench
 } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
