@@ -28,7 +28,6 @@ export function useOrganization() {
       setOrganization(null);
       setIsPlatformAdmin(false);
       setLoading(false);
-      console.log("Status da Org:", { org: null, loading: false, error: null, reason: "no-user" });
       return;
     }
 
@@ -37,7 +36,6 @@ export function useOrganization() {
       setLoading(true);
       let org: Organization | null = null;
       let isPA = false;
-      let err: any = null;
       try {
         const { data: pa, error: paErr } = await supabase
           .from("platform_admins" as any)
@@ -66,14 +64,12 @@ export function useOrganization() {
           }
         }
       } catch (e) {
-        err = e;
         console.error("useOrganization error:", e);
       } finally {
         if (!cancelled) {
           setIsPlatformAdmin(isPA);
           setOrganization(org);
           setLoading(false);
-          console.log("Status da Org:", { org, loading: false, isPlatformAdmin: isPA, error: err });
         }
       }
     })();
