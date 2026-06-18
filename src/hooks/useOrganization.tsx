@@ -28,52 +28,57 @@ export function useOrganization() {
       setOrganization(null);
       setIsPlatformAdmin(false);
       setLoading(false);
+      console.log("Status da Org:", { org: null, loading: false, error: null, reason: "no-user" });
       return;
     }
 
+    let cancelled = false;
     (async () => {
       setLoading(true);
+      let org: Organization | null = null;
+      let isPA = false;
+      let err: any = null;
       try {
-        // Check platform admin first
-        const { data: pa } = await supabase
+        const { data: pa, error: paErr } = await supabase
           .from("platform_admins" as any)
           .select("user_id")
           .eq("user_id", user.id)
           .maybeSingle();
-        const isPA = !!pa;
-        setIsPlatformAdmin(isPA);
+        if (paErr) throw paErr;
+        isPA = !!pa;
 
         if (!isPA) {
-          // Regular user - fetch their profile and org
-          const { data: profile } = await supabase
+          const { data: profile, error: profileErr } = await supabase
             .from("profiles")
             .select("organization_id")
             .eq("id", user.id)
             .maybeSingle();
+          if (profileErr) throw profileErr;
 
           if (profile?.organization_id) {
-            const { data: org } = await supabase
+            const { data: orgData, error: orgErr } = await supabase
               .from("organizations" as any)
               .select("*")
               .eq("id", profile.organization_id)
               .maybeSingle();
-            setOrganization(org as any);
-          } else {
-            setOrganization(null);
+            if (orgErr) throw orgErr;
+            org = (orgData as any) ?? null;
           }
-        } else {
-          // Platform admin, no org
-          setOrganization(null);
         }
-      } catch (err) {
-        console.error("Error in useOrganization:", err);
-        setOrganization(null);
-        setIsPlatformAdmin(false);
+      } catch (e) {
+        err = e;
+        console.error("useOrganization error:", e);
       } finally {
-        // Critical: no matter what, set loading to false!
-        setLoading(false);
+        if (!cancelled) {
+          setIsPlatformAdmin(isPA);
+          setOrganization(org);
+          setLoading(false);
+          console.log("Status da Org:", { org, loading: false, isPlatformAdmin: isPA, error: err });
+        }
       }
     })();
+
+    return () => { cancelled = true; };
   }, [user]);
 
   return { organization, isPlatformAdmin, loading };
