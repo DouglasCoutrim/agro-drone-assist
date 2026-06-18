@@ -18,6 +18,12 @@ import { EmptyState } from "@/components/os/EmptyState";
 import { formatCpfCnpj, formatPhone, validateCpfCnpj, getErrorMessage } from "@/lib/formatters";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useConfirm } from "@/hooks/useConfirm";
+import { CsvImportExport, emptyToNull } from "@/components/CsvImportExport";
+
+const CLIENTES_CSV_COLUMNS = [
+  "nome", "telefone", "email", "cpf_cnpj",
+  "endereco", "cidade", "estado", "cep", "observacoes",
+];
 
 type Cliente = Tables<"clientes">;
 
