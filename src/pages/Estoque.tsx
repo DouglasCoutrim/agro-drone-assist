@@ -353,6 +353,30 @@ export default function Estoque() {
                 </AlertDialogContent>
               </AlertDialog>
             </div>
+            <CsvImportExport
+              tableName="itens_estoque"
+              organizationId={organization?.id}
+              exportColumns={ESTOQUE_CSV_COLUMNS}
+              templateColumns={ESTOQUE_CSV_COLUMNS}
+              filename="estoque"
+              onImported={fetchItens}
+              transformRow={(row) => {
+                const codigo = (row.codigo || "").trim();
+                const descricao = (row.descricao || "").trim();
+                if (!codigo || !descricao) return null;
+                return {
+                  codigo,
+                  descricao,
+                  categoria: (row.categoria || "").trim() || "Geral",
+                  quantidade: parseNumberBR(row.quantidade),
+                  estoque_minimo: parseNumberBR(row.estoque_minimo),
+                  custo_unitario: parseNumberBR(row.custo_unitario),
+                  preco_venda: parseNumberBR(row.preco_venda),
+                  fornecedor: emptyToNull(row.fornecedor),
+                  localizacao: emptyToNull(row.localizacao),
+                };
+              }}
+            />
             <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); resetForm(); } }}>
               <Button size="sm" className="gradient-primary" onClick={handleOpenNewDialog}>
                 <Plus className="mr-1.5 h-3.5 w-3.5" />Novo Item
