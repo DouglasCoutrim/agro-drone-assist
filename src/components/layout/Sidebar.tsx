@@ -24,6 +24,7 @@ const navSections = [
     title: "GESTÃO",
     items: [
       { title: "Estoque", icon: Package, href: "/estoque", roles: ["admin", "tecnico", "consulta"] },
+      { title: "Serviços", icon: Wrench, href: "/servicos", roles: ["admin", "tecnico", "consulta"] },
       { title: "Financeiro", icon: DollarSign, href: "/financeiro", roles: ["admin", "tecnico"] },
       { title: "Cobranças", icon: CreditCard, href: "/cobrancas", roles: ["admin", "tecnico"] },
       { title: "Orçamentos", icon: ClipboardList, href: "/orcamentos", roles: ["admin", "tecnico"] },
