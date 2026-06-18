@@ -177,7 +177,7 @@ export default function OrdensServico() {
     try {
       let ordensQuery = supabase
         .from("ordens_servico")
-        .select("*, clientes(nome, telefone), tecnico:profiles!ordens_servico_tecnico_id_fkey(nome)")
+        .select("*, clientes(nome, telefone)")
         .order("created_at", { ascending: false });
       let clientesQuery = supabase.from("clientes").select("*").order("nome");
 
@@ -501,7 +501,9 @@ export default function OrdensServico() {
       setViewOsItems(itemsForPdf);
       const empresaForPdf = { ...empresa, nome_empresa: empresa.nome_empresa || organization?.name || "Nome da Empresa" };
       console.log("Dados da Empresa para PDF:", empresaForPdf);
-      const html = generateOSPDF(viewingOS, itemsForPdf, empresaForPdf);
+      // Look up técnico name from tecnicos array
+      const técnico = tecnicos.find(t => t.id === viewingOS.tecnico_id);
+      const html = generateOSPDF(viewingOS, itemsForPdf, empresaForPdf, técnico?.nome);
       printWindow.document.write(html);
       printWindow.document.close();
     } finally {
@@ -552,7 +554,9 @@ export default function OrdensServico() {
       const osComCliente = { ...os, clientes: os.clientes || { nome: cliente.nome, telefone: cliente.telefone } };
       const empresaForPdf = { ...empresa, nome_empresa: empresa.nome_empresa || organization?.name || "Nome da Empresa" };
       console.log("Dados da Empresa para PDF (share):", empresaForPdf);
-      const html = generateOSPDF(osComCliente, itemsForPdf, empresaForPdf);
+      // Look up técnico name from tecnicos array
+      const técnico = tecnicos.find(t => t.id === os.tecnico_id);
+      const html = generateOSPDF(osComCliente, itemsForPdf, empresaForPdf, técnico?.nome);
       const { htmlToPdfBlob, sharePdfOnWhatsApp } = await import("@/lib/os-pdf-share");
       const filename = `OS_${os.numero}.pdf`;
       const blob = await htmlToPdfBlob(html, filename);

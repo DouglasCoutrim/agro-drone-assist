@@ -24,7 +24,8 @@ const TIPO_EQUIPAMENTO: Record<string, string> = {
 export const generateOSPDF = (
   viewingOS: OrdemServico,
   itemsForPdf: any[],
-  empresa: EmpresaConfig
+  empresa: EmpresaConfig,
+  tecnicoNome?: string
 ) => {
   const fmtCur = (v: number | null | undefined) => formatCurrency(v || 0);
   const fmtDt = (d: string | null | undefined) => formatDate(d || "");
@@ -111,8 +112,8 @@ export const generateOSPDF = (
       </table>
     </div>`;
 
-  // Get technician name
-  const tecnicoNome = os.tecnico?.nome || "Não informado";
+  // Get technician name, first from param if available, then try os.tecnico, then fallback
+  const finalTecnicoNome = tecnicoNome || os.tecnico?.nome || "Não informado";
 
   return `<!DOCTYPE html>
 <html>
@@ -210,7 +211,7 @@ export const generateOSPDF = (
 
   <div class="footer-sigs">
     <div class="signature">
-      ${tecnicoNome}<br/>
+      ${finalTecnicoNome}<br/>
       Técnico Responsável
     </div>
     <div class="signature">
