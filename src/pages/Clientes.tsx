@@ -18,6 +18,12 @@ import { EmptyState } from "@/components/os/EmptyState";
 import { formatCpfCnpj, formatPhone, validateCpfCnpj, getErrorMessage } from "@/lib/formatters";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useConfirm } from "@/hooks/useConfirm";
+import { CsvImportExport, emptyToNull } from "@/components/CsvImportExport";
+
+const CLIENTES_CSV_COLUMNS = [
+  "nome", "telefone", "email", "cpf_cnpj",
+  "endereco", "cidade", "estado", "cep", "observacoes",
+];
 
 type Cliente = Tables<"clientes">;
 
@@ -157,10 +163,35 @@ export default function Clientes() {
             <h1 className="text-lg font-bold font-display flex items-center gap-2"><Users className="h-5 w-5 text-primary" />Clientes</h1>
             <p className="text-xs text-muted-foreground">Cadastro e gestão de clientes</p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="gradient-primary"><Plus className="mr-1.5 h-3.5 w-3.5" />Novo Cliente</Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-2">
+            <CsvImportExport
+              tableName="clientes"
+              organizationId={organization?.id}
+              exportColumns={CLIENTES_CSV_COLUMNS}
+              templateColumns={CLIENTES_CSV_COLUMNS}
+              filename="clientes"
+              onImported={fetchClientes}
+              transformRow={(row) => {
+                const nome = (row.nome || "").trim();
+                const telefone = (row.telefone || "").trim();
+                if (!nome || !telefone) return null;
+                return {
+                  nome,
+                  telefone,
+                  email: emptyToNull(row.email),
+                  cpf_cnpj: emptyToNull(row.cpf_cnpj),
+                  endereco: emptyToNull(row.endereco),
+                  cidade: emptyToNull(row.cidade),
+                  estado: emptyToNull(row.estado),
+                  cep: emptyToNull(row.cep),
+                  observacoes: emptyToNull(row.observacoes),
+                };
+              }}
+            />
+            <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="gradient-primary"><Plus className="mr-1.5 h-3.5 w-3.5" />Novo Cliente</Button>
+              </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-base">{editingCliente ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
@@ -235,7 +266,9 @@ export default function Clientes() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
+
 
         {/* Stats */}
         <div className="grid gap-3 grid-cols-3">
