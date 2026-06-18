@@ -74,7 +74,7 @@ const Index = () => {
         supabase.from("clientes").select("*", { count: "exact", head: true }).eq("organization_id", orgId),
         supabase.from("ordens_servico").select("*, clientes (nome, telefone)").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(5),
         supabase.from("financeiro").select("valor").eq("organization_id", orgId).eq("tipo", "receita").gte("data_transacao", startOfMonth.toISOString()),
-        supabase.from("ordens_servico").select("*, clientes (nome, telefone)").eq("organization_id", orgId).not("data_previsao", "is", null).lt("data_previsao", today).not("status", "in", '("entregue","cancelada","pronto_retirada","concluida")').order("data_previsao", { ascending: true }).limit(10),
+        supabase.from("ordens_servico").select("*, clientes(nome, telefone)").eq("organization_id", orgId).not("data_previsao", "is", null).lt("data_previsao", today).not("status", "in", "(entregue,cancelada,pronto_retirada,concluida)").order("data_previsao", { ascending: true }).limit(10),
       ]);
 
       const itensEstoqueBaixo = (itensEstoqueRes.data || []).filter(item => item.quantidade <= item.estoque_minimo).length;
