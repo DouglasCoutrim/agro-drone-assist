@@ -23,6 +23,8 @@
         if (isAppAdmin) {
           document.getElementById('manifest-link').href = '/admin-manifest.json';
           document.querySelector('meta[name="theme-color"]').setAttribute('content', '#2563eb');
+          var appleTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+          if (appleTitle) appleTitle.setAttribute('content', 'VC Admin');
           document.title = 'Volt Control Admin';
         }
       })();
