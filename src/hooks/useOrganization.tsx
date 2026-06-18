@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export interface Organization {
   id: string;
@@ -32,36 +32,47 @@ export function useOrganization() {
     }
 
     (async () => {
-      // platform admin?
-      const { data: pa } = await supabase
-        .from('platform_admins' as any)
-        .select('user_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      const isPA = !!pa;
-      setIsPlatformAdmin(isPA);
-
-      // only fetch organization if NOT platform admin
-      if (!isPA) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('organization_id')
-          .eq('id', user.id)
+      setLoading(true);
+      try {
+        // Check platform admin first
+        const { data: pa } = await supabase
+          .from("platform_admins" as any)
+          .select("user_id")
+          .eq("user_id", user.id)
           .maybeSingle();
+        const isPA = !!pa;
+        setIsPlatformAdmin(isPA);
 
-        if (profile?.organization_id) {
-          const { data: org } = await supabase
-            .from('organizations' as any)
-            .select('*')
-            .eq('id', profile.organization_id)
+        if (!isPA) {
+          // Regular user - fetch their profile and org
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("organization_id")
+            .eq("id", user.id)
             .maybeSingle();
-          setOrganization(org as any);
+
+          if (profile?.organization_id) {
+            const { data: org } = await supabase
+              .from("organizations" as any)
+              .select("*")
+              .eq("id", profile.organization_id)
+              .maybeSingle();
+            setOrganization(org as any);
+          } else {
+            setOrganization(null);
+          }
+        } else {
+          // Platform admin, no org
+          setOrganization(null);
         }
-      } else {
-        // platform admin - no organization
+      } catch (err) {
+        console.error("Error in useOrganization:", err);
         setOrganization(null);
+        setIsPlatformAdmin(false);
+      } finally {
+        // Critical: no matter what, set loading to false!
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, [user]);
 
