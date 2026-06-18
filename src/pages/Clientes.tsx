@@ -266,7 +266,9 @@ export default function Clientes() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
+
 
         {/* Stats */}
         <div className="grid gap-3 grid-cols-3">
