@@ -61,13 +61,16 @@ const Index = () => {
   }, [user, organization?.id, orgLoading, isPlatformAdmin]);
 
   const fetchDashboardData = async () => {
-    if (!organization?.id) return;
-    try {
-      const orgId = organization.id;
-      const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
-      const today = new Date().toISOString();
+    if (!organization?.id) {
+      setLoading(false);
+      return;
+    }
+    const orgId = organization.id;
+    const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
+    const today = new Date().toISOString();
 
-      const [osAbertasRes, osConcluidasRes, itensEstoqueRes, totalClientesRes, recentOSRes, receitasRes, overdueOSRes] = await Promise.all([
+    try {
+      const results = await Promise.allSettled([
         supabase.from("ordens_servico").select("id", { count: "exact", head: true }).eq("organization_id", orgId).in("status", ["aberta", "em_andamento", "aguardando_peca", "recebido", "aguardando_diagnostico", "aguardando_aprovacao"]),
         supabase.from("ordens_servico").select("id", { count: "exact", head: true }).eq("organization_id", orgId).in("status", ["concluida", "pronto_retirada", "entregue"]),
         supabase.from("itens_estoque").select("quantidade, estoque_minimo").eq("organization_id", orgId),
@@ -77,8 +80,22 @@ const Index = () => {
         supabase.from("ordens_servico").select("*, clientes(nome, telefone)").eq("organization_id", orgId).not("data_previsao", "is", null).lt("data_previsao", today).not("status", "in", "(entregue,cancelada,pronto_retirada,concluida)").order("data_previsao", { ascending: true }).limit(10),
       ]);
 
-      const itensEstoqueBaixo = (itensEstoqueRes.data || []).filter(item => item.quantidade <= item.estoque_minimo).length;
-      const faturamentoMes = (receitasRes.data || []).reduce((acc, r) => acc + Number(r.valor), 0);
+      const get = (i: number): any => results[i].status === "fulfilled" ? (results[i] as any).value : { data: [], count: 0, error: (results[i] as any).reason };
+      const osAbertasRes = get(0);
+      const osConcluidasRes = get(1);
+      const itensEstoqueRes = get(2);
+      const totalClientesRes = get(3);
+      const recentOSRes = get(4);
+      const receitasRes = get(5);
+      const overdueOSRes = get(6);
+
+      results.forEach((r, i) => {
+        if (r.status === "rejected") console.error(`Dashboard query ${i} failed:`, r.reason);
+        else if ((r.value as any)?.error) console.error(`Dashboard query ${i} error:`, (r.value as any).error);
+      });
+
+      const itensEstoqueBaixo = (itensEstoqueRes.data || []).filter((item: any) => item.quantidade <= item.estoque_minimo).length;
+      const faturamentoMes = (receitasRes.data || []).reduce((acc: number, r: any) => acc + Number(r.valor), 0);
 
       // Asaas overdue payments (best-effort, parallel)
       (async () => {
