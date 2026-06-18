@@ -1,8 +1,10 @@
 {
+  "id": "/admin",
   "name": "Volt Control Admin",
   "short_name": "VC Admin",
   "description": "Painel Administrativo Volt Control",
-  "start_url": "/admin/auth",
+  "start_url": "/admin/login?pwa=1",
+  "scope": "/admin",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#2563eb",
