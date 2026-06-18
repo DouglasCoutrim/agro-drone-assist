@@ -60,19 +60,16 @@ export default function EmpresaConfig() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado.");
 
-      if (config.id) {
-        const { error } = await supabase
-          .from("empresa_config" as any)
-          .update(form as any)
-          .eq("id", config.id)
-          .eq("organization_id", organization.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("empresa_config" as any)
-          .insert({ ...form, organization_id: organization.id, owner_id: user.id } as any);
-        if (error) throw error;
-      }
+      const payload = {
+        ...form,
+        organization_id: organization.id,
+        owner_id: user.id,
+      };
+
+      const { error } = await supabase
+        .from("empresa_config" as any)
+        .upsert(payload as any, { onConflict: "organization_id" });
+      if (error) throw error;
       toast.success("Configurações da empresa salvas!");
       await refetch();
       setIsEditing(false);
