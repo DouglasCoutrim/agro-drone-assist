@@ -21,6 +21,7 @@ import NotFound from "./pages/NotFound";
 const Index = lazy(() => import("./pages/Index"));
 const OrdensServico = lazy(() => import("./pages/OrdensServico"));
 const Estoque = lazy(() => import("./pages/Estoque"));
+const Servicos = lazy(() => import("./pages/Servicos"));
 const Relatorios = lazy(() => import("./pages/Relatorios"));
 const Financeiro = lazy(() => import("./pages/Financeiro"));
 const Clientes = lazy(() => import("./pages/Clientes"));
