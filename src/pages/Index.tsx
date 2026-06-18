@@ -51,7 +51,14 @@ const Index = () => {
 
 
 
-  useEffect(() => { if (user && organization?.id) fetchDashboardData(); }, [user, organization?.id]);
+  useEffect(() => {
+    if (orgLoading) return;
+    if (!isPlatformAdmin && !organization?.id) {
+      setLoading(false);
+      return;
+    }
+    if (user && organization?.id) fetchDashboardData();
+  }, [user, organization?.id, orgLoading, isPlatformAdmin]);
 
   const fetchDashboardData = async () => {
     if (!organization?.id) return;
