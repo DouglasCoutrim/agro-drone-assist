@@ -85,7 +85,7 @@ export default function AdminAuth() {
             </div>
           </div>
           <CardDescription className="text-gray-400">
-            Acesso exclusivo para administradores da plataforma Volt Control
+            Acesso exclusivo para administradores da plataforma LivreOS
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -147,7 +147,7 @@ export default function AdminAuth() {
       </Card>
       
       <div className="fixed bottom-4 text-gray-600 text-[10px] font-mono">
-        VOLT CONTROL ADMIN v2.1.0 • PWA STANDALONE
+        LIVREOS ADMIN v2.1.0 • PWA STANDALONE
       </div>
     </div>
   );
