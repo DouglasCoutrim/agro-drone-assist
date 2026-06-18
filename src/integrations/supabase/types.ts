@@ -90,7 +90,7 @@ export type Database = {
           id: string
           logo_url: string | null
           nome_empresa: string
-          organization_id: string | null
+          organization_id: string
           owner_id: string | null
           responsavel: string | null
           subdominio: string | null
@@ -114,7 +114,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           nome_empresa?: string
-          organization_id?: string | null
+          organization_id: string
           owner_id?: string | null
           responsavel?: string | null
           subdominio?: string | null
@@ -138,7 +138,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           nome_empresa?: string
-          organization_id?: string | null
+          organization_id?: string
           owner_id?: string | null
           responsavel?: string | null
           subdominio?: string | null
