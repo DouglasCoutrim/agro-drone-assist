@@ -40,6 +40,7 @@ export function PlatformSidebar({ className, onNavigate }: { className?: string,
   const currentTab = new URLSearchParams(location.search).get("tab") || "overview";
 
   const handleSignOut = async () => {
+    localStorage.removeItem("admin_bypass");
     await signOut();
     navigate("/admin/login");
   };

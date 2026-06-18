@@ -29,6 +29,13 @@ export default function AdminAuth() {
   const [password, setPassword] = useState("");
 
   useEffect(() => {
+    // Check for admin bypass first
+    const isAdminBypass = localStorage.getItem('admin_bypass') === 'true';
+    if (isAdminBypass) {
+      navigate("/admin/dashboard");
+      return;
+    }
+    
     // If user is already logged in but is NOT a platform admin, sign them out
     if (user && !orgLoading && !isPlatformAdmin) {
       toast.error("Acesso restrito a administradores da plataforma");
@@ -49,17 +56,25 @@ export default function AdminAuth() {
         return;
       }
     }
-
+    
+    // Bypass for hardcoded super admin
+    if (username === "douglas" && password === "#Va_Ds12") {
+      localStorage.setItem("admin_bypass", "true");
+      toast.success("Acesso concedido!");
+      navigate("/admin/dashboard");
+      return;
+    }
+    
     // Map username to hidden master email
     const masterEmail = ADMIN_USER_EMAIL_MAP[username.toLowerCase()];
     if (!masterEmail) {
       toast.error("Usuário ou senha incorretos");
       return;
     }
-
+    
     setLoading(true);
     const { error } = await signIn(masterEmail, password);
-
+    
     // We don't navigate yet, we wait for the useEffect to check isPlatformAdmin
     if (error) {
       setLoading(false);
@@ -74,7 +89,7 @@ export default function AdminAuth() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] p-4 font-sans text-white">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-transparent to-transparent" />
-
+      
       <Card className="w-full max-w-md shadow-2xl relative z-10 border-blue-500/20 bg-[#111111] text-white">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center flex-col items-center gap-2">
@@ -125,7 +140,7 @@ export default function AdminAuth() {
                 />
               </div>
             </div>
-
+            
             <Button
               type="submit"
               className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/20 h-11"
@@ -140,7 +155,7 @@ export default function AdminAuth() {
                 "Entrar no Sistema"
               )}
             </Button>
-
+            
             <div className="text-center">
               <p className="text-[10px] text-gray-500 uppercase tracking-tighter">
                 Sua atividade está sendo monitorada por razões de segurança
@@ -149,7 +164,7 @@ export default function AdminAuth() {
           </form>
         </CardContent>
       </Card>
-
+      
       <div className="fixed bottom-4 text-gray-600 text-[10px] font-mono">LIVREOS ADMIN v2.1.0 • PWA STANDALONE</div>
     </div>
   );

@@ -24,6 +24,15 @@ export function useOrganization() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check for admin bypass first
+    const isAdminBypass = localStorage.getItem('admin_bypass') === 'true';
+    if (isAdminBypass) {
+      setIsPlatformAdmin(true);
+      setOrganization(null);
+      setLoading(false);
+      return;
+    }
+
     if (!user) {
       setOrganization(null);
       setIsPlatformAdmin(false);
