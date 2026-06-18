@@ -57,6 +57,9 @@ export default function EmpresaConfig() {
     }
     setSaving(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado.");
+
       if (config.id) {
         const { error } = await supabase
           .from("empresa_config" as any)
@@ -67,14 +70,14 @@ export default function EmpresaConfig() {
       } else {
         const { error } = await supabase
           .from("empresa_config" as any)
-          .insert({ ...form, organization_id: organization.id } as any);
+          .insert({ ...form, organization_id: organization.id, owner_id: user.id } as any);
         if (error) throw error;
       }
       toast.success("Configurações da empresa salvas!");
       await refetch();
       setIsEditing(false);
     } catch (error: any) {
-      toast.error("Erro ao salvar: " + error.message);
+      toast.error("Erro ao salvar: " + (error.message || "tente novamente."));
     } finally {
       setSaving(false);
     }
