@@ -1,8 +1,8 @@
 {
   "id": "/admin",
-  "name": "Volt Control Admin",
-  "short_name": "VC Admin",
-  "description": "Painel Administrativo Volt Control",
+  "name": "LivreOS Admin",
+  "short_name": "LivreOS Admin",
+  "description": "Painel Administrativo LivreOS",
   "start_url": "/admin/login?pwa=1",
   "scope": "/admin",
   "display": "standalone",
