@@ -28,6 +28,12 @@ import { SearchableInput } from "@/components/ui/searchable-input";
 import { CatalogAutocomplete } from "@/components/ui/catalog-autocomplete";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useConfirm } from "@/hooks/useConfirm";
+import { CsvImportExport, parseNumberBR, emptyToNull } from "@/components/CsvImportExport";
+
+const ESTOQUE_CSV_COLUMNS = [
+  "codigo", "descricao", "categoria", "quantidade", "estoque_minimo",
+  "custo_unitario", "preco_venda", "fornecedor", "localizacao",
+];
 
 type ItemEstoque = Tables<"itens_estoque">;
 
