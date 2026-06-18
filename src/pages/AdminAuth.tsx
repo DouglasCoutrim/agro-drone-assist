@@ -16,7 +16,7 @@ const passwordSchema = z.string().min(6, "Senha é obrigatória");
 
 // Master admin config - map username to email
 const ADMIN_USER_EMAIL_MAP: Record<string, string> = {
-  admin: "admin@plataforma.com",
+  admin: "douglas@admin.local",
   douglas: "douglas@admin.local",
 };
 
@@ -49,17 +49,17 @@ export default function AdminAuth() {
         return;
       }
     }
-    
+
     // Map username to hidden master email
     const masterEmail = ADMIN_USER_EMAIL_MAP[username.toLowerCase()];
     if (!masterEmail) {
       toast.error("Usuário ou senha incorretos");
       return;
     }
-    
+
     setLoading(true);
     const { error } = await signIn(masterEmail, password);
-    
+
     // We don't navigate yet, we wait for the useEffect to check isPlatformAdmin
     if (error) {
       setLoading(false);
@@ -74,7 +74,7 @@ export default function AdminAuth() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] p-4 font-sans text-white">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-transparent to-transparent" />
-      
+
       <Card className="w-full max-w-md shadow-2xl relative z-10 border-blue-500/20 bg-[#111111] text-white">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center flex-col items-center gap-2">
@@ -91,7 +91,9 @@ export default function AdminAuth() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="admin-username" className="text-gray-300">Usuário</Label>
+              <Label htmlFor="admin-username" className="text-gray-300">
+                Usuário
+              </Label>
               <div className="relative">
                 <Input
                   id="admin-username"
@@ -106,7 +108,9 @@ export default function AdminAuth() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="admin-password" className="text-gray-300">Senha</Label>
+              <Label htmlFor="admin-password" className="text-gray-300">
+                Senha
+              </Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                 <Input
@@ -121,10 +125,10 @@ export default function AdminAuth() {
                 />
               </div>
             </div>
-            
-            <Button 
-              type="submit" 
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/20 h-11" 
+
+            <Button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/20 h-11"
               disabled={loading}
             >
               {loading ? (
@@ -136,7 +140,7 @@ export default function AdminAuth() {
                 "Entrar no Sistema"
               )}
             </Button>
-            
+
             <div className="text-center">
               <p className="text-[10px] text-gray-500 uppercase tracking-tighter">
                 Sua atividade está sendo monitorada por razões de segurança
@@ -145,10 +149,8 @@ export default function AdminAuth() {
           </form>
         </CardContent>
       </Card>
-      
-      <div className="fixed bottom-4 text-gray-600 text-[10px] font-mono">
-        LIVREOS ADMIN v2.1.0 • PWA STANDALONE
-      </div>
+
+      <div className="fixed bottom-4 text-gray-600 text-[10px] font-mono">LIVREOS ADMIN v2.1.0 • PWA STANDALONE</div>
     </div>
   );
 }
