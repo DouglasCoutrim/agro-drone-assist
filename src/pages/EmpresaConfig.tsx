@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
 import { useOrganization } from "@/hooks/useOrganization";
 import { IntegracoesFinanceiras } from "@/components/IntegracoesFinanceiras";
+import { HelpTooltip } from "@/components/ui/help-tooltip";
 
 const emptyForm = {
   nome_empresa: "",
@@ -20,6 +21,9 @@ const emptyForm = {
   responsavel: "",
   logo_url: "",
   termos_servico: "",
+  taxa_bancada: "",
+  prazo_diagnostico: "",
+  garantia: "",
 };
 
 function Field({ label, value }: { label: string; value?: string }) {
