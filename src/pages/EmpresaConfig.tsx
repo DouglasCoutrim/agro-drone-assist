@@ -96,6 +96,9 @@ export default function EmpresaConfig() {
       responsavel: config.responsavel || "",
       logo_url: config.logo_url || "",
       termos_servico: config.termos_servico || "",
+      taxa_bancada: "",
+      prazo_diagnostico: "",
+      garantia: "",
     });
     setIsEditing(false);
   };
