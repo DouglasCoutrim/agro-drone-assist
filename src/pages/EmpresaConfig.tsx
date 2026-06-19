@@ -219,6 +219,40 @@ export default function EmpresaConfig() {
                       </div>
                     )}
                   </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Label>Taxa de Bancada</Label>
+                      <HelpTooltip content="Valor cobrado para cobrir custos de diagnóstico caso o orçamento seja reprovado pelo cliente." />
+                    </div>
+                    <Input
+                      value={form.taxa_bancada}
+                      onChange={(e) => setForm({ ...form, taxa_bancada: e.target.value })}
+                      placeholder="R$ 0,00"
+                      inputMode="decimal"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Label>Prazo de Diagnóstico</Label>
+                      <HelpTooltip content="Tempo médio (em dias úteis) que sua oficina leva para emitir o diagnóstico após o recebimento do equipamento." />
+                    </div>
+                    <Input
+                      value={form.prazo_diagnostico}
+                      onChange={(e) => setForm({ ...form, prazo_diagnostico: e.target.value })}
+                      placeholder="Ex: 3 dias úteis"
+                    />
+                  </div>
+                  <div className="col-span-full space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Label>Garantia</Label>
+                      <HelpTooltip content="Período padrão de garantia oferecido sobre os serviços executados (não cobre mau uso, quedas ou umidade)." />
+                    </div>
+                    <Input
+                      value={form.garantia}
+                      onChange={(e) => setForm({ ...form, garantia: e.target.value })}
+                      placeholder="Ex: 90 dias sobre o serviço executado"
+                    />
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button className="gradient-primary shadow-medium" onClick={handleSave} disabled={saving}>
