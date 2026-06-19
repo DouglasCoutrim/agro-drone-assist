@@ -67,8 +67,9 @@ export default function EmpresaConfig() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado.");
 
+      const { taxa_bancada, prazo_diagnostico, garantia, ...persisted } = form;
       const payload = {
-        ...form,
+        ...persisted,
         organization_id: organization.id,
         owner_id: user.id,
       };
