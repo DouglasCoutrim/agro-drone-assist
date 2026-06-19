@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
 import { useOrganization } from "@/hooks/useOrganization";
 import { IntegracoesFinanceiras } from "@/components/IntegracoesFinanceiras";
+import { HelpTooltip } from "@/components/ui/help-tooltip";
 
 const emptyForm = {
   nome_empresa: "",
@@ -20,6 +21,9 @@ const emptyForm = {
   responsavel: "",
   logo_url: "",
   termos_servico: "",
+  taxa_bancada: "",
+  prazo_diagnostico: "",
+  garantia: "",
 };
 
 function Field({ label, value }: { label: string; value?: string }) {
@@ -47,6 +51,9 @@ export default function EmpresaConfig() {
       responsavel: config.responsavel || "",
       logo_url: config.logo_url || "",
       termos_servico: config.termos_servico || "",
+      taxa_bancada: "",
+      prazo_diagnostico: "",
+      garantia: "",
     });
   }, [config]);
 
@@ -60,8 +67,9 @@ export default function EmpresaConfig() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado.");
 
+      const { taxa_bancada, prazo_diagnostico, garantia, ...persisted } = form;
       const payload = {
-        ...form,
+        ...persisted,
         organization_id: organization.id,
         owner_id: user.id,
       };
@@ -89,6 +97,9 @@ export default function EmpresaConfig() {
       responsavel: config.responsavel || "",
       logo_url: config.logo_url || "",
       termos_servico: config.termos_servico || "",
+      taxa_bancada: "",
+      prazo_diagnostico: "",
+      garantia: "",
     });
     setIsEditing(false);
   };
@@ -207,6 +218,40 @@ export default function EmpresaConfig() {
                         />
                       </div>
                     )}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Label>Taxa de Bancada</Label>
+                      <HelpTooltip content="Valor cobrado para cobrir custos de diagnóstico caso o orçamento seja reprovado pelo cliente." />
+                    </div>
+                    <Input
+                      value={form.taxa_bancada}
+                      onChange={(e) => setForm({ ...form, taxa_bancada: e.target.value })}
+                      placeholder="R$ 0,00"
+                      inputMode="decimal"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Label>Prazo de Diagnóstico</Label>
+                      <HelpTooltip content="Tempo médio (em dias úteis) que sua oficina leva para emitir o diagnóstico após o recebimento do equipamento." />
+                    </div>
+                    <Input
+                      value={form.prazo_diagnostico}
+                      onChange={(e) => setForm({ ...form, prazo_diagnostico: e.target.value })}
+                      placeholder="Ex: 3 dias úteis"
+                    />
+                  </div>
+                  <div className="col-span-full space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Label>Garantia</Label>
+                      <HelpTooltip content="Período padrão de garantia oferecido sobre os serviços executados (não cobre mau uso, quedas ou umidade)." />
+                    </div>
+                    <Input
+                      value={form.garantia}
+                      onChange={(e) => setForm({ ...form, garantia: e.target.value })}
+                      placeholder="Ex: 90 dias sobre o serviço executado"
+                    />
                   </div>
                 </div>
                 <div className="flex gap-2">
