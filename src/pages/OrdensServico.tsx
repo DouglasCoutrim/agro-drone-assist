@@ -115,6 +115,14 @@ export default function OrdensServico() {
   const [osItems, setOsItems] = useState<OSItem[]>([]);
   const [viewOsItems, setViewOsItems] = useState<OSItem[]>([]);
   const [viewOsItemsLoading, setViewOsItemsLoading] = useState(false);
+  const [paymentDialog, setPaymentDialog] = useState<{
+    open: boolean;
+    osId: string | null;
+    osNumero: string;
+    valorSugerido: number;
+    nextStatus: string | null;
+    saving: boolean;
+  }>({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
 
   // Wizard step
   const [wizardStep, setWizardStep] = useState(0);
