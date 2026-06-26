@@ -254,6 +254,8 @@ export default function Estoque() {
         
         toast.dismiss(loadingToast);
         toast.success(`Produto importado: ${importedTitle}`);
+      } else {
+        throw new Error('Não foi possível obter os dados do produto. Preencha manualmente ou tente outro anúncio.');
       }
 
     } catch (err: any) {
