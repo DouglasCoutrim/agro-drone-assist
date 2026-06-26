@@ -115,7 +115,7 @@ async function tryScrape(cleanId: string) {
     
     // Pattern A: h1 with class ui-pdp-title
     const h1Match = html.match(/<h1[^>]*class=["'][^"']*ui-pdp-title[^"']*["'][^>]*>([\s\S]*?)<\/h1>/i);
-    if (h1Match) title = h1Match[1].replace(/<[^>]*>/g, '').trim();
+    if (h1Match) title = decodeHtml(h1Match[1].replace(/<[^>]*>/g, ''));
 
     // Pattern B: meta og:title
     if (!title) {
@@ -205,7 +205,7 @@ async function tryScrape(cleanId: string) {
       source: 'scrape',
     };
   } catch (e) {
-    console.log(`Scrape error for ${cleanId}:`, e.message);
+    console.log(`Scrape error for ${cleanId}:`, (e as Error).message);
     return null;
   }
 }

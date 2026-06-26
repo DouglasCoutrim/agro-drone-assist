@@ -216,7 +216,7 @@ export default function Estoque() {
       let importedCategory = "";
 
       // Consulta somente via Edge Function (server-side). Nunca usar proxy público no browser:
-      // proxies como AllOrigins causam CORS, cache inconsistente e ruído no console.
+      // proxies públicos causam CORS, cache inconsistente e ruído no console.
       try {
         const { data: edgeData, error: edgeError } = await supabase.functions.invoke('mercadolivre', {
           body: { mlId },
