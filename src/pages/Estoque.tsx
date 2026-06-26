@@ -238,30 +238,8 @@ export default function Estoque() {
         console.error('Falha ao chamar Edge Function:', err);
       }
 
-      // 2. Fallback to client-side proxy (AllOrigins) if Edge Function didn't get valid data
-      if (!importedTitle) {
-        console.warn('Edge Function sem resultado válido, tentando proxy AllOrigins...');
-        try {
-          const targetUrl = `https://api.mercadolibre.com/items/${mlId}`;
-          const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
-          
-          const response = await fetch(proxyUrl);
-          if (response.ok) {
-            const proxyData = await response.json();
-            if (proxyData.contents) {
-              const data = JSON.parse(proxyData.contents);
-              if (data.title && !data.error) {
-                importedTitle = data.title;
-                importedPrice = Number(data.price) || 0;
-                importedCategory = data.category_id || "";
-                
-              }
-            }
-          }
-        } catch (proxyErr) {
-          console.error('Erro no proxy AllOrigins:', proxyErr);
-        }
-      }
+      // Fallback de proxy público (AllOrigins) removido: causava CORS e mascarava o erro real.
+      // O caminho oficial é a Edge Function `mercadolivre` (server-side, sem CORS).
 
       // 3. Apply results
       if (importedTitle) {
