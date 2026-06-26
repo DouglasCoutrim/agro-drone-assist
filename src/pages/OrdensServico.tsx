@@ -34,6 +34,7 @@ import { useOrganization } from "@/hooks/useOrganization";
 import { useOrgSegments } from "@/hooks/useOrgSegments";
 import { useConfirm } from "@/hooks/useConfirm";
 import { getAvailableTypes, findTypeByValue, SEGMENTOS } from "@/lib/equipment-segments";
+import { PaymentConfirmDialog, PaymentData } from "@/components/os/PaymentConfirmDialog";
 
 
 type OrdemServico = Tables<"ordens_servico"> & { clientes: { nome: string; telefone?: string } | null };
@@ -114,6 +115,14 @@ export default function OrdensServico() {
   const [osItems, setOsItems] = useState<OSItem[]>([]);
   const [viewOsItems, setViewOsItems] = useState<OSItem[]>([]);
   const [viewOsItemsLoading, setViewOsItemsLoading] = useState(false);
+  const [paymentDialog, setPaymentDialog] = useState<{
+    open: boolean;
+    osId: string | null;
+    osNumero: string;
+    valorSugerido: number;
+    nextStatus: string | null;
+    saving: boolean;
+  }>({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
 
   // Wizard step
   const [wizardStep, setWizardStep] = useState(0);
@@ -438,28 +447,158 @@ export default function OrdensServico() {
     }
   };
 
+  const computeSuggestedValue = async (os: OrdemServico): Promise<number> => {
+    if (os.valor_final && os.valor_final > 0) return Number(os.valor_final);
+    if (os.valor_orcamento && os.valor_orcamento > 0) return Number(os.valor_orcamento);
+    const items = await fetchOSItems(os.id, os.organization_id);
+    const total = items.reduce((s, i) => s + (i.valor_total || 0), 0);
+    return Math.max(0, total - (Number((os as any).desconto) || 0));
+  };
+
+  const openPaymentForOS = async (os: OrdemServico, nextStatus: string | null) => {
+    const sugerido = await computeSuggestedValue(os);
+    setPaymentDialog({
+      open: true,
+      osId: os.id,
+      osNumero: os.numero,
+      valorSugerido: sugerido,
+      nextStatus,
+      saving: false,
+    });
+  };
+
+  const applyStatusUpdate = async (osId: string, newStatus: string) => {
+    const updateData: any = { status: newStatus };
+    if (newStatus === "pronto_retirada" || newStatus === "concluida") updateData.data_conclusao = new Date().toISOString();
+    if (newStatus === "entregue") updateData.data_entrega = new Date().toISOString();
+    const { error } = await supabase.from("ordens_servico").update(updateData).eq("id", osId);
+    if (error) throw error;
+    if (user) {
+      await supabase.from("os_historico").insert({
+        ordem_servico_id: osId,
+        usuario_id: user.id,
+        acao: `Status alterado para ${getStatusLabel(newStatus)}`,
+      }).then(() => {});
+    }
+  };
+
   const handleStatusChange = async (osId: string, newStatus: string) => {
-    try {
-      const updateData: any = { status: newStatus };
-      if (newStatus === "pronto_retirada" || newStatus === "concluida") updateData.data_conclusao = new Date().toISOString();
-      if (newStatus === "entregue") updateData.data_entrega = new Date().toISOString();
-      const { error } = await supabase.from("ordens_servico").update(updateData).eq("id", osId);
-      if (error) throw error;
-      toast.success(`Status atualizado para "${getStatusLabel(newStatus)}"`);
-
-      // Log to historico
-      if (user) {
-        await supabase.from("os_historico").insert({
-          ordem_servico_id: osId,
-          usuario_id: user.id,
-          acao: `Status alterado para ${getStatusLabel(newStatus)}`,
-        }).then(() => {});
+    // Intercept "entregue" to require payment confirmation
+    if (newStatus === "entregue") {
+      const os = ordens.find(o => o.id === osId);
+      if (os) {
+        // Check if a financeiro entry already exists for this OS
+        const { data: existing } = await supabase
+          .from("financeiro")
+          .select("id")
+          .eq("ordem_servico_id", osId)
+          .limit(1);
+        if (existing && existing.length > 0) {
+          // Already recorded; just advance status
+          try {
+            await applyStatusUpdate(osId, newStatus);
+            toast.success(`Status atualizado para "${getStatusLabel(newStatus)}"`);
+            fetchData();
+          } catch (err: any) {
+            toast.error(getErrorMessage(err));
+          }
+          return;
+        }
+        await openPaymentForOS(os, newStatus);
+        return;
       }
+    }
 
+    try {
+      await applyStatusUpdate(osId, newStatus);
+      toast.success(`Status atualizado para "${getStatusLabel(newStatus)}"`);
       fetchData();
     } catch (err: any) {
       toast.error(getErrorMessage(err));
     }
+  };
+
+  const handleConfirmPayment = async (data: PaymentData) => {
+    if (!paymentDialog.osId) return;
+    setPaymentDialog(p => ({ ...p, saving: true }));
+    try {
+      const os = ordens.find(o => o.id === paymentDialog.osId);
+      const orgId = os?.organization_id || organization?.id;
+      if (!orgId) throw new Error("Organização não identificada.");
+
+      // 1) Insert financeiro
+      const { error: finErr } = await supabase.from("financeiro").insert({
+        organization_id: orgId,
+        ordem_servico_id: paymentDialog.osId,
+        usuario_id: user?.id || null,
+        tipo: "receita" as any,
+        categoria: "Serviços",
+        descricao: `Recebimento OS ${paymentDialog.osNumero}`,
+        valor: data.valor,
+        data_transacao: new Date().toISOString().slice(0, 10),
+        observacoes: [`Forma: ${data.forma_pagamento}`, data.observacoes].filter(Boolean).join(" | "),
+      });
+      if (finErr) throw finErr;
+
+      // 2) Update OS with valor_final + status
+      const updateData: any = { valor_final: data.valor };
+      if (paymentDialog.nextStatus) {
+        updateData.status = paymentDialog.nextStatus;
+        if (paymentDialog.nextStatus === "entregue") updateData.data_entrega = new Date().toISOString();
+        if (paymentDialog.nextStatus === "pronto_retirada" || paymentDialog.nextStatus === "concluida")
+          updateData.data_conclusao = new Date().toISOString();
+      }
+      const { error: osErr } = await supabase
+        .from("ordens_servico")
+        .update(updateData)
+        .eq("id", paymentDialog.osId);
+      if (osErr) throw osErr;
+
+      if (user && paymentDialog.nextStatus) {
+        await supabase.from("os_historico").insert({
+          ordem_servico_id: paymentDialog.osId,
+          usuario_id: user.id,
+          acao: `Recebimento registrado (${data.forma_pagamento}) e status alterado para ${getStatusLabel(paymentDialog.nextStatus)}`,
+        }).then(() => {});
+      }
+
+      toast.success("Recebimento registrado no Financeiro!");
+      setPaymentDialog({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
+      fetchData();
+    } catch (err: any) {
+      toast.error(getErrorMessage(err));
+      setPaymentDialog(p => ({ ...p, saving: false }));
+    }
+  };
+
+  const handleSkipPayment = async () => {
+    if (!paymentDialog.osId || !paymentDialog.nextStatus) {
+      setPaymentDialog({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
+      return;
+    }
+    setPaymentDialog(p => ({ ...p, saving: true }));
+    try {
+      await applyStatusUpdate(paymentDialog.osId, paymentDialog.nextStatus);
+      toast.success(`Status atualizado sem cobrança.`);
+      setPaymentDialog({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
+      fetchData();
+    } catch (err: any) {
+      toast.error(getErrorMessage(err));
+      setPaymentDialog(p => ({ ...p, saving: false }));
+    }
+  };
+
+  const handleRegisterPaymentForExisting = async (os: OrdemServico) => {
+    const { data: existing } = await supabase
+      .from("financeiro")
+      .select("id")
+      .eq("ordem_servico_id", os.id)
+      .limit(1);
+    if (existing && existing.length > 0) {
+      toast.info("Esta OS já possui um recebimento registrado no Financeiro.");
+      return;
+    }
+    await openPaymentForOS(os, null);
   };
 
   const handleAdvanceStatus = (os: OrdemServico) => {
@@ -801,6 +940,9 @@ export default function OrdensServico() {
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => { setViewingOS(os); setTimeout(handlePrintOS, 100); }}>
                               <Printer className="mr-2 h-3.5 w-3.5" />Imprimir OS
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleRegisterPaymentForExisting(os)}>
+                              <CreditCard className="mr-2 h-3.5 w-3.5" />Registrar Recebimento
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleDeleteOS(os)} className="text-destructive focus:text-destructive">
@@ -1234,6 +1376,18 @@ export default function OrdensServico() {
           onOpenChange={setQuickClientOpen}
           onClientCreated={(id) => { setFormData(f => ({ ...f, cliente_id: id })); fetchData(); }}
         />
+
+        <PaymentConfirmDialog
+          open={paymentDialog.open}
+          onOpenChange={(o) => setPaymentDialog(p => ({ ...p, open: o }))}
+          osNumero={paymentDialog.osNumero}
+          valorSugerido={paymentDialog.valorSugerido}
+          loading={paymentDialog.saving}
+          onConfirm={handleConfirmPayment}
+          onSkip={paymentDialog.nextStatus ? handleSkipPayment : undefined}
+          title={paymentDialog.nextStatus === "entregue" ? "Confirmar Entrega e Recebimento" : "Registrar Recebimento"}
+        />
+
       </div>
     </MainLayout>
   );
