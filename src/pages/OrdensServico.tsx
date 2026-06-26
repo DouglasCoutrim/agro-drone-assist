@@ -1376,6 +1376,18 @@ export default function OrdensServico() {
           onOpenChange={setQuickClientOpen}
           onClientCreated={(id) => { setFormData(f => ({ ...f, cliente_id: id })); fetchData(); }}
         />
+
+        <PaymentConfirmDialog
+          open={paymentDialog.open}
+          onOpenChange={(o) => setPaymentDialog(p => ({ ...p, open: o }))}
+          osNumero={paymentDialog.osNumero}
+          valorSugerido={paymentDialog.valorSugerido}
+          loading={paymentDialog.saving}
+          onConfirm={handleConfirmPayment}
+          onSkip={paymentDialog.nextStatus ? handleSkipPayment : undefined}
+          title={paymentDialog.nextStatus === "entregue" ? "Confirmar Entrega e Recebimento" : "Registrar Recebimento"}
+        />
+
       </div>
     </MainLayout>
   );
