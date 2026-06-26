@@ -38,10 +38,10 @@ export default defineConfig(({ mode }) => ({
           {
             urlPattern: ({ url, sameOrigin }) =>
               sameOrigin && /\.(?:js|css|woff2|png|svg|ico)$/.test(url.pathname),
-            handler: "CacheFirst",
+            handler: "StaleWhileRevalidate",
             options: {
               cacheName: "static-assets",
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 7 },
             },
           },
         ],

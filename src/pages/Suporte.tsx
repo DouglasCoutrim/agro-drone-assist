@@ -78,12 +78,8 @@ export default function Suporte() {
 
   useEffect(() => {
     if (!selected) return;
-    const ch = supabase
-      .channel(`ticket-${selected.id}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "support_messages", filter: `ticket_id=eq.${selected.id}` },
-        () => loadMessages(selected.id))
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    const interval = window.setInterval(() => loadMessages(selected.id), 15_000);
+    return () => window.clearInterval(interval);
   }, [selected?.id]);
 
   const handleCreate = async () => {

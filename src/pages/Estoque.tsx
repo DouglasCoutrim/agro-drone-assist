@@ -215,33 +215,34 @@ export default function Estoque() {
       let importedPrice = 0;
       let importedCategory = "";
 
-      // 1. Try Edge Function first (server-side, more stable)
+      // Consulta somente via Edge Function (server-side). Nunca usar proxy público no browser:
+      // proxies públicos causam CORS, cache inconsistente e ruído no console.
       try {
-        
         const { data: edgeData, error: edgeError } = await supabase.functions.invoke('mercadolivre', {
           body: { mlId },
         });
 
-        if (!edgeError && edgeData?.ok) {
+        if (edgeError) {
+          throw new Error(edgeError.message || 'Falha ao consultar a função Mercado Livre');
+        }
+
+        if (edgeData?.ok) {
           const title = edgeData.title?.trim();
           // Minimal validation to allow generic names like "iOS" if that's the product name
           if (title && title.length > 2) {
             importedTitle = title;
             importedPrice = Number(edgeData.price) || 0;
             importedCategory = edgeData.category_id || "";
-            
           }
-        } else if (edgeError) {
-          console.warn('Erro na Edge Function:', edgeError);
+        } else if (edgeData?.error) {
+          throw new Error(edgeData.error);
         }
       } catch (err) {
-        console.error('Falha ao chamar Edge Function:', err);
+        const message = err instanceof Error ? err.message : 'Falha ao buscar dados do Mercado Livre';
+        throw new Error(message);
       }
 
-      // Fallback de proxy público (AllOrigins) removido: causava CORS e mascarava o erro real.
-      // O caminho oficial é a Edge Function `mercadolivre` (server-side, sem CORS).
-
-      // 3. Apply results
+      // 2. Apply results
       if (importedTitle) {
         setFormData(prev => ({
           ...prev,
@@ -254,11 +255,10 @@ export default function Estoque() {
         toast.dismiss(loadingToast);
         toast.success(`Produto importado: ${importedTitle}`);
       } else {
-        throw new Error('Não foi possível obter os dados do produto. O Mercado Livre pode estar bloqueando a conexão.');
+        throw new Error('Não foi possível obter os dados do produto. Preencha manualmente ou tente outro anúncio.');
       }
 
     } catch (err: any) {
-      console.error('Erro total na importação:', err);
       toast.dismiss(loadingToast);
       toast.error("Falha na importação", {
         description: err.message || "Tente novamente ou preencha os dados manualmente.",

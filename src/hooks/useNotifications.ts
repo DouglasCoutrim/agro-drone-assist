@@ -36,29 +36,8 @@ export function useNotifications(limit = 50) {
   useEffect(() => {
     if (!user) return;
     load();
-    const ch = supabase
-      .channel(`notifications-${user.id}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        (payload) => {
-          const n = payload.new as Notification;
-          setItems((prev) => [n, ...prev].slice(0, limit));
-          toast(n.title, { description: n.body || undefined });
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        (payload) => {
-          const n = payload.new as Notification;
-          setItems((prev) => prev.map((x) => (x.id === n.id ? n : x)));
-        }
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
+    const interval = window.setInterval(load, 60_000);
+    return () => window.clearInterval(interval);
   }, [user, load, limit]);
 
   const unread = items.filter((n) => !n.read_at).length;
