@@ -25,6 +25,6 @@ if (typeof window !== "undefined") {
   });
 }
 
-// PWA Registration is handled by vite-plugin-pwa via registerSW in components
+// No app-shell Service Worker registration: prevents background updates from closing open forms.
 
 createRoot(document.getElementById("root")!).render(<App />);

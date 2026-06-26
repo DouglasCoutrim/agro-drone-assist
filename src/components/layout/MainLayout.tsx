@@ -3,7 +3,6 @@ import { MobileHeader } from "./MobileHeader";
 import { BottomNav } from "./BottomNav";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { useInactivityLogout } from "@/hooks/useInactivityLogout";
-import { ReloadPrompt } from "./ReloadPrompt";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -35,9 +34,6 @@ export function MainLayout({ children }: MainLayoutProps) {
 
       {/* Global Search Overlay */}
       <GlobalSearch />
-
-      {/* PWA Update Prompt */}
-      <ReloadPrompt />
     </div>
   );
 }
