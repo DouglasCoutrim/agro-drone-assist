@@ -34,6 +34,7 @@ import { useOrganization } from "@/hooks/useOrganization";
 import { useOrgSegments } from "@/hooks/useOrgSegments";
 import { useConfirm } from "@/hooks/useConfirm";
 import { getAvailableTypes, findTypeByValue, SEGMENTOS } from "@/lib/equipment-segments";
+import { PaymentConfirmDialog, PaymentData } from "@/components/os/PaymentConfirmDialog";
 
 
 type OrdemServico = Tables<"ordens_servico"> & { clientes: { nome: string; telefone?: string } | null };
