@@ -15,48 +15,54 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
   });
 }
 
-// Try the official ML API first
+// Try the official ML API first (tries .com and .com.br mirrors with rich headers)
 async function tryOfficialApi(cleanId: string) {
-  try {
-    console.log(`Trying API for ${cleanId}`);
-    const res = await fetch(`https://api.mercadolibre.com/items/${cleanId}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-    });
-    if (!res.ok) {
-      console.log(`API returned status ${res.status}`);
-      return null;
-    }
-    const data = await res.json();
-    if (data?.error) {
-      console.log(`API error: ${data.message}`);
-      return null;
-    }
-
-    // Try to fetch description separately
-    let description = '';
+  const endpoints = [
+    `https://api.mercadolibre.com/items/${cleanId}`,
+    `https://api.mercadolivre.com/items/${cleanId}`,
+  ];
+  for (const endpoint of endpoints) {
     try {
-      const descRes = await fetch(`https://api.mercadolibre.com/items/${cleanId}/description`);
-      if (descRes.ok) {
-        const descJson = await descRes.json();
-        description = descJson?.plain_text || '';
+      console.log(`Trying API: ${endpoint}`);
+      const res = await fetch(endpoint, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+          'Accept': 'application/json,text/plain,*/*',
+          'Accept-Language': 'pt-BR,pt;q=0.9',
+        },
+      });
+      if (!res.ok) {
+        console.log(`API ${endpoint} returned ${res.status}`);
+        continue;
       }
-    } catch { /* ignore */ }
+      const data = await res.json();
+      if (data?.error || !data?.title) continue;
 
-    return {
-      title: data.title || '',
-      price: Number(data.price) || 0,
-      category_id: data.category_id || '',
-      thumbnail: data.thumbnail || '',
-      picture_url: data.pictures?.[0]?.url || data.thumbnail || '',
-      description,
-      condition: data.condition || '',
-      currency_id: data.currency_id || 'BRL',
-      source: 'api',
-    };
-  } catch (err) {
-    console.error(`API error for ${cleanId}:`, err.message);
-    return null;
+      let description = '';
+      try {
+        const descRes = await fetch(`${endpoint}/description`);
+        if (descRes.ok) {
+          const descJson = await descRes.json();
+          description = descJson?.plain_text || '';
+        }
+      } catch { /* ignore */ }
+
+      return {
+        title: data.title || '',
+        price: Number(data.price) || 0,
+        category_id: data.category_id || '',
+        thumbnail: data.thumbnail || '',
+        picture_url: data.pictures?.[0]?.url || data.thumbnail || '',
+        description,
+        condition: data.condition || '',
+        currency_id: data.currency_id || 'BRL',
+        source: 'api',
+      };
+    } catch (err) {
+      console.error(`API error ${endpoint}:`, (err as Error).message);
+    }
   }
+  return null;
 }
 
 // Fallback: scrape the public product page
