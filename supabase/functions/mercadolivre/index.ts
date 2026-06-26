@@ -10,16 +10,15 @@ const FRIENDLY_ERROR = 'Não foi possível extrair dados deste link. Por favor, 
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
-    status: 200,
+    status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
 
-// Try the official ML API first (tries .com and .com.br mirrors with rich headers)
+// Try the official ML API first. Keep this server-side only; browser fallbacks cause CORS.
 async function tryOfficialApi(cleanId: string) {
   const endpoints = [
     `https://api.mercadolibre.com/items/${cleanId}`,
-    `https://api.mercadolivre.com/items/${cleanId}`,
   ];
   for (const endpoint of endpoints) {
     try {
@@ -59,10 +58,22 @@ async function tryOfficialApi(cleanId: string) {
         source: 'api',
       };
     } catch (err) {
-      console.error(`API error ${endpoint}:`, (err as Error).message);
+      console.log(`API request failed ${endpoint}:`, (err as Error).message);
     }
   }
   return null;
+}
+
+function decodeHtml(value = '') {
+  return value
+    .replace(/&quot;/g, '"')
+    .replace(/&#34;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 // Fallback: scrape the public product page
@@ -94,6 +105,11 @@ async function tryScrape(cleanId: string) {
     
     const html = await res.text();
 
+    if (html.includes('suspicious-traffic-frontend') || html.includes('/gz/account-verification')) {
+      console.log('Mercado Livre returned account verification page; scrape blocked.');
+      return null;
+    }
+
     // 1. Title Extraction (Specific Order)
     let title = '';
     
@@ -106,14 +122,14 @@ async function tryScrape(cleanId: string) {
       const ogTitle = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i);
       if (ogTitle) {
         // ML often puts site name in og:title, e.g. "Product Name | Mercado Livre"
-        title = ogTitle[1].split('|')[0].trim();
+        title = decodeHtml(ogTitle[1].split('|')[0]);
       }
     }
 
     // Pattern C: any h1
     if (!title) {
       const genericH1 = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-      if (genericH1) title = genericH1[1].replace(/<[^>]*>/g, '').trim();
+      if (genericH1) title = decodeHtml(genericH1[1].replace(/<[^>]*>/g, ''));
     }
 
     // Filter out metadata titles often found in scrape
@@ -165,10 +181,10 @@ async function tryScrape(cleanId: string) {
     }
 
     // 3. Image & Category
-    const picture_url = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)?.[1] || '';
+    const picture_url = decodeHtml(html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)?.[1] || '');
     
     // Description (often meta)
-    const description = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i)?.[1] || '';
+    const description = decodeHtml(html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i)?.[1] || '');
 
     if (!title) {
        console.log('No title found after all attempts.');
@@ -189,7 +205,7 @@ async function tryScrape(cleanId: string) {
       source: 'scrape',
     };
   } catch (e) {
-    console.error(`Scrape error for ${cleanId}:`, e.message);
+    console.log(`Scrape error for ${cleanId}:`, e.message);
     return null;
   }
 }
@@ -239,7 +255,7 @@ serve(async (req) => {
     }
 
     if (!result) {
-      return jsonResponse({ ok: false, error: FRIENDLY_ERROR });
+      return jsonResponse({ ok: false, error: FRIENDLY_ERROR }, 200);
     }
 
     return jsonResponse({ ok: true, ...result });
