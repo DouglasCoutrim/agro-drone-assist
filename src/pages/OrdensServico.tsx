@@ -941,6 +941,9 @@ export default function OrdensServico() {
                             <DropdownMenuItem onClick={() => { setViewingOS(os); setTimeout(handlePrintOS, 100); }}>
                               <Printer className="mr-2 h-3.5 w-3.5" />Imprimir OS
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleRegisterPaymentForExisting(os)}>
+                              <CreditCard className="mr-2 h-3.5 w-3.5" />Registrar Recebimento
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleDeleteOS(os)} className="text-destructive focus:text-destructive">
                               <Trash2 className="mr-2 h-3.5 w-3.5" />Deletar OS
