@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 // @ts-ignore: virtual module from vite-plugin-pwa
 import { registerSW } from "virtual:pwa-register";
+import { toast } from "sonner";
 
 const SW_URL = "/sw.js";
 
@@ -43,6 +44,8 @@ async function unregisterMatching() {
 }
 
 export function ReloadPrompt() {
+  const promptedRef = useRef(false);
+
   useEffect(() => {
     if (isRefusedContext()) {
       void unregisterMatching();
@@ -51,27 +54,24 @@ export function ReloadPrompt() {
     const updateSW = registerSW({
       immediate: true,
       onNeedRefresh() {
-        // Auto-update: SW already skipWaiting'd; reload to pick up new assets.
-        updateSW(true);
+        if (promptedRef.current) return;
+        promptedRef.current = true;
+        // Manual prompt — never auto-reloads or interrupts user work.
+        toast("Nova versão disponível", {
+          description: "Atualize quando terminar o que está fazendo.",
+          duration: Infinity,
+          action: {
+            label: "Atualizar agora",
+            onClick: () => updateSW(true),
+          },
+        });
       },
       onRegisteredSW(_swUrl: string, registration?: ServiceWorkerRegistration) {
         if (!registration) return;
-        // Poll for updates every 30 minutes.
-        setInterval(() => registration.update().catch(() => {}), 30 * 60 * 1000);
+        // Check for updates every 6h (no auto-apply).
+        setInterval(() => registration.update().catch(() => {}), 6 * 60 * 60 * 1000);
       },
     });
-
-    // Reload once the new SW takes control.
-    let reloaded = false;
-    const onControllerChange = () => {
-      if (reloaded) return;
-      reloaded = true;
-      window.location.reload();
-    };
-    navigator.serviceWorker?.addEventListener("controllerchange", onControllerChange);
-    return () => {
-      navigator.serviceWorker?.removeEventListener("controllerchange", onControllerChange);
-    };
   }, []);
 
   return null;
