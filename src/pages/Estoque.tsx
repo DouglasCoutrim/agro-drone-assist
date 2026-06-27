@@ -371,15 +371,21 @@ export default function Estoque() {
                       <LinkIcon className="h-4 w-4 text-primary" />
                       <span className="font-medium text-sm">Importar do Mercado Livre</span>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Input placeholder="Cole o link ou ID (ex: MLB6104761844)..." value={mlLink}
                         onChange={(e) => setMlLink(e.target.value)} className="flex-1" />
-                      <Button type="button" variant="outline" onClick={handleMLImport} disabled={mlLoading}>
-                        {mlLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                        <span className="ml-1">Buscar</span>
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button type="button" variant="outline" onClick={handleMLImport} disabled={mlLoading || mlSaving}>
+                          {mlLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                          <span className="ml-1">Preencher</span>
+                        </Button>
+                        <Button type="button" className="gradient-primary" onClick={handleMLImportAndSave} disabled={mlSaving || mlLoading}>
+                          {mlSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                          <span className="ml-1">Importar e Cadastrar</span>
+                        </Button>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">Preenche automaticamente nome, preço e categoria do produto.</p>
+                    <p className="text-xs text-muted-foreground">"Preencher" abre o formulário com os dados. "Importar e Cadastrar" salva direto no estoque.</p>
                   </div>
                 )}
 
