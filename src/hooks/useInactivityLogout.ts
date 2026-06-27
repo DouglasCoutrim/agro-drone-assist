@@ -14,6 +14,10 @@ export function useInactivityLogout() {
   const logoutTimer = useRef<number | null>(null);
   const warnedRef = useRef(false);
   const throttleRef = useRef(0);
+  const signOutRef = useRef(signOut);
+  const navigateRef = useRef(navigate);
+  signOutRef.current = signOut;
+  navigateRef.current = navigate;
 
   useEffect(() => {
     if (!user) return;
