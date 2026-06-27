@@ -60,7 +60,6 @@ export default function Assinatura() {
       if ((data as any)?.status === 'pago') {
         setPolling(false);
         toast.success('Pagamento confirmado! Plano ativado.');
-        setTimeout(() => window.location.reload(), 1500);
       }
     }, 5000);
     return () => clearInterval(interval);
