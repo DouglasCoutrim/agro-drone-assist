@@ -38,91 +38,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const lastUserIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        const newUserId = session?.user?.id ?? null;
         setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          setTimeout(() => {
-            fetchUserRole(session.user.id);
-          }, 0);
-        } else {
-          setRole(null);
+        // Evita trocar a referência de `user` em eventos como TOKEN_REFRESHED
+        // quando o usuário continua o mesmo — isso causava re-renders em cascata
+        // e desmontava formulários/modais abertos.
+        if (newUserId !== lastUserIdRef.current) {
+          lastUserIdRef.current = newUserId;
+          setUser(session?.user ?? null);
+          if (session?.user) {
+            setTimeout(() => { fetchUserRole(session.user.id); }, 0);
+          } else {
+            setRole(null);
+          }
         }
-        
         setLoading(false);
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
+      const newUserId = session?.user?.id ?? null;
       setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchUserRole(session.user.id);
+      if (newUserId !== lastUserIdRef.current) {
+        lastUserIdRef.current = newUserId;
+        setUser(session?.user ?? null);
+        if (session?.user) fetchUserRole(session.user.id);
       }
-      
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+  const signIn = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error };
-  };
+  }, []);
 
-  const signUp = async (email: string, password: string, nome: string) => {
+  const signUp = useCallback(async (email: string, password: string, nome: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          nome,
-        },
-      },
+      options: { emailRedirectTo: redirectUrl, data: { nome } },
     });
     return { error };
-  };
+  }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
     setRole(null);
-  };
+    lastUserIdRef.current = null;
+  }, []);
 
   const isAdmin = role === 'admin';
   const isTecnico = role === 'tecnico';
   const canEdit = isAdmin || isTecnico;
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        role,
-        loading,
-        signIn,
-        signUp,
-        signOut,
-        isAdmin,
-        isTecnico,
-        canEdit,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ user, session, role, loading, signIn, signUp, signOut, isAdmin, isTecnico, canEdit }),
+    [user, session, role, loading, signIn, signUp, signOut, isAdmin, isTecnico, canEdit],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
