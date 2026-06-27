@@ -36,8 +36,8 @@ export function useNotifications(limit = 50) {
   useEffect(() => {
     if (!user) return;
     load();
-    const interval = window.setInterval(load, 60_000);
-    return () => window.clearInterval(interval);
+    // Polling removido: evita re-renderizações periódicas que desmontavam formulários abertos.
+    // Recarregamento manual via `reload()` quando necessário.
   }, [user, load, limit]);
 
   const unread = items.filter((n) => !n.read_at).length;
