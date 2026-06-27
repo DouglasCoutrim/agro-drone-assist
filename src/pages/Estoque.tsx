@@ -268,6 +268,28 @@ export default function Estoque() {
     } finally { setMlLoading(false); }
   };
 
+  const handleMLImportAndSave = async () => {
+    if (!mlLink.trim()) { toast.error('Cole o link ou ID do anúncio do Mercado Livre'); return; }
+    setMlSaving(true);
+    const loadingToast = toast.loading('Importando e cadastrando no estoque...');
+    try {
+      const { data, error } = await supabase.functions.invoke('mercadolivre-import', {
+        body: { url: mlLink.trim(), margem: margemLucro, quantidade: 1, estoque_minimo: 1 },
+      });
+      if (error) throw new Error(error.message);
+      if (!data?.sucesso) throw new Error(data?.erro || 'Falha ao cadastrar produto');
+      toast.dismiss(loadingToast);
+      toast.success(`Produto cadastrado: ${data.produto.descricao}`);
+      setMlLink('');
+      setDialogOpen(false);
+      resetForm();
+      fetchItens();
+    } catch (err: any) {
+      toast.dismiss(loadingToast);
+      toast.error('Falha ao importar', { description: err.message, duration: 5000 });
+    } finally { setMlSaving(false); }
+  };
+
   const getStatusInfo = (item: ItemEstoque) => {
     if (item.quantidade <= 0) return { status: 'Sem Estoque', variant: 'destructive' as const, icon: TrendingDown };
     if (item.quantidade <= item.estoque_minimo) return { status: 'Baixo', variant: 'destructive' as const, icon: AlertTriangle };
