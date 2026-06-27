@@ -15,6 +15,7 @@ import { Loader2 } from "lucide-react";
 import Auth from "./pages/Auth";
 import Landing from "./pages/Landing";
 import AdminAuth from "./pages/AdminAuth";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 // Lazy: heavy authenticated pages
