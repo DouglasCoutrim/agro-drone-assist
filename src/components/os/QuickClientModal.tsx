@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useViaCep } from "@/hooks/useViaCep";
 import { UF_LIST } from "@/lib/constants";
+import { useConfirm } from "@/hooks/useConfirm";
 
 interface Props {
   open: boolean;
@@ -17,12 +18,18 @@ interface Props {
 }
 
 export function QuickClientModal({ open, onOpenChange, onClientCreated }: Props) {
+  const confirm = useConfirm();
   const { fetchCep, loading: cepLoading } = useViaCep();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     nome: "", telefone: "", email: "", cpf_cnpj: "",
     cep: "", endereco: "", cidade: "", estado: "",
   });
+
+  const isFormDirty = useMemo(
+    () => Object.values(form).some(value => String(value || "").trim() !== ""),
+    [form]
+  );
 
   const handleCepChange = async (value: string) => {
     setForm(f => ({ ...f, cep: value }));
@@ -68,8 +75,31 @@ export function QuickClientModal({ open, onOpenChange, onClientCreated }: Props)
     }
   };
 
+  const requestClose = async () => {
+    if (saving) return;
+    if (isFormDirty) {
+      const ok = await confirm({
+        title: "Descartar cliente?",
+        description: "Existem dados preenchidos no cadastro rápido. Se fechar agora, as alterações não salvas serão perdidas.",
+        confirmText: "Descartar",
+        cancelText: "Continuar editando",
+        variant: "destructive",
+      });
+      if (!ok) return;
+    }
+    onOpenChange(false);
+  };
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
+      onOpenChange(true);
+      return;
+    }
+    void requestClose();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className="max-w-lg max-h-[90vh] overflow-y-auto"
         onInteractOutside={(e) => e.preventDefault()}
@@ -123,7 +153,7 @@ export function QuickClientModal({ open, onOpenChange, onClientCreated }: Props)
             </div>
           </div>
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button type="button" variant="outline" onClick={requestClose}>Cancelar</Button>
             <Button type="submit" className="gradient-primary" disabled={saving}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Criar Cliente
             </Button>
