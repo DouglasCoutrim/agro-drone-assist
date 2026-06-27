@@ -29,13 +29,12 @@ export default function AdminAuth() {
   const [password, setPassword] = useState("");
 
   useEffect(() => {
-    // Check for admin bypass first
-    const isAdminBypass = localStorage.getItem('admin_bypass') === 'true';
-    if (isAdminBypass) {
-      navigate("/admin/dashboard");
-      return;
+    // Clear any legacy bypass flag — admin must have a real Supabase session
+    // so RLS policies (is_platform_admin(auth.uid())) actually work.
+    if (localStorage.getItem('admin_bypass')) {
+      localStorage.removeItem('admin_bypass');
     }
-    
+
     // If user is already logged in but is NOT a platform admin, sign them out
     if (user && !orgLoading && !isPlatformAdmin) {
       toast.error("Acesso restrito a administradores da plataforma");
@@ -56,26 +55,28 @@ export default function AdminAuth() {
         return;
       }
     }
-    
-    // Bypass for hardcoded super admin
-    if (username === "douglas" && password === "#Va_Ds12") {
-      localStorage.setItem("admin_bypass", "true");
-      toast.success("Acesso concedido!");
-      navigate("/admin/dashboard");
-      return;
-    }
-    
+
     // Map username to hidden master email
     const masterEmail = ADMIN_USER_EMAIL_MAP[username.toLowerCase()];
     if (!masterEmail) {
       toast.error("Usuário ou senha incorretos");
       return;
     }
-    
+
     setLoading(true);
-    const { error } = await signIn(masterEmail, password);
-    
-    // We don't navigate yet, we wait for the useEffect to check isPlatformAdmin
+    let { error } = await signIn(masterEmail, password);
+
+    // Self-heal: if the seeded master account doesn't exist yet, seed it and retry.
+    if (error && error.message.includes("Invalid login credentials") && username.toLowerCase() === "douglas") {
+      try {
+        await (await import("@/integrations/supabase/client")).supabase.functions.invoke("seed-platform-admin");
+        const retry = await signIn(masterEmail, password);
+        error = retry.error;
+      } catch {
+        // ignore and fall through to error toast
+      }
+    }
+
     if (error) {
       setLoading(false);
       if (error.message.includes("Invalid login credentials")) {

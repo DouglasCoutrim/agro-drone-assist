@@ -24,14 +24,12 @@ export function useOrganization() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for admin bypass first
-    const isAdminBypass = localStorage.getItem('admin_bypass') === 'true';
-    if (isAdminBypass) {
-      setIsPlatformAdmin(true);
-      setOrganization(null);
-      setLoading(false);
-      return;
+    // Legacy bypass flag — clear it. Platform admins must have a real Supabase
+    // session, otherwise RLS (is_platform_admin(auth.uid())) blocks tenant data.
+    if (localStorage.getItem('admin_bypass')) {
+      localStorage.removeItem('admin_bypass');
     }
+
 
     if (!user) {
       setOrganization(null);
