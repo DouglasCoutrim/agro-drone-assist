@@ -188,7 +188,20 @@ export default function Clientes() {
                 };
               }}
             />
-            <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+            <Dialog open={dialogOpen} onOpenChange={(open) => {
+              // DEBUG: rastrear o que está fechando o modal
+              if (!open) {
+                console.warn("[ClientesDialog] onOpenChange(false) disparado", {
+                  stack: new Error().stack,
+                  activeElement: document.activeElement?.tagName,
+                  time: new Date().toISOString(),
+                });
+              } else {
+                console.log("[ClientesDialog] abrindo modal");
+              }
+              setDialogOpen(open);
+              if (!open) resetForm();
+            }}>
               <DialogTrigger asChild>
                 <Button size="sm" className="gradient-primary"><Plus className="mr-1.5 h-3.5 w-3.5" />Novo Cliente</Button>
               </DialogTrigger>
