@@ -45,6 +45,11 @@ export default function Clientes() {
     endereco: "", cidade: "", estado: "", cep: "", observacoes: ""
   });
 
+  const isFormDirty = useMemo(
+    () => !!editingCliente || Object.values(formData).some(value => String(value || "").trim() !== ""),
+    [editingCliente, formData]
+  );
+
   useEffect(() => { if (organization?.id) fetchClientes(); }, [organization?.id]);
 
   const fetchClientes = async () => {
@@ -145,6 +150,30 @@ export default function Clientes() {
     setDuplicateWarning(null);
   };
 
+  const requestCloseDialog = async () => {
+    if (formLoading) return;
+    if (isFormDirty) {
+      const ok = await confirm({
+        title: "Descartar cadastro?",
+        description: "Existem dados preenchidos neste formulário. Se fechar agora, as alterações não salvas serão perdidas.",
+        confirmText: "Descartar",
+        cancelText: "Continuar editando",
+        variant: "destructive",
+      });
+      if (!ok) return;
+    }
+    setDialogOpen(false);
+    resetForm();
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    if (open) {
+      setDialogOpen(true);
+      return;
+    }
+    void requestCloseDialog();
+  };
+
   const filteredClientes = useMemo(() => {
     const term = searchTerm.toLowerCase();
     return clientes.filter(c =>
@@ -188,20 +217,7 @@ export default function Clientes() {
                 };
               }}
             />
-            <Dialog open={dialogOpen} onOpenChange={(open) => {
-              // DEBUG: rastrear o que está fechando o modal
-              if (!open) {
-                console.warn("[ClientesDialog] onOpenChange(false) disparado", {
-                  stack: new Error().stack,
-                  activeElement: document.activeElement?.tagName,
-                  time: new Date().toISOString(),
-                });
-              } else {
-                console.log("[ClientesDialog] abrindo modal");
-              }
-              setDialogOpen(open);
-              if (!open) resetForm();
-            }}>
+            <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
               <DialogTrigger asChild>
                 <Button size="sm" className="gradient-primary"><Plus className="mr-1.5 h-3.5 w-3.5" />Novo Cliente</Button>
               </DialogTrigger>
@@ -275,7 +291,7 @@ export default function Clientes() {
                   <div className="sm:col-span-2 space-y-1"><Label className="text-xs">Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" size="sm" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={requestCloseDialog}>Cancelar</Button>
                   <Button type="submit" size="sm" className="gradient-primary" disabled={formLoading}>
                     {formLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}{editingCliente ? 'Salvar' : 'Criar'}
                   </Button>

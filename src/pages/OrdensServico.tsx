@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -170,6 +170,18 @@ export default function OrdensServico() {
   const itemsTotal = osItems.reduce((s, i) => s + (i.valor_total || 0), 0);
   const totalOrcamento = Math.max(0, itemsTotal - (formData.desconto || 0));
   const viewItemsTotal = viewOsItems.reduce((s, i) => s + (i.valor_total || 0), 0);
+
+  const isOSFormDirty = useMemo(() => {
+    if (editingOS) return true;
+    return Object.values(formData).some(value => {
+      if (typeof value === "boolean") return value;
+      if (typeof value === "number") return value !== 0;
+      return String(value || "").trim() !== "";
+    }) || Object.values(mobilityData).some(value => {
+      if (typeof value === "boolean") return value;
+      return String(value || "").trim() !== "";
+    }) || osItems.length > 0 || uiCategory !== "bateria";
+  }, [editingOS, formData, mobilityData, osItems.length, uiCategory]);
 
   useEffect(() => {
     if (orgLoading) return;
@@ -778,6 +790,30 @@ export default function OrdensServico() {
     setOsItems([]);
   };
 
+  const requestCloseOSForm = async () => {
+    if (formLoading) return;
+    if (isOSFormDirty) {
+      const ok = await confirm({
+        title: "Descartar OS?",
+        description: "Existem dados preenchidos nesta Ordem de Serviço. Se fechar agora, as alterações não salvas serão perdidas.",
+        confirmText: "Descartar",
+        cancelText: "Continuar editando",
+        variant: "destructive",
+      });
+      if (!ok) return;
+    }
+    setDialogOpen(false);
+    resetForm();
+  };
+
+  const handleOSDialogOpenChange = (open: boolean) => {
+    if (open) {
+      setDialogOpen(true);
+      return;
+    }
+    void requestCloseOSForm();
+  };
+
   const getStatusBadge = (status: string) => {
     const c = STATUS_CONFIG[status] || { label: status, variant: "outline" as const };
     return <Badge variant={c.variant} className="text-[10px]">{c.label}</Badge>;
@@ -960,8 +996,12 @@ export default function OrdensServico() {
         </Card>
 
         {/* ===== OS FORM DIALOG (single-scroll) ===== */}
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogContent className="max-w-2xl w-[calc(100vw-1rem)] sm:w-full h-[95dvh] sm:h-[90dvh] p-0 flex flex-col overflow-hidden">
+        <Dialog open={dialogOpen} onOpenChange={handleOSDialogOpenChange}>
+          <DialogContent
+            className="max-w-2xl w-[calc(100vw-1rem)] sm:w-full h-[95dvh] sm:h-[90dvh] p-0 flex flex-col overflow-hidden"
+            onInteractOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => e.preventDefault()}
+          >
             <DialogHeader className="p-4 border-b shrink-0">
               <DialogTitle>{editingOS ? `Editar OS ${editingOS.numero}` : "Nova Ordem de Serviço"}</DialogTitle>
               <DialogDescription className="text-xs">
@@ -1179,7 +1219,7 @@ export default function OrdensServico() {
             {/* Sticky bottom save bar */}
             <div className="border-t bg-background p-3 shrink-0 flex items-center justify-between gap-2 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
               <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+                <Button type="button" variant="outline" size="sm" onClick={requestCloseOSForm}>Cancelar</Button>
                 {editingOS && (
                   <Button type="button" variant="ghost" size="sm" onClick={() => handleDeleteOS(editingOS)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
                     <Trash2 className="h-4 w-4 sm:mr-1.5" /><span className="hidden sm:inline">Deletar</span>
