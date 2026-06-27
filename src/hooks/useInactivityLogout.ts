@@ -14,6 +14,10 @@ export function useInactivityLogout() {
   const logoutTimer = useRef<number | null>(null);
   const warnedRef = useRef(false);
   const throttleRef = useRef(0);
+  const signOutRef = useRef(signOut);
+  const navigateRef = useRef(navigate);
+  signOutRef.current = signOut;
+  navigateRef.current = navigate;
 
   useEffect(() => {
     if (!user) return;
@@ -48,9 +52,9 @@ export function useInactivityLogout() {
       }, untilWarn);
 
       logoutTimer.current = window.setTimeout(async () => {
-        try { await signOut(); } catch {}
+        try { await signOutRef.current(); } catch {}
         try { localStorage.removeItem(STORAGE_KEY); } catch {}
-        navigate("/auth?expired=1", { replace: true });
+        navigateRef.current("/auth?expired=1", { replace: true });
       }, untilLogout);
     };
 
@@ -113,5 +117,5 @@ export function useInactivityLogout() {
       document.removeEventListener("visibilitychange", reset);
       window.removeEventListener("storage", onStorage);
     };
-  }, [user, signOut, navigate]);
+  }, [user]);
 }
