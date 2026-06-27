@@ -50,6 +50,7 @@ export default function Estoque() {
   const [formLoading, setFormLoading] = useState(false);
   const [margemLucro, setMargemLucro] = useState(DEFAULT_MARGIN);
   const [mlLoading, setMlLoading] = useState(false);
+  const [mlSaving, setMlSaving] = useState(false);
   const [mlLink, setMlLink] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
   const [viewingItem, setViewingItem] = useState<ItemEstoque | null>(null);
