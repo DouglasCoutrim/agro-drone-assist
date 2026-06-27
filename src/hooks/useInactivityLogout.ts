@@ -117,5 +117,5 @@ export function useInactivityLogout() {
       document.removeEventListener("visibilitychange", reset);
       window.removeEventListener("storage", onStorage);
     };
-  }, [user, signOut, navigate]);
+  }, [user]);
 }
