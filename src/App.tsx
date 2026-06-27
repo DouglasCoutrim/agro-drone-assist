@@ -15,6 +15,7 @@ import { Loader2 } from "lucide-react";
 import Auth from "./pages/Auth";
 import Landing from "./pages/Landing";
 import AdminAuth from "./pages/AdminAuth";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 // Lazy: heavy authenticated pages
@@ -91,6 +92,7 @@ const App = () => {
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/admin/login" element={<AdminAuth />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/cadastro-empresa" element={<CadastroEmpresa />} />
                   <Route path="/mensalidade-em-atraso" element={<ProtectedRoute allowBlocked><MensalidadeAtraso /></ProtectedRoute>} />
                   <Route path="/admin/dashboard" element={<ProtectedRoute requiredPlatformAdmin><AdminMaster /></ProtectedRoute>} />
