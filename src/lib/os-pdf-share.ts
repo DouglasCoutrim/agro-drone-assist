@@ -4,7 +4,7 @@ import { jsPDF } from "jspdf";
 /**
  * Render an HTML string into a multi-page PDF Blob (A4).
  */
-export async function htmlToPdfBlob(html: string, filename: string): Promise<Blob> {
+export async function htmlToPdfBlob(html: string, _filename: string): Promise<Blob> {
   // Render the HTML offscreen so html2canvas can rasterize it
   const container = document.createElement("div");
   container.style.position = "fixed";
@@ -12,40 +12,106 @@ export async function htmlToPdfBlob(html: string, filename: string): Promise<Blo
   container.style.top = "0";
   container.style.width = "794px"; // ~A4 width @96dpi
   container.style.background = "#fff";
+  container.style.padding = "0";
   container.innerHTML = html;
   // Strip the auto-print script
   container.querySelectorAll("script").forEach((s) => s.remove());
   document.body.appendChild(container);
 
   try {
-    const canvas = await html2canvas(container, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      logging: false,
-    });
+    // Wait for images (logo) to load so they don't render blank
+    const imgs = Array.from(container.querySelectorAll("img"));
+    await Promise.all(
+      imgs.map(
+        (img) =>
+          new Promise<void>((res) => {
+            if ((img as HTMLImageElement).complete) return res();
+            img.addEventListener("load", () => res(), { once: true });
+            img.addEventListener("error", () => res(), { once: true });
+          })
+      )
+    );
+
+    // Pick the body element (the HTML template wraps content in <body>)
+    const bodyEl =
+      (container.querySelector("body") as HTMLElement | null) ||
+      (container.firstElementChild as HTMLElement) ||
+      container;
+
+    // Collect "blocks" = direct children we don't want to split across pages
+    const blocks = Array.from(bodyEl.children) as HTMLElement[];
 
     const pdf = new jsPDF("p", "mm", "a4");
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
-    const MARGIN = 10; // mm on all sides
+    const MARGIN = 10; // mm
     const contentW = pageW - MARGIN * 2;
     const contentH = pageH - MARGIN * 2;
-    const imgW = contentW;
-    const imgH = (canvas.height * imgW) / canvas.width;
-    const imgData = canvas.toDataURL("image/jpeg", 0.95);
 
-    let heightLeft = imgH;
-    let position = MARGIN;
+    let cursorY = MARGIN;
 
-    pdf.addImage(imgData, "JPEG", MARGIN, position, imgW, imgH);
-    heightLeft -= contentH;
+    const renderBlock = async (el: HTMLElement) => {
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      });
+      const wMm = contentW;
+      const hMm = (canvas.height * wMm) / canvas.width;
+      const data = canvas.toDataURL("image/jpeg", 0.95);
+      return { data, wMm, hMm, canvas };
+    };
 
-    while (heightLeft > 0) {
-      position = MARGIN - (imgH - heightLeft);
-      pdf.addPage();
-      pdf.addImage(imgData, "JPEG", MARGIN, position, imgW, imgH);
-      heightLeft -= contentH;
+    const addImage = (data: string, wMm: number, hMm: number) => {
+      pdf.addImage(data, "JPEG", MARGIN, cursorY, wMm, hMm);
+      cursorY += hMm;
+    };
+
+    const sliceTall = async (canvas: HTMLCanvasElement, wMm: number) => {
+      // Block is taller than a full page → slice it across pages
+      const pxPerMm = canvas.width / wMm;
+      const pagePxAvailFirst = Math.floor((pageH - MARGIN - cursorY) * pxPerMm);
+      const pagePxFull = Math.floor(contentH * pxPerMm);
+
+      let offset = 0;
+      let avail = pagePxAvailFirst > 100 ? pagePxAvailFirst : pagePxFull;
+      if (avail !== pagePxAvailFirst) {
+        pdf.addPage();
+        cursorY = MARGIN;
+      }
+      while (offset < canvas.height) {
+        const sliceH = Math.min(avail, canvas.height - offset);
+        const tmp = document.createElement("canvas");
+        tmp.width = canvas.width;
+        tmp.height = sliceH;
+        const ctx = tmp.getContext("2d")!;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, tmp.width, tmp.height);
+        ctx.drawImage(canvas, 0, -offset);
+        const data = tmp.toDataURL("image/jpeg", 0.95);
+        const hMm = sliceH / pxPerMm;
+        addImage(data, wMm, hMm);
+        offset += sliceH;
+        if (offset < canvas.height) {
+          pdf.addPage();
+          cursorY = MARGIN;
+          avail = pagePxFull;
+        }
+      }
+    };
+
+    for (const block of blocks) {
+      const { data, wMm, hMm, canvas } = await renderBlock(block);
+      if (hMm > contentH) {
+        await sliceTall(canvas, wMm);
+        continue;
+      }
+      if (cursorY + hMm > pageH - MARGIN) {
+        pdf.addPage();
+        cursorY = MARGIN;
+      }
+      addImage(data, wMm, hMm);
     }
 
     return pdf.output("blob");
@@ -53,6 +119,7 @@ export async function htmlToPdfBlob(html: string, filename: string): Promise<Blo
     document.body.removeChild(container);
   }
 }
+
 
 /**
  * Share PDF via WhatsApp:
