@@ -52,9 +52,9 @@ export function useInactivityLogout() {
       }, untilWarn);
 
       logoutTimer.current = window.setTimeout(async () => {
-        try { await signOut(); } catch {}
+        try { await signOutRef.current(); } catch {}
         try { localStorage.removeItem(STORAGE_KEY); } catch {}
-        navigate("/auth?expired=1", { replace: true });
+        navigateRef.current("/auth?expired=1", { replace: true });
       }, untilLogout);
     };
 
