@@ -122,6 +122,11 @@ export default function Auth() {
                 "Entrar"
               )}
             </Button>
+            <div className="text-center">
+              <a href="/reset-password" className="text-xs text-primary hover:underline">
+                Esqueci minha senha
+              </a>
+            </div>
             <p className="text-xs text-muted-foreground text-center">
               Quer cadastrar sua empresa?{" "}
               <a href="/cadastro-empresa" className="text-primary underline">
