@@ -192,7 +192,11 @@ export default function Clientes() {
               <DialogTrigger asChild>
                 <Button size="sm" className="gradient-primary"><Plus className="mr-1.5 h-3.5 w-3.5" />Novo Cliente</Button>
               </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent
+              className="max-w-2xl max-h-[90vh] overflow-y-auto"
+              onInteractOutside={(e) => e.preventDefault()}
+              onEscapeKeyDown={(e) => e.preventDefault()}
+            >
               <DialogHeader>
                 <DialogTitle className="text-base">{editingCliente ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
                 <DialogDescription className="text-xs">Preencha os dados do cliente</DialogDescription>
