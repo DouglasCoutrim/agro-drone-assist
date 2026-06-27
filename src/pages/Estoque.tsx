@@ -50,6 +50,7 @@ export default function Estoque() {
   const [formLoading, setFormLoading] = useState(false);
   const [margemLucro, setMargemLucro] = useState(DEFAULT_MARGIN);
   const [mlLoading, setMlLoading] = useState(false);
+  const [mlSaving, setMlSaving] = useState(false);
   const [mlLink, setMlLink] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
   const [viewingItem, setViewingItem] = useState<ItemEstoque | null>(null);
@@ -267,6 +268,28 @@ export default function Estoque() {
     } finally { setMlLoading(false); }
   };
 
+  const handleMLImportAndSave = async () => {
+    if (!mlLink.trim()) { toast.error('Cole o link ou ID do anúncio do Mercado Livre'); return; }
+    setMlSaving(true);
+    const loadingToast = toast.loading('Importando e cadastrando no estoque...');
+    try {
+      const { data, error } = await supabase.functions.invoke('mercadolivre-import', {
+        body: { url: mlLink.trim(), margem: margemLucro, quantidade: 1, estoque_minimo: 1 },
+      });
+      if (error) throw new Error(error.message);
+      if (!data?.sucesso) throw new Error(data?.erro || 'Falha ao cadastrar produto');
+      toast.dismiss(loadingToast);
+      toast.success(`Produto cadastrado: ${data.produto.descricao}`);
+      setMlLink('');
+      setDialogOpen(false);
+      resetForm();
+      fetchItens();
+    } catch (err: any) {
+      toast.dismiss(loadingToast);
+      toast.error('Falha ao importar', { description: err.message, duration: 5000 });
+    } finally { setMlSaving(false); }
+  };
+
   const getStatusInfo = (item: ItemEstoque) => {
     if (item.quantidade <= 0) return { status: 'Sem Estoque', variant: 'destructive' as const, icon: TrendingDown };
     if (item.quantidade <= item.estoque_minimo) return { status: 'Baixo', variant: 'destructive' as const, icon: AlertTriangle };
@@ -371,15 +394,21 @@ export default function Estoque() {
                       <LinkIcon className="h-4 w-4 text-primary" />
                       <span className="font-medium text-sm">Importar do Mercado Livre</span>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Input placeholder="Cole o link ou ID (ex: MLB6104761844)..." value={mlLink}
                         onChange={(e) => setMlLink(e.target.value)} className="flex-1" />
-                      <Button type="button" variant="outline" onClick={handleMLImport} disabled={mlLoading}>
-                        {mlLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                        <span className="ml-1">Buscar</span>
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button type="button" variant="outline" onClick={handleMLImport} disabled={mlLoading || mlSaving}>
+                          {mlLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                          <span className="ml-1">Preencher</span>
+                        </Button>
+                        <Button type="button" className="gradient-primary" onClick={handleMLImportAndSave} disabled={mlSaving || mlLoading}>
+                          {mlSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                          <span className="ml-1">Importar e Cadastrar</span>
+                        </Button>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">Preenche automaticamente nome, preço e categoria do produto.</p>
+                    <p className="text-xs text-muted-foreground">"Preencher" abre o formulário com os dados. "Importar e Cadastrar" salva direto no estoque.</p>
                   </div>
                 )}
 
