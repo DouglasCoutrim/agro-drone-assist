@@ -9,8 +9,8 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  const email = "douglas@admin.local";
-  const password = "#Va_Ds12";
+  const email = "douglascoutrim@livreos.com";
+  const password = "98751344@";
 
   // Check if user already exists
   const { data: list } = await admin.auth.admin.listUsers();

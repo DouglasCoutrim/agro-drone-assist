@@ -1,12 +1,9 @@
 -- Corrige o organization_id dos membros que estão sem vínculo com a empresa
--- Primeiro, descobre o organization_id do admin (douglas@livreos.local)
--- Depois aplica para a sara@voltmaster.com
-
 DO $$
 DECLARE
   admin_org_id UUID;
 BEGIN
-  SELECT organization_id INTO admin_org_id FROM public.profiles WHERE email = 'douglas@livreos.local';
+  SELECT organization_id INTO admin_org_id FROM public.profiles WHERE email = 'douglascoutrim@livreos.com';
 
   IF admin_org_id IS NULL THEN
     RAISE EXCEPTION 'Admin sem organization_id. Verifique o perfil do admin.';
