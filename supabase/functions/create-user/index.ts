@@ -61,6 +61,13 @@ serve(async (req) => {
       });
     }
 
+    // Look up the caller's organization_id to scope the new member
+    const { data: callerProfile } = await adminClient
+      .from("profiles")
+      .select("organization_id")
+      .eq("id", caller.id)
+      .maybeSingle();
+
     // Create the user with admin API (auto-confirms email)
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
@@ -77,6 +84,14 @@ serve(async (req) => {
     }
 
     // The handle_new_user trigger creates profile + default role ('consulta')
+    // Update profile with organization_id
+    if (callerProfile?.organization_id) {
+      await adminClient
+        .from("profiles")
+        .update({ organization_id: callerProfile.organization_id })
+        .eq("id", newUser.user.id);
+    }
+
     // Update role if different from default
     if (role && role !== "consulta") {
       await adminClient
