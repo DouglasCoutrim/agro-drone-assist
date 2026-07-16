@@ -18,6 +18,7 @@ const passwordSchema = z.string().min(6, "Senha é obrigatória");
 const ADMIN_USER_EMAIL_MAP: Record<string, string> = {
   admin: "douglascoutrim@livreos.com",
   douglas: "douglascoutrim@livreos.com",
+  "douglascoutrim@livreos.com": "douglascoutrim@livreos.com",
 };
 
 export default function AdminAuth() {
