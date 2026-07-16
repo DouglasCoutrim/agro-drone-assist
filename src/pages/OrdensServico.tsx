@@ -327,7 +327,6 @@ export default function OrdensServico() {
       const osData: any = {
         ...restForm,
         organization_id: editingOS?.organization_id || organizationId,
-        tipo_equipamento: mapCategoryToDbEnum(uiCategory),
         observacoes: observacoesWithMobility || null,
         valor_orcamento: valorOrcamentoFinal,
         data_previsao: formData.data_previsao || null,
