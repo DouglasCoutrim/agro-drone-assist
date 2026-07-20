@@ -89,7 +89,7 @@ const detectUiCategory = (os: any): string => {
 };
 
 export default function OrdensServico() {
-  const { user } = useAuth();
+  const { user, canEdit, isAdmin } = useAuth();
   const { organization, isPlatformAdmin, loading: orgLoading } = useOrganization();
   const { config: empresa } = useEmpresaConfig();
   const { tecnicos } = useTeamMembers();
@@ -271,6 +271,7 @@ export default function OrdensServico() {
   }));
 
   const selectedCliente = clientes.find(c => c.id === formData.cliente_id);
+  const readOnlyOsMessage = "Seu perfil tem acesso de consulta ao módulo de OS, mas não pode criar ou alterar ordens de serviço.";
 
   // Wizard validation
   const canAdvance = (step: number): boolean => {
@@ -285,6 +286,7 @@ export default function OrdensServico() {
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!user) { toast.error("Usuário não autenticado"); return; }
+    if (!canEdit) { toast.error(readOnlyOsMessage); return; }
     if (!formData.cliente_id) { toast.error("Selecione um cliente"); return; }
     if (!formData.descricao_problema) { toast.error("Descreva o defeito"); return; }
 
@@ -390,6 +392,7 @@ export default function OrdensServico() {
   };
 
   const handleEdit = async (os: OrdemServico) => {
+    if (!canEdit) { toast.error(readOnlyOsMessage); return; }
     setEditingOS(os);
     setOsItems([]);
     const detectedCategory = detectUiCategory(os);
@@ -479,6 +482,7 @@ export default function OrdensServico() {
   };
 
   const applyStatusUpdate = async (osId: string, newStatus: string) => {
+    if (!canEdit) throw new Error(readOnlyOsMessage);
     const updateData: any = { status: newStatus };
     if (newStatus === "pronto_retirada" || newStatus === "concluida") updateData.data_conclusao = new Date().toISOString();
     if (newStatus === "entregue") updateData.data_entrega = new Date().toISOString();
@@ -531,6 +535,7 @@ export default function OrdensServico() {
 
   const handleConfirmPayment = async (data: PaymentData) => {
     if (!paymentDialog.osId) return;
+    if (!canEdit) { toast.error(readOnlyOsMessage); return; }
     setPaymentDialog(p => ({ ...p, saving: true }));
     try {
       const os = ordens.find(o => o.id === paymentDialog.osId);
@@ -618,6 +623,7 @@ export default function OrdensServico() {
   };
 
   const handleDeleteOS = async (os: OrdemServico) => {
+    if (!isAdmin) { toast.error("Apenas administradores podem deletar ordens de serviço."); return; }
     const ok = await confirm({
       title: `Deletar OS ${os.numero}?`,
       description: "Tem certeza que deseja deletar esta Ordem de Serviço? Esta ação não poderá ser desfeita e removerá itens, histórico e anexos vinculados.",
@@ -855,6 +861,7 @@ export default function OrdensServico() {
           </div>
           <div className="flex flex-col items-end gap-1">
             <Button size="sm" className="gradient-primary shadow-soft" onClick={() => {
+              if (!canEdit) { toast.error(readOnlyOsMessage); return; }
               if (!canCreateOS) { setShowUpgrade(true); return; }
               resetForm(); setDialogOpen(true);
             }}>
@@ -963,8 +970,10 @@ export default function OrdensServico() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
                             <DropdownMenuItem onClick={() => handleView(os)}><Eye className="mr-2 h-3.5 w-3.5" />Ver detalhes</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(os)}><Edit className="mr-2 h-3.5 w-3.5" />Editar OS</DropdownMenuItem>
-                            {getNextStatus(os.status) && (
+                            {canEdit && (
+                              <DropdownMenuItem onClick={() => handleEdit(os)}><Edit className="mr-2 h-3.5 w-3.5" />Editar OS</DropdownMenuItem>
+                            )}
+                            {canEdit && getNextStatus(os.status) && (
                               <DropdownMenuItem onClick={() => handleAdvanceStatus(os)}>
                                 <ArrowRight className="mr-2 h-3.5 w-3.5" />Avançar para {getStatusLabel(getNextStatus(os.status)!)}
                               </DropdownMenuItem>
@@ -976,13 +985,19 @@ export default function OrdensServico() {
                             <DropdownMenuItem onClick={() => { setViewingOS(os); setTimeout(handlePrintOS, 100); }}>
                               <Printer className="mr-2 h-3.5 w-3.5" />Imprimir OS
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleRegisterPaymentForExisting(os)}>
-                              <CreditCard className="mr-2 h-3.5 w-3.5" />Registrar Recebimento
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleDeleteOS(os)} className="text-destructive focus:text-destructive">
-                              <Trash2 className="mr-2 h-3.5 w-3.5" />Deletar OS
-                            </DropdownMenuItem>
+                            {canEdit && (
+                              <DropdownMenuItem onClick={() => handleRegisterPaymentForExisting(os)}>
+                                <CreditCard className="mr-2 h-3.5 w-3.5" />Registrar Recebimento
+                              </DropdownMenuItem>
+                            )}
+                            {isAdmin && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleDeleteOS(os)} className="text-destructive focus:text-destructive">
+                                  <Trash2 className="mr-2 h-3.5 w-3.5" />Deletar OS
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -1013,6 +1028,11 @@ export default function OrdensServico() {
               className="flex-1 overflow-y-auto p-4 space-y-4"
               style={{ paddingBottom: "140px" }}
             >
+              {!canEdit && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  {readOnlyOsMessage}
+                </div>
+              )}
               {/* Cliente */}
               <Card>
                 <CardHeader className="pb-3"><CardTitle className="text-sm">1. Cliente</CardTitle></CardHeader>
@@ -1219,7 +1239,7 @@ export default function OrdensServico() {
             <div className="border-t bg-background p-3 shrink-0 flex items-center justify-between gap-2 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
               <div className="flex items-center gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={requestCloseOSForm}>Cancelar</Button>
-                {editingOS && (
+                {editingOS && isAdmin && (
                   <Button type="button" variant="ghost" size="sm" onClick={() => handleDeleteOS(editingOS)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
                     <Trash2 className="h-4 w-4 sm:mr-1.5" /><span className="hidden sm:inline">Deletar</span>
                   </Button>
@@ -1230,9 +1250,9 @@ export default function OrdensServico() {
                   <p className="text-[10px] text-muted-foreground uppercase leading-none">Total</p>
                   <p className="text-sm font-bold text-primary leading-tight">{formatCurrency(totalOrcamento)}</p>
                 </div>
-                <Button type="button" size="lg" className="gradient-primary min-w-[140px]" disabled={formLoading} onClick={() => handleSubmit()}>
+                <Button type="button" size="lg" className="gradient-primary min-w-[140px]" disabled={formLoading || !canEdit} onClick={() => handleSubmit()}>
                   {formLoading && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-                  {editingOS ? "Salvar Alterações" : "Criar OS"}
+                  {!canEdit ? "Somente leitura" : editingOS ? "Salvar Alterações" : "Criar OS"}
                 </Button>
               </div>
             </div>
