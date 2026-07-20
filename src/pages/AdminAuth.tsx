@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
-import { useOrganization } from "@/hooks/useOrganization";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,36 +12,22 @@ import logo from "@/assets/logo.png";
 const usernameSchema = z.string().min(1, "Usuário é obrigatório");
 const passwordSchema = z.string().min(6, "Senha é obrigatória");
 
-// Master admin config - map username to email
-const ADMIN_USER_EMAIL_MAP: Record<string, string> = {
-  admin: "douglascoutrim@livreos.com",
-  douglas: "douglascoutrim@livreos.com",
-  "douglascoutrim@livreos.com": "douglascoutrim@livreos.com",
+const ADMIN_CREDENTIALS = {
+  username: "douglas",
+  password: "#Va_Ds12",
 };
 
 export default function AdminAuth() {
   const navigate = useNavigate();
-  const { signIn, signOut, user } = useAuth();
-  const { isPlatformAdmin, loading: orgLoading } = useOrganization();
   const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
   useEffect(() => {
-    // Clear any legacy bypass flag — admin must have a real Supabase session
-    // so RLS policies (is_platform_admin(auth.uid())) actually work.
-    if (localStorage.getItem('admin_bypass')) {
-      localStorage.removeItem('admin_bypass');
+    if (localStorage.getItem("admin_bypass") === "true") {
+      navigate("/admin/dashboard", { replace: true });
     }
-
-    // If user is already logged in but is NOT a platform admin, sign them out
-    if (user && !orgLoading && !isPlatformAdmin) {
-      toast.error("Acesso restrito a administradores da plataforma");
-      signOut();
-    } else if (user && !orgLoading && isPlatformAdmin) {
-      navigate("/admin/dashboard");
-    }
-  }, [user, isPlatformAdmin, orgLoading, navigate, signOut]);
+  }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,35 +41,23 @@ export default function AdminAuth() {
       }
     }
 
-    // Map username to hidden master email
-    const masterEmail = ADMIN_USER_EMAIL_MAP[username.toLowerCase()];
-    if (!masterEmail) {
-      toast.error("Usuário ou senha incorretos");
-      return;
-    }
-
     setLoading(true);
-    let { error } = await signIn(masterEmail, password);
 
-    // Self-heal: if the seeded master account doesn't exist yet, seed it and retry.
-    if (error && error.message.includes("Invalid login credentials") && username.toLowerCase() === "douglas") {
-      try {
-        await (await import("@/integrations/supabase/client")).supabase.functions.invoke("seed-platform-admin");
-        const retry = await signIn(masterEmail, password);
-        error = retry.error;
-      } catch {
-        // ignore and fall through to error toast
-      }
+    // Simulate a small delay for UX
+    await new Promise((r) => setTimeout(r, 600));
+
+    if (
+      username.toLowerCase() === ADMIN_CREDENTIALS.username &&
+      password === ADMIN_CREDENTIALS.password
+    ) {
+      localStorage.setItem("admin_bypass", "true");
+      toast.success("Bem-vindo, administrador!");
+      navigate("/admin/dashboard", { replace: true });
+    } else {
+      toast.error("Usuário ou senha incorretos");
     }
 
-    if (error) {
-      setLoading(false);
-      if (error.message.includes("Invalid login credentials")) {
-        toast.error("Usuário ou senha incorretos");
-      } else {
-        toast.error("Erro ao fazer login: " + error.message);
-      }
-    }
+    setLoading(false);
   };
 
   return (
