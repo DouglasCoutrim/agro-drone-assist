@@ -737,7 +737,7 @@ export default function OrdensServico() {
       const html = generateOSPDF(osComCliente, itemsForPdf, empresaForPdf, técnico?.nome);
       const { htmlToPdfBlob, sharePdfOnWhatsApp } = await import("@/lib/os-pdf-share");
       const filename = `OS_${os.numero}.pdf`;
-      const blob = await htmlToPdfBlob(html, filename);
+      const blob = await htmlToPdfBlob(html);
       const msg = buildShareMessage(os, cliente);
       const result = await sharePdfOnWhatsApp({ blob, filename, telefone: cliente.telefone, message: msg });
       toast.dismiss(t);
