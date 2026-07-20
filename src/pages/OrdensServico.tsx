@@ -84,8 +84,21 @@ const TIPO_EQUIPAMENTO: Record<string, string> = {
 const MOBILITY_CATEGORIES = ["patinete_eletrico", "bicicleta_eletrica", "moto_eletrica", "outros_autopropelidos"];
 const mapCategoryToDbEnum = (uiCategory: string): string => MOBILITY_CATEGORIES.includes(uiCategory) ? "outro" : uiCategory;
 const detectUiCategory = (os: any): string => {
-  const match = (os.observacoes || "").match(/\[MOBILIDADE:(\w+)/);
-  return match ? match[1] : os.tipo_equipamento;
+  const obs = os.observacoes || "";
+  const mobMatch = obs.match(/\[MOBILIDADE:(\w+)/);
+  if (mobMatch) return mobMatch[1];
+  const customMatch = obs.match(/\[CUSTOM:([^\]]+)\]/);
+  if (customMatch) return customMatch[1];
+  return os.tipo_equipamento;
+};
+
+const getTypeDisplayLabel = (os: any, segs: string[], customs: CustomType[]): string => {
+  const cat = detectUiCategory(os);
+  const fromTipo = TIPO_EQUIPAMENTO[cat];
+  if (fromTipo) return fromTipo;
+  const found = findTypeByValue(cat, segs, customs);
+  if (found?.label) return found.label;
+  return TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento;
 };
 
 export default function OrdensServico() {
@@ -306,7 +319,16 @@ export default function OrdensServico() {
       }
 
       const { ciclos_carga_entrada, ciclos_carga_saida, ...restForm } = formData;
-      let observacoesWithMobility = (restForm.observacoes || "").replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").trim();
+      let observacoesWithMobility = (restForm.observacoes || "")
+        .replace(/\[MOBILIDADE:[\s\S]*?\]/g, "")
+        .replace(/\[CUSTOM:[^\]]*\]/g, "")
+        .trim();
+
+      if (uiCategory.startsWith("custom_")) {
+        observacoesWithMobility = observacoesWithMobility
+          ? `${observacoesWithMobility}\n[CUSTOM:${uiCategory}]`
+          : `[CUSTOM:${uiCategory}]`;
+      }
 
       if (isMobility) {
         const mChecklist = [];
@@ -418,7 +440,7 @@ export default function OrdensServico() {
     } else {
       resetMobilityData();
     }
-    const cleanObs = obs.replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").trim();
+    const cleanObs = obs.replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").replace(/\[CUSTOM:[^\]]*\]/g, "").trim();
     setFormData({
       cliente_id: os.cliente_id,
       tipo_equipamento: os.tipo_equipamento,
@@ -676,7 +698,7 @@ export default function OrdensServico() {
     const osData: WhatsAppOS = {
       numero: viewingOS.numero,
       clienteNome: viewingOS.clientes?.nome || "Cliente",
-      equipamento: TIPO_EQUIPAMENTO[detectUiCategory(viewingOS)] || TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento,
+      equipamento: getTypeDisplayLabel(viewingOS, orgSegmentos, orgCustomTypes),
       modelo: viewingOS.modelo_equipamento || undefined,
       defeito: viewingOS.descricao_problema,
       diagnostico: viewingOS.diagnostico || undefined,
@@ -694,7 +716,7 @@ export default function OrdensServico() {
 
   const buildShareMessage = (os: any, cliente: any) => {
     const nomeEmpresa = empresa.nome_empresa || "Volt Master";
-    const tipo = TIPO_EQUIPAMENTO[detectUiCategory(os)] || TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento;
+    const tipo = getTypeDisplayLabel(os, orgSegmentos, orgCustomTypes);
     const marca = os.marca || os.modelo_equipamento || "-";
     const defeito = os.descricao_problema || "-";
     const nome = cliente?.nome || os.clientes?.nome || "cliente";
@@ -943,7 +965,7 @@ export default function OrdensServico() {
                         </div>
                         <p className="text-sm font-medium truncate">{os.clientes?.nome || "—"}</p>
                         <p className="text-xs text-muted-foreground truncate">
-                          {TIPO_EQUIPAMENTO[detectUiCategory(os)] || os.tipo_equipamento}
+                          {getTypeDisplayLabel(os, orgSegmentos, orgCustomTypes)}
                           {os.modelo_equipamento ? ` · ${os.modelo_equipamento}` : ""}
                           <span className="ml-2">{formatDate(os.data_entrada)}</span>
                         </p>
@@ -1309,8 +1331,17 @@ export default function OrdensServico() {
                   const obsText = viewingOS.observacoes || "";
                   const mMatch = obsText.match(/\[MOBILIDADE:(\w+)\s*\|\s*Voltagem:(.*?)\s*\|\s*Bateria:(.*?)Ah\s*\|\s*Odômetro:(.*?)km\s*\|\s*Chave:(.*?)\s*\|\s*Carregador:(.*?)\s*\|\s*Checklist:(.*?)\]/);
                   const hasMob = !!mMatch;
-                  const cleanObs = obsText.replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").trim();
-                  const viewType = hasMob && mMatch ? (TIPO_EQUIPAMENTO[mMatch[1]] || TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento]) : (TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento);
+                  const customMatch = obsText.match(/\[CUSTOM:([^\]]+)\]/);
+                  const cleanObs = obsText.replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").replace(/\[CUSTOM:[^\]]*\]/g, "").trim();
+                  let viewType: string;
+                  if (hasMob && mMatch) {
+                    viewType = TIPO_EQUIPAMENTO[mMatch[1]] || TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento];
+                  } else if (customMatch) {
+                    const found = findTypeByValue(customMatch[1], orgSegmentos, orgCustomTypes);
+                    viewType = found?.label || TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento;
+                  } else {
+                    viewType = TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento;
+                  }
 
                   return (
                     <>
