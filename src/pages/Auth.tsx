@@ -35,7 +35,7 @@ export default function Auth() {
   useEffect(() => {
     if (user && !orgLoading) {
       if (isPlatformAdmin) {
-        navigate("/admin-master", { replace: true });
+        navigate("/admin/dashboard", { replace: true });
       } else {
         navigate("/dashboard", { replace: true });
       }

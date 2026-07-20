@@ -60,7 +60,7 @@ export default function Landing() {
       .then(({ data }) => setPlans((data as any) || []));
   }, []);
 
-  const dashboardPath = isPlatformAdmin ? "/admin-master" : "/dashboard";
+  const dashboardPath = isPlatformAdmin ? "/admin/dashboard" : "/dashboard";
 
   return (
     <div className="min-h-screen bg-background">
