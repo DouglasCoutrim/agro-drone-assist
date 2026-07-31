@@ -4,24 +4,49 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  // Require a bearer key configured server-side (never hardcode credentials).
+  const secret = Deno.env.get("SEED_ADMIN_KEY");
+  if (!secret) {
+    return new Response(
+      JSON.stringify({ error: "SEED_ADMIN_KEY não configurada. Defina a variável no projeto antes de usar." }),
+      { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  const authHeader = req.headers.get("authorization") || "";
+  if (authHeader.replace(/^Bearer\s+/i, "") !== secret) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const email = Deno.env.get("SEED_ADMIN_EMAIL");
+  const password = Deno.env.get("SEED_ADMIN_PASSWORD");
+  if (!email || !password) {
+    return new Response(
+      JSON.stringify({ error: "SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD não configuradas." }),
+      { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
   const admin = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  const email = "douglascoutrim@livreos.com";
-  const password = "98751344@";
-
-  // Check if user already exists
   const { data: list } = await admin.auth.admin.listUsers();
-  let user = list?.users.find((u) => u.email === email);
+  const existing = list?.users.find((u) => u.email === email);
 
-  if (!user) {
+  let userId: string;
+  if (existing) {
+    // Never reset an existing admin's password on every call.
+    userId = existing.id;
+  } else {
     const { data, error } = await admin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: { nome: "Douglas" },
+      user_metadata: { nome: "Administrador" },
     });
     if (error) {
       return new Response(JSON.stringify({ error: error.message }), {
@@ -29,15 +54,12 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    user = data.user!;
-  } else {
-    await admin.auth.admin.updateUserById(user.id, { password });
+    userId = data.user!.id;
   }
 
-  // Promote to platform admin
   const { error: padErr } = await admin
     .from("platform_admins")
-    .upsert({ user_id: user.id }, { onConflict: "user_id" });
+    .upsert({ user_id: userId }, { onConflict: "user_id" });
 
   if (padErr) {
     return new Response(JSON.stringify({ error: padErr.message }), {
@@ -47,7 +69,7 @@ Deno.serve(async (req) => {
   }
 
   return new Response(
-    JSON.stringify({ ok: true, user_id: user.id, email, password }),
+    JSON.stringify({ ok: true, user_id: userId, email }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );
 });

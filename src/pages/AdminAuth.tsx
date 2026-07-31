@@ -7,32 +7,38 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { Loader2, Lock, ShieldCheck } from "lucide-react";
 import { z } from "zod";
+import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo.png";
 
-const usernameSchema = z.string().min(1, "Usuário é obrigatório");
+const emailSchema = z.string().email("E-mail inválido");
 const passwordSchema = z.string().min(6, "Senha é obrigatória");
-
-const ADMIN_CREDENTIALS = {
-  username: "douglas",
-  password: "#Va_Ds12",
-};
 
 export default function AdminAuth() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   useEffect(() => {
-    if (localStorage.getItem("admin_bypass") === "true") {
-      navigate("/admin/dashboard", { replace: true });
-    }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const session = data?.session;
+      if (!session) return;
+      const { data: pa } = await supabase
+        .from("platform_admins" as any)
+        .select("user_id")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      if (!cancelled && pa) navigate("/admin/dashboard", { replace: true });
+    })();
+    return () => { cancelled = true; };
   }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      usernameSchema.parse(username);
+      emailSchema.parse(email);
       passwordSchema.parse(password);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -42,22 +48,28 @@ export default function AdminAuth() {
     }
 
     setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error || !data.user) throw error || new Error("Credenciais inválidas");
 
-    // Simulate a small delay for UX
-    await new Promise((r) => setTimeout(r, 600));
+      const { data: pa } = await supabase
+        .from("platform_admins" as any)
+        .select("user_id")
+        .eq("user_id", data.user.id)
+        .maybeSingle();
+      if (!pa) {
+        await supabase.auth.signOut();
+        toast.error("Conta sem acesso administrativo.");
+        return;
+      }
 
-    if (
-      username.toLowerCase() === ADMIN_CREDENTIALS.username &&
-      password === ADMIN_CREDENTIALS.password
-    ) {
-      localStorage.setItem("admin_bypass", "true");
       toast.success("Bem-vindo, administrador!");
       navigate("/admin/dashboard", { replace: true });
-    } else {
-      toast.error("Usuário ou senha incorretos");
+    } catch (err: any) {
+      toast.error(err?.message || "Usuário ou senha incorretos");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
@@ -80,16 +92,16 @@ export default function AdminAuth() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="admin-username" className="text-gray-300">
-                Usuário
+              <Label htmlFor="admin-email" className="text-gray-300">
+                E-mail
               </Label>
               <div className="relative">
                 <Input
-                  id="admin-username"
-                  type="text"
-                  placeholder="admin"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  id="admin-email"
+                  type="email"
+                  placeholder="admin@livreos.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="pl-10 bg-black/50 border-gray-800 focus:border-blue-500 text-white"
                   required
                   autoComplete="username"

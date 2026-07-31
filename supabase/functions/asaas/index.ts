@@ -52,16 +52,59 @@ serve(async (req) => {
     });
   }
 
-  const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY');
-  if (!ASAAS_API_KEY) {
-    return new Response(JSON.stringify({ error: 'ASAAS_API_KEY not configured' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  // Resolve a chave da ORGANIZAÇÃO (nunca a chave global da plataforma).
+  const { data: profile } = await serviceClient
+    .from('profiles').select('organization_id').eq('id', userId).maybeSingle();
+  const orgId = profile?.organization_id || null;
+
+  let asaasKey = '';
+  let asaasEnv = '';
+  if (orgId) {
+    const { data: cfg } = await serviceClient
+      .from('empresa_config')
+      .select('gateway_clientes, gateway_clientes_credentials')
+      .eq('organization_id', orgId)
+      .maybeSingle();
+    const creds: any = cfg?.gateway_clientes_credentials || {};
+    if (cfg?.gateway_clientes === 'asaas' && creds?.api_key) {
+      asaasKey = creds.api_key;
+      asaasEnv = creds.asaas_environment === 'sandbox' ? 'sandbox' : 'producao';
+    }
+  }
+
+  // Fallback apenas para platform admins (operação global da plataforma).
+  if (!asaasKey && isPlatformAdmin) {
+    const globalKey = Deno.env.get('ASAAS_API_KEY');
+    if (globalKey) {
+      asaasKey = globalKey;
+      asaasEnv = globalKey.startsWith('$aact_') ? 'producao' : 'sandbox';
+    }
+  }
+
+  if (!asaasKey) {
+    return new Response(JSON.stringify({ error: 'Gateway Asaas não configurado para esta organização' }), {
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 
-  const baseUrl = ASAAS_API_KEY.startsWith('$aact_') 
-    ? 'https://api.asaas.com/v3' 
-    : 'https://sandbox.asaas.com/api/v3';
+  const baseUrl = asaasEnv === 'sandbox'
+    ? 'https://api-sandbox.asaas.com/v3'
+    : 'https://api.asaas.com/v3';
+
+  const asaasHeaders = {
+    'Content-Type': 'application/json',
+    'access_token': asaasKey,
+  };
+
+  // Garante que operações de escrita estejam escopadas à organização do chamador.
+  const requireOrg = () => {
+    if (!orgId) {
+      return new Response(JSON.stringify({ error: 'Sem organização associada' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    return null;
+  };
 
   const url = new URL(req.url);
 
@@ -75,13 +118,10 @@ serve(async (req) => {
   const action = body.action || url.searchParams.get('action');
   const getParam = (k: string) => body[k] ?? url.searchParams.get(k);
 
-  const asaasHeaders = {
-    'Content-Type': 'application/json',
-    'access_token': ASAAS_API_KEY,
-  };
-
   try {
     if (action === 'create_customer') {
+      const orgGuard = requireOrg();
+      if (orgGuard) return orgGuard;
       const cleanCpfCnpj = body.cpfCnpj ? body.cpfCnpj.replace(/[.\-\/\s]/g, '') : undefined;
       const customerData = {
         name: body.name,
@@ -140,6 +180,8 @@ serve(async (req) => {
     }
 
     if (action === 'create_payment') {
+      const orgGuard = requireOrg();
+      if (orgGuard) return orgGuard;
       const res = await fetch(`${baseUrl}/payments`, {
         method: 'POST',
         headers: asaasHeaders,

@@ -20,6 +20,7 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: authHeader } },
@@ -34,20 +35,38 @@ serve(async (req) => {
     });
   }
 
-  const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY');
-  if (!ASAAS_API_KEY) {
-    return new Response(JSON.stringify({ error: 'ASAAS_API_KEY não configurada' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  // Resolve a chave da ORGANIZAÇÃO (nunca a chave global da plataforma).
+  const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
+  const { data: profile } = await serviceClient
+    .from('profiles').select('organization_id').eq('id', claimsData.claims.sub as string).maybeSingle();
+  const orgId = profile?.organization_id || null;
+  if (!orgId) {
+    return new Response(JSON.stringify({ error: 'Sem organização associada' }), {
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 
-  const baseUrl = ASAAS_API_KEY.startsWith('$aact_')
-    ? 'https://api.asaas.com/v3'
-    : 'https://sandbox.asaas.com/api/v3';
+  const { data: cfg } = await serviceClient
+    .from('empresa_config')
+    .select('gateway_clientes, gateway_clientes_credentials')
+    .eq('organization_id', orgId)
+    .maybeSingle();
+  const creds: any = cfg?.gateway_clientes_credentials || {};
+  const asaasKey = (cfg?.gateway_clientes === 'asaas' && creds?.api_key) ? creds.api_key : null;
+
+  if (!asaasKey) {
+    return new Response(JSON.stringify({ error: 'Gateway Asaas não configurado para esta organização' }), {
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  const baseUrl = creds.asaas_environment === 'sandbox'
+    ? 'https://api-sandbox.asaas.com/v3'
+    : 'https://api.asaas.com/v3';
 
   const asaasHeaders = {
     'Content-Type': 'application/json',
-    'access_token': ASAAS_API_KEY,
+    'access_token': asaasKey,
   };
 
   try {

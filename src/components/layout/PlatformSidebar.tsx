@@ -39,11 +39,8 @@ export function PlatformSidebar({ className, onNavigate }: { className?: string,
   
   const currentTab = new URLSearchParams(location.search).get("tab") || "overview";
 
-  const isAdminBypass = localStorage.getItem("admin_bypass") === "true";
-
   const handleSignOut = async () => {
-    localStorage.removeItem("admin_bypass");
-    if (!isAdminBypass) await signOut();
+    await signOut();
     navigate("/admin/login");
   };
 
@@ -97,11 +94,11 @@ export function PlatformSidebar({ className, onNavigate }: { className?: string,
       <div className="p-4 bg-sidebar-accent/50 border-t border-sidebar-border">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded bg-sidebar-primary flex items-center justify-center text-xs font-bold text-sidebar-primary-foreground uppercase">
-            {isAdminBypass ? 'A' : (user?.email?.[0] || 'A')}
+            {user?.email?.[0] || 'A'}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-sidebar-foreground truncate">
-              {isAdminBypass ? "Administrador" : user?.email}
+              {user?.email}
             </p>
             <p className="text-[10px] text-sidebar-foreground/50">Super Administrator</p>
           </div>

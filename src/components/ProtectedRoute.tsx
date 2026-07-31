@@ -19,12 +19,6 @@ export default function ProtectedRoute({ children, requiredRole, requiredPermiss
   const { permissions, loading: permsLoading } = usePermissions();
   const { organization, isPlatformAdmin, loading: orgLoading } = useOrganization();
 
-  // First check for admin bypass
-  const isAdminBypass = localStorage.getItem('admin_bypass') === 'true';
-  if (isAdminBypass && requiredPlatformAdmin) {
-    return <>{children}</>;
-  }
-
   if (loading || permsLoading || orgLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -36,11 +30,11 @@ export default function ProtectedRoute({ children, requiredRole, requiredPermiss
     );
   }
 
-  if (!user && !isAdminBypass) {
+  if (!user) {
     return <Navigate to="/auth" replace />;
   }
 
-  if (requiredPlatformAdmin && !isPlatformAdmin && !isAdminBypass) {
+  if (requiredPlatformAdmin && !isPlatformAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
 

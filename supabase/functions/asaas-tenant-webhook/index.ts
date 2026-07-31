@@ -7,6 +7,11 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
+  const secret = Deno.env.get('WEBHOOK_SECRET');
+  if (secret && (req.headers.get('x-webhook-secret') || '') !== secret) {
+    return json({ error: 'Unauthorized' }, 401);
+  }
+
   try {
     const body = await req.json();
     const event = body?.event;
@@ -21,11 +26,14 @@ Deno.serve(async (req) => {
     if (event === 'PAYMENT_RECEIVED' || event === 'PAYMENT_CONFIRMED') {
       const ref = payment.externalReference;
       if (ref) {
-        // Atualiza a OS ou orçamento referenciado
-        await admin.from('ordens_servico').update({ status: 'finalizada' }).eq('id', ref);
-        await admin.from('orcamentos').update({ status: 'aprovado' }).eq('id', ref);
+        // Escopa à tabela correta: OS ou orçamento (nunca atualiza os dois).
+        const { data: os } = await admin.from('ordens_servico').select('id').eq('id', ref).maybeSingle();
+        if (os) {
+          await admin.from('ordens_servico').update({ status: 'finalizada' }).eq('id', ref);
+        } else {
+          await admin.from('orcamentos').update({ status: 'aprovado' }).eq('id', ref);
+        }
       }
-      // Registra no financeiro (se identificarmos a org via externalReference)
       console.log(`[asaas-tenant-webhook] ${event}`, payment.id, ref);
     }
 

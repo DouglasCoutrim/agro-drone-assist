@@ -24,13 +24,6 @@ export function useOrganization() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (localStorage.getItem('admin_bypass') === 'true') {
-      setIsPlatformAdmin(true);
-      setOrganization(null);
-      setLoading(false);
-      return;
-    }
-
     if (!user) {
       setOrganization(null);
       setIsPlatformAdmin(false);

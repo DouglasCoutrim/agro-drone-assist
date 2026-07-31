@@ -160,6 +160,7 @@ export default function Orcamentos() {
         tecnico_id: user.id,
         status: "aprovado" as any,
         prioridade: "media",
+        organization_id: orgId,
       }).select("id, organization_id").single();
       if (osErr) throw osErr;
 

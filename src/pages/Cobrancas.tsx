@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 import { formatCurrency } from "@/lib/formatters";
+import { useOrganization } from "@/hooks/useOrganization";
 
 type Cliente = Tables<"clientes">;
 
@@ -23,6 +24,7 @@ interface AsaasPayment {
 }
 
 export default function Cobrancas() {
+  const { organization } = useOrganization();
   const [payments, setPayments] = useState<AsaasPayment[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(false);
@@ -35,11 +37,12 @@ export default function Cobrancas() {
     clienteId: "", valor: 0, vencimento: "", tipo: "PIX", descricao: "", externalReference: ""
   });
 
-  useEffect(() => { fetchPayments(); fetchClientes(); }, []);
+  useEffect(() => { fetchPayments(); fetchClientes(); }, [organization?.id]);
 
   const fetchClientes = async () => {
+    if (!organization?.id) return;
     try {
-      const { data, error } = await supabase.from('clientes').select('*').order('nome');
+      const { data, error } = await supabase.from('clientes').select('*').eq('organization_id', organization.id).order('nome');
       if (error) throw error;
       setClientes(data || []);
     } catch { /* silent */ }
