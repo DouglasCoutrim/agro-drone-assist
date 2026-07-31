@@ -407,6 +407,13 @@ export default function OrdensServico() {
       resetForm();
       fetchData();
     } catch (err: any) {
+      console.error("Erro detalhado ao salvar OS:", {
+        message: err?.message,
+        code: err?.code,
+        details: err?.details,
+        hint: err?.hint,
+        status: err?.status,
+      });
       toast.error(getErrorMessage(err));
     } finally {
       setFormLoading(false);
