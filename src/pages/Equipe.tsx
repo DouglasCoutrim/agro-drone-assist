@@ -82,7 +82,15 @@ export default function Equipe() {
 
   const handleTogglePermission = async (userId: string, field: string, value: boolean) => {
     try {
-      const { error } = await supabase.from('user_permissions').update({ [field]: value } as any).eq('user_id', userId);
+      const current = users.find(u => u.id === userId)?.permissions;
+      const payload = {
+        user_id: userId,
+        acesso_os: current?.acesso_os ?? true,
+        acesso_estoque: current?.acesso_estoque ?? true,
+        acesso_financeiro: current?.acesso_financeiro ?? false,
+        [field]: value,
+      };
+      const { error } = await supabase.from('user_permissions').upsert(payload as any, { onConflict: 'user_id' });
       if (error) throw error;
       setUsers(prev => prev.map(u => u.id === userId ? {
         ...u, permissions: { ...u.permissions!, [field]: value }

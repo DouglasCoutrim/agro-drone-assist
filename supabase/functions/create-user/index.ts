@@ -100,6 +100,12 @@ serve(async (req) => {
         .eq("user_id", newUser.user.id);
     }
 
+    // Ensure a permissions row exists (the handle_new_user_permissions trigger
+    // is not wired up on auth.users, so create it explicitly here).
+    await adminClient
+      .from("user_permissions")
+      .upsert({ user_id: newUser.user.id }, { onConflict: "user_id" });
+
     return new Response(JSON.stringify({ success: true, user_id: newUser.user.id }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
