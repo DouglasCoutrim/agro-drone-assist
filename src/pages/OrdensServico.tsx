@@ -349,8 +349,17 @@ export default function OrdensServico() {
         ? (totalOrcamento || null)
         : (formData.valor_orcamento || null);
 
+      // Blindagem: o enum do banco só aceita estes valores. Qualquer tipo de UI
+      // fora dessa lista (mobilidade, informática, customizados) vira 'outro'
+      // e a label real fica preservada em observacoes via [MOBILIDADE:]/[CUSTOM:].
+      const DB_ENUM_TIPOS = ["drone_agricola", "drone_convencional", "controle", "bateria", "outro"];
+      const tipoEquipamentoDb = DB_ENUM_TIPOS.includes(restForm.tipo_equipamento as string)
+        ? restForm.tipo_equipamento
+        : ("outro" as Enums<"tipo_equipamento">);
+
       const osData: any = {
         ...restForm,
+        tipo_equipamento: tipoEquipamentoDb,
         organization_id: editingOS?.organization_id || organizationId,
         observacoes: observacoesWithMobility || null,
         valor_orcamento: valorOrcamentoFinal,
