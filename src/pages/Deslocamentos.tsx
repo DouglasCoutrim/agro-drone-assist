@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { MapPin, Navigation, Plus, DollarSign, Loader2, Route, Calculator } from "lucide-react";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/formatters";
@@ -139,7 +139,7 @@ export default function Deslocamentos() {
               <Button className="gradient-primary shadow-medium"><Plus className="mr-2 h-4 w-4" />Novo Deslocamento</Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg">
-              <DialogHeader><DialogTitle>Registrar Deslocamento</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>Registrar Deslocamento</DialogTitle><DialogDescription className="sr-only">Formulário de registro de deslocamento</DialogDescription></DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Cliente</Label>

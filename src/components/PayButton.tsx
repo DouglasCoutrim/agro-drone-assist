@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { CreditCard, Copy, Loader2, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -47,7 +47,7 @@ export function PayButton(props: PayButtonProps) {
 
       <Dialog open={!!result} onOpenChange={() => setResult(null)}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Cobrança gerada</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Cobrança gerada</DialogTitle><DialogDescription className="sr-only">Detalhes da cobrança gerada</DialogDescription></DialogHeader>
           {result && result.pix_manual && (
             <div className="space-y-3">
               <div className="rounded-lg border-2 border-primary/40 bg-primary/5 p-4 text-center">
