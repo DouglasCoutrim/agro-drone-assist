@@ -1,20 +1,35 @@
-## Problema
+# Acesso de leitura ao backend a partir do Cursor
 
-Em `src/pages/Index.tsx` (linhas 51-53) há um `useEffect` que, ao detectar que o usuário é platform admin e está em `/dashboard`, força `navigate("/admin-master")`. Isso desfaz o clique em "Minha Empresa" no header do AdminMaster — a página da empresa carrega por um instante e volta direto para o painel admin.
+## Contexto
 
-## Correção
+O projeto roda no Lovable Cloud. O access token de conta Supabase e a senha do banco não existem do seu lado — não há dashboard Supabase associado, e a service role key / senha do banco não são expostas. Portanto `supabase link` e conexão direta via psql com senha não são possíveis.
 
-Remover/desativar esse redirecionamento automático, deixando o platform admin acessar livremente o dashboard da empresa quando ele tem `organization`.
+O caminho viável para o agente do Cursor ler dados e testar queries é usar a **API pública do projeto** (URL + chave publicável, ambas já presentes no `.env` e já embarcadas no app), autenticando com um usuário real. A RLS continua aplicada, então o agente enxerga exatamente o que aquele usuário enxerga — o que é o comportamento correto para um SaaS multi-tenant.
 
-### Mudança
+## O que será criado
 
-**`src/pages/Index.tsx`** — remover o `useEffect` que redireciona platform admin para `/admin-master`. Assim:
+Um script utilitário no repositório, `scripts/query.mjs`, que o agente do Cursor executa localmente:
 
-- Quem clica em "Minha Empresa" no AdminMaster fica no `/dashboard` da empresa.
-- Para voltar ao painel da plataforma, o admin usa o link "Admin Master" já existente no Sidebar (linha 122-124) ou navega para `/admin-master` direto.
+- Lê `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` do `.env`.
+- Lê `TEST_EMAIL` e `TEST_PASSWORD` do ambiente local (não commitados) e faz `signInWithPassword`.
+- Aceita uma consulta em formato PostgREST via argumentos, por exemplo:
+  - `node scripts/query.mjs clientes "nome,telefone" --limit 20`
+  - `node scripts/query.mjs ordens_servico "numero,status,valor_final" --eq status=entregue`
+- Imprime o resultado em JSON, e imprime o erro da RLS de forma legível quando o acesso é negado.
 
-Nenhuma outra rota é afetada. O fluxo de login continua o mesmo — o login redireciona para `/dashboard` e a partir daí a navegação fica livre.
+Também será adicionado `scripts/README.md` curto explicando:
+- como definir `TEST_EMAIL` / `TEST_PASSWORD` no shell do Cursor;
+- que a chave publicável é pública por design e a proteção real é a RLS;
+- que mudanças de schema e migrações continuam sendo feitas aqui no Lovable, não pelo Cursor.
 
-## Observação
+## O que NÃO será feito
 
-Se preferir manter o auto-redirect só para o primeiro login (e não para cliques manuais), uma alternativa seria usar um flag em `sessionStorage` setado pelo botão "Minha Empresa" para suprimir o redirect uma vez. Mas a solução mais simples e previsível é remover o redirect — o platform admin já tem o menu lateral para voltar ao admin quando quiser.
+- Nenhuma exposição de service role key ou senha de banco (não disponíveis no Cloud).
+- Nenhum enfraquecimento de RLS ou grant para `anon` para facilitar a leitura.
+- Nenhuma alteração no app em si.
+
+## Detalhes técnicos
+
+- `scripts/query.mjs` em Node ESM usando `@supabase/supabase-js` (já é dependência do projeto).
+- Carregamento do `.env` via `node --env-file=.env` ou parsing manual simples, sem nova dependência.
+- Sessão em memória (`persistSession: false`), sem gravar tokens em disco.
