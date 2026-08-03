@@ -1,5 +1,10 @@
 # Acesso de leitura ao backend a partir do Cursor
 
+## Correção de build pendente
+
+`src/pages/OrdensServico.tsx` usa o tipo `CustomType` sem importá-lo, quebrando o build. Correção: adicionar `import type { CustomType } from "@/lib/equipment-segments";` junto aos imports existentes desse módulo.
+
+
 ## Contexto
 
 O projeto roda no Lovable Cloud. O access token de conta Supabase e a senha do banco não existem do seu lado — não há dashboard Supabase associado, e a service role key / senha do banco não são expostas. Portanto `supabase link` e conexão direta via psql com senha não são possíveis.
