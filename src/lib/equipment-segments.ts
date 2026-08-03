@@ -31,12 +31,12 @@ export const SEGMENTOS: Segmento[] = [
     key: 'mobilidade',
     label: 'Mobilidade Elétrica',
     types: [
-      { value: 'patinete_eletrico', label: 'Patinete Elétrico', dbEnum: 'patinete_eletrico' },
-      { value: 'bicicleta_eletrica', label: 'Bicicleta Elétrica', dbEnum: 'bicicleta_eletrica' },
-      { value: 'moto_eletrica', label: 'Moto / Scooter Elétrica', dbEnum: 'moto_eletrica' },
+      { value: 'patinete_eletrico', label: 'Patinete Elétrico', dbEnum: 'outro' },
+      { value: 'bicicleta_eletrica', label: 'Bicicleta Elétrica', dbEnum: 'outro' },
+      { value: 'moto_eletrica', label: 'Moto / Scooter Elétrica', dbEnum: 'outro' },
       { value: 'bateria_litio', label: 'Bateria de Lítio', dbEnum: 'bateria' },
       { value: 'carregador_bms', label: 'Carregador BMS', dbEnum: 'outro' },
-      { value: 'outros_autopropelidos', label: 'Outros Autopropelidos', dbEnum: 'outros_autopropelidos' },
+      { value: 'outros_autopropelidos', label: 'Outros Autopropelidos', dbEnum: 'outro' },
     ],
   },
   {
