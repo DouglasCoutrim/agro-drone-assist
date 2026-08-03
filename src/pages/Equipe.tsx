@@ -17,6 +17,7 @@ import { Tables } from "@/integrations/supabase/types";
 import { useUsageLimits } from "@/hooks/useUsageLimits";
 import { UpgradePlanModal } from "@/components/UpgradePlanModal";
 import { useConfirm } from "@/hooks/useConfirm";
+import { CommissionEditor } from "@/components/commission/CommissionEditor";
 
 type Profile = Tables<"profiles">;
 
@@ -319,6 +320,12 @@ export default function Equipe() {
                         />
                       </div>
                     </div>
+
+                    {isAdmin && u.role === 'tecnico' && (
+                      <div className="sm:pl-14">
+                        <CommissionEditor profile={u as any} onSaved={fetchUsers} />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

@@ -24,7 +24,8 @@ export const SEGMENTOS: Segmento[] = [
       { value: 'drone_imagem', label: 'Drone de Imagem / Enterprise', dbEnum: 'drone_convencional' },
       { value: 'bateria_drone', label: 'Bateria Inteligente', dbEnum: 'bateria' },
       { value: 'controle_smart', label: 'Controle Remoto (Smart Controller)', dbEnum: 'controle' },
-      { value: 'carregador_drone', label: 'Carregador de Drone', dbEnum: 'outro' },
+      { value: 'sensores_rtk', label: 'Sensores / Câmeras RTK', dbEnum: 'outro' },
+      { value: 'helices_motores', label: 'Hélices e Motores Brushless', dbEnum: 'outro' },
     ],
   },
   {
@@ -36,18 +37,19 @@ export const SEGMENTOS: Segmento[] = [
       { value: 'moto_eletrica', label: 'Moto / Scooter Elétrica', dbEnum: 'outro' },
       { value: 'bateria_litio', label: 'Bateria de Lítio', dbEnum: 'bateria' },
       { value: 'carregador_bms', label: 'Carregador BMS', dbEnum: 'outro' },
-      { value: 'outros_autopropelidos', label: 'Outros Autopropelidos', dbEnum: 'outro' },
+      { value: 'outros_autopropelidos', label: 'Outros Autopropelidos / Acessórios Elétricos', dbEnum: 'outro' },
     ],
   },
   {
     key: 'informatica',
     label: 'Informática',
     types: [
-      { value: 'computador', label: 'Computador', dbEnum: 'outro' },
+      { value: 'computador', label: 'Computador / Desktop', dbEnum: 'outro' },
       { value: 'notebook', label: 'Notebook', dbEnum: 'outro' },
       { value: 'monitor', label: 'Monitor', dbEnum: 'outro' },
       { value: 'memoria_ram', label: 'Memória RAM', dbEnum: 'outro' },
       { value: 'placa_video', label: 'Placa de Vídeo', dbEnum: 'outro' },
+      { value: 'fontes_placa_mae', label: 'Fontes e Placa-Mãe', dbEnum: 'outro' },
     ],
   },
   {
@@ -55,9 +57,10 @@ export const SEGMENTOS: Segmento[] = [
     label: 'Bicicletaria',
     types: [
       { value: 'bicicleta_convencional', label: 'Bicicleta Convencional', dbEnum: 'outro' },
-      { value: 'amortecedor', label: 'Amortecedor', dbEnum: 'outro' },
+      { value: 'amortecedor', label: 'Amortecedor / Suspensão', dbEnum: 'outro' },
       { value: 'raio_bicicleta', label: 'Raio de Bicicleta', dbEnum: 'outro' },
       { value: 'cambio', label: 'Câmbio / Transmissão', dbEnum: 'outro' },
+      { value: 'freios_hidraulicos', label: 'Freios Hidráulicos / Disco', dbEnum: 'outro' },
     ],
   },
 ];

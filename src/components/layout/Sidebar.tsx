@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, FileText, Package, BarChart3, DollarSign, Settings,
-  Users, CreditCard, UsersRound, Building2, ClipboardList, Route, LogOut, LifeBuoy, BookOpen, Bell, ShieldCheck, Wrench
+  Users, CreditCard, UsersRound, Building2, ClipboardList, Route, LogOut, LifeBuoy, BookOpen, Bell, ShieldCheck, Wrench, Monitor
 } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,6 +17,8 @@ const navSections = [
     items: [
       { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard", roles: ["admin", "tecnico", "consulta"] },
       { title: "Ordens de Serviço", icon: FileText, href: "/ordens-servico", roles: ["admin", "tecnico", "consulta"] },
+      { title: "Meu Painel (Técnico)", icon: Wrench, href: "/technician/dashboard", roles: ["admin", "tecnico"] },
+      { title: "Oficina ao Vivo (TV)", icon: Monitor, href: "/workshop/live", roles: ["admin", "tecnico", "consulta"] },
       { title: "Clientes", icon: Users, href: "/clientes", roles: ["admin", "tecnico", "consulta"] },
     ],
   },

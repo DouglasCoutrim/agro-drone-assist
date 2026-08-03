@@ -518,6 +518,10 @@ export type Database = {
           ciclos_carga_entrada: number | null
           ciclos_carga_saida: number | null
           cliente_id: string
+          commission_computed_at: string | null
+          commission_products: number
+          commission_services: number
+          commission_total: number
           condicao_visual: string | null
           created_at: string
           custo_mao_obra: number | null
@@ -555,6 +559,10 @@ export type Database = {
           ciclos_carga_entrada?: number | null
           ciclos_carga_saida?: number | null
           cliente_id: string
+          commission_computed_at?: string | null
+          commission_products?: number
+          commission_services?: number
+          commission_total?: number
           condicao_visual?: string | null
           created_at?: string
           custo_mao_obra?: number | null
@@ -592,6 +600,10 @@ export type Database = {
           ciclos_carga_entrada?: number | null
           ciclos_carga_saida?: number | null
           cliente_id?: string
+          commission_computed_at?: string | null
+          commission_products?: number
+          commission_services?: number
+          commission_total?: number
           condicao_visual?: string | null
           created_at?: string
           custo_mao_obra?: number | null
@@ -872,31 +884,49 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          commission_on_products: boolean
+          commission_on_services: boolean
           created_at: string
           email: string
           id: string
           nome: string
           organization_id: string | null
+          product_commission_type: string
+          product_commission_value: number
+          service_commission_type: string
+          service_commission_value: number
           telefone: string | null
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
+          commission_on_products?: boolean
+          commission_on_services?: boolean
           created_at?: string
           email: string
           id: string
           nome: string
           organization_id?: string | null
+          product_commission_type?: string
+          product_commission_value?: number
+          service_commission_type?: string
+          service_commission_value?: number
           telefone?: string | null
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
+          commission_on_products?: boolean
+          commission_on_services?: boolean
           created_at?: string
           email?: string
           id?: string
           nome?: string
           organization_id?: string | null
+          product_commission_type?: string
+          product_commission_value?: number
+          service_commission_type?: string
+          service_commission_value?: number
           telefone?: string | null
           updated_at?: string
         }

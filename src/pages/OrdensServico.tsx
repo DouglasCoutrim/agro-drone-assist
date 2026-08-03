@@ -413,6 +413,12 @@ export default function OrdensServico() {
           }
         }
       }
+      // Calcula a comissão do técnico vinculado (config vigente no perfil)
+      try {
+        await supabase.rpc('calculate_os_commission' as any, { _os_id: osId });
+      } catch (err: any) {
+        console.error("Erro ao calcular comissão:", err);
+      }
       setDialogOpen(false);
       resetForm();
       fetchData();
@@ -527,6 +533,11 @@ export default function OrdensServico() {
     if (newStatus === "entregue") updateData.data_entrega = new Date().toISOString();
     const { error } = await supabase.from("ordens_servico").update(updateData).eq("id", osId);
     if (error) throw error;
+    try {
+      await supabase.rpc('calculate_os_commission' as any, { _os_id: osId });
+    } catch (err: any) {
+      console.error("Erro ao recalcular comissão na mudança de status:", err);
+    }
     if (user) {
       await supabase.from("os_historico").insert({
         ordem_servico_id: osId,

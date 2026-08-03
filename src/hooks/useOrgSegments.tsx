@@ -41,14 +41,15 @@ export function useOrgSegments() {
       .eq('id', organization.id)
       .maybeSingle();
     const current = ((row as any)?.settings || {}) as any;
-    const next = { ...current, ...data, ...patch };
+    const next = { ...current, ...patch };
     const { error } = await supabase
       .from('organizations' as any)
       .update({ settings: next })
       .eq('id', organization.id);
     if (error) throw error;
     setData(prev => ({ ...prev, ...patch }));
-  }, [organization, data]);
+    await load();
+  }, [organization, load]);
 
   return { ...data, loading, save, reload: load };
 }

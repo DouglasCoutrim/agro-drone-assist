@@ -40,6 +40,8 @@ const Assinatura = lazy(() => import("./pages/Assinatura"));
 const Suporte = lazy(() => import("./pages/Suporte"));
 const Notificacoes = lazy(() => import("./pages/Notificacoes"));
 const Wiki = lazy(() => import("./pages/Wiki"));
+const TechnicianDashboard = lazy(() => import("./pages/TechnicianDashboard"));
+const WorkshopLive = lazy(() => import("./pages/WorkshopLive"));
 
 const PageFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -118,6 +120,8 @@ const App = () => {
                   <Route path="/notificacoes" element={<ProtectedRoute><Notificacoes /></ProtectedRoute>} />
                   <Route path="/wiki" element={<ProtectedRoute><Wiki /></ProtectedRoute>} />
                   <Route path="/wiki/:slug" element={<ProtectedRoute><Wiki /></ProtectedRoute>} />
+                  <Route path="/technician/dashboard" element={<ProtectedRoute><TechnicianDashboard /></ProtectedRoute>} />
+                  <Route path="/workshop/live" element={<ProtectedRoute><WorkshopLive /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
