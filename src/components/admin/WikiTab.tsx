@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -172,7 +172,7 @@ export default function WikiTab() {
       {/* Dialog categoria */}
       <Dialog open={!!editingCat} onOpenChange={(o) => !o && setEditingCat(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{editingCat?.id ? "Editar categoria" : "Nova categoria"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingCat?.id ? "Editar categoria" : "Nova categoria"}</DialogTitle><DialogDescription className="sr-only">Formulário de categoria da wiki</DialogDescription></DialogHeader>
           <div className="space-y-3">
             <div><Label className="text-xs">Nome</Label><Input value={editingCat?.name || ""} onChange={(e) => setEditingCat({ ...editingCat, name: e.target.value })} /></div>
             <div><Label className="text-xs">Slug</Label><Input value={editingCat?.slug || ""} onChange={(e) => setEditingCat({ ...editingCat, slug: e.target.value })} placeholder="auto a partir do nome" /></div>
@@ -187,7 +187,7 @@ export default function WikiTab() {
       {/* Dialog artigo */}
       <Dialog open={!!editingArt} onOpenChange={(o) => !o && setEditingArt(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editingArt?.id ? "Editar artigo" : "Novo artigo"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingArt?.id ? "Editar artigo" : "Novo artigo"}</DialogTitle><DialogDescription className="sr-only">Formulário de artigo da wiki</DialogDescription></DialogHeader>
           <div className="space-y-3">
             <div className="grid sm:grid-cols-2 gap-3">
               <div><Label className="text-xs">Título</Label><Input value={editingArt?.title || ""} onChange={(e) => setEditingArt({ ...editingArt, title: e.target.value })} /></div>

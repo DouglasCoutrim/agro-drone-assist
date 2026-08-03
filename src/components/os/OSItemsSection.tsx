@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { NumberInput } from "@/components/ui/number-input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -220,6 +220,7 @@ function ItemSearchRow({
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-sm">Cadastrar {tipo === "produto" ? "Produto" : "Serviço"}</DialogTitle>
+            <DialogDescription className="sr-only">Cadastro rápido de item</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">

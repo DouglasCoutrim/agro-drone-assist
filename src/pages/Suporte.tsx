@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Loader2, Plus, LifeBuoy, Send, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -148,7 +148,7 @@ export default function Suporte() {
               <Button><Plus className="h-4 w-4 mr-2" />Novo Ticket</Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Abrir novo ticket</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>Abrir novo ticket</DialogTitle><DialogDescription className="sr-only">Formulário para abrir um novo ticket de suporte</DialogDescription></DialogHeader>
               <div className="space-y-4">
                 <div>
                   <Label>Assunto</Label>
