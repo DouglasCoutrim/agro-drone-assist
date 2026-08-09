@@ -365,9 +365,20 @@ export default function OrdensServico() {
         valor_orcamento: valorOrcamentoFinal,
         data_previsao: formData.data_previsao || null,
         diagnostico: formData.diagnostico || null,
+        // Campos UUID nunca podem ir como string vazia (erro 22P02 no Postgres)
+        tecnico_id: formData.tecnico_id || (editingOS ? (editingOS as any).tecnico_id || user.id : user.id),
         ciclos_carga_entrada: isBateria ? ciclos_carga_entrada || null : null,
         ciclos_carga_saida: isBateria ? ciclos_carga_saida || null : null,
       };
+
+      // Blindagem final: qualquer string vazia em campo não-textual vira null
+      ["cliente_id", "tecnico_id", "data_previsao"].forEach((k) => {
+        if (osData[k] === "") osData[k] = null;
+      });
+      if (!osData.cliente_id) throw new Error("Selecione um cliente antes de salvar.");
+      if (!osData.organization_id && !isPlatformAdmin) {
+        throw new Error("Sua conta não está vinculada a uma empresa. Contate o administrador.");
+      }
 
       let osId: string;
       if (editingOS) {
@@ -377,7 +388,7 @@ export default function OrdensServico() {
         toast.success("OS atualizada com sucesso!");
       } else {
         const { data: insertedData, error } = await supabase.from("ordens_servico").insert({
-          ...osData, numero: "", tecnico_id: formData.tecnico_id || user.id, status: "recebido" as any,
+          ...osData, numero: "", status: "recebido" as any,
         }).select("id, numero, cliente_id, tipo_equipamento, modelo_equipamento").single();
         if (error) throw error;
         osId = insertedData.id;
@@ -387,6 +398,7 @@ export default function OrdensServico() {
           setTermsDialogOpen(true);
         }
       }
+
 
       // Save OS items
       if (osId) {
