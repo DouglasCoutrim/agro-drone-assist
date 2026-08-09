@@ -409,21 +409,22 @@ export default function OrdensServico() {
         if (osItems.length > 0) {
           const itemsToInsert = osItems.map(item => ({
             ordem_servico_id: osId,
-            tipo: item.tipo,
-            produto_id: item.produto_id || null,
-            servico_id: item.servico_id || null,
-            descricao: item.descricao,
-            quantidade: item.quantidade,
-            valor_unitario: item.valor_unitario,
-            valor_total: item.valor_total,
+            tipo: item.tipo === "produto" ? "produto" : "servico",
+            produto_id: item.tipo === "produto" && item.produto_id ? item.produto_id : null,
+            servico_id: item.tipo === "servico" && item.servico_id ? item.servico_id : null,
+            descricao: (item.descricao || "Item").trim(),
+            quantidade: Math.max(1, Math.round(Number(item.quantidade) || 1)),
+            valor_unitario: Number(item.valor_unitario) || 0,
+            valor_total: Number(item.valor_total) || 0,
             organization_id: editingOS?.organization_id || organizationId,
           }));
           const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInsert);
           if (itemsError) {
             console.error("Erro ao salvar itens:", itemsError);
-            throw itemsError;
+            throw new Error(`A OS foi salva, mas os itens não: ${itemsError.message}`);
           }
         }
+
       }
       // Calcula a comissão do técnico vinculado (config vigente no perfil)
       try {
