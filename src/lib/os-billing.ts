@@ -9,6 +9,8 @@ export interface OsCobranca {
   cliente_telefone: string | null;
   equipamento: string;
   data_entrada: string | null;
+  data_conclusao: string | null;
+  data_entrega: string | null;
   valor: number;
   pago: boolean;
 }
@@ -24,7 +26,7 @@ export async function fetchOsComValores(orgId: string, clienteId?: string): Prom
 
   let query = supabase
     .from("ordens_servico")
-    .select("id, numero, status, cliente_id, data_entrada, valor_final, valor_orcamento, desconto, tipo_equipamento, modelo_equipamento, clientes(nome, telefone)")
+    .select("id, numero, status, cliente_id, data_entrada, data_conclusao, data_entrega, valor_final, valor_orcamento, desconto, tipo_equipamento, modelo_equipamento, clientes(nome, telefone)")
     .eq("organization_id", orgId)
     .order("data_entrada", { ascending: false });
 
@@ -74,6 +76,8 @@ export async function fetchOsComValores(orgId: string, clienteId?: string): Prom
       cliente_telefone: o.clientes?.telefone || null,
       equipamento: o.modelo_equipamento || o.tipo_equipamento || "Equipamento",
       data_entrada: o.data_entrada,
+      data_conclusao: o.data_conclusao,
+      data_entrega: o.data_entrega,
       valor,
       pago: pagos.has(o.id),
     };
