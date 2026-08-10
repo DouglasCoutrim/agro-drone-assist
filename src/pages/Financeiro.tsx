@@ -222,15 +222,49 @@ export default function Financeiro() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {/* Stats */}
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
           <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center gap-2.5"><div className="p-2 rounded-lg bg-success/10"><TrendingUp className="h-4 w-4 text-success" /></div><div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Receita</p><p className="text-base sm:text-lg font-bold text-success truncate">{formatCurrency(receitaMensal)}</p></div></div></CardContent></Card>
           <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center gap-2.5"><div className="p-2 rounded-lg bg-destructive/10"><TrendingDown className="h-4 w-4 text-destructive" /></div><div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Despesas</p><p className="text-base sm:text-lg font-bold text-destructive truncate">{formatCurrency(despesaMensal)}</p></div></div></CardContent></Card>
           <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center gap-2.5"><div className="p-2 rounded-lg bg-primary/10"><Wallet className="h-4 w-4 text-primary" /></div><div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Lucro</p><p className={`text-base sm:text-lg font-bold truncate ${lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>{formatCurrency(lucroLiquido)}</p></div></div></CardContent></Card>
           <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center gap-2.5"><div className="p-2 rounded-lg bg-warning/10"><DollarSign className="h-4 w-4 text-warning" /></div><div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Comissões</p><p className="text-base sm:text-lg font-bold text-warning truncate">{formatCurrency(comissoesMensal)}</p></div></div></CardContent></Card>
+          <Card className="shadow-soft border-border/50 cursor-pointer hover:bg-muted/20 transition-colors" onClick={() => abrirCobranca()}><CardContent className="p-3"><div className="flex items-center gap-2.5"><div className="p-2 rounded-lg bg-blue-500/10"><ClipboardList className="h-4 w-4 text-blue-500" /></div><div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">A Receber (OS)</p><p className="text-base sm:text-lg font-bold truncate">{formatCurrency(totalAReceber)}</p></div></div></CardContent></Card>
         </div>
+
+        {/* OS em aberto para cobrança */}
+        {osAbertas.length > 0 && (
+          <Card className="shadow-soft border-border/50">
+            <CardHeader className="pb-2 px-4 pt-4">
+              <CardTitle className="text-sm flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5"><ClipboardList className="h-4 w-4 text-primary" />OS aguardando pagamento</span>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => abrirCobranca()}>Cobrar em lote</Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-2">
+              {osAbertas.slice(0, 6).map(os => (
+                <div key={os.id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-border/50">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{os.cliente_nome}</p>
+                    <p className="text-[11px] text-muted-foreground font-mono">#{os.numero} · {os.equipamento}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-sm font-bold">{formatCurrency(os.valor)}</span>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => abrirCobranca(os.cliente_id)}>
+                      <MessageCircle className="mr-1 h-3 w-3" />Cobrar
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {osAbertas.length > 6 && (
+                <p className="text-[11px] text-muted-foreground text-center pt-1">+{osAbertas.length - 6} outras OS em aberto</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
 
         {/* Search */}
         <div className="relative">
