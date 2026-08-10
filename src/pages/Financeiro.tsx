@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DollarSign, TrendingUp, TrendingDown, Plus, CreditCard, Wallet, Receipt, Loader2, Edit, Trash2, Eye, Search } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, Plus, CreditCard, Wallet, Receipt, Loader2, Edit, Trash2, Eye, Search, MessageCircle, ClipboardList } from "lucide-react";
 import { CatalogAutocomplete } from "@/components/ui/catalog-autocomplete";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -19,8 +19,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useOrganization } from "@/hooks/useOrganization";
 import { formatCurrency } from "@/lib/formatters";
+import { CobrancaClienteDialog } from "@/components/financeiro/CobrancaClienteDialog";
+import { fetchOsComValores, OsCobranca } from "@/lib/os-billing";
 
 type Transacao = Tables<"financeiro">;
+
 
 export default function Financeiro() {
   const { user } = useAuth();
