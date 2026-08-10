@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DollarSign, TrendingUp, TrendingDown, Plus, CreditCard, Wallet, Receipt, Loader2, Edit, Trash2, Eye, Search } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, Plus, CreditCard, Wallet, Receipt, Loader2, Edit, Trash2, Eye, Search, MessageCircle, ClipboardList } from "lucide-react";
 import { CatalogAutocomplete } from "@/components/ui/catalog-autocomplete";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -19,8 +19,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useOrganization } from "@/hooks/useOrganization";
 import { formatCurrency } from "@/lib/formatters";
+import { CobrancaClienteDialog } from "@/components/financeiro/CobrancaClienteDialog";
+import { fetchOsComValores, OsCobranca } from "@/lib/os-billing";
 
 type Transacao = Tables<"financeiro">;
+
 
 export default function Financeiro() {
   const { user } = useAuth();
@@ -33,6 +36,9 @@ export default function Financeiro() {
   const [viewingTransacao, setViewingTransacao] = useState<Transacao | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [cobrancaOpen, setCobrancaOpen] = useState(false);
+  const [cobrancaCliente, setCobrancaCliente] = useState<string | undefined>(undefined);
+  const [osAbertas, setOsAbertas] = useState<OsCobranca[]>([]);
 
   const [formData, setFormData] = useState({
     tipo: "receita" as Enums<"tipo_transacao">,
@@ -40,7 +46,14 @@ export default function Financeiro() {
     data_transacao: new Date().toISOString().split('T')[0], observacoes: ""
   });
 
-  useEffect(() => { if (organization?.id) fetchTransacoes(); }, [organization?.id]);
+  useEffect(() => {
+    if (!organization?.id) return;
+    fetchTransacoes();
+    fetchOsComValores(organization.id)
+      .then(list => setOsAbertas(list.filter(o => !o.pago && o.valor > 0)))
+      .catch(() => { /* silent */ });
+  }, [organization?.id]);
+
 
   const fetchTransacoes = async () => {
     if (!organization?.id) return;
@@ -139,16 +152,25 @@ export default function Financeiro() {
     );
   }, [transacoes, searchTerm]);
 
+  const totalAReceber = useMemo(() => osAbertas.reduce((s, o) => s + o.valor, 0), [osAbertas]);
+
+  const abrirCobranca = (clienteId?: string) => { setCobrancaCliente(clienteId); setCobrancaOpen(true); };
+
   return (
     <MainLayout>
       <div className="space-y-4" data-tour="financeiro-page">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-lg font-bold flex items-center gap-2"><DollarSign className="h-5 w-5 text-primary" />Financeiro</h1>
-            <p className="text-xs text-muted-foreground">Controle de receitas e despesas</p>
+            <p className="text-xs text-muted-foreground">Controle de receitas, despesas e cobranças</p>
           </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+          <Button size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => abrirCobranca()}>
+            <MessageCircle className="mr-1.5 h-3.5 w-3.5" />Cobrar Cliente
+          </Button>
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
+
               <Button size="sm" className="gradient-primary shadow-soft"><Plus className="mr-1.5 h-3.5 w-3.5" />Nova Transação</Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -200,15 +222,49 @@ export default function Financeiro() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {/* Stats */}
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
           <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center gap-2.5"><div className="p-2 rounded-lg bg-success/10"><TrendingUp className="h-4 w-4 text-success" /></div><div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Receita</p><p className="text-base sm:text-lg font-bold text-success truncate">{formatCurrency(receitaMensal)}</p></div></div></CardContent></Card>
           <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center gap-2.5"><div className="p-2 rounded-lg bg-destructive/10"><TrendingDown className="h-4 w-4 text-destructive" /></div><div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Despesas</p><p className="text-base sm:text-lg font-bold text-destructive truncate">{formatCurrency(despesaMensal)}</p></div></div></CardContent></Card>
           <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center gap-2.5"><div className="p-2 rounded-lg bg-primary/10"><Wallet className="h-4 w-4 text-primary" /></div><div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Lucro</p><p className={`text-base sm:text-lg font-bold truncate ${lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>{formatCurrency(lucroLiquido)}</p></div></div></CardContent></Card>
           <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center gap-2.5"><div className="p-2 rounded-lg bg-warning/10"><DollarSign className="h-4 w-4 text-warning" /></div><div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Comissões</p><p className="text-base sm:text-lg font-bold text-warning truncate">{formatCurrency(comissoesMensal)}</p></div></div></CardContent></Card>
+          <Card className="shadow-soft border-border/50 cursor-pointer hover:bg-muted/20 transition-colors" onClick={() => abrirCobranca()}><CardContent className="p-3"><div className="flex items-center gap-2.5"><div className="p-2 rounded-lg bg-blue-500/10"><ClipboardList className="h-4 w-4 text-blue-500" /></div><div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">A Receber (OS)</p><p className="text-base sm:text-lg font-bold truncate">{formatCurrency(totalAReceber)}</p></div></div></CardContent></Card>
         </div>
+
+        {/* OS em aberto para cobrança */}
+        {osAbertas.length > 0 && (
+          <Card className="shadow-soft border-border/50">
+            <CardHeader className="pb-2 px-4 pt-4">
+              <CardTitle className="text-sm flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5"><ClipboardList className="h-4 w-4 text-primary" />OS aguardando pagamento</span>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => abrirCobranca()}>Cobrar em lote</Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-2">
+              {osAbertas.slice(0, 6).map(os => (
+                <div key={os.id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-border/50">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{os.cliente_nome}</p>
+                    <p className="text-[11px] text-muted-foreground font-mono">#{os.numero} · {os.equipamento}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-sm font-bold">{formatCurrency(os.valor)}</span>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => abrirCobranca(os.cliente_id)}>
+                      <MessageCircle className="mr-1 h-3 w-3" />Cobrar
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {osAbertas.length > 6 && (
+                <p className="text-[11px] text-muted-foreground text-center pt-1">+{osAbertas.length - 6} outras OS em aberto</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
 
         {/* Search */}
         <div className="relative">
@@ -277,7 +333,10 @@ export default function Financeiro() {
             )}
           </DialogContent>
         </Dialog>
+
+        <CobrancaClienteDialog open={cobrancaOpen} onOpenChange={setCobrancaOpen} clienteIdInicial={cobrancaCliente} />
       </div>
+
     </MainLayout>
   );
 }
