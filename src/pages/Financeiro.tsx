@@ -36,6 +36,9 @@ export default function Financeiro() {
   const [viewingTransacao, setViewingTransacao] = useState<Transacao | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [cobrancaOpen, setCobrancaOpen] = useState(false);
+  const [cobrancaCliente, setCobrancaCliente] = useState<string | undefined>(undefined);
+  const [osAbertas, setOsAbertas] = useState<OsCobranca[]>([]);
 
   const [formData, setFormData] = useState({
     tipo: "receita" as Enums<"tipo_transacao">,
@@ -43,7 +46,14 @@ export default function Financeiro() {
     data_transacao: new Date().toISOString().split('T')[0], observacoes: ""
   });
 
-  useEffect(() => { if (organization?.id) fetchTransacoes(); }, [organization?.id]);
+  useEffect(() => {
+    if (!organization?.id) return;
+    fetchTransacoes();
+    fetchOsComValores(organization.id)
+      .then(list => setOsAbertas(list.filter(o => !o.pago && o.valor > 0)))
+      .catch(() => { /* silent */ });
+  }, [organization?.id]);
+
 
   const fetchTransacoes = async () => {
     if (!organization?.id) return;
