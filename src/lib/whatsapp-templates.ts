@@ -97,6 +97,57 @@ Qualquer dúvida, estamos à disposição!`;
   },
 };
 
+export interface CobrancaItem {
+  numero: string;
+  equipamento?: string;
+  valor: number;
+}
+
+export interface CobrancaPagamento {
+  gateway?: string;
+  pix_key_type?: string;
+  pix_key_value?: string;
+  pix_receiver_name?: string;
+  link?: string;
+}
+
+export function montarMensagemCobranca(
+  clienteNome: string,
+  nomeEmpresa: string,
+  itens: CobrancaItem[],
+  pagamento: CobrancaPagamento,
+  observacao?: string
+) {
+  const linhas = itens
+    .map(i => `• *OS ${i.numero}*${i.equipamento ? ` — ${i.equipamento}` : ''}: ${fmtCur(i.valor)}`)
+    .join('\n');
+  const total = itens.reduce((s, i) => s + (i.valor || 0), 0);
+
+  let blocoPagamento = '';
+  if (pagamento.pix_key_value) {
+    blocoPagamento = `\n\n⚡ *Pagamento via PIX*\nChave (${pagamento.pix_key_type || 'pix'}): ${pagamento.pix_key_value}${pagamento.pix_receiver_name ? `\nTitular: ${pagamento.pix_receiver_name}` : ''}`;
+  }
+  if (pagamento.link) {
+    blocoPagamento += `\n\n🔗 *Link de pagamento:*\n${pagamento.link}`;
+  }
+  if (!blocoPagamento) {
+    blocoPagamento = `\n\n💳 Aceitamos Pix, Cartão e Dinheiro. Entre em contato para combinar o pagamento.`;
+  }
+
+  return `Olá, *${clienteNome}*! 👋
+
+Aqui é da *${nomeEmpresa}*.
+
+Segue o resumo ${itens.length > 1 ? 'das suas ordens de serviço' : 'da sua ordem de serviço'} em aberto:
+
+${linhas}
+
+💰 *Total: ${fmtCur(total)}*${blocoPagamento}${observacao ? `\n\n📝 ${observacao}` : ''}
+
+Após o pagamento, por favor envie o comprovante por aqui. Obrigado! 🔧`;
+}
+
+
 export function openWhatsApp(telefone: string, mensagem: string) {
   const digits = telefone.replace(/\D/g, '');
   const phone = digits.startsWith('55') ? digits : `55${digits}`;
