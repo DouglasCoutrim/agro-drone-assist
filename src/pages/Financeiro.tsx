@@ -152,16 +152,25 @@ export default function Financeiro() {
     );
   }, [transacoes, searchTerm]);
 
+  const totalAReceber = useMemo(() => osAbertas.reduce((s, o) => s + o.valor, 0), [osAbertas]);
+
+  const abrirCobranca = (clienteId?: string) => { setCobrancaCliente(clienteId); setCobrancaOpen(true); };
+
   return (
     <MainLayout>
       <div className="space-y-4" data-tour="financeiro-page">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-lg font-bold flex items-center gap-2"><DollarSign className="h-5 w-5 text-primary" />Financeiro</h1>
-            <p className="text-xs text-muted-foreground">Controle de receitas e despesas</p>
+            <p className="text-xs text-muted-foreground">Controle de receitas, despesas e cobranças</p>
           </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+          <Button size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => abrirCobranca()}>
+            <MessageCircle className="mr-1.5 h-3.5 w-3.5" />Cobrar Cliente
+          </Button>
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
+
               <Button size="sm" className="gradient-primary shadow-soft"><Plus className="mr-1.5 h-3.5 w-3.5" />Nova Transação</Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
