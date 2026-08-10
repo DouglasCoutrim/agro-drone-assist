@@ -333,7 +333,10 @@ export default function Financeiro() {
             )}
           </DialogContent>
         </Dialog>
+
+        <CobrancaClienteDialog open={cobrancaOpen} onOpenChange={setCobrancaOpen} clienteIdInicial={cobrancaCliente} />
       </div>
+
     </MainLayout>
   );
 }
