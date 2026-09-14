@@ -365,9 +365,20 @@ export default function OrdensServico() {
         valor_orcamento: valorOrcamentoFinal,
         data_previsao: formData.data_previsao || null,
         diagnostico: formData.diagnostico || null,
+        // Campos UUID nunca podem ir como string vazia (erro 22P02 no Postgres)
+        tecnico_id: formData.tecnico_id || (editingOS ? (editingOS as any).tecnico_id || user.id : user.id),
         ciclos_carga_entrada: isBateria ? ciclos_carga_entrada || null : null,
         ciclos_carga_saida: isBateria ? ciclos_carga_saida || null : null,
       };
+
+      // Blindagem final: qualquer string vazia em campo não-textual vira null
+      ["cliente_id", "tecnico_id", "data_previsao"].forEach((k) => {
+        if (osData[k] === "") osData[k] = null;
+      });
+      if (!osData.cliente_id) throw new Error("Selecione um cliente antes de salvar.");
+      if (!osData.organization_id && !isPlatformAdmin) {
+        throw new Error("Sua conta não está vinculada a uma empresa. Contate o administrador.");
+      }
 
       let osId: string;
       if (editingOS) {
@@ -377,7 +388,7 @@ export default function OrdensServico() {
         toast.success("OS atualizada com sucesso!");
       } else {
         const { data: insertedData, error } = await supabase.from("ordens_servico").insert({
-          ...osData, numero: "", tecnico_id: formData.tecnico_id || user.id, status: "recebido" as any,
+          ...osData, numero: "", status: "recebido" as any,
         }).select("id, numero, cliente_id, tipo_equipamento, modelo_equipamento").single();
         if (error) throw error;
         osId = insertedData.id;
@@ -388,6 +399,7 @@ export default function OrdensServico() {
         }
       }
 
+
       // Save OS items
       if (osId) {
         // Delete existing items for this OS
@@ -397,21 +409,22 @@ export default function OrdensServico() {
         if (osItems.length > 0) {
           const itemsToInsert = osItems.map(item => ({
             ordem_servico_id: osId,
-            tipo: item.tipo,
-            produto_id: item.produto_id || null,
-            servico_id: item.servico_id || null,
-            descricao: item.descricao,
-            quantidade: item.quantidade,
-            valor_unitario: item.valor_unitario,
-            valor_total: item.valor_total,
+            tipo: item.tipo === "produto" ? "produto" : "servico",
+            produto_id: item.tipo === "produto" && item.produto_id ? item.produto_id : null,
+            servico_id: item.tipo === "servico" && item.servico_id ? item.servico_id : null,
+            descricao: (item.descricao || "Item").trim(),
+            quantidade: Math.max(1, Math.round(Number(item.quantidade) || 1)),
+            valor_unitario: Number(item.valor_unitario) || 0,
+            valor_total: Number(item.valor_total) || 0,
             organization_id: editingOS?.organization_id || organizationId,
           }));
           const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInsert);
           if (itemsError) {
             console.error("Erro ao salvar itens:", itemsError);
-            throw itemsError;
+            throw new Error(`A OS foi salva, mas os itens não: ${itemsError.message}`);
           }
         }
+
       }
       // Calcula a comissão do técnico vinculado (config vigente no perfil)
       try {

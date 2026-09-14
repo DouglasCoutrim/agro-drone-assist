@@ -133,30 +133,46 @@ function ItemSearchRow({
         throw new Error("Sua conta não está vinculada a uma empresa. Contate o administrador.");
       }
       if (tipo === "produto") {
-        const { data, error } = await supabase.from("produtos").insert({
-          descricao: quickCreateName.trim(), preco_venda: quickCreatePrice, custo_unitario: 0,
-          categoria: "geral", codigo: "", organization_id: orgId,
-        }).select("id, descricao, preco_venda, codigo").single();
-        if (error) throw error;
-        toast.success(`"${data.descricao}" cadastrado!`);
+        const { data: existing } = await supabase
+          .from("produtos").select("id, descricao, preco_venda, codigo")
+          .eq("organization_id", orgId).ilike("descricao", quickCreateName.trim()).maybeSingle();
+        let row = existing;
+        if (!row) {
+          const { data, error } = await supabase.from("produtos").insert({
+            descricao: quickCreateName.trim(), preco_venda: quickCreatePrice, custo_unitario: 0,
+            categoria: "geral", codigo: null, organization_id: orgId,
+          }).select("id, descricao, preco_venda, codigo").single();
+          if (error) throw error;
+          row = data;
+          toast.success(`"${data.descricao}" cadastrado!`);
+        }
         onAdd({
-          tipo: "produto", produto_id: data.id, servico_id: null,
-          descricao: data.descricao, codigo: data.codigo || undefined,
-          quantidade: 1, unidade: quickCreateUnit, valor_unitario: data.preco_venda, valor_total: data.preco_venda,
+          tipo: "produto", produto_id: row.id, servico_id: null,
+          descricao: row.descricao, codigo: row.codigo || undefined,
+          quantidade: 1, unidade: quickCreateUnit, valor_unitario: row.preco_venda ?? quickCreatePrice,
+          valor_total: row.preco_venda ?? quickCreatePrice,
         });
       } else {
-        const { data, error } = await supabase.from("servicos").insert({
-          descricao: quickCreateName.trim(), preco: quickCreatePrice,
-          organization_id: orgId,
-        }).select("id, descricao, preco").single();
-        if (error) throw error;
-        toast.success(`"${data.descricao}" cadastrado!`);
+        const { data: existing } = await supabase
+          .from("servicos").select("id, descricao, preco")
+          .eq("organization_id", orgId).ilike("descricao", quickCreateName.trim()).maybeSingle();
+        let row = existing;
+        if (!row) {
+          const { data, error } = await supabase.from("servicos").insert({
+            descricao: quickCreateName.trim(), preco: quickCreatePrice,
+            organization_id: orgId,
+          }).select("id, descricao, preco").single();
+          if (error) throw error;
+          row = data;
+          toast.success(`"${data.descricao}" cadastrado!`);
+        }
         onAdd({
-          tipo: "servico", produto_id: null, servico_id: data.id,
-          descricao: data.descricao, quantidade: 1, unidade: "HR",
-          valor_unitario: data.preco, valor_total: data.preco,
+          tipo: "servico", produto_id: null, servico_id: row.id,
+          descricao: row.descricao, quantidade: 1, unidade: "HR",
+          valor_unitario: row.preco ?? quickCreatePrice, valor_total: row.preco ?? quickCreatePrice,
         });
       }
+
       setQuickCreateOpen(false);
       setSearch("");
       setQuickCreateName("");

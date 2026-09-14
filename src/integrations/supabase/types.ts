@@ -1391,13 +1391,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_os_commission: { Args: { _os_id: string }; Returns: number }
       count_active_users: { Args: { _org: string }; Returns: number }
       count_os_current_month: { Args: { _org: string }; Returns: number }
+      get_technician_dashboard: { Args: { _tecnico_id: string }; Returns: Json }
       get_user_org_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_workshop_board: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

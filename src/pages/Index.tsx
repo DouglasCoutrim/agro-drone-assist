@@ -14,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import { formatCurrency } from "@/lib/formatters";
+import { fetchOsComValores } from "@/lib/os-billing";
 
 const TIPO_EQUIPAMENTO: Record<string, string> = {
   drone_agricola: "Drone Agrícola", drone_convencional: "Drone de Consumo",
@@ -40,7 +41,7 @@ const Index = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { organization, isPlatformAdmin, loading: orgLoading } = useOrganization();
-  const [stats, setStats] = useState({ osAbertas: 0, osConcluidas: 0, itensEstoqueBaixo: 0, totalClientes: 0, faturamentoMes: 0 });
+  const [stats, setStats] = useState({ osAbertas: 0, osConcluidas: 0, itensEstoqueBaixo: 0, totalClientes: 0, faturamentoMes: 0, aReceber: 0 });
   const [recentOS, setRecentOS] = useState<any[]>([]);
   const [overdueOS, setOverdueOS] = useState<any[]>([]);
   const [overduePayments, setOverduePayments] = useState<any[]>([]);
@@ -95,7 +96,25 @@ const Index = () => {
       });
 
       const itensEstoqueBaixo = (itensEstoqueRes.data || []).filter((item: any) => item.quantidade <= item.estoque_minimo).length;
-      const faturamentoMes = (receitasRes.data || []).reduce((acc: number, r: any) => acc + Number(r.valor), 0);
+      const receitasLancadas = (receitasRes.data || []).reduce((acc: number, r: any) => acc + Number(r.valor), 0);
+
+      // Valores das OS: soma o que já foi lançado no Financeiro + OS finalizadas no mês sem lançamento
+      let faturamentoMes = receitasLancadas;
+      let aReceber = 0;
+      try {
+        const osValores = await fetchOsComValores(orgId);
+        const finalizadas = ["concluida", "pronto_retirada", "entregue"];
+        faturamentoMes += osValores
+          .filter(o => !o.pago && o.valor > 0 && finalizadas.includes(o.status))
+          .filter(o => {
+            const ref = o.data_entrega || o.data_conclusao;
+            return ref ? new Date(ref) >= startOfMonth : false;
+          })
+          .reduce((acc, o) => acc + o.valor, 0);
+        aReceber = osValores.filter(o => !o.pago && o.valor > 0).reduce((acc, o) => acc + o.valor, 0);
+      } catch (e) {
+        console.error("Erro ao calcular valores de OS:", e);
+      }
 
       // Asaas overdue payments (best-effort, parallel)
       (async () => {
@@ -113,6 +132,7 @@ const Index = () => {
         itensEstoqueBaixo,
         totalClientes: totalClientesRes.count || 0,
         faturamentoMes,
+        aReceber,
       });
       setRecentOS(recentOSRes.data || []);
       setOverdueOS(overdueOSRes.data || []);
@@ -153,8 +173,8 @@ const Index = () => {
 
         {/* KPI Grid */}
         {loading ? (
-          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-            {[1, 2, 3, 4].map(i => (
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+            {[1, 2, 3, 4, 5].map(i => (
               <div key={i} className="bg-card border border-border rounded-2xl p-5 space-y-3">
                 <Skeleton className="h-3 w-20" />
                 <Skeleton className="h-8 w-16" />
@@ -162,11 +182,12 @@ const Index = () => {
             ))}
           </div>
         ) : (
-          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
             <KpiCard label="OS Abertas" value={stats.osAbertas} icon={ClipboardList} color="amber" onClick={() => navigate("/ordens-servico")} />
             <KpiCard label="Concluídas" value={stats.osConcluidas} icon={CheckCircle} color="green" onClick={() => navigate("/ordens-servico")} />
             <KpiCard label="Estoque Baixo" value={stats.itensEstoqueBaixo} icon={AlertTriangle} color="red" onClick={() => navigate("/estoque")} />
             <KpiCard label="Faturamento" value={formatCurrency(stats.faturamentoMes)} icon={DollarSign} color="blue" onClick={() => navigate("/financeiro")} />
+            <KpiCard label="A Receber" value={formatCurrency(stats.aReceber)} icon={DollarSign} color="amber" onClick={() => navigate("/financeiro")} />
           </div>
         )}
 
