@@ -28,6 +28,7 @@ import { SearchableInput } from "@/components/ui/searchable-input";
 import { CatalogAutocomplete } from "@/components/ui/catalog-autocomplete";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useNavigate } from "react-router-dom";
 import { CsvImportExport, parseNumberBR, emptyToNull } from "@/components/CsvImportExport";
 
 const ESTOQUE_CSV_COLUMNS = [
@@ -42,6 +43,7 @@ const DEFAULT_MARGIN = 30;
 export default function Estoque() {
   const { organization } = useOrganization();
   const confirm = useConfirm();
+  const navigate = useNavigate();
   const [itens, setItens] = useState<ItemEstoque[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -74,6 +76,28 @@ export default function Estoque() {
       if (error) throw error;
       setItens(data || []);
     } catch (error: any) { toast.error('Erro ao carregar estoque'); } finally { setLoading(false); }
+  };
+
+  const ensureActiveSession = async (): Promise<string | null> => {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error || !session?.access_token) return null;
+
+    const expiresAt = session.expires_at ? session.expires_at * 1000 : 0;
+    const tokenAboutToExpire = !expiresAt || expiresAt <= Date.now() + 60_000;
+
+    if (tokenAboutToExpire) {
+      const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
+      if (refreshErr || !refreshed.session?.access_token) return null;
+      return refreshed.session.access_token;
+    }
+
+    return session.access_token;
+  };
+
+  const redirectToLogin = () => {
+    supabase.auth.signOut().catch(() => {});
+    toast.error('Sessão expirada. Faça login novamente para continuar.');
+    navigate('/auth', { replace: true });
   };
 
   // Auto-generate code for new items
@@ -206,6 +230,9 @@ export default function Estoque() {
     const mlId = extractMLId(mlLink.trim());
     if (!mlId) { toast.error('Link ou ID inválido. Use um link do Mercado Livre ou ID (ex: MLB6104761844).'); return; }
 
+    const accessToken = await ensureActiveSession();
+    if (!accessToken) { redirectToLogin(); return; }
+
     setMlLoading(true);
     const loadingToast = toast.loading('Buscando dados do Mercado Livre...');
 
@@ -220,6 +247,7 @@ export default function Estoque() {
       // proxies públicos causam CORS, cache inconsistente e ruído no console.
       try {
         const { data: edgeData, error: edgeError } = await supabase.functions.invoke('mercadolivre', {
+          headers: { Authorization: `Bearer ${accessToken}` },
           body: { mlId },
         });
 
@@ -269,12 +297,20 @@ export default function Estoque() {
   };
 
   const handleMLImportAndSave = async () => {
-    if (!mlLink.trim()) { toast.error('Cole o link ou ID do anúncio do Mercado Livre'); return; }
+    const link = mlLink.trim();
+    if (!link) { toast.error('Cole o link ou ID do anúncio do Mercado Livre'); return; }
+    if (!extractMLId(link)) { toast.error('Link ou ID inválido. Use um link do Mercado Livre ou ID (ex: MLB6104761844).'); return; }
+
+    const accessToken = await ensureActiveSession();
+    if (!accessToken) { redirectToLogin(); return; }
+
     setMlSaving(true);
     const loadingToast = toast.loading('Importando e cadastrando no estoque...');
     try {
+      const urlImport = extractMLId(link) ?? link;
       const { data, error } = await supabase.functions.invoke('mercadolivre-import', {
-        body: { url: mlLink.trim(), margem: margemLucro, quantidade: 1, estoque_minimo: 1 },
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: { url: urlImport, margem: margemLucro, quantidade: 1, estoque_minimo: 1 },
       });
       if (error) throw new Error(error.message);
       if (!data?.sucesso) throw new Error(data?.erro || 'Falha ao cadastrar produto');

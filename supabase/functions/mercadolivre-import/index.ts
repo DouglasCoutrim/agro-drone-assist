@@ -15,7 +15,9 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
 
   try {
     const authHeader = req.headers.get("authorization");
@@ -32,7 +34,6 @@ serve(async (req) => {
     const { data: { user }, error: userErr } = await supabase.auth.getUser();
     if (userErr || !user) return jsonResponse({ erro: "Sessão expirada" }, 401);
 
-    // Get user's organization
     const { data: profile } = await supabase
       .from("profiles")
       .select("organization_id")
@@ -43,64 +44,67 @@ serve(async (req) => {
       return jsonResponse({ erro: "Usuário sem organização vinculada" }, 400);
     }
 
+    // 1. O corpo da requisição deve conter a propriedade "url"
     const body = await req.json().catch(() => ({}));
-    const url = body?.url || body?.mlId;
+    const url = String(body?.url ?? "").trim();
     const margem = Number(body?.margem ?? 30);
     const quantidade = Number(body?.quantidade ?? 1);
     const estoqueMinimo = Number(body?.estoque_minimo ?? 1);
 
-    if (!url) return jsonResponse({ erro: "Nenhum link fornecido." }, 400);
+    if (!url) return jsonResponse({ erro: "URL ausente" }, 400);
 
-    const regex = /MLB[-_]?\d+/i;
-    const match = String(url).match(regex);
+    // 2. Extrai o código MLB usando Regex
+    const match = url.match(/(MLB-?\d+)/i);
     if (!match) {
-      return jsonResponse({
-        erro: "Link inválido. O link precisa conter o ID do produto (ex: MLB123456...).",
-      }, 400);
+      return jsonResponse({ erro: "ID MLB não encontrado na URL" }, 400);
     }
-    const itemId = match[0].replace(/[-_]/g, "").toUpperCase();
+    const mlbId = match[1].replace("-", "").toUpperCase();
 
-    // Fetch official ML API
-    const mlRes = await fetch(`https://api.mercadolibre.com/items/${itemId}`, {
+    // 3. Consulta direta na API pública do Mercado Livre (sem scraping)
+    const mlRes = await fetch(`https://api.mercadolibre.com/items/${mlbId}`, {
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
         Accept: "application/json",
       },
     });
-    const mlData = await mlRes.json();
-    if (mlData.error || !mlData.title) {
+    if (!mlRes.ok) {
+      const text = await mlRes.text().catch(() => "");
       return jsonResponse({
-        erro: `Erro no Mercado Livre: ${mlData.message || "produto não encontrado"}`,
+        erro: "Erro ao buscar no Mercado Livre",
+        status_api: mlRes.status,
+        detalhe: text.slice(0, 300),
       }, 400);
     }
+    const data = await mlRes.json();
+    if (!data?.title) {
+      return jsonResponse({ erro: "Produto não encontrado no Mercado Livre" }, 400);
+    }
 
-    const custo = Number(mlData.price) || 0;
+    const custo = Number(data.price) || 0;
     const precoVenda = Number((custo * (1 + margem / 100)).toFixed(2));
 
-    // Generate codigo (avoid collision with unique constraint)
-    let codigo = `ML-${itemId}`;
+    // 4. Gera código evitando colisão com a constraint única
+    let codigo = `ML-${mlbId}`;
     const { data: existing } = await supabase
       .from("itens_estoque")
       .select("id")
       .eq("codigo", codigo)
       .maybeSingle();
-    if (existing) codigo = `ML-${itemId}-${Date.now().toString().slice(-4)}`;
+    if (existing) codigo = `ML-${mlbId}-${Date.now().toString().slice(-4)}`;
 
     const novoProduto = {
       organization_id: profile.organization_id,
       codigo,
-      descricao: String(mlData.title).slice(0, 255),
-      categoria: mlData.category_id || "Mercado Livre",
+      descricao: String(data.title).slice(0, 255),
+      categoria: data.category_id || "Mercado Livre",
       custo_unitario: custo,
       preco_venda: precoVenda,
       quantidade,
       estoque_minimo: estoqueMinimo,
       fornecedor: "Mercado Livre",
-      localizacao: mlData.permalink || null,
+      localizacao: data.permalink || null,
     };
 
-    const { data, error } = await supabase
+    const { data: produto, error } = await supabase
       .from("itens_estoque")
       .insert(novoProduto)
       .select()
@@ -110,8 +114,8 @@ serve(async (req) => {
       return jsonResponse({ erro: error.message }, 400);
     }
 
-    return jsonResponse({ sucesso: true, produto: data });
+    return jsonResponse({ sucesso: true, produto });
   } catch (error) {
-    return jsonResponse({ erro: (error as Error).message || "Erro interno" }, 500);
+    return jsonResponse({ erro: (error as Error).message || "Erro interno" }, 400);
   }
 });
