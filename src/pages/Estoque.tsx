@@ -154,6 +154,10 @@ export default function Estoque() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!organization?.id) {
+      toast.error('Sua conta não está vinculada a uma empresa. Contate o administrador.');
+      return;
+    }
     setFormLoading(true);
     try {
       if (editingItem) {
