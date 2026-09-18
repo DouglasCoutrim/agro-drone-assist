@@ -85,6 +85,7 @@ const TIPO_EQUIPAMENTO: Record<string, string> = {
 };
 
 const MOBILITY_CATEGORIES = ["patinete_eletrico", "bicicleta_eletrica", "moto_eletrica", "outros_autopropelidos"];
+const LOCK_CLOSED_STATUSES = new Set(["pronto_retirada", "concluida", "entregue"]);
 const mapCategoryToDbEnum = (uiCategory: string): string => MOBILITY_CATEGORIES.includes(uiCategory) ? "outro" : uiCategory;
 const detectUiCategory = (os: any): string => {
   const obs = os.observacoes || "";
@@ -290,6 +291,20 @@ export default function OrdensServico() {
     }
 
     return mapDbItemsToOSItems(data as ItemOSRow[]);
+  }, [organization?.id, isPlatformAdmin]);
+
+  const getPendingRequiredChecklist = useCallback(async (osId: string, osOrgId?: string | null): Promise<string[]> => {
+    let query = supabase
+      .from("os_checklist_itens")
+      .select("marcado, item:checklist_equipamento_itens(label, obrigatorio)")
+      .eq("ordem_servico_id", osId);
+    const orgId = osOrgId || organization?.id;
+    if (orgId && !isPlatformAdmin) query = query.eq("organization_id", orgId);
+    const { data, error } = await query;
+    if (error) return [];
+    return ((data as any[]) || [])
+      .filter(r => r?.item?.obrigatorio && !r.marcado)
+      .map(r => r.item.label as string);
   }, [organization?.id, isPlatformAdmin]);
 
   const loadChecklistResponses = useCallback(async (osId: string, osOrgId?: string | null): Promise<Record<string, boolean>> => {
@@ -603,6 +618,13 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
 
   const applyStatusUpdate = async (osId: string, newStatus: string) => {
     if (!canEdit) throw new Error(readOnlyOsMessage);
+    if (LOCK_CLOSED_STATUSES.has(newStatus)) {
+      const os = ordens.find(o => o.id === osId);
+      const pending = await getPendingRequiredChecklist(osId, os?.organization_id || organization?.id);
+      if (pending.length > 0) {
+        throw new Error(`Itens obrigatórios pendentes no checklist de revisão: ${pending.slice(0, 3).join("; ")}${pending.length > 3 ? "…" : ""}.`);
+      }
+    }
     const updateData: any = { status: newStatus };
     if (newStatus === "pronto_retirada" || newStatus === "concluida") updateData.data_conclusao = new Date().toISOString();
     if (newStatus === "entregue") updateData.data_entrega = new Date().toISOString();
@@ -622,7 +644,19 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
     }
   };
 
-  const handleStatusChange = async (osId: string, newStatus: string) => {
+  const handleStatusChange = async (osId: string, newStatus: string): Promise<boolean> => {
+    if (LOCK_CLOSED_STATUSES.has(newStatus)) {
+      try {
+        const pending = await getPendingRequiredChecklist(osId);
+        if (pending.length > 0) {
+          toast.error(`Itens obrigatórios pendentes no checklist de revisão: ${pending.slice(0, 3).join("; ")}${pending.length > 3 ? "…" : ""}. Marque-os antes de finalizar a OS.`);
+          return false;
+        }
+      } catch (err: any) {
+        toast.error(getErrorMessage(err));
+        return false;
+      }
+    }
     // Intercept "entregue" to require payment confirmation
     if (newStatus === "entregue") {
       const os = ordens.find(o => o.id === osId);
@@ -639,13 +673,14 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
             await applyStatusUpdate(osId, newStatus);
             toast.success(`Status atualizado para "${getStatusLabel(newStatus)}"`);
             fetchData();
+            return true;
           } catch (err: any) {
             toast.error(getErrorMessage(err));
+            return false;
           }
-          return;
         }
         await openPaymentForOS(os, newStatus);
-        return;
+        return false;
       }
     }
 
@@ -653,8 +688,10 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
       await applyStatusUpdate(osId, newStatus);
       toast.success(`Status atualizado para "${getStatusLabel(newStatus)}"`);
       fetchData();
+      return true;
     } catch (err: any) {
       toast.error(getErrorMessage(err));
+      return false;
     }
   };
 
@@ -1451,7 +1488,10 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
                 {/* Status Pipeline */}
                 <StatusPipeline
                   currentStatus={viewingOS.status}
-                  onStatusChange={(s) => { handleStatusChange(viewingOS.id, s); setViewingOS({ ...viewingOS, status: s as any }); }}
+                  onStatusChange={async (s) => {
+                    const ok = await handleStatusChange(viewingOS.id, s);
+                    if (ok) setViewingOS({ ...viewingOS, status: s as any });
+                  }}
                 />
 
                 {/* Terms banner */}
