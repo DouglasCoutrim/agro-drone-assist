@@ -869,6 +869,58 @@ export type Database = {
           },
         ]
       }
+      os_checklist_itens: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          marcado: boolean
+          ordem_servico_id: string
+          organization_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          marcado?: boolean
+          ordem_servico_id: string
+          organization_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          marcado?: boolean
+          ordem_servico_id?: string
+          organization_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_checklist_itens_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_equipamento_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_checklist_itens_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_checklist_itens_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       os_historico: {
         Row: {
           acao: string

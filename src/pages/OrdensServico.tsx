@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download, UserPlus, CreditCard, Clock, Wrench, CheckCircle2, ChevronRight, MoreVertical, ArrowRight, Trash2, Printer } from "lucide-react";
+import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download, UserPlus, CreditCard, Clock, Wrench, CheckCircle2, XCircle, ChevronRight, MoreVertical, ArrowRight, Trash2, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
@@ -35,6 +35,8 @@ import { useOrgSegments } from "@/hooks/useOrgSegments";
 import { useConfirm } from "@/hooks/useConfirm";
 import { getAvailableTypes, findTypeByValue, SEGMENTOS } from "@/lib/equipment-segments";
 import type { CustomType } from "@/lib/equipment-segments";
+import { useChecklistConfig } from "@/hooks/useChecklistConfig";
+import type { ChecklistItem, ChecklistTipo } from "@/hooks/useChecklistConfig";
 import { PaymentConfirmDialog, PaymentData } from "@/components/os/PaymentConfirmDialog";
 
 
@@ -93,10 +95,12 @@ const detectUiCategory = (os: any): string => {
   return os.tipo_equipamento;
 };
 
-const getTypeDisplayLabel = (os: any, segs: string[], customs: CustomType[]): string => {
+const getTypeDisplayLabel = (os: any, segs: string[], customs: CustomType[], configTipos?: ChecklistTipo[]): string => {
   const cat = detectUiCategory(os);
   const fromTipo = TIPO_EQUIPAMENTO[cat];
   if (fromTipo) return fromTipo;
+  const configTipo = configTipos?.find(t => t.value === cat && t.ativo);
+  if (configTipo?.label) return configTipo.label;
   const found = findTypeByValue(cat, segs, customs);
   if (found?.label) return found.label;
   return TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento;
@@ -144,7 +148,15 @@ export default function OrdensServico() {
 
   const [uiCategory, setUiCategory] = useState("bateria");
   const { segmentos: orgSegmentos, tipos_custom: orgCustomTypes, save: saveSegments } = useOrgSegments();
-  const availableTypes = getAvailableTypes(orgSegmentos, orgCustomTypes);
+  const { tipos: configTipos } = useChecklistConfig();
+  const [configCheckbox, setConfigCheckbox] = useState<Record<string, boolean>>({});
+  const [viewConfigChecklist, setViewConfigChecklist] = useState<{ label: string; obrigatorio: boolean; marcado: boolean }[]>([]);
+  const availableTypes = useMemo(() => {
+    const base = getAvailableTypes(orgSegmentos, orgCustomTypes);
+    const seen = new Set(base.map(t => t.value));
+    const config = (configTipos || []).filter(t => t.ativo).map(t => ({ value: t.value, label: t.label, dbEnum: t.db_enum || "outro" }));
+    return [...base, ...config.filter(t => !seen.has(t.value))];
+  }, [orgSegmentos, orgCustomTypes, configTipos]);
   const [newCustomLabel, setNewCustomLabel] = useState("");
 
   const [formData, setFormData] = useState({
@@ -181,6 +193,8 @@ export default function OrdensServico() {
 
   const isMobility = MOBILITY_CATEGORIES.includes(uiCategory);
   const isBateria = uiCategory === "bateria" || formData.modelo_equipamento?.toLowerCase().includes("bateria");
+  const activeConfigTipo = (configTipos || []).find(t => t.value === uiCategory && t.ativo);
+  const configItems: ChecklistItem[] = activeConfigTipo?.itens || [];
   const itemsTotal = osItems.reduce((s, i) => s + (i.valor_total || 0), 0);
   const totalOrcamento = Math.max(0, itemsTotal - (formData.desconto || 0));
   const viewItemsTotal = viewOsItems.reduce((s, i) => s + (i.valor_total || 0), 0);
@@ -194,8 +208,8 @@ export default function OrdensServico() {
     }) || Object.values(mobilityData).some(value => {
       if (typeof value === "boolean") return value;
       return String(value || "").trim() !== "";
-    }) || osItems.length > 0 || uiCategory !== "bateria";
-  }, [editingOS, formData, mobilityData, osItems.length, uiCategory]);
+    }) || osItems.length > 0 || uiCategory !== "bateria" || Object.values(configCheckbox).some(Boolean);
+  }, [editingOS, formData, mobilityData, osItems.length, uiCategory, configCheckbox]);
 
   useEffect(() => {
     if (orgLoading) return;
@@ -278,6 +292,20 @@ export default function OrdensServico() {
     return mapDbItemsToOSItems(data as ItemOSRow[]);
   }, [organization?.id, isPlatformAdmin]);
 
+  const loadChecklistResponses = useCallback(async (osId: string, osOrgId?: string | null): Promise<Record<string, boolean>> => {
+    let query = supabase
+      .from("os_checklist_itens")
+      .select("*")
+      .eq("ordem_servico_id", osId);
+    const orgId = osOrgId || organization?.id;
+    if (orgId && !isPlatformAdmin) query = query.eq("organization_id", orgId);
+    const { data, error } = await query;
+    if (error) return {};
+    const values: Record<string, boolean> = {};
+    (data || []).forEach(r => { values[r.item_id] = !!r.marcado; });
+    return values;
+  }, [organization?.id, isPlatformAdmin]);
+
   const clienteOptions: SmartSelectOption[] = clientes.map(c => ({
     id: c.id,
     label: c.nome,
@@ -325,7 +353,8 @@ export default function OrdensServico() {
         .replace(/\[CUSTOM:[^\]]*\]/g, "")
         .trim();
 
-      if (uiCategory.startsWith("custom_")) {
+      const isConfiguredCategory = (configTipos || []).some(t => t.value === uiCategory);
+      if (!isMobility && (uiCategory.startsWith("custom_") || isConfiguredCategory)) {
         observacoesWithMobility = observacoesWithMobility
           ? `${observacoesWithMobility}\n[CUSTOM:${uiCategory}]`
           : `[CUSTOM:${uiCategory}]`;
@@ -418,11 +447,27 @@ export default function OrdensServico() {
             valor_total: Number(item.valor_total) || 0,
             organization_id: editingOS?.organization_id || organizationId,
           }));
-          const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInsert);
+const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInsert);
           if (itemsError) {
             console.error("Erro ao salvar itens:", itemsError);
             throw new Error(`A OS foi salva, mas os itens não: ${itemsError.message}`);
           }
+        }
+        const { error: delChecklistErr } = await supabase
+          .from("os_checklist_itens")
+          .delete()
+          .eq("ordem_servico_id", osId);
+        if (delChecklistErr) throw delChecklistErr;
+        if (configItems.length > 0) {
+          const { error: insChecklistErr } = await supabase
+            .from("os_checklist_itens")
+            .insert(configItems.map(item => ({
+              organization_id: editingOS?.organization_id || organizationId,
+              ordem_servico_id: osId,
+              item_id: item.id,
+              marcado: !!configCheckbox[item.id],
+            })));
+          if (insChecklistErr) throw insChecklistErr;
         }
 
       }
@@ -453,6 +498,7 @@ export default function OrdensServico() {
     if (!canEdit) { toast.error(readOnlyOsMessage); return; }
     setEditingOS(os);
     setOsItems([]);
+    setConfigCheckbox({});
     const detectedCategory = detectUiCategory(os);
     setUiCategory(detectedCategory);
     const obs = os.observacoes || "";
@@ -502,6 +548,7 @@ export default function OrdensServico() {
       tecnico_id: os.tecnico_id || "",
     });
     setOsItems(await fetchOSItems(os.id, os.organization_id));
+    setConfigCheckbox(await loadChecklistResponses(os.id, os.organization_id));
     setWizardStep(0);
     setDialogOpen(true);
   };
@@ -510,10 +557,25 @@ export default function OrdensServico() {
     setViewingOS(os);
     setViewOsItems([]);
     setViewOsItemsLoading(true);
+    setViewConfigChecklist([]);
     setViewDialogOpen(true);
     try {
       const items = await fetchOSItems(os.id, os.organization_id);
       setViewOsItems(items);
+      let checklistQuery = supabase
+        .from("os_checklist_itens")
+        .select("marcado, item:checklist_equipamento_itens(label, obrigatorio)")
+        .eq("ordem_servico_id", os.id);
+      const orgId = os.organization_id || organization?.id;
+      if (orgId && !isPlatformAdmin) checklistQuery = checklistQuery.eq("organization_id", orgId);
+      const { data: checklistData, error: checklistError } = await checklistQuery;
+      if (!checklistError && checklistData) {
+        setViewConfigChecklist((checklistData as any[]).map(r => ({
+          label: r?.item?.label || "Item de verificação",
+          obrigatorio: !!r?.item?.obrigatorio,
+          marcado: !!r?.marcado,
+        })));
+      }
     } finally {
       setViewOsItemsLoading(false);
     }
@@ -739,7 +801,7 @@ export default function OrdensServico() {
     const osData: WhatsAppOS = {
       numero: viewingOS.numero,
       clienteNome: viewingOS.clientes?.nome || "Cliente",
-      equipamento: getTypeDisplayLabel(viewingOS, orgSegmentos, orgCustomTypes),
+      equipamento: getTypeDisplayLabel(viewingOS, orgSegmentos, orgCustomTypes, configTipos),
       modelo: viewingOS.modelo_equipamento || undefined,
       defeito: viewingOS.descricao_problema,
       diagnostico: viewingOS.diagnostico || undefined,
@@ -757,7 +819,7 @@ export default function OrdensServico() {
 
   const buildShareMessage = (os: any, cliente: any) => {
     const nomeEmpresa = empresa.nome_empresa || "Volt Master";
-    const tipo = getTypeDisplayLabel(os, orgSegmentos, orgCustomTypes);
+    const tipo = getTypeDisplayLabel(os, orgSegmentos, orgCustomTypes, configTipos);
     const marca = os.marca || os.modelo_equipamento || "-";
     const defeito = os.descricao_problema || "-";
     const nome = cliente?.nome || os.clientes?.nome || "cliente";
@@ -853,6 +915,8 @@ export default function OrdensServico() {
     setFormData({ cliente_id: "", tipo_equipamento: "bateria", marca: "", modelo_equipamento: "", numero_serie: "", descricao_problema: "", diagnostico: "", prioridade: "media", data_previsao: "", desconto: 0, valor_orcamento: 0, observacoes: "", tecnico_id: "", checklist_bateria: false, checklist_carregador: false, checklist_controle: false, checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "", ciclos_carga_entrada: 0, ciclos_carga_saida: 0 });
     setUiCategory("bateria");
     resetMobilityData();
+    setConfigCheckbox({});
+    setViewConfigChecklist([]);
     setEditingOS(null);
     setWizardStep(0);
     setOsItems([]);
@@ -1132,8 +1196,10 @@ export default function OrdensServico() {
                         value={uiCategory}
                         onValueChange={(v) => {
                           setUiCategory(v);
-                          const t = findTypeByValue(v, orgSegmentos, orgCustomTypes);
-                          const dbEnum = t?.dbEnum ?? mapCategoryToDbEnum(v);
+                          setConfigCheckbox({});
+                          const configTipo = (configTipos || []).find(ct => ct.value === v);
+                          const baseType = findTypeByValue(v, orgSegmentos, orgCustomTypes);
+                          const dbEnum = configTipo?.db_enum || baseType?.dbEnum || mapCategoryToDbEnum(v);
                           setFormData({ ...formData, tipo_equipamento: dbEnum as Enums<"tipo_equipamento"> });
                         }}
                       >
@@ -1171,6 +1237,7 @@ export default function OrdensServico() {
                                     try {
                                       await saveSegments({ tipos_custom: [...(orgCustomTypes || []), { value, label }] });
                                       setUiCategory(value);
+                                      setConfigCheckbox({});
                                       setFormData({ ...formData, tipo_equipamento: 'outro' as Enums<"tipo_equipamento"> });
                                       setNewCustomLabel("");
                                       toast.success(`Tipo "${label}" adicionado`);
@@ -1231,7 +1298,32 @@ export default function OrdensServico() {
 
                   <Separator />
                   <p className="text-xs font-semibold text-muted-foreground uppercase">Checklist de Entrada</p>
-                  {isMobility ? (
+                  {configItems.length > 0 ? (
+                    <div className="space-y-2">
+                      {activeConfigTipo?.label && (
+                        <p className="text-[11px] text-muted-foreground">
+                          Itens de revisão de "{activeConfigTipo.label}":
+                        </p>
+                      )}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {configItems.map(item => (
+                          <div key={item.id} className="flex items-center gap-2">
+                            <Checkbox
+                              id={`cfg_${item.id}`}
+                              checked={!!configCheckbox[item.id]}
+                              onCheckedChange={(c) => setConfigCheckbox(prev => ({ ...prev, [item.id]: !!c }))}
+                            />
+                            <Label htmlFor={`cfg_${item.id}`} className="text-xs cursor-pointer flex items-center gap-1.5">
+                              <span>{item.label}</span>
+                              {item.obrigatorio && (
+                                <Badge variant="outline" className="text-[9px] text-warning border-warning/30 bg-warning/5 shrink-0">Obrigatório</Badge>
+                              )}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : isMobility ? (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {(["check_display|Display", "check_acelerador|Acelerador", "check_freios|Freios", "check_pneus|Pneus", "check_controladora|Controladora", "check_iluminacao|Iluminação", "check_carenagem|Carenagem"] as const).map(item => {
                         const [key, label] = item.split("|");
@@ -1378,8 +1470,9 @@ export default function OrdensServico() {
                   if (hasMob && mMatch) {
                     viewType = TIPO_EQUIPAMENTO[mMatch[1]] || TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento];
                   } else if (customMatch) {
+                    const configFound = (configTipos || []).find(t => t.value === customMatch[1]);
                     const found = findTypeByValue(customMatch[1], orgSegmentos, orgCustomTypes);
-                    viewType = found?.label || TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento;
+                    viewType = configFound?.label || found?.label || TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento;
                   } else {
                     viewType = TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento;
                   }
@@ -1403,6 +1496,22 @@ export default function OrdensServico() {
                         <div><p className="text-[10px] text-muted-foreground">Odômetro</p><p className="text-sm">{mMatch[4]}km</p></div>
                         <div><p className="text-[10px] text-muted-foreground">Chave</p><p className="text-sm">{mMatch[5]}</p></div>
                       </div>{mMatch[7] !== "Nenhum" && <div className="mt-2 flex flex-wrap gap-1">{mMatch[7].split(",").map(i => <Badge key={i} variant="secondary" className="text-[10px]">{i}</Badge>)}</div>}</div></>)}
+                      {viewConfigChecklist.length > 0 && (<><Separator /><div>
+                        <h3 className="text-xs font-semibold text-primary uppercase mb-2">Checklist de Revisão</h3>
+                        <div className="space-y-1.5">
+                          {viewConfigChecklist.map((c, i) => (
+                            <div key={i} className="flex items-center justify-between gap-2 rounded-md border border-border/50 bg-muted/30 px-3 py-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                {c.marcado ? <CheckCircle2 className="h-4 w-4 text-success shrink-0" /> : <XCircle className="h-4 w-4 text-muted-foreground shrink-0" />}
+                                <span className="text-xs">{c.label}</span>
+                              </div>
+                              {c.obrigatorio && (
+                                <Badge variant="outline" className="text-[9px] text-warning border-warning/30 bg-warning/5 shrink-0">Obrigatório</Badge>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div></>)}
                       <Separator />
                       <div>
                         <h3 className="text-xs font-semibold text-primary uppercase mb-2">Diagnóstico</h3>
