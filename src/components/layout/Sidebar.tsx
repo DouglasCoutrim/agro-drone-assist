@@ -7,7 +7,7 @@ import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logold.png";
 
 interface SidebarProps { className?: string; }
 
@@ -40,6 +40,7 @@ const navSections = [
       { title: "Equipe", icon: UsersRound, href: "/equipe", roles: ["admin"] },
       { title: "Empresa", icon: Building2, href: "/empresa", roles: ["admin"] },
       { title: "Configurações", icon: Settings, href: "/configuracoes", roles: ["admin"] },
+      { title: "Checklist de OS", icon: ClipboardList, href: "/admin/configuracao-os", roles: ["admin"] },
       { title: "Notificações", icon: Bell, href: "/notificacoes", roles: ["admin", "tecnico", "consulta"] },
       { title: "Central de Ajuda", icon: BookOpen, href: "/wiki", roles: ["admin", "tecnico", "consulta"] },
       { title: "Suporte", icon: LifeBuoy, href: "/suporte", roles: ["admin", "tecnico", "consulta"] },

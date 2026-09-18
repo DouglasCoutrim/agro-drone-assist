@@ -14,6 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
+      checklist_equipamento_itens: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          obrigatorio: boolean
+          ordem: number
+          organization_id: string | null
+          tipo_equipamento_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          obrigatorio?: boolean
+          ordem?: number
+          organization_id?: string | null
+          tipo_equipamento_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          obrigatorio?: boolean
+          ordem?: number
+          organization_id?: string | null
+          tipo_equipamento_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_equipamento_itens_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_equipamento_itens_tipo_equipamento_id_fkey"
+            columns: ["tipo_equipamento_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_tipos_equipamento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_tipos_equipamento: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          db_enum: string
+          descricao: string | null
+          id: string
+          label: string
+          organization_id: string | null
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          db_enum?: string
+          descricao?: string | null
+          id?: string
+          label: string
+          organization_id?: string | null
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          db_enum?: string
+          descricao?: string | null
+          id?: string
+          label?: string
+          organization_id?: string | null
+          updated_at?: string
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_tipos_equipamento_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           asaas_id: string | null
