@@ -1,17 +1,27 @@
 // Webhook do Mercado Pago para cobranças emitidas pelas oficinas.
 // Escuta payment.updated; quando status === 'approved' marca a fatura como paga.
-import { createClient } from 'npm:@supabase/supabase-js@2';
+// verify_jwt=true no config.toml - requer autenticação JWT.
+// Valida assinatura HMAC do Mercado Pago quando MP_WEBHOOK_SECRET está configurado.
+// Documentação: https://developer.mercadopago.com.br/docs/arr/payments/webhooks
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-signature, x-request-id, x-webhook-secret',
+  'Access-Control-Allow-Origin': 'https://iynljexyjhbkfxsurddn.supabase.co',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
-  // Valida assinatura HMAC do Mercado Pago quando MP_WEBHOOK_SECRET está
-  // configurado; caso contrário exige o WEBHOOK_SECRET compartilhado.
+  // Verificar JWT
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return json({ error: 'Unauthorized' }, 401);
+  }
+
+  // Valida assinatura HMAC do Mercado Pago quando MP_WEBHOOK_SECRET está configurado
   const mpSecret = Deno.env.get('MP_WEBHOOK_SECRET');
   const sharedSecret = Deno.env.get('WEBHOOK_SECRET');
 

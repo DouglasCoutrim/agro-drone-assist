@@ -4,7 +4,7 @@ import {
 } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logold.png";
 
 const navSections = [
   {

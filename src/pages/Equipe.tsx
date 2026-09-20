@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Users, User, Shield, Loader2, Trash2, FileText, Package, DollarSign, UserPlus, Pencil } from "lucide-react";
+import { Users, User, Shield, Loader2, Trash2, FileText, Package, DollarSign, UserPlus, Pencil, LayoutDashboard, Wrench, Settings, BookOpen, Bell, BarChart3, Navigation, CreditCard, ClipboardList, MapPin, Monitor, UserRound, Building2, LifeBuoy } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,9 +24,25 @@ type Profile = Tables<"profiles">;
 interface UserWithRoleAndPerms extends Profile {
   role?: string;
   permissions?: {
+    acesso_dashboard: boolean;
     acesso_os: boolean;
+    acesso_meu_painel: boolean;
+    acesso_oficina_vivo: boolean;
+    acesso_clientes: boolean;
     acesso_estoque: boolean;
+    acesso_servicos: boolean;
     acesso_financeiro: boolean;
+    acesso_cobrancas: boolean;
+    acesso_orcamentos: boolean;
+    acesso_rotas: boolean;
+    acesso_relatorios: boolean;
+    acesso_equipe: boolean;
+    acesso_empresa: boolean;
+    acesso_configuracoes: boolean;
+    acesso_checklist: boolean;
+    acesso_notificacoes: boolean;
+    acesso_wiki: boolean;
+    acesso_suporte: boolean;
   };
 }
 
@@ -62,10 +78,26 @@ export default function Equipe() {
           ...p,
           role: roleData?.role || 'consulta',
           permissions: permData ? {
-            acesso_os: permData.acesso_os,
-            acesso_estoque: permData.acesso_estoque,
-            acesso_financeiro: permData.acesso_financeiro,
-          } : { acesso_os: true, acesso_estoque: true, acesso_financeiro: false }
+            acesso_dashboard: permData.acesso_dashboard ?? true,
+            acesso_os: permData.acesso_os ?? true,
+            acesso_meu_painel: permData.acesso_meu_painel ?? true,
+            acesso_oficina_vivo: permData.acesso_oficina_vivo ?? true,
+            acesso_clientes: permData.acesso_clientes ?? true,
+            acesso_estoque: permData.acesso_estoque ?? true,
+            acesso_servicos: permData.acesso_servicos ?? true,
+            acesso_financeiro: permData.acesso_financeiro ?? false,
+            acesso_cobrancas: permData.acesso_cobrancas ?? false,
+            acesso_orcamentos: permData.acesso_orcamentos ?? true,
+            acesso_rotas: permData.acesso_rotas ?? true,
+            acesso_relatorios: permData.acesso_relatorios ?? true,
+            acesso_equipe: permData.acesso_equipe ?? true,
+            acesso_empresa: permData.acesso_empresa ?? true,
+            acesso_configuracoes: permData.acesso_configuracoes ?? true,
+            acesso_checklist: permData.acesso_checklist ?? true,
+            acesso_notificacoes: permData.acesso_notificacoes ?? true,
+            acesso_wiki: permData.acesso_wiki ?? true,
+            acesso_suporte: permData.acesso_suporte ?? true,
+          } : { acesso_dashboard: true, acesso_os: true, acesso_meu_painel: true, acesso_oficina_vivo: true, acesso_clientes: true, acesso_estoque: true, acesso_servicos: true, acesso_financeiro: false, acesso_cobrancas: false, acesso_orcamentos: true, acesso_rotas: true, acesso_relatorios: true, acesso_equipe: true, acesso_empresa: true, acesso_configuracoes: true, acesso_checklist: true, acesso_notificacoes: true, acesso_wiki: true, acesso_suporte: true }
         };
       });
       setUsers(usersData);
@@ -84,12 +116,10 @@ export default function Equipe() {
   const handleTogglePermission = async (userId: string, field: string, value: boolean) => {
     try {
       const current = users.find(u => u.id === userId)?.permissions;
+      const allPerms = { ...current, [field]: value };
       const payload = {
         user_id: userId,
-        acesso_os: current?.acesso_os ?? true,
-        acesso_estoque: current?.acesso_estoque ?? true,
-        acesso_financeiro: current?.acesso_financeiro ?? false,
-        [field]: value,
+        ...allPerms,
       };
       const { error } = await supabase.from('user_permissions').upsert(payload as any, { onConflict: 'user_id' });
       if (error) throw error;
@@ -288,36 +318,75 @@ export default function Equipe() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:pl-13">
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-primary" />
-                          <span className="text-sm font-medium">Acesso a OS</span>
+<div className="space-y-4 sm:pl-13">
+                      {/* PRINCIPAL */}
+                      <div>
+                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Principal</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {[
+                            { key: 'acesso_dashboard', label: 'Dashboard', icon: LayoutDashboard },
+                            { key: 'acesso_os', label: 'Ordens de Serviço', icon: FileText },
+                            { key: 'acesso_meu_painel', label: 'Meu Painel', icon: Wrench },
+                            { key: 'acesso_oficina_vivo', label: 'Oficina ao Vivo', icon: Monitor },
+                            { key: 'acesso_clientes', label: 'Clientes', icon: Users },
+                          ].map(item => (
+                            <div key={item.key} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50">
+                              <div className="flex items-center gap-2">
+                                <item.icon className="h-3.5 w-3.5 text-primary" />
+                                <span className="text-xs font-medium">{item.label}</span>
+                              </div>
+                              <Switch checked={u.permissions?.[item.key as keyof typeof u.permissions] ?? true} onCheckedChange={(v) => handleTogglePermission(u.id, item.key, v)} />
+                            </div>
+                          ))}
                         </div>
-                        <Switch
-                          checked={u.permissions?.acesso_os ?? true}
-                          onCheckedChange={(v) => handleTogglePermission(u.id, 'acesso_os', v)}
-                        />
                       </div>
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-primary" />
-                          <span className="text-sm font-medium">Acesso a Estoque</span>
+
+                      {/* GESTÃO */}
+                      <div>
+                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Gestão</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {[
+                            { key: 'acesso_estoque', label: 'Estoque', icon: Package },
+                            { key: 'acesso_servicos', label: 'Serviços', icon: Wrench },
+                            { key: 'acesso_financeiro', label: 'Financeiro', icon: DollarSign },
+                            { key: 'acesso_cobrancas', label: 'Cobranças', icon: CreditCard },
+                            { key: 'acesso_orcamentos', label: 'Orçamentos', icon: ClipboardList },
+                            { key: 'acesso_rotas', label: 'Rotas', icon: Navigation },
+                            { key: 'acesso_relatorios', label: 'Relatórios', icon: BarChart3 },
+                          ].map(item => (
+                            <div key={item.key} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50">
+                              <div className="flex items-center gap-2">
+                                <item.icon className="h-3.5 w-3.5 text-primary" />
+                                <span className="text-xs font-medium">{item.label}</span>
+                              </div>
+                              <Switch checked={u.permissions?.[item.key as keyof typeof u.permissions] ?? true} onCheckedChange={(v) => handleTogglePermission(u.id, item.key, v)} />
+                            </div>
+                          ))}
                         </div>
-                        <Switch
-                          checked={u.permissions?.acesso_estoque ?? true}
-                          onCheckedChange={(v) => handleTogglePermission(u.id, 'acesso_estoque', v)}
-                        />
                       </div>
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="h-4 w-4 text-primary" />
-                          <span className="text-sm font-medium">Acesso Financeiro</span>
+
+                      {/* SISTEMA */}
+                      <div>
+                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Sistema</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {[
+                            { key: 'acesso_equipe', label: 'Equipe', icon: UserRound },
+                            { key: 'acesso_empresa', label: 'Empresa', icon: Building2 },
+                            { key: 'acesso_configuracoes', label: 'Configurações', icon: Settings },
+                            { key: 'acesso_checklist', label: 'Checklist de OS', icon: ClipboardList },
+                            { key: 'acesso_notificacoes', label: 'Notificações', icon: Bell },
+                            { key: 'acesso_wiki', label: 'Central de Ajuda', icon: BookOpen },
+                            { key: 'acesso_suporte', label: 'Suporte', icon: LifeBuoy },
+                          ].map(item => (
+                            <div key={item.key} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50">
+                              <div className="flex items-center gap-2">
+                                <item.icon className="h-3.5 w-3.5 text-primary" />
+                                <span className="text-xs font-medium">{item.label}</span>
+                              </div>
+                              <Switch checked={u.permissions?.[item.key as keyof typeof u.permissions] ?? true} onCheckedChange={(v) => handleTogglePermission(u.id, item.key, v)} />
+                            </div>
+                          ))}
                         </div>
-                        <Switch
-                          checked={u.permissions?.acesso_financeiro ?? false}
-                          onCheckedChange={(v) => handleTogglePermission(u.id, 'acesso_financeiro', v)}
-                        />
                       </div>
                     </div>
 

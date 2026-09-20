@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download, UserPlus, CreditCard, Clock, Wrench, CheckCircle2, XCircle, ChevronRight, MoreVertical, ArrowRight, Trash2, Printer } from "lucide-react";
+import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download, UserPlus, CreditCard, Clock, Wrench, CheckCircle2, XCircle, ChevronRight, MoreVertical, ArrowRight, Trash2, Printer, Calculator, Navigation, Fuel, Gauge, MapPinned, Location, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
@@ -85,6 +85,7 @@ const TIPO_EQUIPAMENTO: Record<string, string> = {
 };
 
 const MOBILITY_CATEGORIES = ["patinete_eletrico", "bicicleta_eletrica", "moto_eletrica", "outros_autopropelidos"];
+const LOCK_CLOSED_STATUSES = new Set(["pronto_retirada", "concluida", "entregue"]);
 const mapCategoryToDbEnum = (uiCategory: string): string => MOBILITY_CATEGORIES.includes(uiCategory) ? "outro" : uiCategory;
 const detectUiCategory = (os: any): string => {
   const obs = os.observacoes || "";
@@ -146,6 +147,100 @@ export default function OrdensServico() {
   const [wizardStep, setWizardStep] = useState(0);
   const WIZARD_STEPS = ["Cliente", "Equipamento", "Problema", "Revisão"];
 
+  const [calcDialogOpen, setCalcDialogOpen] = useState(false);
+  const [calcCalculando, setCalcCalculando] = useState(false);
+  const [calcResult, setCalcResult] = useState<{
+    distanciaKm: number;
+    custoTotal: number;
+    custoCombustivel: number;
+    custoKm: number;
+    litrosUsados: number;
+    origemNome: string;
+    destinoNome: string;
+  } | null>(null);
+  const [calcForm, setCalcForm] = useState({
+    modoEntrada: "endereco" as "endereco" | "coordenadas",
+    origem: "",
+    destino: "",
+    origemLat: "",
+    origemLon: "",
+    destinoLat: "",
+    destinoLon: "",
+    modoCalculo: "combustivel" as "combustivel" | "valor_km",
+    precoLitro: "",
+    consumoKm: "",
+    valorKm: "",
+  });
+
+  const handleCalcRoute = async () => {
+    if (!calcForm.origem || !calcForm.destino) { toast.error("Preencha origem e destino"); return; }
+    setCalcCalculando(true);
+    setCalcResult(null);
+    try {
+      let origemNome: string;
+      let destinoNome: string;
+      let origemLon: number;
+      let origemLat: number;
+      let destinoLon: number;
+      let destinoLat: number;
+
+      if (calcForm.modoEntrada === "coordenadas") {
+        origemLat = parseFloat(calcForm.origemLat);
+        origemLon = parseFloat(calcForm.origemLon);
+        destinoLat = parseFloat(calcForm.destinoLat);
+        destinoLon = parseFloat(calcForm.destinoLon);
+        if (isNaN(origemLat) || isNaN(origemLon) || isNaN(destinoLat) || isNaN(destinoLon)) { toast.error("Coordenadas inválidas"); setCalcCalculando(false); return; }
+        origemNome = `${calcForm.origemLat}, ${calcForm.origemLon}`;
+        destinoNome = `${calcForm.destinoLat}, ${calcForm.destinoLon}`;
+      } else {
+        const [origRes, destRes] = await Promise.all([
+          fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(calcForm.origem)}&limit=1`).then(r => r.json()),
+          fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(calcForm.destino)}&limit=1`).then(r => r.json()),
+        ]);
+        if (!origRes.length || !destRes.length) { toast.error("Endereços não encontrados"); setCalcCalculando(false); return; }
+        origemLat = parseFloat(origRes[0].lat);
+        origemLon = parseFloat(origRes[0].lon);
+        destinoLat = parseFloat(destRes[0].lat);
+        destinoLon = parseFloat(destRes[0].lon);
+        origemNome = origRes[0].display_name;
+        destinoNome = destRes[0].display_name;
+      }
+
+      const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${origemLon},${origemLat};${destinoLon},${destinoLat}?overview=false`);
+      const routeData = await routeRes.json();
+      if (!routeData.routes?.[0]) { toast.error("Não foi possível calcular a rota"); setCalcCalculando(false); return; }
+      const distKm = Math.round(routeData.routes[0].distance / 1000);
+      let custoTotal = 0;
+      let custoComb = 0;
+      let custoKm = 0;
+      let litros = 0;
+      if (calcForm.modoCalculo === "combustivel") {
+        const precoL = parseFloat(calcForm.precoLitro);
+        const consKm = parseFloat(calcForm.consumoKm);
+        if (isNaN(precoL) || isNaN(consKm) || consKm <= 0) { toast.error("Preço/litro e consumo válidos"); setCalcCalculando(false); return; }
+        litros = distKm / consKm;
+        custoComb = litros * precoL;
+        custoTotal = custoComb;
+      } else {
+        const vKm = parseFloat(calcForm.valorKm);
+        if (isNaN(vKm) || vKm <= 0) { toast.error("Valor do km válido"); setCalcCalculando(false); return; }
+        custoKm = distKm * vKm;
+        custoTotal = custoKm;
+      }
+      setCalcResult({ distanciaKm: distKm, custoTotal: Math.round(custoTotal * 100) / 100, custoCombustivel: Math.round(custoComb * 100) / 100, custoKm: Math.round(custoKm * 100) / 100, litrosUsados: Math.round(litros * 100) / 100, origemNome, destinoNome });
+      toast.success(`Rota: ${distKm} km | ${formatCurrency(custoTotal)}`);
+    } catch { toast.error("Erro ao calcular rota"); } finally { setCalcCalculando(false); }
+  };
+
+  const handleApplyRoute = () => {
+    if (!calcResult) return;
+    const tag = `\n[ROTA: ${calcResult.origemNome} → ${calcResult.destinoNome} | ${calcResult.distanciaKm} km | ${formatCurrency(calcResult.custoTotal)}]`;
+    setFormData(prev => ({ ...prev, observacoes: (prev.observacoes || "") + tag }));
+    setCalcDialogOpen(false);
+    setCalcResult(null);
+    setDialogOpen(true);
+  };
+
   const [uiCategory, setUiCategory] = useState("bateria");
   const { segmentos: orgSegmentos, tipos_custom: orgCustomTypes, save: saveSegments } = useOrgSegments();
   const { tipos: configTipos } = useChecklistConfig();
@@ -182,6 +277,7 @@ export default function OrdensServico() {
     condicao_visual: "",
     ciclos_carga_entrada: 0,
     ciclos_carga_saida: 0,
+    deslocamento: false,
   });
 
   const [mobilityData, setMobilityData] = useState({
@@ -292,9 +388,22 @@ export default function OrdensServico() {
     return mapDbItemsToOSItems(data as ItemOSRow[]);
   }, [organization?.id, isPlatformAdmin]);
 
+  const getPendingRequiredChecklist = useCallback(async (osId: string, osOrgId?: string | null): Promise<string[]> => {
+    let query = supabase
+      .from("os_checklist_itens")
+      .select("marcado, item:checklist_equipamento_itens(label, obrigatorio)")
+      .eq("ordem_servico_id", osId);
+    const orgId = osOrgId || organization?.id;
+    if (orgId && !isPlatformAdmin) query = query.eq("organization_id", orgId);
+    const { data, error } = await query;
+    if (error) return [];
+    return ((data as any[]) || [])
+      .filter(r => r?.item?.obrigatorio && !r.marcado)
+      .map(r => r.item.label as string);
+  }, [organization?.id, isPlatformAdmin]);
+
   const loadChecklistResponses = useCallback(async (osId: string, osOrgId?: string | null): Promise<Record<string, boolean>> => {
-    const checklistDb = supabase as any;
-    let query = checklistDb
+    let query = supabase
       .from("os_checklist_itens")
       .select("*")
       .eq("ordem_servico_id", osId);
@@ -348,10 +457,11 @@ export default function OrdensServico() {
         throw new Error("Sua conta não está vinculada a uma empresa. Contate o administrador.");
       }
 
-      const { ciclos_carga_entrada, ciclos_carga_saida, ...restForm } = formData;
+      const { ciclos_carga_entrada, ciclos_carga_saida, deslocamento, ...restForm } = formData;
       let observacoesWithMobility = (restForm.observacoes || "")
         .replace(/\[MOBILIDADE:[\s\S]*?\]/g, "")
         .replace(/\[CUSTOM:[^\]]*\]/g, "")
+        .replace(/\[ROTA:[\s\S]*?\]/g, "")
         .trim();
 
       const isConfiguredCategory = (configTipos || []).some(t => t.value === uiCategory);
@@ -372,6 +482,11 @@ export default function OrdensServico() {
         if (mobilityData.check_carenagem) mChecklist.push("Carenagem");
         const mobilityTag = `[MOBILIDADE:${uiCategory} | Voltagem:${mobilityData.voltagem || "-"} | Bateria:${mobilityData.capacidade_bateria || "-"}Ah | Odômetro:${mobilityData.odometro || "-"}km | Chave:${mobilityData.chave_ignicao ? "Sim" : "Não"} | Carregador:${mobilityData.carregador_entregue ? "Sim" : "Não"} | Checklist:${mChecklist.join(",") || "Nenhum"}]`;
         observacoesWithMobility = observacoesWithMobility ? `${observacoesWithMobility}\n${mobilityTag}` : mobilityTag;
+      }
+
+      if (deslocamento && calcResult) {
+        const rotaTag = `[ROTA: ${calcResult.origemNome} → ${calcResult.destinoNome} | ${calcResult.distanciaKm} km | ${formatCurrency(calcResult.custoTotal)}]`;
+        observacoesWithMobility = observacoesWithMobility ? `${observacoesWithMobility}\n${rotaTag}` : rotaTag;
       }
 
       // valor_orcamento é calculado pelos itens; quando não houver itens, preservar o valor existente (compat. com OS antigas)
@@ -454,14 +569,13 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
             throw new Error(`A OS foi salva, mas os itens não: ${itemsError.message}`);
           }
         }
-        const checklistDb = supabase as any;
-        const { error: delChecklistErr } = await checklistDb
+        const { error: delChecklistErr } = await supabase
           .from("os_checklist_itens")
           .delete()
           .eq("ordem_servico_id", osId);
         if (delChecklistErr) throw delChecklistErr;
         if (configItems.length > 0) {
-          const { error: insChecklistErr } = await checklistDb
+          const { error: insChecklistErr } = await supabase
             .from("os_checklist_itens")
             .insert(configItems.map(item => ({
               organization_id: editingOS?.organization_id || organizationId,
@@ -564,8 +678,7 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
     try {
       const items = await fetchOSItems(os.id, os.organization_id);
       setViewOsItems(items);
-      const checklistDb = supabase as any;
-      let checklistQuery = checklistDb
+      let checklistQuery = supabase
         .from("os_checklist_itens")
         .select("marcado, item:checklist_equipamento_itens(label, obrigatorio)")
         .eq("ordem_servico_id", os.id);
@@ -606,6 +719,13 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
 
   const applyStatusUpdate = async (osId: string, newStatus: string) => {
     if (!canEdit) throw new Error(readOnlyOsMessage);
+    if (LOCK_CLOSED_STATUSES.has(newStatus)) {
+      const os = ordens.find(o => o.id === osId);
+      const pending = await getPendingRequiredChecklist(osId, os?.organization_id || organization?.id);
+      if (pending.length > 0) {
+        throw new Error(`Itens obrigatórios pendentes no checklist de revisão: ${pending.slice(0, 3).join("; ")}${pending.length > 3 ? "…" : ""}.`);
+      }
+    }
     const updateData: any = { status: newStatus };
     if (newStatus === "pronto_retirada" || newStatus === "concluida") updateData.data_conclusao = new Date().toISOString();
     if (newStatus === "entregue") updateData.data_entrega = new Date().toISOString();
@@ -625,7 +745,19 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
     }
   };
 
-  const handleStatusChange = async (osId: string, newStatus: string) => {
+  const handleStatusChange = async (osId: string, newStatus: string): Promise<boolean> => {
+    if (LOCK_CLOSED_STATUSES.has(newStatus)) {
+      try {
+        const pending = await getPendingRequiredChecklist(osId);
+        if (pending.length > 0) {
+          toast.error(`Itens obrigatórios pendentes no checklist de revisão: ${pending.slice(0, 3).join("; ")}${pending.length > 3 ? "…" : ""}. Marque-os antes de finalizar a OS.`);
+          return false;
+        }
+      } catch (err: any) {
+        toast.error(getErrorMessage(err));
+        return false;
+      }
+    }
     // Intercept "entregue" to require payment confirmation
     if (newStatus === "entregue") {
       const os = ordens.find(o => o.id === osId);
@@ -642,13 +774,14 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
             await applyStatusUpdate(osId, newStatus);
             toast.success(`Status atualizado para "${getStatusLabel(newStatus)}"`);
             fetchData();
+            return true;
           } catch (err: any) {
             toast.error(getErrorMessage(err));
+            return false;
           }
-          return;
         }
         await openPaymentForOS(os, newStatus);
-        return;
+        return false;
       }
     }
 
@@ -656,8 +789,10 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
       await applyStatusUpdate(osId, newStatus);
       toast.success(`Status atualizado para "${getStatusLabel(newStatus)}"`);
       fetchData();
+      return true;
     } catch (err: any) {
       toast.error(getErrorMessage(err));
+      return false;
     }
   };
 
@@ -915,7 +1050,7 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
   const resetMobilityData = () => setMobilityData({ voltagem: "", capacidade_bateria: "", odometro: "", chave_ignicao: false, carregador_entregue: false, check_display: false, check_acelerador: false, check_freios: false, check_pneus: false, check_controladora: false, check_iluminacao: false, check_carenagem: false });
 
   const resetForm = () => {
-    setFormData({ cliente_id: "", tipo_equipamento: "bateria", marca: "", modelo_equipamento: "", numero_serie: "", descricao_problema: "", diagnostico: "", prioridade: "media", data_previsao: "", desconto: 0, valor_orcamento: 0, observacoes: "", tecnico_id: "", checklist_bateria: false, checklist_carregador: false, checklist_controle: false, checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "", ciclos_carga_entrada: 0, ciclos_carga_saida: 0 });
+    setFormData({ cliente_id: "", tipo_equipamento: "bateria", marca: "", modelo_equipamento: "", numero_serie: "", descricao_problema: "", diagnostico: "", prioridade: "media", data_previsao: "", desconto: 0, valor_orcamento: 0, observacoes: "", tecnico_id: "", checklist_bateria: false, checklist_carregador: false, checklist_controle: false, checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "", ciclos_carga_entrada: 0, ciclos_carga_saida: 0, deslocamento: false });
     setUiCategory("bateria");
     resetMobilityData();
     setConfigCheckbox({});
@@ -923,6 +1058,8 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
     setEditingOS(null);
     setWizardStep(0);
     setOsItems([]);
+    setCalcResult(null);
+    setCalcDialogOpen(false);
   };
 
   const requestCloseOSForm = async () => {
@@ -984,11 +1121,16 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
     <MainLayout>
       <div className="space-y-4" data-tour="os-page">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-lg font-bold font-display flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Ordens de Serviço</h1>
-            <p className="text-xs text-muted-foreground">Gestão completa de reparos e manutenção</p>
-          </div>
+<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              {empresa.logo_url && (
+                <img src={empresa.logo_url} alt={empresa.nome_empresa} className="h-8 w-auto rounded" />
+              )}
+              <div>
+                <h1 className="text-lg font-bold font-display flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Ordens de Serviço</h1>
+                <p className="text-xs text-muted-foreground">Gestão completa de reparos e manutenção</p>
+              </div>
+            </div>
           <div className="flex flex-col items-end gap-1">
             <Button size="sm" className="gradient-primary shadow-soft" onClick={() => {
               if (!canEdit) { toast.error(readOnlyOsMessage); return; }
@@ -1384,6 +1526,22 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
                 <CardHeader className="pb-3"><CardTitle className="text-sm">4. Observações e Resumo</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-1.5"><Label className="text-xs">Observações Técnicas / Internas</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={3} /></div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="deslocamento" checked={formData.deslocamento} onCheckedChange={(c) => setFormData({ ...formData, deslocamento: !!c })} />
+                    <Label htmlFor="deslocamento" className="text-xs cursor-pointer flex items-center gap-1"><Calculator className="h-3 w-3" />Houve deslocamento?</Label>
+                  </div>
+                  {formData.deslocamento && !calcResult && (
+                    <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => { setCalcForm({ modoEntrada: "endereco", origem: "", destino: "", origemLat: "", origemLon: "", destinoLat: "", destinoLon: "", modoCalculo: "combustivel", precoLitro: "", consumoKm: "", valorKm: "" }); setCalcDialogOpen(true); }}>
+                      <Navigation className="mr-2 h-3.5 w-3.5" />Calcular Rota de Deslocamento
+                    </Button>
+                  )}
+                  {formData.deslocamento && calcResult && (
+                    <div className="flex items-center gap-2 p-2 bg-success/5 border border-success/20 rounded-lg">
+                      <Check className="h-4 w-4 text-success" />
+                      <span className="text-xs text-success">{calcResult.distanciaKm} km | {formatCurrency(calcResult.custoTotal)}</span>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setCalcResult(null)} className="ml-auto h-6">Remover</Button>
+                    </div>
+                  )}
                   <Separator />
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5"><Label className="text-xs">Desconto (R$)</Label><NumberInput step="0.01" min="0" value={formData.desconto} onChange={(v) => setFormData({ ...formData, desconto: v })} className="h-9" placeholder="0,00" /></div>
@@ -1417,6 +1575,128 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
           </DialogContent>
         </Dialog>
 
+        {/* Route Calculation Dialog */}
+        <Dialog open={calcDialogOpen} onOpenChange={(open) => { setCalcDialogOpen(open); if (!open) setCalcResult(null); }}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle><Calculator className="inline h-5 w-5 mr-2 text-primary" />Calculadora de Rota</DialogTitle>
+              <DialogDescription>Informe origem, destino e parâmetros de custo para calcular o valor do deslocamento</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              {/* Modo de entrada */}
+              <div className="space-y-2">
+                <Label>Modo de entrada</Label>
+                <div className="flex gap-2">
+                  <Button type="button" variant={calcForm.modoEntrada === "endereco" ? "default" : "outline"} className="flex-1" onClick={() => setCalcForm(prev => ({ ...prev, modoEntrada: "endereco" }))}>
+                    <MapPinned className="mr-2 h-3.5 w-3.5" />Endereço/Cidade
+                  </Button>
+                  <Button type="button" variant={calcForm.modoEntrada === "coordenadas" ? "default" : "outline"} className="flex-1" onClick={() => setCalcForm(prev => ({ ...prev, modoEntrada: "coordenadas" }))}>
+                    <Location className="mr-2 h-3.5 w-3.5" />Coordenadas
+                  </Button>
+                </div>
+              </div>
+
+              {/* Origem */}
+              <div className="space-y-2">
+                <Label>Origem *</Label>
+                {calcForm.modoEntrada === "endereco" ? (
+                  <Input value={calcForm.origem} onChange={(e) => setCalcForm(prev => ({ ...prev, origem: e.target.value }))} placeholder="Ex: Goiânia, GO ou endereço completo" />
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input placeholder="Lat" value={calcForm.origemLat} onChange={(e) => setCalcForm(prev => ({ ...prev, origemLat: e.target.value }))} type="number" step="any" />
+                    <Input placeholder="Lon" value={calcForm.origemLon} onChange={(e) => setCalcForm(prev => ({ ...prev, origemLon: e.target.value }))} type="number" step="any" />
+                  </div>
+                )}
+              </div>
+
+              {/* Destino */}
+              <div className="space-y-2">
+                <Label>Destino *</Label>
+                {calcForm.modoEntrada === "endereco" ? (
+                  <Input value={calcForm.destino} onChange={(e) => setCalcForm(prev => ({ ...prev, destino: e.target.value }))} placeholder="Ex: Rio Verde, GO ou endereço completo" />
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input placeholder="Lat" value={calcForm.destinoLat} onChange={(e) => setCalcForm(prev => ({ ...prev, destinoLat: e.target.value }))} type="number" step="any" />
+                    <Input placeholder="Lon" value={calcForm.destinoLon} onChange={(e) => setCalcForm(prev => ({ ...prev, destinoLon: e.target.value }))} type="number" step="any" />
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Modo de cálculo */}
+              <div className="space-y-2">
+                <Label>Modo de cálculo</Label>
+                <div className="flex gap-2">
+                  <Button type="button" variant={calcForm.modoCalculo === "combustivel" ? "default" : "outline"} className="flex-1" onClick={() => setCalcForm(prev => ({ ...prev, modoCalculo: "combustivel" }))}>
+                    <Fuel className="mr-2 h-3.5 w-3.5" />Preço por Litro
+                  </Button>
+                  <Button type="button" variant={calcForm.modoCalculo === "valor_km" ? "default" : "outline"} className="flex-1" onClick={() => setCalcForm(prev => ({ ...prev, modoCalculo: "valor_km" }))}>
+                    <Gauge className="mr-2 h-3.5 w-3.5" />Valor do Km
+                  </Button>
+                </div>
+              </div>
+
+              {calcForm.modoCalculo === "combustivel" && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Preço do Litro (R$) *</Label>
+                      <Input type="number" step="0.01" value={calcForm.precoLitro} onChange={(e) => setCalcForm(prev => ({ ...prev, precoLitro: e.target.value }))} placeholder="Ex: 5.80" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Consumo (km/l) *</Label>
+                      <Input type="number" step="0.1" value={calcForm.consumoKm} onChange={(e) => setCalcForm(prev => ({ ...prev, consumoKm: e.target.value }))} placeholder="Ex: 10" required />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1"><Fuel className="h-3 w-3" />Litros gastos = Distância ÷ Consumo × Preço do litro</p>
+                </>
+              )}
+
+              {calcForm.modoCalculo === "valor_km" && (
+                <div className="space-y-2">
+                  <Label>Valor por Km Rodado (R$) *</Label>
+                  <Input type="number" step="0.01" value={calcForm.valorKm} onChange={(e) => setCalcForm(prev => ({ ...prev, valorKm: e.target.value }))} placeholder="Ex: 3.50" required />
+                  <p className="text-xs text-muted-foreground flex items-center gap-1"><Gauge className="h-3 w-3" />Custo total = Distância × Valor do km</p>
+                </div>
+              )}
+
+              <Button type="button" className="w-full gradient-primary" onClick={handleCalcRoute} disabled={calcCalculando}>
+                {calcCalculando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Navigation className="mr-2 h-4 w-4" />}Calcular Rota
+              </Button>
+
+              {/* Resultado */}
+              {calcResult && (
+                <Card className="border-success/30 bg-success/5">
+                  <CardHeader>
+                    <CardTitle className="text-sm text-success flex items-center gap-2"><Route className="h-4 w-4" />Resultado da Rota</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div><p className="text-xs text-muted-foreground">Distância</p><p className="font-bold text-lg">{calcResult.distanciaKm} km</p></div>
+                      <div><p className="text-xs text-muted-foreground">Custo Total</p><p className="font-bold text-lg text-success">{formatCurrency(calcResult.custoTotal)}</p></div>
+                    </div>
+                    {calcForm.modoCalculo === "combustivel" && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div><p className="text-xs text-muted-foreground">Litros usados</p><p>{calcResult.litrosUsados} L</p></div>
+                        <div><p className="text-xs text-muted-foreground">Custo combustível</p><p>{formatCurrency(calcResult.custoCombustivel)}</p></div>
+                      </div>
+                    )}
+                    {calcForm.modoCalculo === "valor_km" && (
+                      <div><p className="text-xs text-muted-foreground">Custo por km</p><p>{formatCurrency(calcResult.custoKm)}</p></div>
+                    )}
+                    <div className="flex gap-2 pt-2">
+                      <Button type="button" size="sm" className="flex-1" onClick={handleApplyRoute}>
+                        <Check className="mr-2 h-3.5 w-3.5" />Usar na OS
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => { setCalcResult(null); setCalcDialogOpen(false); }}>Fechar</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* View OS Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
@@ -1454,7 +1734,10 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
                 {/* Status Pipeline */}
                 <StatusPipeline
                   currentStatus={viewingOS.status}
-                  onStatusChange={(s) => { handleStatusChange(viewingOS.id, s); setViewingOS({ ...viewingOS, status: s as any }); }}
+                  onStatusChange={async (s) => {
+                    const ok = await handleStatusChange(viewingOS.id, s);
+                    if (ok) setViewingOS({ ...viewingOS, status: s as any });
+                  }}
                 />
 
                 {/* Terms banner */}
