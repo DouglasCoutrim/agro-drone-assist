@@ -7,7 +7,7 @@ import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import logo from "@/assets/logo-icon.png";
+import logo from "@/assets/logold.png";
 
 interface SidebarProps { className?: string; }
 
@@ -79,7 +79,7 @@ export function Sidebar({ className }: SidebarProps) {
     )} style={{ width: "var(--sidebar-width)" }}>
       {/* Logo */}
       <div className="flex flex-col items-center gap-1 px-5 py-5 border-b border-white/[0.06] mb-2 bg-white/[0.03]">
-        <img src={logo} alt="LivreOS" className="h-12 w-auto" />
+        <img src={logo} alt="LivreOS" className="h-12 w-auto drop-shadow-[0_2px_8px_rgba(57,255,20,0.25)]" />
         <p className="text-[10px] text-white/45 tracking-wider uppercase">Gestão completa para seu negócio</p>
       </div>
 

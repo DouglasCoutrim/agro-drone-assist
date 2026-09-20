@@ -1,19 +1,11 @@
-[project_id = "iynljexyjhbkfxsurddn"]
+project_id = "iynljexyjhbkfxsurddn"
 
 [functions.asaas-platform-webhook]
-verify_jwt = true
+verify_jwt = false
 
 [functions.asaas-tenant-webhook]
-verify_jwt = true
+verify_jwt = false
 
 [functions.mercadopago-webhook]
-verify_jwt = true
+verify_jwt = false
 
-[functions.check-overdue-tenants]
-verify_jwt = true
-
-[functions.test-tenant-gateway]
-verify_jwt = true
-
-[functions.seed-platform-admin]
-verify_jwt = true

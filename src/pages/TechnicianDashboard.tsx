@@ -1,13 +1,11 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Loader2, Coins, CheckCircle2, ListChecks, Clock, AlertTriangle, TrendingUp } from "lucide-react";
+import { Loader2, Coins, CheckCircle2, ListChecks, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/formatters";
-import { parseISO, isPast } from "date-fns";
 
 interface OSKanban {
   id: string;
@@ -102,30 +100,6 @@ export default function TechnicianDashboard() {
 
   const next = data?.next_os;
 
-  const FINAL_STATUSES = new Set(["concluido", "entregue", "cancelada"]);
-
-  const allOs = useMemo(() => {
-    const list: OSKanban[] = [];
-    if (!data?.kanban) return list;
-    Object.values(data.kanban).forEach(osList => osList.forEach(os => list.push(os)));
-    return list;
-  }, [data]);
-
-  const overdueOs = useMemo(() => {
-    return allOs.filter(os => {
-      if (FINAL_STATUSES.has(os.status)) return false;
-      if (!os.data_previsao) return false;
-      return isPast(parseISO(os.data_previsao));
-    });
-  }, [allOs]);
-
-  const pendingCommissionOs = useMemo(() => {
-    return allOs.filter(os => !FINAL_STATUSES.has(os.status));
-  }, [allOs]);
-
-  const totalPendingCommission = pendingCommissionOs.reduce((s, os) => s + (os.commission_total || 0), 0);
-  const totalOverdueKm = overdueOs.reduce((s, os) => s + (os.tempo_em_bancada_min || 0), 0);
-
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -163,66 +137,6 @@ export default function TechnicianDashboard() {
               <KpiCard label="Comissões Realizadas (Mês)" value={formatCurrency(data.realized_month ?? 0)} icon={Coins} color="bg-green-500/15 text-green-600" />
               <KpiCard label="Comissões Estimadas (Mês)" value={formatCurrency(data.estimated_month ?? 0)} icon={Clock} color="bg-blue-500/15 text-blue-600" sub="OS em andamento/aprovação" />
               <KpiCard label="Serviços Concluídos (Mês)" value={data.services_done_month ?? 0} icon={CheckCircle2} color="bg-violet-500/15 text-violet-600" />
-            </div>
-
-            {/* OS Atrasadas e Comissões a Receber */}
-            <div className="grid gap-3 md:grid-cols-2">
-              <Card className={`shadow-soft ${overdueOs.length > 0 ? "border-destructive/30" : "border-border"}`}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <AlertTriangle className={`h-4 w-4 ${overdueOs.length > 0 ? "text-destructive" : "text-muted-foreground"}`} />
-                    OS Atrasadas
-                    {overdueOs.length > 0 && <Badge variant="destructive" className="ml-auto">{overdueOs.length}</Badge>}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {overdueOs.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-4">Nenhuma OS atrasada! ✅</p>
-                  ) : (
-                    overdueOs.map(os => (
-                      <div key={os.id} className="flex items-center justify-between p-2 bg-destructive/5 border border-destructive/10 rounded-lg">
-                        <div>
-                          <p className="text-xs font-mono font-semibold">{os.numero}</p>
-                          <p className="text-xs text-muted-foreground">{os.cliente || "—"} • {formatBenchTime(os.tempo_em_bancada_min)} em bancada</p>
-                        </div>
-                        <Badge variant="destructive">Atrasada</Badge>
-                      </div>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-soft">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-success" />
-                    Comissões a Receber
-                    <Badge className="ml-auto bg-success/15 text-success border-success/30">{formatCurrency(totalPendingCommission)}</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {pendingCommissionOs.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-4">Nenhuma comissão pendente.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {pendingCommissionOs.map(os => (
-                        <div key={os.id} className="flex items-center justify-between p-2 bg-card border border-border rounded-lg">
-                          <div>
-                            <p className="text-xs font-mono font-semibold">{os.numero}</p>
-                            <p className="text-xs text-muted-foreground">{os.cliente || "—"} • {os.status.replace("_", " ")}</p>
-                          </div>
-                          <span className="text-sm font-bold text-success">{os.commission_total ? formatCurrency(os.commission_total) : "—"}</span>
-                        </div>
-                      ))}
-                      <Separator />
-                      <div className="flex items-center justify-between font-bold text-sm">
-                        <span>Total a receber:</span>
-                        <span className="text-success">{formatCurrency(totalPendingCommission)}</span>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
             </div>
 
             {/* Kanban */}

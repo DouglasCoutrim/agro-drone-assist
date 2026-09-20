@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: string | null
+          organization_id: string | null
+          performed_by: string | null
+          target_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          organization_id?: string | null
+          performed_by?: string | null
+          target_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          organization_id?: string | null
+          performed_by?: string | null
+          target_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_audit_log_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_equipamento_itens: {
         Row: {
           created_at: string
@@ -165,6 +206,62 @@ export type Database = {
           },
         ]
       }
+      contas_pagar: {
+        Row: {
+          categoria: string
+          created_at: string
+          created_by: string | null
+          data_pagamento: string | null
+          data_vencimento: string
+          descricao: string
+          fornecedor_id: string | null
+          id: string
+          organization_id: string
+          periodicidade: string | null
+          recorrente: boolean
+          status: string
+          valor: number
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          created_by?: string | null
+          data_pagamento?: string | null
+          data_vencimento: string
+          descricao: string
+          fornecedor_id?: string | null
+          id?: string
+          organization_id: string
+          periodicidade?: string | null
+          recorrente?: boolean
+          status?: string
+          valor: number
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          created_by?: string | null
+          data_pagamento?: string | null
+          data_vencimento?: string
+          descricao?: string
+          fornecedor_id?: string | null
+          id?: string
+          organization_id?: string
+          periodicidade?: string | null
+          recorrente?: boolean
+          status?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contas_pagar_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       empresa_config: {
         Row: {
           cnpj: string | null
@@ -189,6 +286,7 @@ export type Database = {
           telefone: string | null
           termos_servico: string | null
           updated_at: string
+          valor_hora_padrao: number
         }
         Insert: {
           cnpj?: string | null
@@ -213,6 +311,7 @@ export type Database = {
           telefone?: string | null
           termos_servico?: string | null
           updated_at?: string
+          valor_hora_padrao?: number
         }
         Update: {
           cnpj?: string | null
@@ -237,10 +336,91 @@ export type Database = {
           telefone?: string | null
           termos_servico?: string | null
           updated_at?: string
+          valor_hora_padrao?: number
         }
         Relationships: [
           {
             foreignKeyName: "empresa_config_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      empresa_gateway_credenciais: {
+        Row: {
+          chave_json: Json
+          created_at: string
+          criado_por: string | null
+          gateway_tipo: string
+          id: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          chave_json?: Json
+          created_at?: string
+          criado_por?: string | null
+          gateway_tipo: string
+          id?: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          chave_json?: Json
+          created_at?: string
+          criado_por?: string | null
+          gateway_tipo?: string
+          id?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empresa_gateway_credenciais_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estoque_tecnico: {
+        Row: {
+          id: string
+          item_estoque_id: string
+          organization_id: string
+          quantidade: number
+          tecnico_id: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          item_estoque_id: string
+          organization_id: string
+          quantidade?: number
+          tecnico_id: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          item_estoque_id?: string
+          organization_id?: string
+          quantidade?: number
+          tecnico_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estoque_tecnico_item_estoque_id_fkey"
+            columns: ["item_estoque_id"]
+            isOneToOne: false
+            referencedRelation: "itens_estoque"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estoque_tecnico_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -371,6 +551,8 @@ export type Database = {
           produto_id: string | null
           quantidade: number
           servico_id: string | null
+          snapshot_tipo_cobranca: string
+          snapshot_valor_hora_efetivo: number | null
           tipo: string
           valor_total: number
           valor_unitario: number
@@ -384,6 +566,8 @@ export type Database = {
           produto_id?: string | null
           quantidade?: number
           servico_id?: string | null
+          snapshot_tipo_cobranca?: string
+          snapshot_valor_hora_efetivo?: number | null
           tipo?: string
           valor_total?: number
           valor_unitario?: number
@@ -397,6 +581,8 @@ export type Database = {
           produto_id?: string | null
           quantidade?: number
           servico_id?: string | null
+          snapshot_tipo_cobranca?: string
+          snapshot_valor_hora_efetivo?: number | null
           tipo?: string
           valor_total?: number
           valor_unitario?: number
@@ -869,6 +1055,60 @@ export type Database = {
           },
         ]
       }
+      os_apontamentos_horas: {
+        Row: {
+          created_at: string
+          fim: string | null
+          horas_lancadas: number | null
+          id: string
+          inicio: string
+          item_os_id: string | null
+          observacao: string | null
+          origem: string
+          os_id: string
+          tecnico_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          fim?: string | null
+          horas_lancadas?: number | null
+          id?: string
+          inicio?: string
+          item_os_id?: string | null
+          observacao?: string | null
+          origem?: string
+          os_id: string
+          tecnico_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          fim?: string | null
+          horas_lancadas?: number | null
+          id?: string
+          inicio?: string
+          item_os_id?: string | null
+          observacao?: string | null
+          origem?: string
+          os_id?: string
+          tecnico_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_apontamentos_horas_item_os_id_fkey"
+            columns: ["item_os_id"]
+            isOneToOne: false
+            referencedRelation: "itens_os"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_apontamentos_horas_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       os_checklist_itens: {
         Row: {
           created_at: string
@@ -876,7 +1116,7 @@ export type Database = {
           item_id: string
           marcado: boolean
           ordem_servico_id: string
-          organization_id: string | null
+          organization_id: string
           updated_at: string
         }
         Insert: {
@@ -885,7 +1125,7 @@ export type Database = {
           item_id: string
           marcado?: boolean
           ordem_servico_id: string
-          organization_id?: string | null
+          organization_id: string
           updated_at?: string
         }
         Update: {
@@ -894,7 +1134,7 @@ export type Database = {
           item_id?: string
           marcado?: boolean
           ordem_servico_id?: string
-          organization_id?: string | null
+          organization_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -962,6 +1202,91 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patrimonio_ferramentas: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          numero_serie: string | null
+          organization_id: string
+          status: string
+          tecnico_atual_id: string | null
+          updated_at: string
+          valor_referencia: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          numero_serie?: string | null
+          organization_id: string
+          status?: string
+          tecnico_atual_id?: string | null
+          updated_at?: string
+          valor_referencia?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          numero_serie?: string | null
+          organization_id?: string
+          status?: string
+          tecnico_atual_id?: string | null
+          updated_at?: string
+          valor_referencia?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patrimonio_ferramentas_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patrimonio_movimentacoes: {
+        Row: {
+          confirmado_por: string | null
+          created_at: string
+          id: string
+          observacao: string | null
+          patrimonio_id: string
+          tecnico_anterior_id: string | null
+          tecnico_novo_id: string | null
+          tipo: string
+        }
+        Insert: {
+          confirmado_por?: string | null
+          created_at?: string
+          id?: string
+          observacao?: string | null
+          patrimonio_id: string
+          tecnico_anterior_id?: string | null
+          tecnico_novo_id?: string | null
+          tipo: string
+        }
+        Update: {
+          confirmado_por?: string | null
+          created_at?: string
+          id?: string
+          observacao?: string | null
+          patrimonio_id?: string
+          tecnico_anterior_id?: string | null
+          tecnico_novo_id?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patrimonio_movimentacoes_patrimonio_id_fkey"
+            columns: ["patrimonio_id"]
+            isOneToOne: false
+            referencedRelation: "patrimonio_ferramentas"
             referencedColumns: ["id"]
           },
         ]
@@ -1041,6 +1366,7 @@ export type Database = {
           service_commission_value: number
           telefone: string | null
           updated_at: string
+          valor_hora_tecnica: number | null
         }
         Insert: {
           avatar_url?: string | null
@@ -1057,6 +1383,7 @@ export type Database = {
           service_commission_value?: number
           telefone?: string | null
           updated_at?: string
+          valor_hora_tecnica?: number | null
         }
         Update: {
           avatar_url?: string | null
@@ -1073,6 +1400,7 @@ export type Database = {
           service_commission_value?: number
           telefone?: string | null
           updated_at?: string
+          valor_hora_tecnica?: number | null
         }
         Relationships: [
           {
@@ -1142,29 +1470,44 @@ export type Database = {
         Row: {
           created_at: string
           descricao: string
+          fracionamento: string
+          hora_minima: number | null
           id: string
           organization_id: string | null
           preco: number
           tempo_estimado: string | null
+          tipo_cobranca: string
           updated_at: string
+          valor_fixo: number | null
+          valor_hora: number | null
         }
         Insert: {
           created_at?: string
           descricao: string
+          fracionamento?: string
+          hora_minima?: number | null
           id?: string
           organization_id?: string | null
           preco?: number
           tempo_estimado?: string | null
+          tipo_cobranca?: string
           updated_at?: string
+          valor_fixo?: number | null
+          valor_hora?: number | null
         }
         Update: {
           created_at?: string
           descricao?: string
+          fracionamento?: string
+          hora_minima?: number | null
           id?: string
           organization_id?: string | null
           preco?: number
           tempo_estimado?: string | null
+          tipo_cobranca?: string
           updated_at?: string
+          valor_fixo?: number | null
+          valor_hora?: number | null
         }
         Relationships: [
           {
@@ -1352,6 +1695,69 @@ export type Database = {
         }
         Relationships: []
       }
+      transferencias_estoque: {
+        Row: {
+          confirmado_por: string | null
+          confirmed_at: string | null
+          created_at: string
+          destino_id: string
+          destino_tipo: string
+          id: string
+          item_estoque_id: string
+          organization_id: string
+          origem_id: string
+          origem_tipo: string
+          quantidade: number
+          solicitado_por: string | null
+          status: string
+        }
+        Insert: {
+          confirmado_por?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          destino_id: string
+          destino_tipo: string
+          id?: string
+          item_estoque_id: string
+          organization_id: string
+          origem_id: string
+          origem_tipo: string
+          quantidade: number
+          solicitado_por?: string | null
+          status?: string
+        }
+        Update: {
+          confirmado_por?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          destino_id?: string
+          destino_tipo?: string
+          id?: string
+          item_estoque_id?: string
+          organization_id?: string
+          origem_id?: string
+          origem_tipo?: string
+          quantidade?: number
+          solicitado_por?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transferencias_estoque_item_estoque_id_fkey"
+            columns: ["item_estoque_id"]
+            isOneToOne: false
+            referencedRelation: "itens_estoque"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transferencias_estoque_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_permissions: {
         Row: {
           acesso_estoque: boolean
@@ -1538,6 +1944,14 @@ export type Database = {
       calculate_os_commission: { Args: { _os_id: string }; Returns: number }
       count_active_users: { Args: { _org: string }; Returns: number }
       count_os_current_month: { Args: { _org: string }; Returns: number }
+      get_dre_simplificada: {
+        Args: { _org: string; _periodo: string }
+        Returns: Json
+      }
+      get_fluxo_caixa_projetado: {
+        Args: { _dias?: number; _org: string }
+        Returns: Json
+      }
       get_technician_dashboard: { Args: { _tecnico_id: string }; Returns: Json }
       get_user_org_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
