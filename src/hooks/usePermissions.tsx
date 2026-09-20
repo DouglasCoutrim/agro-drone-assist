@@ -34,10 +34,10 @@ export function usePermissions() {
           acesso_os: data.acesso_os,
           acesso_estoque: data.acesso_estoque,
           acesso_financeiro: data.acesso_financeiro,
-        } : { acesso_os: true, acesso_estoque: true, acesso_financeiro: false });
+        } : { acesso_os: false, acesso_estoque: false, acesso_financeiro: false });
       } catch (err) {
         console.error('Error fetching permissions:', err);
-        setPermissions({ acesso_os: true, acesso_estoque: true, acesso_financeiro: false });
+        setPermissions({ acesso_os: false, acesso_estoque: false, acesso_financeiro: false });
       } finally {
         setLoading(false);
       }
