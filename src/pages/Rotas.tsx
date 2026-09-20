@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, MapPin, Loader2, Edit, Trash2, Eye, MessageCircle, Navigation, DollarSign, Search, Route } from "lucide-react";
+import { Plus, MapPin, Loader2, Edit, Trash2, Eye, MessageCircle, Navigation, DollarSign, Search, Route, Calculator, Fuel, Gauge, MapPinned, Location, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/formatters";
@@ -31,6 +31,9 @@ interface RotaDB {
   clientes?: { nome: string; telefone: string } | null;
 }
 
+type ModoEntrada = "endereco" | "coordenadas";
+type ModoCalculo = "combustivel" | "valor_km";
+
 export default function Rotas() {
   const { organization } = useOrganization();
   const confirm = useConfirm();
@@ -43,6 +46,7 @@ export default function Rotas() {
   const [formLoading, setFormLoading] = useState(false);
   const [calculando, setCalculando] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [calcDialogOpen, setCalcDialogOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     cliente_id: "",
@@ -52,6 +56,30 @@ export default function Rotas() {
     custo_rota: 0,
     observacoes: "",
   });
+
+  const [calcForm, setCalcForm] = useState({
+    modoEntrada: "endereco" as ModoEntrada,
+    origem: "",
+    destino: "",
+    origemLat: "",
+    origemLon: "",
+    destinoLat: "",
+    destinoLon: "",
+    modoCalculo: "combustivel" as ModoCalculo,
+    precoLitro: "",
+    consumoKm: "",
+    valorKm: "",
+  });
+
+  const [calcResult, setCalcResult] = useState<{
+    distanciaKm: number;
+    custoTotal: number;
+    custoCombustivel: number;
+    custoKm: number;
+    litrosUsados: number;
+    origem?: { lat: number; lon: number; nome: string };
+    destino?: { lat: number; lon: number; nome: string };
+  } | null>(null);
 
   useEffect(() => { if (organization?.id) fetchData(); }, [organization?.id]);
 
@@ -69,23 +97,86 @@ export default function Rotas() {
     } catch { toast.error("Erro ao carregar dados"); } finally { setLoading(false); }
   };
 
+  const geocodeAddress = async (query: string) => {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+    const data = await res.json();
+    if (!data.length) return null;
+    return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), nome: data[0].display_name };
+  };
+
   const handleCalcRoute = async () => {
-    if (!formData.origem || !formData.destino) { toast.error("Preencha origem e destino"); return; }
+    if (!calcForm.origem || !calcForm.destino) { toast.error("Preencha origem e destino"); return; }
     setCalculando(true);
+    setCalcResult(null);
     try {
-      const [origRes, destRes] = await Promise.all([
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.origem)}&limit=1`).then(r => r.json()),
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.destino)}&limit=1`).then(r => r.json()),
-      ]);
-      if (!origRes.length || !destRes.length) { toast.error("Endereços não encontrados"); return; }
-      const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${origRes[0].lon},${origRes[0].lat};${destRes[0].lon},${destRes[0].lat}?overview=false`);
+      let origemCoords: { lat: number; lon: number; nome: string } | null = null;
+      let destinoCoords: { lat: number; lon: number; nome: string } | null = null;
+
+      if (calcForm.modoEntrada === "coordenadas") {
+        const oLat = parseFloat(calcForm.origemLat);
+        const oLon = parseFloat(calcForm.origemLon);
+        const dLat = parseFloat(calcForm.destinoLat);
+        const dLon = parseFloat(calcForm.destinoLon);
+        if (isNaN(oLat) || isNaN(oLon) || isNaN(dLat) || isNaN(dLon)) {
+          toast.error("Informe coordenadas válidas (lat/lon)");
+          setCalculando(false);
+          return;
+        }
+        origemCoords = { lat: oLat, lon: oLon, nome: `${oLat}, ${oLon}` };
+        destinoCoords = { lat: dLat, lon: dLon, nome: `${dLat}, ${dLon}` };
+      } else {
+        [origemCoords, destinoCoords] = await Promise.all([
+          geocodeAddress(calcForm.origem),
+          geocodeAddress(calcForm.destino),
+        ]);
+        if (!origemCoords || !destinoCoords) { toast.error("Endereços não encontrados"); setCalculando(false); return; }
+      }
+
+      const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${origemCoords.lon},${origemCoords.lat};${destinoCoords.lon},${destinoCoords.lat}?overview=false`);
       const routeData = await routeRes.json();
-      if (routeData.routes?.[0]) {
-        const distKm = Math.round(routeData.routes[0].distance / 1000);
-        setFormData(prev => ({ ...prev, distancia_km: distKm }));
-        toast.success(`Rota calculada: ${distKm} km`);
-      } else { toast.error("Não foi possível calcular a rota"); }
+      if (!routeData.routes?.[0]) { toast.error("Não foi possível calcular a rota"); setCalculando(false); return; }
+
+      const distKm = Math.round(routeData.routes[0].distance / 1000);
+      let custoTotal = 0;
+      let custoComb = 0;
+      let custoKm = 0;
+      let litros = 0;
+
+      if (calcForm.modoCalculo === "combustivel") {
+        const precoL = parseFloat(calcForm.precoLitro);
+        const consKm = parseFloat(calcForm.consumoKm);
+        if (isNaN(precoL) || isNaN(consKm) || consKm <= 0) { toast.error("Informe preço/litro e consumo válidos"); setCalculando(false); return; }
+        litros = (distKm / consKm);
+        custoComb = litros * precoL;
+        custoTotal = custoComb;
+      } else {
+        const vKm = parseFloat(calcForm.valorKm);
+        if (isNaN(vKm) || vKm <= 0) { toast.error("Informe o valor do km válido"); setCalculando(false); return; }
+        custoKm = distKm * vKm;
+        custoTotal = custoKm;
+      }
+
+      setCalcResult({
+        distanciaKm: distKm,
+        custoTotal: Math.round(custoTotal * 100) / 100,
+        custoCombustivel: Math.round(custoComb * 100) / 100,
+        custoKm: Math.round(custoKm * 100) / 100,
+        litrosUsados: Math.round(litros * 100) / 100,
+        origem: origemCoords,
+        destino: destinoCoords,
+      });
+
+      setFormData(prev => ({ ...prev, origem: calcForm.origem, destino: calcForm.destino, distancia_km: distKm }));
+      toast.success(`Rota calculada: ${distKm} km | ${formatCurrency(custoTotal)}`);
     } catch { toast.error("Erro ao calcular rota"); } finally { setCalculando(false); }
+  };
+
+  const handleApplyCalc = () => {
+    if (!calcResult) return;
+    setFormData(prev => ({ ...prev, distancia_km: calcResult.distanciaKm, custo_rota: calcResult.custoTotal }));
+    setCalcDialogOpen(false);
+    setCalcResult(null);
+    setDialogOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -135,9 +226,8 @@ export default function Rotas() {
   const resetForm = () => {
     setFormData({ cliente_id: "", origem: "", destino: "", distancia_km: 0, custo_rota: 0, observacoes: "" });
     setEditingRota(null);
+    setCalcResult(null);
   };
-
-  
 
   const totalKm = rotas.reduce((a, r) => a + Number(r.distancia_km), 0);
   const totalCusto = rotas.reduce((a, r) => a + Number(r.custo_rota), 0);
@@ -175,15 +265,14 @@ export default function Rotas() {
                 </div>
                 <div className="space-y-2">
                   <Label>Origem *</Label>
-                  <Input value={formData.origem} onChange={(e) => setFormData({ ...formData, origem: e.target.value })} placeholder="Ex: Goiânia, GO" required />
+                  <Input value={formData.origem} onChange={(e) => setFormData({ ...formData, origem: e.target.value })} placeholder="Ex: Goiânia, GO ou coordenadas" required />
                 </div>
                 <div className="space-y-2">
                   <Label>Destino *</Label>
-                  <Input value={formData.destino} onChange={(e) => setFormData({ ...formData, destino: e.target.value })} placeholder="Ex: Rio Verde, GO" required />
+                  <Input value={formData.destino} onChange={(e) => setFormData({ ...formData, destino: e.target.value })} placeholder="Ex: Rio Verde, GO ou coordenadas" required />
                 </div>
-                <Button type="button" variant="outline" className="w-full" onClick={handleCalcRoute} disabled={calculando}>
-                  {calculando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Route className="mr-2 h-4 w-4" />}
-                  Calcular Distância (OSRM)
+                <Button type="button" variant="outline" className="w-full" onClick={() => { setDialogOpen(false); setCalcDialogOpen(true); }} disabled={!formData.origem || !formData.destino}>
+                  <Calculator className="mr-2 h-4 w-4" />Calcular Rota Completa
                 </Button>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -209,6 +298,148 @@ export default function Rotas() {
             </DialogContent>
           </Dialog>
         </div>
+
+        {/* Calcular Rota Dialog */}
+        <Dialog open={calcDialogOpen} onOpenChange={(open) => { setCalcDialogOpen(open); if (!open) setCalcResult(null); }}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle><Calculator className="inline h-5 w-5 mr-2 text-primary" />Calculadora de Rota</DialogTitle>
+              <DialogDescription>Informe origem, destino e parâmetros de custo para calcular o valor da rota</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              {/* Modo de entrada */}
+              <div className="space-y-2">
+                <Label>Modo de entrada</Label>
+                <div className="flex gap-2">
+                  <Button type="button" variant={calcForm.modoEntrada === "endereco" ? "default" : "outline"} className="flex-1" onClick={() => setCalcForm(prev => ({ ...prev, modoEntrada: "endereco" }))}>
+                    <MapPinned className="mr-2 h-3.5 w-3.5" />Endereço/Cidade
+                  </Button>
+                  <Button type="button" variant={calcForm.modoEntrada === "coordenadas" ? "default" : "outline"} className="flex-1" onClick={() => setCalcForm(prev => ({ ...prev, modoEntrada: "coordenadas" }))}>
+                    <Location className="mr-2 h-3.5 w-3.5" />Coordenadas
+                  </Button>
+                </div>
+              </div>
+
+              {/* Origem */}
+              <div className="space-y-2">
+                <Label>Origem *</Label>
+                {calcForm.modoEntrada === "endereco" ? (
+                  <Input value={calcForm.origem} onChange={(e) => setCalcForm(prev => ({ ...prev, origem: e.target.value }))} placeholder="Ex: Goiânia, GO ou endereço completo" />
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input placeholder="Lat" value={calcForm.origemLat} onChange={(e) => setCalcForm(prev => ({ ...prev, origemLat: e.target.value }))} type="number" step="any" />
+                    <Input placeholder="Lon" value={calcForm.origemLon} onChange={(e) => setCalcForm(prev => ({ ...prev, origemLon: e.target.value }))} type="number" step="any" />
+                  </div>
+                )}
+              </div>
+
+              {/* Destino */}
+              <div className="space-y-2">
+                <Label>Destino *</Label>
+                {calcForm.modoEntrada === "endereco" ? (
+                  <Input value={calcForm.destino} onChange={(e) => setCalcForm(prev => ({ ...prev, destino: e.target.value }))} placeholder="Ex: Rio Verde, GO ou endereço completo" />
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input placeholder="Lat" value={calcForm.destinoLat} onChange={(e) => setCalcForm(prev => ({ ...prev, destinoLat: e.target.value }))} type="number" step="any" />
+                    <Input placeholder="Lon" value={calcForm.destinoLon} onChange={(e) => setCalcForm(prev => ({ ...prev, destinoLon: e.target.value }))} type="number" step="any" />
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Modo de cálculo */}
+              <div className="space-y-2">
+                <Label>Modo de cálculo</Label>
+                <div className="flex gap-2">
+                  <Button type="button" variant={calcForm.modoCalculo === "combustivel" ? "default" : "outline"} className="flex-1" onClick={() => setCalcForm(prev => ({ ...prev, modoCalculo: "combustivel" }))}>
+                    <Fuel className="mr-2 h-3.5 w-3.5" />Preço por Litro
+                  </Button>
+                  <Button type="button" variant={calcForm.modoCalculo === "valor_km" ? "default" : "outline"} className="flex-1" onClick={() => setCalcForm(prev => ({ ...prev, modoCalculo: "valor_km" }))}>
+                    <Gauge className="mr-2 h-3.5 w-3.5" />Valor do Km
+                  </Button>
+                </div>
+              </div>
+
+              {calcForm.modoCalculo === "combustivel" && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Preço do Litro (R$) *</Label>
+                      <Input type="number" step="0.01" value={calcForm.precoLitro} onChange={(e) => setCalcForm(prev => ({ ...prev, precoLitro: e.target.value }))} placeholder="Ex: 5.80" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Consumo (km/l) *</Label>
+                      <Input type="number" step="0.1" value={calcForm.consumoKm} onChange={(e) => setCalcForm(prev => ({ ...prev, consumoKm: e.target.value }))} placeholder="Ex: 10" required />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1"><Fuel className="h-3 w-3" />Litros gastos = Distância ÷ Consumo × Preço do litro</p>
+                </>
+              )}
+
+              {calcForm.modoCalculo === "valor_km" && (
+                <div className="space-y-2">
+                  <Label>Valor por Km Rodado (R$) *</Label>
+                  <Input type="number" step="0.01" value={calcForm.valorKm} onChange={(e) => setCalcForm(prev => ({ ...prev, valorKm: e.target.value }))} placeholder="Ex: 3.50" required />
+                  <p className="text-xs text-muted-foreground flex items-center gap-1"><Gauge className="h-3 w-3" />Custo total = Distância × Valor do km</p>
+                </div>
+              )}
+
+              {/* Botão calcular */}
+              <Button type="button" className="w-full gradient-primary" onClick={handleCalcRoute} disabled={calculando}>
+                {calculando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Navigation className="mr-2 h-4 w-4" />}
+                Calcular Rota
+              </Button>
+
+              {/* Resultado */}
+              {calcResult && (
+                <Card className="border-success/30 bg-success/5">
+                  <CardHeader>
+                    <CardTitle className="text-sm text-success flex items-center gap-2"><Route className="h-4 w-4" />Resultado da Rota</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Distância</p>
+                        <p className="font-bold text-lg">{calcResult.distanciaKm} km</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Custo Total</p>
+                        <p className="font-bold text-lg text-success">{formatCurrency(calcResult.custoTotal)}</p>
+                      </div>
+                    </div>
+                    {calcForm.modoCalculo === "combustivel" && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Litros usados</p>
+                          <p>{calcResult.litrosUsados} L</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Custo combustível</p>
+                          <p>{formatCurrency(calcResult.custoCombustivel)}</p>
+                        </div>
+                      </div>
+                    )}
+                    {calcForm.modoCalculo === "valor_km" && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Custo por km</p>
+                        <p>{formatCurrency(calcResult.custoKm)}</p>
+                      </div>
+                    )}
+                    <div className="flex gap-2 pt-2">
+                      <Button type="button" size="sm" className="flex-1" onClick={handleApplyCalc}>
+                        <Check className="mr-2 h-3.5 w-3.5" />Usar na Rota
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => { setCalcResult(null); setCalcDialogOpen(false); }}>
+                        Fechar
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-3">
