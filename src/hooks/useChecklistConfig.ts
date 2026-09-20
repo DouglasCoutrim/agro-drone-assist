@@ -30,11 +30,15 @@ export function useChecklistConfig() {
     try {
       const { data, error } = await supabase
         .from("checklist_tipos_equipamento")
-        .select("*, itens:checklist_equipamento_itens(order(ordem))")
+        .select("*, itens:checklist_equipamento_itens(*)")
         .eq("organization_id", organization.id)
         .order("label");
       if (error) throw error;
-      setTipos((data || []) as ChecklistTipo[]);
+      const normalized = (data || []).map((tipo) => ({
+        ...tipo,
+        itens: [...(tipo.itens || [])].sort((a, b) => a.ordem - b.ordem),
+      }));
+      setTipos(normalized);
     } catch (err: any) {
       console.error("Erro ao carregar configuração de checklist:", err);
     } finally {
