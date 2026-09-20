@@ -72,6 +72,10 @@ export function Sidebar({ className }: SidebarProps) {
   const roleLabel = role === "admin" ? "Administrador" : role === "tecnico" ? "Técnico" : "Consulta";
   const initials = profile?.nome?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "U";
 
+  // Determine if user has access to show menus
+  // Platform admins see all menus; regular users filter by role
+  const userHasAccess = isPlatformAdmin || !!role;
+
   return (
     <div className={cn(
       "flex h-full flex-col bg-sidebar overflow-hidden flex-shrink-0",
@@ -87,14 +91,17 @@ export function Sidebar({ className }: SidebarProps) {
       <nav className="flex-1 px-3 py-1 space-y-1 overflow-y-auto scrollbar-thin">
         {/* Regular navigation sections */}
         {navSections.map((section) => {
-          const items = section.items.filter(item => role && item.roles.includes(role));
-          if (items.length === 0) return null;
+          // Platform admins see all menu items; regular users filter by role
+          const sectionItems = isPlatformAdmin
+            ? section.items
+            : section.items.filter(item => role && item.roles.includes(role));
+          if (sectionItems.length === 0) return null;
           return (
             <div key={section.title}>
               <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-white/25 px-2 pt-3 pb-1 mt-2 first:mt-0">
                 {section.title}
               </p>
-              {items.map((item) => {
+              {sectionItems.map((item) => {
                 const isActive = location.pathname === item.href;
                 const Icon = item.icon;
                 return (
