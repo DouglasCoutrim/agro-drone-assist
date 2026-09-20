@@ -59,7 +59,7 @@ CREATE TRIGGER trg_atualizar_status_contas_pagar
 
 -- 5.2 DRE simplificado: RPC para demonstrativo de resultado
 CREATE OR REPLACE FUNCTION public.get_dre_simplificada(_org uuid, _periodo text)
-RETURNS json LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+RETURNS json LANGUAGE plpgsql SET search_path = public AS $$
 DECLARE
   v_receita numeric := 0;
   v_comissoes numeric := 0;
@@ -126,7 +126,7 @@ $$;
 
 -- RPC de fluxo de caixa projetado (próximos 30/60/90 dias)
 CREATE OR REPLACE FUNCTION public.get_fluxo_caixa_projetado(_org uuid, _dias integer DEFAULT 30)
-RETURNS json LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+RETURNS json LANGUAGE plpgsql SET search_path = public AS $$
 DECLARE
   v_result json;
 BEGIN
