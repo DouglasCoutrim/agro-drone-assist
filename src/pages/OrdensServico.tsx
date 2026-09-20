@@ -293,7 +293,8 @@ export default function OrdensServico() {
   }, [organization?.id, isPlatformAdmin]);
 
   const loadChecklistResponses = useCallback(async (osId: string, osOrgId?: string | null): Promise<Record<string, boolean>> => {
-    let query = supabase
+    const checklistDb = supabase as any;
+    let query = checklistDb
       .from("os_checklist_itens")
       .select("*")
       .eq("ordem_servico_id", osId);
@@ -453,13 +454,14 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
             throw new Error(`A OS foi salva, mas os itens não: ${itemsError.message}`);
           }
         }
-        const { error: delChecklistErr } = await supabase
+        const checklistDb = supabase as any;
+        const { error: delChecklistErr } = await checklistDb
           .from("os_checklist_itens")
           .delete()
           .eq("ordem_servico_id", osId);
         if (delChecklistErr) throw delChecklistErr;
         if (configItems.length > 0) {
-          const { error: insChecklistErr } = await supabase
+          const { error: insChecklistErr } = await checklistDb
             .from("os_checklist_itens")
             .insert(configItems.map(item => ({
               organization_id: editingOS?.organization_id || organizationId,
@@ -562,7 +564,8 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
     try {
       const items = await fetchOSItems(os.id, os.organization_id);
       setViewOsItems(items);
-      let checklistQuery = supabase
+      const checklistDb = supabase as any;
+      let checklistQuery = checklistDb
         .from("os_checklist_itens")
         .select("marcado, item:checklist_equipamento_itens(label, obrigatorio)")
         .eq("ordem_servico_id", os.id);
