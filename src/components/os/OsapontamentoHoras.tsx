@@ -49,7 +49,13 @@ export function OsapontamentoHoras({ osId, itemOsId, tecnicoId, valorHoraEfetivo
         .select("*")
         .eq("os_id", osId)
         .order("created_at", { ascending: true });
-      if (!error && data) setApontamentos(data);
+      if (!error && data) {
+        const apontamentosValidos = data.filter(
+          (item): item is typeof item & { origem: Apontamento["origem"] } =>
+            item.origem === "cronometro" || item.origem === "manual"
+        );
+        setApontamentos(apontamentosValidos);
+      }
     } catch (e) {
       console.error("Erro ao carregar apontamentos:", e);
     } finally {
