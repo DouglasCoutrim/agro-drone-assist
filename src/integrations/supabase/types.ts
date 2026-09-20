@@ -1760,27 +1760,75 @@ export type Database = {
       }
       user_permissions: {
         Row: {
+          acesso_checklist: boolean
+          acesso_clientes: boolean
+          acesso_cobrancas: boolean
+          acesso_configuracoes: boolean
+          acesso_dashboard: boolean
+          acesso_empresa: boolean
+          acesso_equipe: boolean
           acesso_estoque: boolean
           acesso_financeiro: boolean
+          acesso_meu_painel: boolean
+          acesso_notificacoes: boolean
+          acesso_oficina_vivo: boolean
+          acesso_orcamentos: boolean
           acesso_os: boolean
+          acesso_relatorios: boolean
+          acesso_rotas: boolean
+          acesso_servicos: boolean
+          acesso_suporte: boolean
+          acesso_wiki: boolean
           created_at: string
           id: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          acesso_checklist?: boolean
+          acesso_clientes?: boolean
+          acesso_cobrancas?: boolean
+          acesso_configuracoes?: boolean
+          acesso_dashboard?: boolean
+          acesso_empresa?: boolean
+          acesso_equipe?: boolean
           acesso_estoque?: boolean
           acesso_financeiro?: boolean
+          acesso_meu_painel?: boolean
+          acesso_notificacoes?: boolean
+          acesso_oficina_vivo?: boolean
+          acesso_orcamentos?: boolean
           acesso_os?: boolean
+          acesso_relatorios?: boolean
+          acesso_rotas?: boolean
+          acesso_servicos?: boolean
+          acesso_suporte?: boolean
+          acesso_wiki?: boolean
           created_at?: string
           id?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          acesso_checklist?: boolean
+          acesso_clientes?: boolean
+          acesso_cobrancas?: boolean
+          acesso_configuracoes?: boolean
+          acesso_dashboard?: boolean
+          acesso_empresa?: boolean
+          acesso_equipe?: boolean
           acesso_estoque?: boolean
           acesso_financeiro?: boolean
+          acesso_meu_painel?: boolean
+          acesso_notificacoes?: boolean
+          acesso_oficina_vivo?: boolean
+          acesso_orcamentos?: boolean
           acesso_os?: boolean
+          acesso_relatorios?: boolean
+          acesso_rotas?: boolean
+          acesso_servicos?: boolean
+          acesso_suporte?: boolean
+          acesso_wiki?: boolean
           created_at?: string
           id?: string
           updated_at?: string
