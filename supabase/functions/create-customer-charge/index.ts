@@ -1,6 +1,11 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+const corsHeadersRestricted = {
+  'Access-Control-Allow-Origin': 'https://iynljexyjhbkfxsurddn.supabase.co',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -17,6 +22,12 @@ Deno.serve(async (req) => {
     const { data: claims } = await supabase.auth.getClaims(token);
     if (!claims?.claims) return json({ error: 'Unauthorized' }, 401);
     const userId = claims.claims.sub as string;
+    const userRole = claims.claims.role as string || 'consulta';
+
+    // A3: Role check - apenas admin/técnico podem gerar cobrança
+    if (!['admin', 'tecnico'].includes(userRole)) {
+      return json({ error: 'Forbidden: insufficient permissions' }, 403);
+    }
 
     const { cliente_id, valor, descricao, ordem_servico_id, orcamento_id } = await req.json();
     if (!valor || valor <= 0) return json({ error: 'Valor inválido' }, 400);
@@ -25,6 +36,14 @@ Deno.serve(async (req) => {
 
     const { data: profile } = await admin.from('profiles').select('organization_id').eq('id', userId).maybeSingle();
     if (!profile?.organization_id) return json({ error: 'Sem organização' }, 400);
+
+    // A3: Validar que o cliente_id pertence à organização do usuário
+    if (cliente_id) {
+      const { data: cliente } = await admin.from('clientes').select('organization_id').eq('id', cliente_id).maybeSingle();
+      if (!cliente || cliente.organization_id !== profile.organization_id) {
+        return json({ error: 'Cliente não pertence à sua organização' }, 400);
+      }
+    }
 
     const { data: cfg } = await admin
       .from('empresa_config')
@@ -68,7 +87,6 @@ Deno.serve(async (req) => {
         : 'https://api.asaas.com/v3';
       if (!apiKey) return json({ error: 'API Key Asaas ausente' }, 400);
 
-      // customer
       let custId: string | null = null;
       if (cliente?.email) {
         const found = await fetch(`${asaasBase}/customers?email=${encodeURIComponent(cliente.email)}`, {
@@ -95,7 +113,7 @@ Deno.serve(async (req) => {
         headers: { 'access_token': apiKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customer: custId,
-          billingType: 'UNDEFINED', // permite PIX, Boleto e Cartão
+          billingType: 'UNDEFINED',
           value: valor,
           dueDate: dueISO,
           description: descricao || 'Pagamento',
@@ -151,7 +169,7 @@ Deno.serve(async (req) => {
 
 function json(data: any, status = 200) {
   return new Response(JSON.stringify(data), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    headers: { ...corsHeadersRestricted, 'Content-Type': 'application/json' },
     status,
   });
 }
