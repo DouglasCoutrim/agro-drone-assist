@@ -7,3 +7,6 @@
 - [x] Validar e encerrar os dois achados do Project Monitoring.
 - [x] Eliminar o ciclo nas regras de acesso que ocultava os dados da Volt Master.
 - [x] Validar empresa, perfil, foto, ordens e indicadores com a conta afetada.
+- [x] Exibir o motivo real quando o cadastro de um membro for recusado.
+- [x] Garantir cadastro completo e seguro de novos membros da equipe.
+- [x] Corrigir o bloqueio de origem nas consultas ao Asaas.

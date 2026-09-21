@@ -46,6 +46,24 @@ interface UserWithRoleAndPerms extends Profile {
   };
 }
 
+const getCreateMemberError = async (error: unknown) => {
+  const fallback = error instanceof Error ? error.message : 'Não foi possível adicionar o membro';
+  const context = typeof error === 'object' && error !== null && 'context' in error
+    ? (error as { context?: Response }).context
+    : undefined;
+
+  if (context) {
+    try {
+      const payload = await context.clone().json() as { error?: string };
+      if (payload.error) return payload.error;
+    } catch {
+      // A resposta pode não conter JSON; nesse caso, usa a mensagem padrão.
+    }
+  }
+
+  return fallback;
+};
+
 export default function Equipe() {
   const { user, role, isAdmin } = useAuth();
   const confirm = useConfirm();
@@ -146,8 +164,15 @@ export default function Equipe() {
   const [showUpgrade, setShowUpgrade] = useState(false);
 
   const handleAddMember = async () => {
-    if (!newMember.nome.trim() || !newMember.email.trim() || !newMember.senha.trim()) {
-      toast.error('Nome, Email e Senha são obrigatórios');
+    const nome = newMember.nome.trim();
+    const email = newMember.email.trim().toLowerCase();
+    const senha = newMember.senha;
+    if (!nome || !email || !senha) {
+      toast.error('Nome, e-mail e senha são obrigatórios');
+      return;
+    }
+    if (senha.length < 8) {
+      toast.error('A senha deve ter pelo menos 8 caracteres');
       return;
     }
     if (!canInviteUser) { setShowUpgrade(true); return; }
@@ -155,9 +180,9 @@ export default function Equipe() {
     try {
       const { data, error } = await supabase.functions.invoke('create-user', {
         body: {
-          nome: newMember.nome,
-          email: newMember.email,
-          senha: newMember.senha,
+          nome,
+          email,
+          senha,
           role: newMember.role,
         },
       });
@@ -169,8 +194,8 @@ export default function Equipe() {
       setAddDialogOpen(false);
       setNewMember({ nome: "", email: "", senha: "", role: "consulta" });
       fetchUsers();
-    } catch (error: any) {
-      toast.error('Erro ao adicionar membro: ' + error.message);
+    } catch (error: unknown) {
+      toast.error(await getCreateMemberError(error));
     } finally {
       setAddLoading(false);
     }
@@ -243,8 +268,9 @@ export default function Equipe() {
                     <Input type="email" value={newMember.email} onChange={(e) => setNewMember({ ...newMember, email: e.target.value })} placeholder="email@exemplo.com" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Senha</Label>
-                    <Input type="password" value={newMember.senha} onChange={(e) => setNewMember({ ...newMember, senha: e.target.value })} placeholder="Senha inicial" />
+                    <Label>Senha *</Label>
+                    <Input type="password" minLength={8} maxLength={128} autoComplete="new-password" value={newMember.senha} onChange={(e) => setNewMember({ ...newMember, senha: e.target.value })} placeholder="Senha inicial forte" />
+                    <p className="text-xs text-muted-foreground">Use pelo menos 8 caracteres e evite senhas comuns ou fáceis de adivinhar.</p>
                   </div>
                   <div className="space-y-2">
                     <Label>Função</Label>
