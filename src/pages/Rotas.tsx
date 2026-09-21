@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, MapPin, Loader2, Edit, Trash2, Eye, MessageCircle, Navigation, DollarSign, Search, Route, Calculator, Fuel, Gauge, MapPinned, Location, Check } from "lucide-react";
+import { Plus, MapPin, Loader2, Edit, Trash2, Eye, MessageCircle, Navigation, DollarSign, Search, Route, Calculator, Fuel, Gauge, MapPinned, Crosshair, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/formatters";
@@ -315,7 +315,7 @@ export default function Rotas() {
                     <MapPinned className="mr-2 h-3.5 w-3.5" />Endereço/Cidade
                   </Button>
                   <Button type="button" variant={calcForm.modoEntrada === "coordenadas" ? "default" : "outline"} className="flex-1" onClick={() => setCalcForm(prev => ({ ...prev, modoEntrada: "coordenadas" }))}>
-                    <Location className="mr-2 h-3.5 w-3.5" />Coordenadas
+                    <Crosshair className="mr-2 h-3.5 w-3.5" />Coordenadas
                   </Button>
                 </div>
               </div>

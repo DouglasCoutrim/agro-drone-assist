@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download, UserPlus, CreditCard, Clock, Wrench, CheckCircle2, XCircle, ChevronRight, MoreVertical, ArrowRight, Trash2, Printer, Calculator, Navigation, Fuel, Gauge, MapPinned, Location, Check } from "lucide-react";
+import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download, UserPlus, CreditCard, Clock, Wrench, CheckCircle2, XCircle, ChevronRight, MoreVertical, ArrowRight, Trash2, Printer, Calculator, Navigation, Fuel, Gauge, MapPinned, Crosshair, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
@@ -1595,7 +1595,7 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
                     <MapPinned className="mr-2 h-3.5 w-3.5" />Endereço/Cidade
                   </Button>
                   <Button type="button" variant={calcForm.modoEntrada === "coordenadas" ? "default" : "outline"} className="flex-1" onClick={() => setCalcForm(prev => ({ ...prev, modoEntrada: "coordenadas" }))}>
-                    <Location className="mr-2 h-3.5 w-3.5" />Coordenadas
+                    <Crosshair className="mr-2 h-3.5 w-3.5" />Coordenadas
                   </Button>
                 </div>
               </div>
