@@ -105,11 +105,22 @@ serve(async (req) => {
       localizacao: data.permalink || null,
     };
 
-    const { data: produto, error } = await supabase
+    let { data: produto, error } = await supabase
       .from("itens_estoque")
       .insert(novoProduto)
       .select()
       .single();
+
+    if (error?.code === "23505") {
+      codigo = `ML-${mlbId}-${crypto.randomUUID().slice(0, 8)}`;
+      const retry = await supabase
+        .from("itens_estoque")
+        .insert({ ...novoProduto, codigo })
+        .select()
+        .single();
+      produto = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       return jsonResponse({ erro: error.message }, 400);
