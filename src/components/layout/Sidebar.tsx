@@ -72,10 +72,6 @@ export function Sidebar({ className }: SidebarProps) {
   const roleLabel = role === "admin" ? "Administrador" : role === "tecnico" ? "Técnico" : "Consulta";
   const initials = profile?.nome?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "U";
 
-  // Determine if user has access to show menus
-  // Platform admins see all menus; regular users filter by role
-  const userHasAccess = isPlatformAdmin || !!role;
-
   return (
     <div className={cn(
       "flex h-full flex-col bg-sidebar overflow-hidden flex-shrink-0",
@@ -91,10 +87,9 @@ export function Sidebar({ className }: SidebarProps) {
       <nav className="flex-1 px-3 py-1 space-y-1 overflow-y-auto scrollbar-thin">
         {/* Regular navigation sections */}
         {navSections.map((section) => {
-          // Platform admins see all menu items; regular users filter by role
-          const sectionItems = isPlatformAdmin
-            ? section.items
-            : section.items.filter(item => role && item.roles.includes(role));
+          // Tenant navigation requires a tenant role, including for platform admins.
+          // A platform-only admin still reaches the dedicated master panel below.
+          const sectionItems = section.items.filter(item => role && item.roles.includes(role));
           if (sectionItems.length === 0) return null;
           return (
             <div key={section.title}>
