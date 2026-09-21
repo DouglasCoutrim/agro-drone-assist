@@ -10,3 +10,6 @@
 - [x] Exibir o motivo real quando o cadastro de um membro for recusado.
 - [x] Garantir cadastro completo e seguro de novos membros da equipe.
 - [x] Corrigir o bloqueio de origem nas consultas ao Asaas.
+- [x] Permitir códigos de estoque iguais em empresas diferentes.
+- [x] Evitar cadastros duplicados por envios simultâneos no estoque.
+- [x] Não consultar o Asaas quando a empresa usa PIX manual ou não possui credenciais.

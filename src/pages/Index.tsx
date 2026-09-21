@@ -79,6 +79,7 @@ const Index = () => {
         supabase.from("ordens_servico").select("*, clientes(nome, telefone)").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(5),
         supabase.from("financeiro").select("valor").eq("organization_id", orgId).eq("tipo", "receita").gte("data_transacao", startOfMonth.toISOString()),
         supabase.from("ordens_servico").select("*, clientes(nome, telefone)").eq("organization_id", orgId).not("data_previsao", "is", null).lt("data_previsao", today).not("status", "in", "(entregue,cancelada,pronto_retirada,concluida)").order("data_previsao", { ascending: true }).limit(10),
+        supabase.from("empresa_config").select("gateway_clientes, gateway_clientes_credentials").eq("organization_id", orgId).maybeSingle(),
       ]);
 
       const get = (i: number): any => results[i].status === "fulfilled" ? (results[i] as any).value : { data: [], count: 0, error: (results[i] as any).reason };
@@ -89,6 +90,7 @@ const Index = () => {
       const recentOSRes = get(4);
       const receitasRes = get(5);
       const overdueOSRes = get(6);
+      const gatewayConfigRes = get(7);
 
       results.forEach((r, i) => {
         if (r.status === "rejected") console.error(`Dashboard query ${i} failed:`, r.reason);
@@ -116,15 +118,21 @@ const Index = () => {
         console.error("Erro ao calcular valores de OS:", e);
       }
 
-      // Asaas overdue payments (best-effort, parallel)
-      (async () => {
-        try {
-          const { data: result } = await supabase.functions.invoke('asaas', {
-            body: { action: 'list_payments', status: 'OVERDUE' },
-          });
-          setOverduePayments(result?.data || []);
-        } catch { /* silent */ }
-      })();
+      const gatewayCredentials = gatewayConfigRes.data?.gateway_clientes_credentials;
+      const hasAsaasCredentials = gatewayCredentials
+        && typeof gatewayCredentials === "object"
+        && !Array.isArray(gatewayCredentials)
+        && typeof gatewayCredentials.api_key === "string"
+        && gatewayCredentials.api_key.length > 0;
+
+      if (gatewayConfigRes.data?.gateway_clientes === "asaas" && hasAsaasCredentials) {
+        const { data: result, error } = await supabase.functions.invoke('asaas', {
+          body: { action: 'list_payments', status: 'OVERDUE' },
+        });
+        if (!error) setOverduePayments(result?.data || []);
+      } else {
+        setOverduePayments([]);
+      }
 
       setStats({
         osAbertas: osAbertasRes.count || 0,

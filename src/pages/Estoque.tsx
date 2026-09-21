@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,6 +56,7 @@ export default function Estoque() {
   const [mlLink, setMlLink] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
   const [viewingItem, setViewingItem] = useState<ItemEstoque | null>(null);
+  const isSubmittingRef = useRef(false);
 
   const [formData, setFormData] = useState({
     codigo: "", descricao: "", categoria: "", quantidade: 0,
@@ -154,10 +155,12 @@ export default function Estoque() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingRef.current) return;
     if (!organization?.id) {
       toast.error('Sua conta não está vinculada a uma empresa. Contate o administrador.');
       return;
     }
+    isSubmittingRef.current = true;
     setFormLoading(true);
     try {
       if (editingItem) {
@@ -165,12 +168,30 @@ export default function Estoque() {
         if (error) throw error;
         toast.success('Item atualizado com sucesso!');
       } else {
-        const { error } = await supabase.from('itens_estoque').insert({ ...formData, organization_id: organization?.id } as any);
-        if (error) throw error;
+        const payload = { ...formData, organization_id: organization.id };
+        const { error } = await supabase.from('itens_estoque').insert(payload as any);
+
+        if (error?.code === '23505') {
+          const nextCode = await generateCode();
+          const { error: retryError } = await supabase
+            .from('itens_estoque')
+            .insert({ ...payload, codigo: nextCode } as any);
+          if (retryError) throw retryError;
+        } else if (error) {
+          throw error;
+        }
         toast.success('Item criado com sucesso!');
       }
       setDialogOpen(false); resetForm(); fetchItens();
-    } catch (error: any) { toast.error('Erro ao salvar item: ' + error.message); } finally { setFormLoading(false); }
+    } catch (error: any) {
+      const message = error?.code === '23505'
+        ? 'Não foi possível reservar um código único para este produto. Tente novamente.'
+        : error?.message || 'Não foi possível salvar o produto.';
+      toast.error('Erro ao salvar item: ' + message);
+    } finally {
+      isSubmittingRef.current = false;
+      setFormLoading(false);
+    }
   };
 
   const handleEdit = (item: ItemEstoque) => {

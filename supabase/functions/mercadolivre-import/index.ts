@@ -87,6 +87,7 @@ serve(async (req) => {
     const { data: existing } = await supabase
       .from("itens_estoque")
       .select("id")
+      .eq("organization_id", profile.organization_id)
       .eq("codigo", codigo)
       .maybeSingle();
     if (existing) codigo = `ML-${mlbId}-${Date.now().toString().slice(-4)}`;
