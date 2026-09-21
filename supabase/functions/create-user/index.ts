@@ -1,24 +1,41 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { z } from "npm:zod@3.25.76";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+const CreateUserSchema = z.object({
+  nome: z.string().trim().min(2).max(120),
+  email: z.string().trim().email().max(255).transform((value) => value.toLowerCase()),
+  senha: z.string().min(8).max(128),
+  role: z.enum(["admin", "tecnico", "consulta"]),
+});
+
+const jsonResponse = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+  status,
+  headers: { ...corsHeaders, "Content-Type": "application/json" },
+});
+
+const friendlyAuthError = (message: string) => {
+  const normalized = message.toLowerCase();
+  if (normalized.includes("weak") || normalized.includes("easy to guess")) {
+    return "Esta senha é muito comum ou fácil de adivinhar. Escolha uma senha mais forte e exclusiva.";
+  }
+  if (normalized.includes("already") || normalized.includes("registered") || normalized.includes("exists")) {
+    return "Este e-mail já está cadastrado.";
+  }
+  return message;
 };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
     // Verify the caller is authenticated and is admin
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Não autorizado" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!authHeader?.startsWith("Bearer ")) {
+      return jsonResponse({ error: "Não autorizado" }, 401);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -29,44 +46,40 @@ serve(async (req) => {
     const callerClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: { user: caller } } = await callerClient.auth.getUser();
-    if (!caller) {
-      return new Response(JSON.stringify({ error: "Não autorizado" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const { data: { user: caller }, error: callerError } = await callerClient.auth.getUser();
+    if (callerError || !caller) {
+      return jsonResponse({ error: "Sessão inválida ou expirada" }, 401);
     }
 
     // Check admin role
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    const { data: roleData } = await adminClient
+    const { data: roleData, error: roleError } = await adminClient
       .from("user_roles")
       .select("role")
       .eq("user_id", caller.id)
+      .eq("role", "admin")
       .maybeSingle();
 
-    if (!roleData || roleData.role !== "admin") {
-      return new Response(JSON.stringify({ error: "Apenas administradores podem criar usuários" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (roleError || !roleData) {
+      return jsonResponse({ error: "Apenas administradores podem criar usuários" }, 403);
     }
 
-    const { nome, email, senha, role } = await req.json();
-
-    if (!nome || !email || !senha) {
-      return new Response(JSON.stringify({ error: "Nome, email e senha são obrigatórios" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const parsed = CreateUserSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return jsonResponse({ error: "Confira nome, e-mail, senha e função. A senha deve ter pelo menos 8 caracteres." }, 400);
     }
+    const { nome, email, senha, role } = parsed.data;
 
     // Look up the caller's organization_id to scope the new member
-    const { data: callerProfile } = await adminClient
+    const { data: callerProfile, error: profileLookupError } = await adminClient
       .from("profiles")
       .select("organization_id")
       .eq("id", caller.id)
       .maybeSingle();
+
+    if (profileLookupError || !callerProfile?.organization_id) {
+      return jsonResponse({ error: "Seu usuário não está vinculado a uma empresa." }, 400);
+    }
 
     // Create the user with admin API (auto-confirms email)
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
@@ -77,44 +90,39 @@ serve(async (req) => {
     });
 
     if (createError) {
-      return new Response(JSON.stringify({ error: createError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: friendlyAuthError(createError.message) }, 400);
     }
 
-    // The handle_new_user trigger creates profile + default role ('consulta')
-    // Update profile with organization_id
-    if (callerProfile?.organization_id) {
-      await adminClient
+    const newUserId = newUser.user.id;
+    try {
+      // The handle_new_user trigger creates profile + default role ('consulta').
+      const { error: profileError } = await adminClient
         .from("profiles")
         .update({ organization_id: callerProfile.organization_id })
-        .eq("id", newUser.user.id);
-    }
+        .eq("id", newUserId);
+      if (profileError) throw profileError;
 
-    // Update role if different from default
-    if (role && role !== "consulta") {
-      await adminClient
+      if (role !== "consulta") {
+        const { error: roleUpdateError } = await adminClient
         .from("user_roles")
         .update({ role })
-        .eq("user_id", newUser.user.id);
+        .eq("user_id", newUserId);
+        if (roleUpdateError) throw roleUpdateError;
+      }
+
+      const { error: permissionsError } = await adminClient
+        .from("user_permissions")
+        .upsert({ user_id: newUserId }, { onConflict: "user_id" });
+      if (permissionsError) throw permissionsError;
+    } catch (setupError) {
+      console.error("Failed to finish member setup", setupError);
+      await adminClient.auth.admin.deleteUser(newUserId);
+      return jsonResponse({ error: "Não foi possível concluir o cadastro. Nenhuma conta incompleta foi mantida." }, 500);
     }
 
-    // Ensure a permissions row exists (the handle_new_user_permissions trigger
-    // is not wired up on auth.users, so create it explicitly here).
-    await adminClient
-      .from("user_permissions")
-      .upsert({ user_id: newUser.user.id }, { onConflict: "user_id" });
-
-    return new Response(JSON.stringify({ success: true, user_id: newUser.user.id }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ success: true, user_id: newUserId });
   } catch (err) {
     console.error("Internal error creating user:", err);
-    return new Response(JSON.stringify({ error: "Erro interno ao criar usuário" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Erro interno ao criar usuário" }, 500);
   }
 });
