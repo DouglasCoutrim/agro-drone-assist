@@ -99,10 +99,19 @@ async function handlePayment(paymentId: string | null, type: string | null) {
   }
 
   if (approved && externalRef) {
-    const { data: os } = await admin.from('ordens_servico').select('id').eq('id', externalRef).maybeSingle();
+    // Só busca por id se `externalRef` for um UUID válido (mesmo problema do
+    // asaas-tenant-webhook: uma referência não-UUID faria o .eq('id', ...)
+    // estourar erro de tipo).
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(externalRef);
+    const { data: os } = isUuid
+      ? await admin.from('ordens_servico').select('id').eq('id', externalRef).maybeSingle()
+      : { data: null };
     if (os) {
-      await admin.from('ordens_servico').update({ status: 'finalizada' }).eq('id', externalRef);
-    } else {
+      // "finalizada" não existe no enum status_os — substituído por "entregue"
+      // (status terminal mais próximo). Confirme se é o status certo para o
+      // seu fluxo de negócio.
+      await admin.from('ordens_servico').update({ status: 'entregue' }).eq('id', externalRef);
+    } else if (isUuid) {
       await admin.from('orcamentos').update({ status: 'aprovado' }).eq('id', externalRef);
     }
   }

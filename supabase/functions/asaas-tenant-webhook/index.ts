@@ -39,10 +39,22 @@ Deno.serve(async (req) => {
     if (event === 'PAYMENT_RECEIVED' || event === 'PAYMENT_CONFIRMED') {
       const ref = payment.externalReference;
       if (ref) {
-        const { data: os } = await admin.from('ordens_servico').select('id').eq('id', ref).maybeSingle();
+        // Só busca por id se `ref` for um UUID válido; um número de OS legado
+        // (ex.: "OS-0001") aqui faria o .eq('id', ref) estourar erro de tipo.
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ref);
+        const { data: os } = isUuid
+          ? await admin.from('ordens_servico').select('id').eq('id', ref).maybeSingle()
+          : { data: null };
         if (os) {
-          await admin.from('ordens_servico').update({ status: 'finalizada' }).eq('id', ref);
-        } else {
+          // "finalizada" não existe no enum status_os (aberta, em_andamento,
+          // aguardando_peca, concluida, entregue, cancelada, recebido,
+          // aguardando_diagnostico, aguardando_aprovacao, aprovado, em_reparo,
+          // em_testes, pronto_retirada, ...) — esse update sempre falhava.
+          // Ajustado para "entregue", que é o status terminal mais próximo
+          // do que a migration original pretendia. Confirme se é o status
+          // certo para o seu fluxo de negócio.
+          await admin.from('ordens_servico').update({ status: 'entregue' }).eq('id', ref);
+        } else if (isUuid) {
           await admin.from('orcamentos').update({ status: 'aprovado' }).eq('id', ref);
         }
       }
