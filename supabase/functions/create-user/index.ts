@@ -7,7 +7,7 @@ const CreateUserSchema = z.object({
   nome: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(255).transform((value) => value.toLowerCase()),
   senha: z.string().min(8).max(128),
-  role: z.enum(["admin", "tecnico", "consulta"]),
+  roles: z.array(z.enum(["admin", "tecnico", "consulta"])).min(1).max(3),
 });
 
 const jsonResponse = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
@@ -68,7 +68,7 @@ serve(async (req) => {
     if (!parsed.success) {
       return jsonResponse({ error: "Confira nome, e-mail, senha e função. A senha deve ter pelo menos 8 caracteres." }, 400);
     }
-    const { nome, email, senha, role } = parsed.data;
+    const { nome, email, senha, roles } = parsed.data;
 
     // Look up the caller's organization_id to scope the new member
     const { data: callerProfile, error: profileLookupError } = await adminClient
@@ -102,13 +102,17 @@ serve(async (req) => {
         .eq("id", newUserId);
       if (profileError) throw profileError;
 
-      if (role !== "consulta") {
-        const { error: roleUpdateError } = await adminClient
+      const { error: roleDeleteError } = await adminClient
         .from("user_roles")
-        .update({ role })
+        .delete()
         .eq("user_id", newUserId);
-        if (roleUpdateError) throw roleUpdateError;
-      }
+      if (roleDeleteError) throw roleDeleteError;
+
+      const uniqueRoles = [...new Set(roles)];
+      const { error: roleInsertError } = await adminClient
+        .from("user_roles")
+        .insert(uniqueRoles.map((assignedRole) => ({ user_id: newUserId, role: assignedRole })));
+      if (roleInsertError) throw roleInsertError;
 
       const { error: permissionsError } = await adminClient
         .from("user_permissions")

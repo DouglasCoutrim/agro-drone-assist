@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Settings, User, Bell, Shield, Database, Globe, Save, Key, Info, Zap, Loader2, Users, Trash2, UserPlus, CreditCard, Camera } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -24,6 +23,7 @@ type UserRole = Tables<"user_roles">;
 
 interface UserWithRole extends Profile {
   role?: string;
+  roles: string[];
 }
 
 export default function Configuracoes() {
@@ -62,7 +62,8 @@ export default function Configuracoes() {
       
       const usersWithRoles: UserWithRole[] = (profiles || []).map(p => ({
         ...p,
-        role: roles?.find(r => r.user_id === p.id)?.role || 'consulta'
+        roles: (roles || []).filter(r => r.user_id === p.id).map(r => r.role),
+        role: (["admin", "tecnico", "consulta"] as any[]).find(r => (roles || []).filter(item => item.user_id === p.id).map(item => item.role).includes(r)) || "consulta"
       }));
       setUsers(usersWithRoles);
     } catch (error: any) { console.error('Error fetching users:', error); } finally { setUsersLoading(false); }
@@ -102,15 +103,6 @@ export default function Configuracoes() {
       toast.success('Perfil atualizado com sucesso!');
       fetchProfile();
     } catch (error: any) { toast.error('Erro ao atualizar perfil: ' + error.message); } finally { setSaving(false); }
-  };
-
-  const handleChangeUserRole = async (userId: string, newRole: string) => {
-    try {
-      const { error } = await supabase.from('user_roles').update({ role: newRole as any }).eq('user_id', userId);
-      if (error) throw error;
-      toast.success('Papel atualizado!');
-      fetchUsers();
-    } catch (error: any) { toast.error('Erro: ' + error.message); }
   };
 
   const handleDeleteUser = async (userId: string) => {
@@ -234,14 +226,9 @@ export default function Configuracoes() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Select value={u.role} onValueChange={(v) => handleChangeUserRole(u.id, v)}>
-                        <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">Administrador</SelectItem>
-                          <SelectItem value="tecnico">Técnico</SelectItem>
-                          <SelectItem value="consulta">Consulta</SelectItem>
-                        </SelectContent>
-                      </Select>
+                       <div className="flex flex-wrap justify-end gap-1">
+                         {u.roles.map((assignedRole) => <span key={assignedRole}>{getRoleBadge(assignedRole)}</span>)}
+                       </div>
                       {u.id !== user?.id && (
                         <Button size="sm" variant="ghost" onClick={() => handleDeleteUser(u.id)}>
                           <Trash2 className="h-4 w-4 text-destructive" />

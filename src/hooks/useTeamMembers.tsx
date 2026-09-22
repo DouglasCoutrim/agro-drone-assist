@@ -7,6 +7,7 @@ export interface TeamMember {
   nome: string;
   email: string;
   role: string;
+  roles: string[];
 }
 
 export function useTeamMembers() {
@@ -44,8 +45,9 @@ export function useTeamMembers() {
         const roles = rolesRes.data || [];
         setMembers(
           profiles.map((p) => {
-            const r = roles.find((r) => r.user_id === p.id);
-            return { id: p.id, nome: p.nome, email: p.email, role: r?.role || "consulta" };
+            const assignedRoles = roles.filter((r) => r.user_id === p.id).map((r) => r.role);
+            const effectiveRole = ["admin", "tecnico", "consulta"].find((candidate) => assignedRoles.includes(candidate as typeof assignedRoles[number])) || "consulta";
+            return { id: p.id, nome: p.nome, email: p.email, role: effectiveRole, roles: assignedRoles.length ? assignedRoles : ["consulta"] };
           })
         );
       } catch {
@@ -57,8 +59,8 @@ export function useTeamMembers() {
     fetchMembers();
   }, [organization?.id, isPlatformAdmin, orgLoading]);
 
-  const tecnicos = members.filter((m) => m.role === "tecnico" || m.role === "admin");
-  const vendedores = members.filter((m) => m.role === "admin" || m.role === "tecnico");
+  const tecnicos = members.filter((m) => m.roles.includes("tecnico") || m.roles.includes("admin"));
+  const vendedores = members.filter((m) => m.roles.includes("admin") || m.roles.includes("tecnico"));
 
   return { members, tecnicos, vendedores, loading: loading || orgLoading };
 }

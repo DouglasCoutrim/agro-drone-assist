@@ -9,6 +9,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   role: AppRole | null;
+  roles: AppRole[];
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, nome: string) => Promise<{ error: Error | null }>;
@@ -16,6 +17,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isTecnico: boolean;
   canEdit: boolean;
+  hasRole: (role: AppRole) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,18 +26,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
+  const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchUserRole = async (userId: string) => {
     const { data } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', userId)
-      .maybeSingle();
-    
-    if (data) {
-      setRole(data.role as AppRole);
-    }
+      .eq('user_id', userId);
+
+    const assignedRoles = (data || []).map((item) => item.role as AppRole);
+    const effectiveRole = (['admin', 'tecnico', 'consulta'] as AppRole[]).find((candidate) => assignedRoles.includes(candidate)) ?? null;
+    setRoles(assignedRoles);
+    setRole(effectiveRole);
   };
 
   const lastUserIdRef = useRef<string | null>(null);
@@ -55,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setTimeout(() => { fetchUserRole(session.user.id); }, 0);
           } else {
             setRole(null);
+            setRoles([]);
           }
         }
         setLoading(false);
@@ -95,16 +99,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setRole(null);
+    setRoles([]);
     lastUserIdRef.current = null;
   }, []);
 
-  const isAdmin = role === 'admin';
-  const isTecnico = role === 'tecnico';
+  const hasRole = useCallback((candidate: AppRole) => roles.includes(candidate), [roles]);
+  const isAdmin = hasRole('admin');
+  const isTecnico = hasRole('tecnico');
   const canEdit = isAdmin || isTecnico;
 
   const value = useMemo(
-    () => ({ user, session, role, loading, signIn, signUp, signOut, isAdmin, isTecnico, canEdit }),
-    [user, session, role, loading, signIn, signUp, signOut, isAdmin, isTecnico, canEdit],
+    () => ({ user, session, role, roles, loading, signIn, signUp, signOut, isAdmin, isTecnico, canEdit, hasRole }),
+    [user, session, role, roles, loading, signIn, signUp, signOut, isAdmin, isTecnico, canEdit, hasRole],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

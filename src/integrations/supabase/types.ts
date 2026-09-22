@@ -2062,6 +2062,13 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_user_roles: {
+        Args: {
+          _roles: Database["public"]["Enums"]["app_role"][]
+          _user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "tecnico" | "consulta"

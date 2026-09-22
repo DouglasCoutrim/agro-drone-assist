@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Users, User, Shield, Loader2, Trash2, FileText, Package, DollarSign, UserPlus, Pencil, LayoutDashboard, Wrench, Settings, BookOpen, Bell, BarChart3, Navigation, CreditCard, ClipboardList, MapPin, Monitor, UserRound, Building2, LifeBuoy } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -23,6 +23,7 @@ type Profile = Tables<"profiles">;
 
 interface UserWithRoleAndPerms extends Profile {
   role?: string;
+  roles: AppRole[];
   permissions?: {
     acesso_dashboard: boolean;
     acesso_os: boolean;
@@ -45,6 +46,13 @@ interface UserWithRoleAndPerms extends Profile {
     acesso_suporte: boolean;
   };
 }
+
+type AppRole = 'admin' | 'tecnico' | 'consulta';
+const ROLE_OPTIONS: Array<{ value: AppRole; label: string }> = [
+  { value: 'admin', label: 'Administrador' },
+  { value: 'tecnico', label: 'Técnico' },
+  { value: 'consulta', label: 'Atendimento' },
+];
 
 const getCreateMemberError = async (error: unknown) => {
   const fallback = error instanceof Error ? error.message : 'Não foi possível adicionar o membro';
@@ -71,7 +79,7 @@ export default function Equipe() {
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
-  const [newMember, setNewMember] = useState({ nome: "", email: "", senha: "", role: "consulta" });
+  const [newMember, setNewMember] = useState<{ nome: string; email: string; senha: string; roles: AppRole[] }>({ nome: "", email: "", senha: "", roles: ["consulta"] });
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editUser, setEditUser] = useState<UserWithRoleAndPerms | null>(null);
   const [editForm, setEditForm] = useState({ nome: "", email: "" });
@@ -90,11 +98,13 @@ export default function Equipe() {
       if (rolesRes.error) throw rolesRes.error;
 
       const usersData: UserWithRoleAndPerms[] = (profilesRes.data || []).map(p => {
-        const roleData = rolesRes.data?.find(r => r.user_id === p.id);
+        const assignedRoles = (rolesRes.data || []).filter(r => r.user_id === p.id).map(r => r.role as AppRole);
+        const effectiveRole = ROLE_OPTIONS.find(({ value }) => assignedRoles.includes(value))?.value || 'consulta';
         const permData = (permsRes.data as any[])?.find((pm: any) => pm.user_id === p.id);
         return {
           ...p,
-          role: roleData?.role || 'consulta',
+          role: effectiveRole,
+          roles: assignedRoles.length ? assignedRoles : ['consulta'],
           permissions: permData ? {
             acesso_dashboard: permData.acesso_dashboard ?? true,
             acesso_os: permData.acesso_os ?? true,
@@ -122,13 +132,19 @@ export default function Equipe() {
     } catch (error: any) { toast.error('Erro ao carregar equipe'); } finally { setLoading(false); }
   };
 
-  const handleChangeRole = async (userId: string, newRole: string) => {
+  const handleChangeRoles = async (userId: string, currentRoles: AppRole[], changedRole: AppRole, checked: boolean) => {
+    const nextRoles = checked ? [...new Set([...currentRoles, changedRole])] : currentRoles.filter((assignedRole) => assignedRole !== changedRole);
+    if (nextRoles.length === 0) { toast.error('Selecione pelo menos um papel'); return; }
     try {
-      const { error } = await supabase.from('user_roles').update({ role: newRole as any }).eq('user_id', userId);
+      const { error } = await supabase.rpc('set_user_roles', { _user_id: userId, _roles: nextRoles });
       if (error) throw error;
-      toast.success('Papel atualizado!');
+      toast.success('Papéis atualizados!');
       fetchUsers();
     } catch (error: any) { toast.error('Erro: ' + error.message); }
+  };
+
+  const toggleNewMemberRole = (changedRole: AppRole, checked: boolean) => {
+    setNewMember((current) => ({ ...current, roles: checked ? [...new Set([...current.roles, changedRole])] : current.roles.filter((assignedRole) => assignedRole !== changedRole) }));
   };
 
   const handleTogglePermission = async (userId: string, field: string, value: boolean) => {
@@ -175,6 +191,7 @@ export default function Equipe() {
       toast.error('A senha deve ter pelo menos 8 caracteres');
       return;
     }
+    if (newMember.roles.length === 0) { toast.error('Selecione pelo menos um papel'); return; }
     if (!canInviteUser) { setShowUpgrade(true); return; }
     setAddLoading(true);
     try {
@@ -183,7 +200,7 @@ export default function Equipe() {
           nome,
           email,
           senha,
-          role: newMember.role,
+          roles: newMember.roles,
         },
       });
 
@@ -192,7 +209,7 @@ export default function Equipe() {
 
       toast.success('Membro adicionado com sucesso! Ele já pode fazer login.');
       setAddDialogOpen(false);
-      setNewMember({ nome: "", email: "", senha: "", role: "consulta" });
+      setNewMember({ nome: "", email: "", senha: "", roles: ["consulta"] });
       fetchUsers();
     } catch (error: unknown) {
       toast.error(await getCreateMemberError(error));
@@ -222,7 +239,7 @@ export default function Equipe() {
     switch (r) {
       case 'admin': return <Badge className="bg-primary text-primary-foreground">Admin</Badge>;
       case 'tecnico': return <Badge variant="secondary">Técnico</Badge>;
-      default: return <Badge variant="outline">Consulta</Badge>;
+      default: return <Badge variant="outline">Atendimento</Badge>;
     }
   };
 
@@ -273,15 +290,15 @@ export default function Equipe() {
                     <p className="text-xs text-muted-foreground">Use pelo menos 8 caracteres e evite senhas comuns ou fáceis de adivinhar.</p>
                   </div>
                   <div className="space-y-2">
-                    <Label>Função</Label>
-                    <Select value={newMember.role} onValueChange={(v) => setNewMember({ ...newMember, role: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Administrador</SelectItem>
-                        <SelectItem value="tecnico">Técnico</SelectItem>
-                        <SelectItem value="consulta">Atendimento</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label>Papéis *</Label>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {ROLE_OPTIONS.map((option) => (
+                        <label key={option.value} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-border p-3 text-sm">
+                          <Checkbox checked={newMember.roles.includes(option.value)} onCheckedChange={(checked) => toggleNewMemberRole(option.value, checked === true)} />
+                          {option.label}
+                        </label>
+                      ))}
+                    </div>
                   </div>
                   <Button className="w-full gradient-primary" onClick={handleAddMember} disabled={addLoading}>
                     {addLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
@@ -320,17 +337,18 @@ export default function Equipe() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap sm:justify-end">
-                        {isAdmin && (
-                          <Select value={u.role} onValueChange={(v) => handleChangeRole(u.id, v)}>
-                            <SelectTrigger className="w-full sm:w-36"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="admin">Administrador</SelectItem>
-                              <SelectItem value="tecnico">Técnico</SelectItem>
-                              <SelectItem value="consulta">Atendimento</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
-                        {!isAdmin && getRoleBadge(u.role)}
+                         {isAdmin ? (
+                           <div className="flex flex-wrap gap-2" aria-label={`Papéis de ${u.nome}`}>
+                             {ROLE_OPTIONS.map((option) => (
+                               <label key={option.value} className="flex min-h-9 cursor-pointer items-center gap-2 rounded-md border border-border px-2.5 text-xs">
+                                 <Checkbox checked={u.roles.includes(option.value)} disabled={u.id === user?.id && option.value === 'admin'} onCheckedChange={(checked) => handleChangeRoles(u.id, u.roles, option.value, checked === true)} />
+                                 {option.label}
+                               </label>
+                             ))}
+                           </div>
+                         ) : (
+                           <div className="flex flex-wrap gap-1">{u.roles.map((assignedRole) => <span key={assignedRole}>{getRoleBadge(assignedRole)}</span>)}</div>
+                         )}
                         {isAdmin && u.id !== user?.id && (
                           <>
                             <Button size="sm" variant="outline" onClick={() => openEditDialog(u)}>
@@ -416,7 +434,7 @@ export default function Equipe() {
                       </div>
                     </div>
 
-                    {isAdmin && u.role === 'tecnico' && (
+                    {isAdmin && u.roles.includes('tecnico') && (
                       <div className="sm:pl-14">
                         <CommissionEditor profile={u as any} onSaved={fetchUsers} />
                       </div>

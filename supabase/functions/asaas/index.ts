@@ -35,7 +35,7 @@ serve(async (req) => {
 
   const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
   const { data: roleData } = await serviceClient
-    .from('user_roles').select('role').eq('user_id', userId).maybeSingle();
+    .from('user_roles').select('role').eq('user_id', userId).in('role', ['admin', 'tecnico']).limit(1).maybeSingle();
 
   const { data: platformAdmin } = await serviceClient
     .from('platform_admins').select('user_id').eq('user_id', userId).maybeSingle();
