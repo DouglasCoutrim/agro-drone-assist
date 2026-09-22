@@ -45,7 +45,7 @@ serve(async (req) => {
   // não o papel de app (admin/tecnico/consulta) — que só existe na tabela
   // user_roles. Checar contra o JWT sempre bloqueava todo mundo.
   const { data: roleRow } = await serviceClient
-    .from('user_roles').select('role').eq('user_id', userId).maybeSingle();
+    .from('user_roles').select('role').eq('user_id', userId).in('role', ['admin', 'tecnico']).limit(1).maybeSingle();
   const userRole = roleRow?.role || 'consulta';
   if (!['admin', 'tecnico'].includes(userRole)) {
     return new Response(JSON.stringify({ error: 'Forbidden: insufficient permissions' }), {

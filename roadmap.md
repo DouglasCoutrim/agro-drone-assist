@@ -13,3 +13,4 @@
 - [x] Permitir códigos de estoque iguais em empresas diferentes.
 - [x] Evitar cadastros duplicados por envios simultâneos no estoque.
 - [x] Não consultar o Asaas quando a empresa usa PIX manual ou não possui credenciais.
+- [x] Permitir múltiplos papéis por usuário com acessos combinados.

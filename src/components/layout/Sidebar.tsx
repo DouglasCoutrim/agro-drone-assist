@@ -53,7 +53,7 @@ const navSections = [
 export function Sidebar({ className }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { role, user, signOut } = useAuth();
+  const { roles, user, signOut } = useAuth();
   const [profile, setProfile] = useState<{ nome: string; avatar_url: string | null } | null>(null);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
 
@@ -69,7 +69,7 @@ export function Sidebar({ className }: SidebarProps) {
 
   const handleSignOut = async () => { await signOut(); navigate("/auth"); };
 
-  const roleLabel = role === "admin" ? "Administrador" : role === "tecnico" ? "Técnico" : "Consulta";
+  const roleLabel = roles.map((item) => item === "admin" ? "Administrador" : item === "tecnico" ? "Técnico" : "Atendimento").join(" • ") || "Sem papel";
   const initials = profile?.nome?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "U";
 
   return (
@@ -89,7 +89,7 @@ export function Sidebar({ className }: SidebarProps) {
         {navSections.map((section) => {
           // Tenant navigation requires a tenant role, including for platform admins.
           // A platform-only admin still reaches the dedicated master panel below.
-          const sectionItems = section.items.filter(item => role && item.roles.includes(role));
+          const sectionItems = section.items.filter(item => roles.some((assignedRole) => item.roles.includes(assignedRole)));
           if (sectionItems.length === 0) return null;
           return (
             <div key={section.title}>

@@ -33,10 +33,9 @@ Deno.serve(async (req) => {
     // O claim "role" do JWT é o role do Postgres (sempre "authenticated"),
     // não o papel de app (admin/tecnico/consulta) — que só existe na tabela
     // user_roles. Checar contra o JWT sempre bloqueava todo mundo.
-    const { data: roleRow } = await admin
-      .from('user_roles').select('role').eq('user_id', userId).maybeSingle();
-    const userRole = roleRow?.role || 'consulta';
-    if (!['admin', 'tecnico'].includes(userRole)) {
+    const { data: roleRows } = await admin
+      .from('user_roles').select('role').eq('user_id', userId).in('role', ['admin', 'tecnico']);
+    if (!roleRows?.length) {
       return json({ error: 'Forbidden: insufficient permissions' }, 403);
     }
 

@@ -27,10 +27,10 @@ const moreItems = [
 
 export function BottomNav() {
   const location = useLocation();
-  const { role } = useAuth();
+  const { roles } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const filteredMore = moreItems.filter(item => role && item.roles.includes(role));
+  const filteredMore = moreItems.filter(item => roles.some((assignedRole) => item.roles.includes(assignedRole)));
 
   return (
     <>

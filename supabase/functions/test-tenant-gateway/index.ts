@@ -32,8 +32,8 @@ Deno.serve(async (req) => {
 
   if (!isPlatformAdmin) {
     const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', userId).maybeSingle();
-    const { data: roleData } = await supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle();
-    const isAdminOrTecnico = roleData?.role && ['admin', 'tecnico'].includes(roleData.role);
+    const { data: roleData } = await supabase.from('user_roles').select('role').eq('user_id', userId).in('role', ['admin', 'tecnico']);
+    const isAdminOrTecnico = Boolean(roleData?.length);
     if (!isAdminOrTecnico) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
     }
