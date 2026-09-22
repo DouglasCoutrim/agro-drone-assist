@@ -26,17 +26,22 @@ Deno.serve(async (req) => {
     const { data: claims } = await supabase.auth.getClaims(token);
     if (!claims?.claims) return json({ error: 'Unauthorized' }, 401);
     const userId = claims.claims.sub as string;
-    const userRole = claims.claims.role as string || 'consulta';
 
-    // A3: Role check - apenas admin/técnico podem gerar cobrança
+    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+    // A3: Role check - apenas admin/técnico podem gerar cobrança.
+    // O claim "role" do JWT é o role do Postgres (sempre "authenticated"),
+    // não o papel de app (admin/tecnico/consulta) — que só existe na tabela
+    // user_roles. Checar contra o JWT sempre bloqueava todo mundo.
+    const { data: roleRow } = await admin
+      .from('user_roles').select('role').eq('user_id', userId).maybeSingle();
+    const userRole = roleRow?.role || 'consulta';
     if (!['admin', 'tecnico'].includes(userRole)) {
       return json({ error: 'Forbidden: insufficient permissions' }, 403);
     }
 
     const { cliente_id, valor, descricao, ordem_servico_id, orcamento_id } = await req.json();
     if (!valor || valor <= 0) return json({ error: 'Valor inválido' }, 400);
-
-    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
     const { data: profile } = await admin.from('profiles').select('organization_id').eq('id', userId).maybeSingle();
     if (!profile?.organization_id) return json({ error: 'Sem organização' }, 400);

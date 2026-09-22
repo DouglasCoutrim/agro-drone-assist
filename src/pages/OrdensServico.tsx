@@ -1017,7 +1017,7 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
         body: {
           action: 'create_payment',
           customer: asaasId, billingType: "PIX", value: viewingOS.valor_orcamento, dueDate: dueDateStr,
-          description: `OS ${viewingOS.numero}`, externalReference: viewingOS.numero,
+          description: `OS ${viewingOS.numero}`, externalReference: viewingOS.id,
         },
       });
       if (error) throw error;

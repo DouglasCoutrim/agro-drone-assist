@@ -36,17 +36,23 @@ serve(async (req) => {
   }
 
   const userId = claimsData.claims.sub as string;
-  const userRole = claimsData.claims.role as string || 'consulta';
 
-  // A3: Role check - apenas admin/técnico podem sincronizar clientes
+  // Resolve a chave da ORGANIZAÇÃO (nunca a chave global da plataforma).
+  const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
+
+  // A3: Role check - apenas admin/técnico podem sincronizar clientes.
+  // O claim "role" do JWT é o role do Postgres (sempre "authenticated"),
+  // não o papel de app (admin/tecnico/consulta) — que só existe na tabela
+  // user_roles. Checar contra o JWT sempre bloqueava todo mundo.
+  const { data: roleRow } = await serviceClient
+    .from('user_roles').select('role').eq('user_id', userId).maybeSingle();
+  const userRole = roleRow?.role || 'consulta';
   if (!['admin', 'tecnico'].includes(userRole)) {
     return new Response(JSON.stringify({ error: 'Forbidden: insufficient permissions' }), {
       status: 403, headers: { ...corsHeadersRestricted, 'Content-Type': 'application/json' },
     });
   }
 
-  // Resolve a chave da ORGANIZAÇÃO (nunca a chave global da plataforma).
-  const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
   const { data: profile } = await serviceClient
     .from('profiles').select('organization_id').eq('id', userId).maybeSingle();
   const orgId = profile?.organization_id || null;
