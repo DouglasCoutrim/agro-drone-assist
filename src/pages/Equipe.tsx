@@ -7,8 +7,9 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Users, User, Shield, Loader2, Trash2, FileText, Package, DollarSign, UserPlus, Pencil, LayoutDashboard, Wrench, Settings, BookOpen, Bell, BarChart3, Navigation, CreditCard, ClipboardList, MapPin, Monitor, UserRound, Building2, LifeBuoy } from "lucide-react";
+import { Users, User, Shield, Loader2, Trash2, FileText, Package, DollarSign, UserPlus, Pencil, LayoutDashboard, Wrench, Settings, BookOpen, Bell, BarChart3, Navigation, CreditCard, ClipboardList, MapPin, Monitor, UserRound, Building2, LifeBuoy, Sparkles } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,6 +19,7 @@ import { useUsageLimits } from "@/hooks/useUsageLimits";
 import { UpgradePlanModal } from "@/components/UpgradePlanModal";
 import { useConfirm } from "@/hooks/useConfirm";
 import { CommissionEditor } from "@/components/commission/CommissionEditor";
+import type { UserPermissions } from "@/hooks/usePermissions";
 
 type Profile = Tables<"profiles">;
 
@@ -53,6 +55,16 @@ const ROLE_OPTIONS: Array<{ value: AppRole; label: string }> = [
   { value: 'tecnico', label: 'Técnico' },
   { value: 'consulta', label: 'Atendimento' },
 ];
+const PERMISSION_LABELS: Record<keyof UserPermissions, string> = {
+  acesso_dashboard: 'Dashboard', acesso_os: 'Ordens de Serviço', acesso_meu_painel: 'Meu Painel',
+  acesso_oficina_vivo: 'Oficina ao Vivo', acesso_clientes: 'Clientes', acesso_estoque: 'Estoque',
+  acesso_servicos: 'Serviços', acesso_financeiro: 'Financeiro', acesso_cobrancas: 'Cobranças',
+  acesso_orcamentos: 'Orçamentos', acesso_rotas: 'Rotas', acesso_relatorios: 'Relatórios',
+  acesso_equipe: 'Equipe', acesso_empresa: 'Empresa', acesso_configuracoes: 'Configurações',
+  acesso_checklist: 'Checklist de OS', acesso_notificacoes: 'Notificações', acesso_wiki: 'Central de Ajuda',
+  acesso_suporte: 'Suporte',
+};
+type AccessSuggestion = { roles: AppRole[]; permissions: (keyof UserPermissions)[]; justification: string };
 
 const getCreateMemberError = async (error: unknown) => {
   const fallback = error instanceof Error ? error.message : 'Não foi possível adicionar o membro';
@@ -79,10 +91,39 @@ export default function Equipe() {
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
-  const [newMember, setNewMember] = useState<{ nome: string; email: string; senha: string; roles: AppRole[] }>({ nome: "", email: "", senha: "", roles: ["consulta"] });
+  const [newMember, setNewMember] = useState<{ nome: string; email: string; senha: string; roles: AppRole[]; responsabilidades: string }>({ nome: "", email: "", senha: "", roles: ["consulta"], responsabilidades: "" });
+  const [addSuggestion, setAddSuggestion] = useState<AccessSuggestion | null>(null);
+  const [editSuggestion, setEditSuggestion] = useState<AccessSuggestion | null>(null);
+  const [suggesting, setSuggesting] = useState(false);
+  const [newPermissions, setNewPermissions] = useState<(keyof UserPermissions)[] | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editUser, setEditUser] = useState<UserWithRoleAndPerms | null>(null);
-  const [editForm, setEditForm] = useState({ nome: "", email: "" });
+  const [editForm, setEditForm] = useState({ nome: "", email: "", responsabilidades: "" });
+
+  const suggestAccess = async (responsabilidades: string, target: 'add' | 'edit') => {
+    if (responsabilidades.trim().length < 15) { toast.error('Descreva as responsabilidades com pelo menos 15 caracteres'); return; }
+    setSuggesting(true);
+    if (target === 'add') setAddSuggestion(null); else setEditSuggestion(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('suggest-team-access', { body: { responsabilidades: responsabilidades.trim() } });
+      if (error) throw new Error(await getCreateMemberError(error));
+      if (data?.error) throw new Error(data.error);
+      const suggestion = data as AccessSuggestion;
+      if (!Array.isArray(suggestion.roles) || !Array.isArray(suggestion.permissions)) throw new Error('Sugestão inválida');
+      if (target === 'add') setAddSuggestion(suggestion); else setEditSuggestion(suggestion);
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Não foi possível gerar a sugestão'); }
+    finally { setSuggesting(false); }
+  };
+
+  const suggestionPreview = (suggestion: AccessSuggestion, apply: () => void) => (
+    <div className="space-y-2 border border-border rounded-md p-3 text-sm" aria-live="polite">
+      <p className="font-semibold">Sugestão de acesso</p>
+      <p>{suggestion.justification}</p>
+      <p><span className="font-medium">Papéis:</span> {suggestion.roles.map(r => ROLE_OPTIONS.find(o => o.value === r)?.label).join(', ')}</p>
+      <p><span className="font-medium">Permissões:</span> {suggestion.permissions.map(p => PERMISSION_LABELS[p]).join(', ') || 'Nenhuma'}</p>
+      <Button size="sm" variant="secondary" onClick={apply}>Usar sugestão</Button>
+    </div>
+  );
 
   useEffect(() => { fetchUsers(); }, []);
 
@@ -201,6 +242,8 @@ export default function Equipe() {
           email,
           senha,
           roles: newMember.roles,
+          responsabilidades: newMember.responsabilidades.trim(),
+          ...(newPermissions ? { permissions: Object.fromEntries(Object.keys(PERMISSION_LABELS).map(key => [key, newPermissions.includes(key as keyof UserPermissions)])) } : {}),
         },
       });
 
@@ -209,7 +252,9 @@ export default function Equipe() {
 
       toast.success('Membro adicionado com sucesso! Ele já pode fazer login.');
       setAddDialogOpen(false);
-      setNewMember({ nome: "", email: "", senha: "", roles: ["consulta"] });
+      setNewMember({ nome: "", email: "", senha: "", roles: ["consulta"], responsabilidades: "" });
+      setNewPermissions(null);
+      setAddSuggestion(null);
       fetchUsers();
     } catch (error: unknown) {
       toast.error(await getCreateMemberError(error));
@@ -220,14 +265,15 @@ export default function Equipe() {
 
   const openEditDialog = (u: UserWithRoleAndPerms) => {
     setEditUser(u);
-    setEditForm({ nome: u.nome, email: u.email });
+    setEditForm({ nome: u.nome, email: u.email, responsabilidades: u.responsabilidades || "" });
+    setEditSuggestion(null);
     setEditDialogOpen(true);
   };
 
   const handleEditUser = async () => {
     if (!editUser || !editForm.nome.trim()) { toast.error('Nome é obrigatório'); return; }
     try {
-      const { error } = await supabase.from('profiles').update({ nome: editForm.nome }).eq('id', editUser.id);
+      const { error } = await supabase.from('profiles').update({ nome: editForm.nome, responsabilidades: editForm.responsabilidades.trim() }).eq('id', editUser.id);
       if (error) throw error;
       toast.success('Dados atualizados!');
       setEditDialogOpen(false);
@@ -299,6 +345,20 @@ export default function Equipe() {
                         </label>
                       ))}
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-responsibilities">Responsabilidades</Label>
+                    <Textarea id="new-responsibilities" maxLength={2000} value={newMember.responsabilidades} onChange={e => { setNewMember({ ...newMember, responsabilidades: e.target.value }); setAddSuggestion(null); }} placeholder="Ex.: atendimento ao cliente, diagnósticos e reparos" />
+                    <Button variant="outline" disabled={suggesting} onClick={() => suggestAccess(newMember.responsabilidades, 'add')}>
+                      {suggesting ? <Loader2 className="animate-spin" /> : <Sparkles />} Sugerir acessos
+                    </Button>
+                    {addSuggestion && suggestionPreview(addSuggestion, () => {
+                      setNewMember(current => ({ ...current, roles: addSuggestion.roles }));
+                      setNewPermissions(addSuggestion.permissions);
+                      setAddSuggestion(null);
+                      toast.success('Sugestão selecionada. Revise antes de adicionar.');
+                    })}
+                    {newPermissions && <p className="text-xs text-muted-foreground">Permissões selecionadas: {newPermissions.map(key => PERMISSION_LABELS[key]).join(', ') || 'Nenhuma'}</p>}
                   </div>
                   <Button className="w-full gradient-primary" onClick={handleAddMember} disabled={addLoading}>
                     {addLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
@@ -463,6 +523,29 @@ export default function Equipe() {
                 <Input value={editForm.email} disabled className="opacity-60" />
                 <p className="text-xs text-muted-foreground">O email não pode ser alterado</p>
               </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-responsibilities">Responsabilidades</Label>
+                  <Textarea id="edit-responsibilities" maxLength={2000} value={editForm.responsabilidades} onChange={e => { setEditForm({ ...editForm, responsabilidades: e.target.value }); setEditSuggestion(null); }} placeholder="Descreva as atividades do colaborador" />
+                  {isAdmin && <Button variant="outline" disabled={suggesting} onClick={() => suggestAccess(editForm.responsabilidades, 'edit')}>
+                    {suggesting ? <Loader2 className="animate-spin" /> : <Sparkles />} Sugerir acessos
+                  </Button>}
+                  {editSuggestion && editUser && suggestionPreview(editSuggestion, async () => {
+                    const proposal = editSuggestion;
+                    if (editUser.id === user?.id && !proposal.roles.includes('admin')) { toast.error('Você não pode remover seu acesso administrativo'); return; }
+                    setSuggesting(true);
+                    try {
+                      const { error: roleError } = await supabase.rpc('set_user_roles', { _user_id: editUser.id, _roles: proposal.roles });
+                      if (roleError) throw roleError;
+                      const permissions = Object.fromEntries(Object.keys(PERMISSION_LABELS).map(key => [key, proposal.permissions.includes(key as keyof UserPermissions)]));
+                      const { error: permissionError } = await supabase.from('user_permissions').upsert({ user_id: editUser.id, ...permissions }, { onConflict: 'user_id' });
+                      if (permissionError) throw permissionError;
+                      setEditSuggestion(null);
+                      await fetchUsers();
+                      toast.success('Acessos aplicados. Revise os papéis e as permissões.');
+                    } catch (error) { await fetchUsers(); toast.error('Não foi possível aplicar todos os acessos: ' + (error instanceof Error ? error.message : 'erro desconhecido')); }
+                    finally { setSuggesting(false); }
+                  })}
+                </div>
               <Button className="w-full gradient-primary" onClick={handleEditUser}>
                 <Pencil className="mr-2 h-4 w-4" />Salvar Alterações
               </Button>
