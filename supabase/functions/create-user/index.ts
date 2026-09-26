@@ -8,6 +8,14 @@ const CreateUserSchema = z.object({
   email: z.string().trim().email().max(255).transform((value) => value.toLowerCase()),
   senha: z.string().min(8).max(128),
   roles: z.array(z.enum(["admin", "tecnico", "consulta"])).min(1).max(3),
+  responsabilidades: z.string().trim().max(2000).optional(),
+  permissions: z.object({
+    acesso_dashboard: z.boolean(), acesso_os: z.boolean(), acesso_meu_painel: z.boolean(), acesso_oficina_vivo: z.boolean(),
+    acesso_clientes: z.boolean(), acesso_estoque: z.boolean(), acesso_servicos: z.boolean(), acesso_financeiro: z.boolean(),
+    acesso_cobrancas: z.boolean(), acesso_orcamentos: z.boolean(), acesso_rotas: z.boolean(), acesso_relatorios: z.boolean(),
+    acesso_equipe: z.boolean(), acesso_empresa: z.boolean(), acesso_configuracoes: z.boolean(), acesso_checklist: z.boolean(),
+    acesso_notificacoes: z.boolean(), acesso_wiki: z.boolean(), acesso_suporte: z.boolean(),
+  }).strict().optional(),
 });
 
 const jsonResponse = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
@@ -68,7 +76,7 @@ serve(async (req) => {
     if (!parsed.success) {
       return jsonResponse({ error: "Confira nome, e-mail, senha e função. A senha deve ter pelo menos 8 caracteres." }, 400);
     }
-    const { nome, email, senha, roles } = parsed.data;
+    const { nome, email, senha, roles, responsabilidades, permissions } = parsed.data;
 
     // Look up the caller's organization_id to scope the new member
     const { data: callerProfile, error: profileLookupError } = await adminClient
@@ -98,7 +106,7 @@ serve(async (req) => {
       // The handle_new_user trigger creates profile + default role ('consulta').
       const { error: profileError } = await adminClient
         .from("profiles")
-        .update({ organization_id: callerProfile.organization_id })
+        .update({ organization_id: callerProfile.organization_id, responsabilidades: responsabilidades ?? "" })
         .eq("id", newUserId);
       if (profileError) throw profileError;
 
@@ -116,7 +124,7 @@ serve(async (req) => {
 
       const { error: permissionsError } = await adminClient
         .from("user_permissions")
-        .upsert({ user_id: newUserId }, { onConflict: "user_id" });
+        .upsert({ user_id: newUserId, ...permissions }, { onConflict: "user_id" });
       if (permissionsError) throw permissionsError;
     } catch (setupError) {
       console.error("Failed to finish member setup", setupError);
