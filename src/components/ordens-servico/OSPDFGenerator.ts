@@ -25,7 +25,8 @@ export const generateOSPDF = (
   viewingOS: OrdemServico,
   itemsForPdf: any[],
   empresa: EmpresaConfig,
-  tecnicoNome?: string
+  tecnicoNome?: string,
+  checklistRevisaoItems?: Array<{ label: string; marcado: boolean; obrigatorio: boolean }>
 ) => {
   const fmtCur = (v: number | null | undefined) => formatCurrency(v || 0);
   const fmtDt = (d: string | null | undefined) => formatDate(d || "");
@@ -175,9 +176,27 @@ export const generateOSPDF = (
     </div>
   </div>
 
-  ${mobilityHTML}
-
-  ${checklistItems.length > 0 || os.condicao_visual ? `
+${mobilityHTML}
+ 
+   ${os.tipo_os === "revisao" && checklistRevisaoItems && checklistRevisaoItems.length > 0 ? `
+     <div class="section">
+       <div class="section-title">Checklist de Revisão</div>
+       <table style="${tableStyle}">
+         <colgroup><col style="width:70%"><col style="width:30%"></colgroup>
+         <thead><tr>
+           <th style="${thStyle}">Item</th>
+           <th style="${thStyle}text-align:center">Status</th>
+         </tr></thead>
+         <tbody>
+           ${checklistRevisaoItems.map(item => `<tr>
+             <td style="${tdStyle}">${item.label}${item.obrigatorio ? ' <span style="color:red">*</span>' : ''}</td>
+             <td style="${tdStyle}text-align:center;font-weight:600;color:${item.marcado ? '#16a34a' : '#dc2626'}">${item.marcado ? '✓ Marcado' : '✗ Desmarcado'}</td>
+           </tr>`).join("")}
+         </tbody>
+       </table>
+     </div>` : ""}
+ 
+   ${checklistItems.length > 0 || os.condicao_visual ? `
     <div class="section">
       <div class="section-title">Checklist e Condição</div>
       <div class="grid">

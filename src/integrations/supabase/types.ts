@@ -822,12 +822,14 @@ export type Database = {
           solucao: string | null
           status: Database["public"]["Enums"]["status_os"]
           tecnico_id: string | null
-          tipo_equipamento: Database["public"]["Enums"]["tipo_equipamento"]
-          updated_at: string
-          valor_final: number | null
-          valor_orcamento: number | null
-        }
-        Insert: {
+           tipo_equipamento: Database["public"]["Enums"]["tipo_equipamento"]
+           tipo_os: Database["public"]["Enums"]["tipo_os"]
+           checklist_equipamento_tipo_id: string | null
+           updated_at: string
+           valor_final: number | null
+           valor_orcamento: number | null
+         }
+         Insert: {
           checklist_bateria?: boolean | null
           checklist_cabos?: boolean | null
           checklist_carregador?: boolean | null
@@ -862,13 +864,15 @@ export type Database = {
           prioridade?: string
           solucao?: string | null
           status?: Database["public"]["Enums"]["status_os"]
-          tecnico_id?: string | null
-          tipo_equipamento: Database["public"]["Enums"]["tipo_equipamento"]
-          updated_at?: string
-          valor_final?: number | null
-          valor_orcamento?: number | null
-        }
-        Update: {
+           tecnico_id?: string | null
+           tipo_equipamento: Database["public"]["Enums"]["tipo_equipamento"]
+           tipo_os?: Database["public"]["Enums"]["tipo_os"]
+           checklist_equipamento_tipo_id?: string | null
+           updated_at?: string
+           valor_final?: number | null
+           valor_orcamento?: number | null
+         }
+         Update: {
           checklist_bateria?: boolean | null
           checklist_cabos?: boolean | null
           checklist_carregador?: boolean | null
@@ -903,13 +907,15 @@ export type Database = {
           prioridade?: string
           solucao?: string | null
           status?: Database["public"]["Enums"]["status_os"]
-          tecnico_id?: string | null
-          tipo_equipamento?: Database["public"]["Enums"]["tipo_equipamento"]
-          updated_at?: string
-          valor_final?: number | null
-          valor_orcamento?: number | null
-        }
-        Relationships: [
+           tecnico_id?: string | null
+           tipo_equipamento?: Database["public"]["Enums"]["tipo_equipamento"]
+           tipo_os?: Database["public"]["Enums"]["tipo_os"]
+           checklist_equipamento_tipo_id?: string | null
+           updated_at?: string
+           valor_final?: number | null
+           valor_orcamento?: number | null
+         }
+         Relationships: [
           {
             foreignKeyName: "ordens_servico_cliente_id_fkey"
             columns: ["cliente_id"]
@@ -2072,27 +2078,29 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "tecnico" | "consulta"
-      status_os:
-        | "aberta"
-        | "em_andamento"
-        | "aguardando_peca"
-        | "concluida"
-        | "entregue"
-        | "cancelada"
-        | "recebido"
-        | "aguardando_diagnostico"
-        | "aguardando_aprovacao"
-        | "aprovado"
-        | "em_reparo"
-        | "em_testes"
-        | "pronto_retirada"
-      tipo_equipamento:
+       status_os:
+         | "aberta"
+         | "em_andamento"
+         | "aguardando_peca"
+         | "concluida"
+         | "entregue"
+         | "cancelada"
+         | "recebido"
+         | "aguardando_diagnostico"
+         | "aguardando_aprovacao"
+         | "aprovado"
+         | "em_reparo"
+         | "em_testes"
+         | "pronto_retirada"
+         | "finalizada"
+       tipo_equipamento:
         | "drone_agricola"
         | "drone_convencional"
         | "controle"
         | "bateria"
         | "outro"
-      tipo_transacao: "receita" | "despesa" | "salario" | "comissao"
+       tipo_os: "normal" | "revisao"
+       tipo_transacao: "receita" | "despesa" | "salario" | "comissao"
     }
     CompositeTypes: {
       [_ in never]: never

@@ -278,6 +278,8 @@ export default function OrdensServico() {
     ciclos_carga_entrada: 0,
     ciclos_carga_saida: 0,
     deslocamento: false,
+    tipo_os: "normal" as Enums<"tipo_os">,
+    checklist_equipamento_tipo_id: "",
   });
 
   const [mobilityData, setMobilityData] = useState({
@@ -459,7 +461,7 @@ export default function OrdensServico() {
         throw new Error("Sua conta não está vinculada a uma empresa. Contate o administrador.");
       }
 
-      const { ciclos_carga_entrada, ciclos_carga_saida, deslocamento, ...restForm } = formData;
+      const { ciclos_carga_entrada, ciclos_carga_saida, deslocamento, tipo_os, checklist_equipamento_tipo_id, ...restForm } = formData;
       let observacoesWithMobility = (restForm.observacoes || "")
         .replace(/\[MOBILIDADE:[\s\S]*?\]/g, "")
         .replace(/\[CUSTOM:[^\]]*\]/g, "")
@@ -515,8 +517,10 @@ export default function OrdensServico() {
         // Campos UUID nunca podem ir como string vazia (erro 22P02 no Postgres)
         tecnico_id: formData.tecnico_id || (editingOS ? (editingOS as any).tecnico_id || user.id : user.id),
         ciclos_carga_entrada: isBateria ? ciclos_carga_entrada || null : null,
-        ciclos_carga_saida: isBateria ? ciclos_carga_saida || null : null,
-      };
+         ciclos_carga_saida: isBateria ? ciclos_carga_saida || null : null,
+         tipo_os: tipo_os || "normal",
+         checklist_equipamento_tipo_id: tipo_os === "revisao" ? (checklist_equipamento_tipo_id || null) : null,
+       };
 
       // Blindagem final: qualquer string vazia em campo não-textual vira null
       ["cliente_id", "tecnico_id", "data_previsao"].forEach((k) => {
@@ -663,10 +667,12 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
       checklist_outros: (os as any).checklist_outros || false,
       condicao_visual: (os as any).condicao_visual || "",
       ciclos_carga_entrada: (os as any).ciclos_carga_entrada || 0,
-      ciclos_carga_saida: (os as any).ciclos_carga_saida || 0,
-      tecnico_id: os.tecnico_id || "",
-      deslocamento: (os as any).deslocamento || false,
-    });
+       ciclos_carga_saida: (os as any).ciclos_carga_saida || 0,
+       tecnico_id: os.tecnico_id || "",
+       deslocamento: (os as any).deslocamento || false,
+       tipo_os: (os as any).tipo_os || "normal",
+       checklist_equipamento_tipo_id: (os as any).checklist_equipamento_tipo_id || "",
+     });
     setOsItems(await fetchOSItems(os.id, os.organization_id));
     setConfigCheckbox(await loadChecklistResponses(os.id, os.organization_id));
     setWizardStep(0);
@@ -751,6 +757,23 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
   };
 
   const handleStatusChange = async (osId: string, newStatus: string): Promise<boolean> => {
+    const os = ordens.find(o => o.id === osId);
+    const isReview = (os as any)?.tipo_os === "revisao";
+
+    // Bloqueio para Revisão: não permitir "entregue" ou "finalizada" sem checklist completo
+    if (isReview && (newStatus === "entregue" || newStatus === "finalizada")) {
+      try {
+        const pending = await getPendingRequiredChecklist(osId);
+        if (pending.length > 0) {
+          toast.error(`Revisão incompleta: ${pending.slice(0, 3).join("; ")}${pending.length > 3 ? "…" : ""}. Marque todos os itens antes.`);
+          return false;
+        }
+      } catch (err: any) {
+        toast.error(getErrorMessage(err));
+        return false;
+      }
+    }
+
     if (LOCK_CLOSED_STATUSES.has(newStatus)) {
       try {
         const pending = await getPendingRequiredChecklist(osId);
@@ -763,29 +786,15 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
         return false;
       }
     }
-    // Intercept "entregue" to require payment confirmation
+    // Sem pop-up de pagamento ao ir para "entregue" - apenas muda status
     if (newStatus === "entregue") {
-      const os = ordens.find(o => o.id === osId);
-      if (os) {
-        // Check if a financeiro entry already exists for this OS
-        const { data: existing } = await supabase
-          .from("financeiro")
-          .select("id")
-          .eq("ordem_servico_id", osId)
-          .limit(1);
-        if (existing && existing.length > 0) {
-          // Already recorded; just advance status
-          try {
-            await applyStatusUpdate(osId, newStatus);
-            toast.success(`Status atualizado para "${getStatusLabel(newStatus)}"`);
-            fetchData();
-            return true;
-          } catch (err: any) {
-            toast.error(getErrorMessage(err));
-            return false;
-          }
-        }
-        await openPaymentForOS(os, newStatus);
+      try {
+        await applyStatusUpdate(osId, newStatus);
+        toast.success(`Status atualizado para "${getStatusLabel(newStatus)}"`);
+        fetchData();
+        return true;
+      } catch (err: any) {
+        toast.error(getErrorMessage(err));
         return false;
       }
     }
@@ -1547,13 +1556,39 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
                       <Button type="button" variant="ghost" size="sm" onClick={() => setCalcResult(null)} className="ml-auto h-6">Remover</Button>
                     </div>
                   )}
-                  <Separator />
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5"><Label className="text-xs">Desconto (R$)</Label><NumberInput step="0.01" min="0" value={formData.desconto} onChange={(v) => setFormData({ ...formData, desconto: v })} className="h-9" placeholder="0,00" /></div>
-                    <div className="space-y-1.5"><Label className="text-xs">Total Geral da OS</Label><Input type="text" value={formatCurrency(totalOrcamento)} readOnly disabled className="h-9 font-bold text-primary" /></div>
-                  </div>
-                </CardContent>
-              </Card>
+                   <Separator />
+                   <p className="text-xs font-semibold text-muted-foreground uppercase">Tipo de Ordem de Serviço</p>
+                   <div className="space-y-1.5">
+                     <Label className="text-xs">Tipo de OS *</Label>
+                     <Select value={formData.tipo_os} onValueChange={(v) => setFormData({ ...formData, tipo_os: v as Enums<"tipo_os"> })}>
+                       <SelectTrigger className="h-9"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                       <SelectContent>
+                         <SelectItem value="normal">Serviço Normal</SelectItem>
+                         <SelectItem value="revisao">Revisão</SelectItem>
+                       </SelectContent>
+                     </Select>
+                   </div>
+                   {formData.tipo_os === "revisao" && (
+                     <div className="space-y-1.5">
+                       <Label className="text-xs">Equipamento para Check-list *</Label>
+                       <Select value={formData.checklist_equipamento_tipo_id} onValueChange={(v) => setFormData({ ...formData, checklist_equipamento_tipo_id: v })}>
+                         <SelectTrigger className="h-9"><SelectValue placeholder="Selecionar equipamento..." /></SelectTrigger>
+                         <SelectContent>
+                           {(configTipos || []).filter(t => t.ativo).map(t => (
+                             <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+                           ))}
+                         </SelectContent>
+                       </Select>
+                     </div>
+                   )}
+                   
+                   <Separator />
+                   <div className="grid grid-cols-2 gap-3">
+                     <div className="space-y-1.5"><Label className="text-xs">Desconto (R$)</Label><NumberInput step="0.01" min="0" value={formData.desconto} onChange={(v) => setFormData({ ...formData, desconto: v })} className="h-9" placeholder="0,00" /></div>
+                     <div className="space-y-1.5"><Label className="text-xs">Total Geral da OS</Label><Input type="text" value={formatCurrency(totalOrcamento)} readOnly disabled className="h-9 font-bold text-primary" /></div>
+                   </div>
+                 </CardContent>
+               </Card>
             </form>
 
             {/* Sticky bottom save bar */}
@@ -1787,8 +1822,15 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
                         <div><p className="text-[10px] text-muted-foreground">Odômetro</p><p className="text-sm">{mMatch[4]}km</p></div>
                         <div><p className="text-[10px] text-muted-foreground">Chave</p><p className="text-sm">{mMatch[5]}</p></div>
                       </div>{mMatch[7] !== "Nenhum" && <div className="mt-2 flex flex-wrap gap-1">{mMatch[7].split(",").map(i => <Badge key={i} variant="secondary" className="text-[10px]">{i}</Badge>)}</div>}</div></>)}
-                      {viewConfigChecklist.length > 0 && (<><Separator /><div>
-                        <h3 className="text-xs font-semibold text-primary uppercase mb-2">Checklist de Revisão</h3>
+                       <Separator />
+                       <div>
+                         <h3 className="text-xs font-semibold text-primary uppercase mb-2">Tipo de Ordem de Serviço</h3>
+                         <div className="space-y-2">
+                           <div><p className="text-[10px] text-muted-foreground">Tipo</p><p className="text-sm font-medium">{(viewingOS as any).tipo_os === "revisao" ? "Revisão" : "Serviço Normal"}</p></div>
+                         </div>
+                       </div>
+                       {viewConfigChecklist.length > 0 && (<><Separator /><div>
+                         <h3 className="text-xs font-semibold text-primary uppercase mb-2">Checklist de Revisão</h3>
                         <div className="space-y-1.5">
                           {viewConfigChecklist.map((c, i) => (
                             <div key={i} className="flex items-center justify-between gap-2 rounded-md border border-border/50 bg-muted/30 px-3 py-2">

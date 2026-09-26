@@ -10,6 +10,7 @@ const STATUS_FLOW = [
   { key: "em_testes", label: "Testes" },
   { key: "pronto_retirada", label: "Pronto" },
   { key: "entregue", label: "Entregue" },
+  { key: "finalizada", label: "Finalizada" },
 ];
 
 // Legacy mapping
