@@ -1375,6 +1375,7 @@ export type Database = {
           organization_id: string | null
           product_commission_type: string
           product_commission_value: number
+          responsabilidades: string
           service_commission_type: string
           service_commission_value: number
           telefone: string | null
@@ -1392,6 +1393,7 @@ export type Database = {
           organization_id?: string | null
           product_commission_type?: string
           product_commission_value?: number
+          responsabilidades?: string
           service_commission_type?: string
           service_commission_value?: number
           telefone?: string | null
@@ -1409,6 +1411,7 @@ export type Database = {
           organization_id?: string | null
           product_commission_type?: string
           product_commission_value?: number
+          responsabilidades?: string
           service_commission_type?: string
           service_commission_value?: number
           telefone?: string | null
