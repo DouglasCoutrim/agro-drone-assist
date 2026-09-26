@@ -9,6 +9,9 @@ CREATE TYPE public.tipo_os AS ENUM ('normal', 'revisao');
 -- First, create a new enum with all values
 CREATE TYPE public.status_os_new AS ENUM ('aberta', 'em_andamento', 'aguardando_peca', 'concluida', 'entregue', 'cancelada', 'recebido', 'aguardando_diagnostico', 'aguardando_aprovacao', 'aprovado', 'em_reparo', 'em_testes', 'pronto_retirada', 'finalizada');
 
+-- Drop default that references old enum
+ALTER TABLE public.ordens_servico ALTER COLUMN status DROP DEFAULT;
+
 -- Alter column to use new type
 ALTER TABLE public.ordens_servico 
   ALTER COLUMN status TYPE public.status_os_new USING status::text::public.status_os_new;
@@ -18,6 +21,9 @@ DROP TYPE public.status_os;
 
 -- Rename new enum to original name
 ALTER TYPE public.status_os_new RENAME TO status_os;
+
+-- Re-add default with new enum
+ALTER TABLE public.ordens_servico ALTER COLUMN status SET DEFAULT 'recebido'::status_os;
 
 -- 3. Add tipo_os column to ordens_servico
 ALTER TABLE public.ordens_servico
