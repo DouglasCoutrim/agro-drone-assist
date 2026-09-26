@@ -121,7 +121,7 @@ export default function Equipe() {
       <p>{suggestion.justification}</p>
       <p><span className="font-medium">Papéis:</span> {suggestion.roles.map(r => ROLE_OPTIONS.find(o => o.value === r)?.label).join(', ')}</p>
       <p><span className="font-medium">Permissões:</span> {suggestion.permissions.map(p => PERMISSION_LABELS[p]).join(', ') || 'Nenhuma'}</p>
-      <Button size="sm" variant="secondary" onClick={apply}>Usar sugestão</Button>
+       <Button size="sm" variant="secondary" disabled={suggesting} onClick={apply}>Usar sugestão</Button>
     </div>
   );
 
@@ -348,7 +348,7 @@ export default function Equipe() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="new-responsibilities">Responsabilidades</Label>
-                    <Textarea id="new-responsibilities" maxLength={2000} value={newMember.responsabilidades} onChange={e => { setNewMember({ ...newMember, responsabilidades: e.target.value }); setAddSuggestion(null); }} placeholder="Ex.: atendimento ao cliente, diagnósticos e reparos" />
+                     <Textarea id="new-responsibilities" maxLength={2000} value={newMember.responsabilidades} onChange={e => { setNewMember({ ...newMember, responsabilidades: e.target.value }); setAddSuggestion(null); setNewPermissions(null); }} placeholder="Ex.: atendimento ao cliente, diagnósticos e reparos" />
                     <Button variant="outline" disabled={suggesting} onClick={() => suggestAccess(newMember.responsabilidades, 'add')}>
                       {suggesting ? <Loader2 className="animate-spin" /> : <Sparkles />} Sugerir acessos
                     </Button>
