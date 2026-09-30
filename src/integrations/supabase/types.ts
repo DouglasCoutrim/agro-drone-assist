@@ -1120,6 +1120,54 @@ export type Database = {
             referencedRelation: "ordens_servico"
             referencedColumns: ["id"]
           },
+        ]}
+      }
+      os_tecnicos_ajudantes: {
+        Row: {
+          id: string
+          ordem_servico_id: string
+          tecnico_id: string
+          tipo_comissao: 'fixo' | 'porcentagem'
+          valor_comissao: number
+          porcentagem_comissao: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          ordem_servico_id: string
+          tecnico_id: string
+          tipo_comissao: 'fixo' | 'porcentagem'
+          valor_comissao?: number
+          porcentagem_comissao?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          ordem_servico_id?: string
+          tecnico_id?: string
+          tipo_comissao?: 'fixo' | 'porcentagem'
+          valor_comissao?: number
+          porcentagem_comissao?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_tecnicos_ajudantes_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_tecnicos_ajudantes_tecnico_id_fkey"
+            columns: ["tecnico_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       os_checklist_itens: {

@@ -26,6 +26,7 @@ import { SmartSelect, SmartSelectOption } from "@/components/ui/smart-select";
 import { StatusPipeline, getNextStatus, getStatusLabel } from "@/components/os/StatusPipeline";
 import { EmptyState } from "@/components/os/EmptyState";
 import { OSItemsSection, OSItem } from "@/components/os/OSItemsSection";
+import { OSAssistantsSection, OSAssistant } from "@/components/os/OSAssistantsSection";
 import { formatCurrency, formatDate, getErrorMessage } from "@/lib/formatters";
 import { whatsappTemplates, openWhatsApp, WhatsAppOS } from "@/lib/whatsapp-templates";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
@@ -134,6 +135,9 @@ export default function OrdensServico() {
   const [osItems, setOsItems] = useState<OSItem[]>([]);
   const [viewOsItems, setViewOsItems] = useState<OSItem[]>([]);
   const [viewOsItemsLoading, setViewOsItemsLoading] = useState(false);
+  const [osAssistants, setOsAssistants] = useState<OSAssistant[]>([]);
+  const [viewOsAssistants, setViewOsAssistants] = useState<OSAssistant[]>([]);
+  const [viewOsAssistantsLoading, setViewOsAssistantsLoading] = useState(false);
   const [paymentDialog, setPaymentDialog] = useState<{
     open: boolean;
     osId: string | null;
@@ -293,6 +297,32 @@ export default function OrdensServico() {
     }
 
     return mapDbItemsToOSItems(data as ItemOSRow[]);
+  }, [organization?.id, isPlatformAdmin]);
+
+  const fetchOSAssistants = useCallback(async (osId: string, osOrgId?: string | null): Promise<OSAssistant[]> => {
+    let query = supabase
+      .from("os_tecnicos_ajudantes")
+      .select("*, tecnico:profiles!os_tecnicos_ajudantes_tecnico_id_fkey(nome)")
+      .eq("ordem_servico_id", osId)
+      .order("created_at", { ascending: true });
+
+    const orgId = osOrgId || organization?.id;
+    if (orgId && !isPlatformAdmin) query = query.eq("organization_id", orgId);
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("Erro ao carregar ajudantes da OS:", error);
+      return [];
+    }
+
+    return (data || []).map((a: any) => ({
+      id: a.id,
+      tecnico_id: a.tecnico_id,
+      tecnico_nome: a.tecnico?.nome,
+      tipo_comissao: a.tipo_comissao,
+      valor_comissao: Number(a.valor_comissao) || 0,
+      porcentagem_comissao: Number(a.porcentagem_comissao) || 0,
+    }));
   }, [organization?.id, isPlatformAdmin]);
 
   const getPendingRequiredChecklist = useCallback(async (osId: string, osOrgId?: string | null): Promise<string[]> => {
@@ -493,6 +523,30 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
           if (insChecklistErr) throw insChecklistErr;
         }
 
+        // Save OS assistants
+        const { error: delAssistantsErr } = await supabase
+          .from("os_tecnicos_ajudantes")
+          .delete()
+          .eq("ordem_servico_id", osId);
+        if (delAssistantsErr) throw delAssistantsErr;
+        if (osAssistants.length > 0) {
+          const assistantsToInsert = osAssistants.map(a => ({
+            ordem_servico_id: osId,
+            tecnico_id: a.tecnico_id,
+            tipo_comissao: a.tipo_comissao,
+            valor_comissao: a.tipo_comissao === "fixo" ? a.valor_comissao : 0,
+            porcentagem_comissao: a.tipo_comissao === "porcentagem" ? a.porcentagem_comissao : 0,
+            organization_id: editingOS?.organization_id || organizationId,
+          }));
+          const { error: assistantsError } = await supabase
+            .from("os_tecnicos_ajudantes")
+            .insert(assistantsToInsert);
+          if (assistantsError) {
+            console.error("Erro ao salvar ajudantes:", assistantsError);
+            throw new Error(`A OS foi salva, mas os ajudantes não: ${assistantsError.message}`);
+          }
+        }
+
       }
       // Calcula a comissão do técnico vinculado (config vigente no perfil)
       try {
@@ -575,6 +629,7 @@ tecnico_id: os.tecnico_id || "",
       });
     setOsItems(await fetchOSItems(os.id, os.organization_id));
     setConfigCheckbox(await loadChecklistResponses(os.id, os.organization_id));
+    setOsAssistants(await fetchOSAssistants(os.id, os.organization_id));
     setWizardStep(0);
     setDialogOpen(true);
   };
@@ -583,11 +638,17 @@ tecnico_id: os.tecnico_id || "",
     setViewingOS(os);
     setViewOsItems([]);
     setViewOsItemsLoading(true);
+    setViewOsAssistants([]);
+    setViewOsAssistantsLoading(true);
     setViewConfigChecklist([]);
     setViewDialogOpen(true);
     try {
-      const items = await fetchOSItems(os.id, os.organization_id);
+      const [items, assistants] = await Promise.all([
+        fetchOSItems(os.id, os.organization_id),
+        fetchOSAssistants(os.id, os.organization_id),
+      ]);
       setViewOsItems(items);
+      setViewOsAssistants(assistants);
       const checklistClient = supabase as any;
       let checklistQuery = checklistClient
         .from("os_checklist_itens")
@@ -605,6 +666,7 @@ tecnico_id: os.tecnico_id || "",
       }
     } finally {
       setViewOsItemsLoading(false);
+      setViewOsAssistantsLoading(false);
     }
   };
 
@@ -972,6 +1034,7 @@ tecnico_id: os.tecnico_id || "",
     setEditingOS(null);
     setWizardStep(0);
     setOsItems([]);
+    setOsAssistants([]);
   };
 
   const requestCloseOSForm = async () => {
@@ -1433,6 +1496,22 @@ tecnico_id: os.tecnico_id || "",
                 </CardContent>
               </Card>
 
+              {/* Técnicos Ajudantes */}
+              <Card>
+                <CardHeader className="pb-3"><CardTitle className="text-sm">Técnicos Ajudantes</CardTitle></CardHeader>
+                <CardContent>
+                  <OSAssistantsSection
+                    assistants={osAssistants}
+                    onChange={setOsAssistants}
+                    tecnicos={tecnicos}
+                    organizationId={organization?.id || null}
+                    disabled={!canEdit}
+                    isMainTecnico={formData.tecnico_id === user?.id}
+                    canManage={canEdit && (isAdmin || formData.tecnico_id === user?.id)}
+                  />
+                </CardContent>
+              </Card>
+
               {/* Observações + Resumo financeiro */}
 <Card>
                 <CardHeader className="pb-3"><CardTitle className="text-sm">4. Observações e Resumo</CardTitle></CardHeader>
@@ -1634,6 +1713,22 @@ tecnico_id: os.tecnico_id || "",
                         <div className="rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
                           Nenhum item, peça ou serviço encontrado para esta OS.
                         </div>
+                      )}
+                      <Separator />
+
+                      {/* Técnicos Ajudantes */}
+                      {viewOsAssistantsLoading ? (
+                        <div className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando ajudantes...
+                        </div>
+                      ) : (
+                        <OSAssistantsSection
+                          assistants={viewOsAssistants}
+                          onChange={() => {}}
+                          tecnicos={tecnicos}
+                          disabled={true}
+                          canManage={false}
+                        />
                       )}
                       <Separator />
                       <div className="grid grid-cols-2 gap-3">
