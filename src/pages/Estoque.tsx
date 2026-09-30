@@ -249,17 +249,17 @@ export default function Estoque() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Código *</Label>
-                      <Input value={formData.codigo} onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} required className="bg-muted" readOnly={!editingItem} />
-                      {!editingItem && <p className="text-xs text-muted-foreground">Gerado automaticamente</p>}
+                      <Input value={formData.codigo} onChange={(e) => setFormData(prev => ({ ...prev, codigo: e.target.value }))} required />
+                      {!editingItem && <p className="text-xs text-muted-foreground">Gerado automaticamente (editável)</p>}
                     </div>
                     <div className="space-y-2">
                       <Label>Categoria *</Label>
                       <SearchableInput
                         value={formData.categoria}
-                        onChange={(v) => setFormData({ ...formData, categoria: v })}
+                        onChange={(v) => setFormData(prev => ({ ...prev, categoria: v }))}
                         suggestions={categorias}
                         placeholder="Digite ou selecione..."
-                        onAddNew={(v) => setFormData({ ...formData, categoria: v })}
+                        onAddNew={(v) => setFormData(prev => ({ ...prev, categoria: v }))}
                         addNewLabel="Criar categoria"
                         required
                       />
@@ -268,7 +268,7 @@ export default function Estoque() {
                       <Label>Descrição *</Label>
                       <CatalogAutocomplete
                         value={formData.descricao}
-                        onChange={(v) => setFormData({ ...formData, descricao: v })}
+                        onChange={(v) => setFormData(prev => ({ ...prev, descricao: v }))}
                         onSelect={(item) => setFormData(f => ({
                           ...f,
                           descricao: item.descricao,
@@ -281,8 +281,8 @@ export default function Estoque() {
                         currentCategory={formData.categoria}
                       />
                     </div>
-                    <div className="space-y-2"><Label>Quantidade</Label><NumberInput value={formData.quantidade} onChange={(v) => setFormData({ ...formData, quantidade: v })} placeholder="0" /></div>
-                    <div className="space-y-2"><Label>Estoque Mínimo</Label><NumberInput value={formData.estoque_minimo} onChange={(v) => setFormData({ ...formData, estoque_minimo: v })} placeholder="0" /></div>
+                    <div className="space-y-2"><Label>Quantidade</Label><NumberInput value={formData.quantidade} onChange={(v) => setFormData(prev => ({ ...prev, quantidade: v }))} placeholder="0" /></div>
+                    <div className="space-y-2"><Label>Estoque Mínimo</Label><NumberInput value={formData.estoque_minimo} onChange={(v) => setFormData(prev => ({ ...prev, estoque_minimo: v }))} placeholder="0" /></div>
                     <div className="space-y-2">
                       <Label>Custo Unitário (R$)</Label>
                       <NumberInput step="0.01" value={formData.custo_unitario}
@@ -297,14 +297,14 @@ export default function Estoque() {
                       <Label>Fornecedor</Label>
                       <SearchableInput
                         value={formData.fornecedor}
-                        onChange={(v) => setFormData({ ...formData, fornecedor: v })}
+                        onChange={(v) => setFormData(prev => ({ ...prev, fornecedor: v }))}
                         suggestions={fornecedores}
                         placeholder="Digite ou selecione..."
-                        onAddNew={(v) => setFormData({ ...formData, fornecedor: v })}
+                        onAddNew={(v) => setFormData(prev => ({ ...prev, fornecedor: v }))}
                         addNewLabel="Adicionar fornecedor"
                       />
                     </div>
-                    <div className="space-y-2"><Label>Localização</Label><Input value={formData.localizacao} onChange={(e) => setFormData({ ...formData, localizacao: e.target.value })} placeholder="Ex: Prateleira A1" /></div>
+                    <div className="space-y-2"><Label>Localização</Label><Input value={formData.localizacao} onChange={(e) => setFormData(prev => ({ ...prev, localizacao: e.target.value }))} placeholder="Ex: Prateleira A1" /></div>
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
