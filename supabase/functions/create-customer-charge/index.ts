@@ -1,0 +1,183 @@
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const corsHeadersRestricted = {
+  'Access-Control-Allow-Origin': 'https://iynljexyjhbkfxsurddn.supabase.co',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) return json({ error: 'Unauthorized' }, 401);
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claims } = await supabase.auth.getClaims(token);
+    if (!claims?.claims) return json({ error: 'Unauthorized' }, 401);
+    const userId = claims.claims.sub as string;
+
+    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+    // A3: Role check - apenas admin/técnico podem gerar cobrança.
+    // O claim "role" do JWT é o role do Postgres (sempre "authenticated"),
+    // não o papel de app (admin/tecnico/consulta) — que só existe na tabela
+    // user_roles. Checar contra o JWT sempre bloqueava todo mundo.
+    const { data: roleRows } = await admin
+      .from('user_roles').select('role').eq('user_id', userId).in('role', ['admin', 'tecnico']);
+    if (!roleRows?.length) {
+      return json({ error: 'Forbidden: insufficient permissions' }, 403);
+    }
+
+    const { cliente_id, valor, descricao, ordem_servico_id, orcamento_id } = await req.json();
+    if (!valor || valor <= 0) return json({ error: 'Valor inválido' }, 400);
+
+    const { data: profile } = await admin.from('profiles').select('organization_id').eq('id', userId).maybeSingle();
+    if (!profile?.organization_id) return json({ error: 'Sem organização' }, 400);
+
+    // A3: Validar que o cliente_id pertence à organização do usuário
+    if (cliente_id) {
+      const { data: cliente } = await admin.from('clientes').select('organization_id').eq('id', cliente_id).maybeSingle();
+      if (!cliente || cliente.organization_id !== profile.organization_id) {
+        return json({ error: 'Cliente não pertence à sua organização' }, 400);
+      }
+    }
+
+    const { data: cfg } = await admin
+      .from('empresa_config')
+      .select('gateway_clientes, gateway_clientes_credentials')
+      .eq('organization_id', profile.organization_id)
+      .maybeSingle();
+
+    if (!cfg || !cfg.gateway_clientes || cfg.gateway_clientes === 'none') {
+      return json({ error: 'Gateway não configurado. Vá em Configurações → Recebimento.' }, 400);
+    }
+
+    // PIX Manual: não faz chamadas externas
+    if (cfg.gateway_clientes === 'pix_manual') {
+      const c = (cfg.gateway_clientes_credentials as any) || {};
+      if (!c.pix_key_value) return json({ error: 'Chave PIX não configurada' }, 400);
+      return json({
+        pix_manual: true,
+        pix_key_type: c.pix_key_type,
+        pix_key_value: c.pix_key_value,
+        pix_receiver_name: c.pix_receiver_name,
+        valor,
+        descricao: descricao || 'Pagamento',
+      });
+    }
+
+    let cliente: any = null;
+    if (cliente_id) {
+      const { data } = await admin.from('clientes').select('*').eq('id', cliente_id).maybeSingle();
+      cliente = data;
+    }
+
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 3);
+    const dueISO = dueDate.toISOString().slice(0, 10);
+
+    if (cfg.gateway_clientes === 'asaas') {
+      const credsAsaas = (cfg.gateway_clientes_credentials as any) || {};
+      const apiKey = credsAsaas.api_key;
+      const asaasBase = credsAsaas.asaas_environment === 'sandbox'
+        ? 'https://api-sandbox.asaas.com/v3'
+        : 'https://api.asaas.com/v3';
+      if (!apiKey) return json({ error: 'API Key Asaas ausente' }, 400);
+
+      let custId: string | null = null;
+      if (cliente?.email) {
+        const found = await fetch(`${asaasBase}/customers?email=${encodeURIComponent(cliente.email)}`, {
+          headers: { 'access_token': apiKey },
+        }).then(r => r.json());
+        custId = found?.data?.[0]?.id || null;
+      }
+      if (!custId) {
+        const cust = await fetch(`${asaasBase}/customers`, {
+          method: 'POST',
+          headers: { 'access_token': apiKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: cliente?.nome || 'Cliente',
+            email: cliente?.email,
+            mobilePhone: cliente?.telefone,
+            cpfCnpj: cliente?.cpf_cnpj,
+          }),
+        }).then(r => r.json());
+        custId = cust.id;
+      }
+
+      const charge = await fetch(`${asaasBase}/payments`, {
+        method: 'POST',
+        headers: { 'access_token': apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer: custId,
+          billingType: 'UNDEFINED',
+          value: valor,
+          dueDate: dueISO,
+          description: descricao || 'Pagamento',
+          externalReference: ordem_servico_id || orcamento_id,
+        }),
+      }).then(r => r.json());
+
+      if (charge.errors) return json({ error: charge.errors[0]?.description }, 400);
+
+      let pix: any = {};
+      try {
+        pix = await fetch(`${asaasBase}/payments/${charge.id}/pixQrCode`, {
+          headers: { 'access_token': apiKey },
+        }).then(r => r.json());
+      } catch (_) {}
+
+      return json({
+        payment_url: charge.invoiceUrl,
+        bank_slip_url: charge.bankSlipUrl,
+        pix_payload: pix.payload,
+        pix_qr_image: pix.encodedImage,
+      });
+    }
+
+    if (cfg.gateway_clientes === 'mercadopago') {
+      const accessToken = (cfg.gateway_clientes_credentials as any)?.token;
+      if (!accessToken) return json({ error: 'Access Token MP ausente' }, 400);
+
+      const pref = await fetch('https://api.mercadopago.com/checkout/preferences', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: [{ title: descricao || 'Pagamento', quantity: 1, unit_price: Number(valor), currency_id: 'BRL' }],
+          payer: cliente?.email ? { email: cliente.email } : undefined,
+          external_reference: ordem_servico_id || orcamento_id,
+        }),
+      }).then(r => r.json());
+
+      if (pref.error) return json({ error: pref.message || 'Erro MP' }, 400);
+
+      return json({
+        payment_url: pref.init_point,
+        sandbox_url: pref.sandbox_init_point,
+      });
+    }
+
+    return json({ error: 'Gateway desconhecido' }, 400);
+  } catch (e: any) {
+    console.error(e);
+    return json({ error: e?.message || 'Erro interno' }, 500);
+  }
+});
+
+function json(data: any, status = 200) {
+  return new Response(JSON.stringify(data), {
+    headers: { ...corsHeadersRestricted, 'Content-Type': 'application/json' },
+    status,
+  });
+}

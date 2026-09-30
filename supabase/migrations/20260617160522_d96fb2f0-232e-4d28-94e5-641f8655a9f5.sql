@@ -1,0 +1,2 @@
+ALTER TABLE public.ordens_servico DROP CONSTRAINT IF EXISTS ordens_servico_cliente_id_fkey;
+ALTER TABLE public.ordens_servico ADD CONSTRAINT ordens_servico_cliente_id_fkey FOREIGN KEY (cliente_id) REFERENCES public.clientes(id) ON DELETE CASCADE;

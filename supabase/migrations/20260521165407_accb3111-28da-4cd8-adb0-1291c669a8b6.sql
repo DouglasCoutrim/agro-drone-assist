@@ -1,0 +1,2 @@
+-- No database changes needed, just updating the Edge Function code.
+-- I will use code--write to update the Edge Function directly.

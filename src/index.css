@@ -1,0 +1,270 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Backgrounds */
+    --background: 216 25% 97%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Primary - Green */
+    --primary: 142 76% 40%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary */
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    /* Status */
+    --success: 142 72% 37%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 44%;
+    --warning-foreground: 0 0% 5%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Interface */
+    --border: 214 32% 91%;
+    --border-subtle: 210 40% 96%;
+    --input: 215 25% 84%;
+    --ring: 142 72% 37%;
+    --radius: 0.75rem;
+
+    /* Sidebar - always dark */
+    --sidebar-background: 220 26% 12%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 142 72% 37%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 26% 16%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 26% 16%;
+    --sidebar-ring: 142 72% 37%;
+
+    /* Semantic status colors */
+    --green: 142 72% 37%;
+    --green-hover: 142 72% 30%;
+    --green-light: 138 76% 93%;
+    --green-text: 142 72% 19%;
+    --amber: 38 92% 44%;
+    --amber-light: 48 96% 89%;
+    --amber-text: 32 84% 31%;
+    --red: 0 72% 51%;
+    --red-light: 0 93% 94%;
+    --red-text: 0 70% 35%;
+    --blue: 217 91% 53%;
+    --blue-light: 214 95% 93%;
+    --blue-text: 224 76% 40%;
+    --slate: 215 16% 47%;
+    --slate-light: 210 40% 96%;
+    --slate-text: 215 25% 27%;
+
+    /* Shadows */
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+    --shadow-lg: 0 10px 30px rgba(0,0,0,0.10), 0 4px 8px rgba(0,0,0,0.06);
+
+    /* Layout */
+    --sidebar-width: 248px;
+    --header-height: 64px;
+    --bottom-nav-height: 64px;
+  }
+
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-size: 14px;
+    @screen md { font-size: 15px; }
+    @screen lg { font-size: 16px; }
+  }
+
+  html, body, #root {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  html, body {
+    height: 100%;
+    min-height: 100dvh;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'DM Sans', sans-serif;
+    line-height: 1.5;
+    transition: background-color 0.2s ease, color 0.15s ease;
+    padding-bottom: env(safe-area-inset-bottom);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Prevent iOS from zooming when focusing inputs (font-size must be >= 16px) */
+  @media (max-width: 767px) {
+    input:not([type="checkbox"]):not([type="radio"]),
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+
+  h1 { font-size: clamp(1.5rem, 5vw, 2.5rem); }
+  h2 { font-size: clamp(1.25rem, 4vw, 2rem); }
+  h3 { font-size: clamp(1.1rem, 3vw, 1.5rem); }
+
+  img, video, canvas, svg, iframe { max-width: 100%; }
+  table { max-width: 100%; }
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .min-h-screen-safe {
+    min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+  .min-h-dvh { min-height: 100dvh; }
+  .h-dvh { height: 100dvh; }
+  /* Extra bottom padding so virtual keyboard doesn't cover the focused input */
+  .form-mobile-pad { padding-bottom: clamp(120px, 30vh, 220px); }
+}
+
+@layer components {
+  /* Shadow utilities */
+  .shadow-soft { box-shadow: var(--shadow-sm); }
+  .shadow-medium { box-shadow: var(--shadow-md); }
+
+  /* Sonner toaster adjustment for BottomNav */
+  .toaster.group {
+    bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 0.5rem) !important;
+  }
+
+  @media (min-width: 1024px) {
+    .toaster.group {
+      bottom: 1rem !important;
+    }
+  }
+
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(142 72% 44%));
+    @apply text-primary-foreground font-medium;
+  }
+
+  .card-hover {
+    @apply transition-all duration-200;
+  }
+  .card-hover:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+    @apply border-input;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.3); }
+
+  /* Fix Leaflet map z-index */
+  .leaflet-pane, .leaflet-top, .leaflet-bottom, .leaflet-control { z-index: 1 !important; }
+
+  /* Animations */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-in { animation: fadeInUp 0.3s ease forwards; }
+
+  /* Skeleton shimmer */
+  @keyframes shimmer {
+    0% { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Mobile table responsiveness - Improved Version */
+  .responsive-table-container {
+    @apply w-full overflow-x-auto relative;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .responsive-table-container table {
+    @apply min-w-full divide-y divide-border;
+  }
+
+  @media (max-width: 767px) {
+    /* Stacked mobile list view as alternative to table */
+    .mobile-stack-list {
+      @apply space-y-3 py-2;
+    }
+    
+    .mobile-stack-item {
+      @apply bg-card border border-border rounded-xl p-4 shadow-sm transition-all;
+    }
+
+    .responsive-table:not(.no-stack) thead { display: none; }
+    .responsive-table:not(.no-stack) tbody tr {
+      display: flex; flex-direction: column; padding: 1.25rem;
+      border: 1px solid hsl(var(--border)); border-radius: var(--radius); margin-bottom: 1rem;
+      @apply bg-card shadow-sm;
+    }
+    .responsive-table:not(.no-stack) tbody td {
+      display: flex; justify-content: space-between; align-items: center; 
+      padding: 0.75rem 0; border: none;
+      text-align: right;
+      @apply border-b border-border-subtle last:border-0;
+    }
+    .responsive-table:not(.no-stack) tbody td::before {
+      content: attr(data-label); font-weight: 700; font-size: 0.7rem;
+      color: hsl(var(--muted-foreground)); margin-right: 1.5rem; text-align: left;
+      text-transform: uppercase; letter-spacing: 0.1em;
+    }
+  }
+
+  /* Modal responsiveness fixes */
+  .dialog-content-mobile-fix {
+    @apply w-[95vw] max-w-lg mx-auto sm:w-full p-4 sm:p-6;
+  }
+}
+
+/* Remove Lovable badge */
+#lovable-badge,
+[class*="lovable-badge"],
+[id*="lovable-badge"],
+iframe[src*="lovable"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  position: absolute !important;
+  overflow: hidden !important;
+}

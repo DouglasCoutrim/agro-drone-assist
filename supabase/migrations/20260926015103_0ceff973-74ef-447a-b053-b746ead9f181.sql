@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN responsabilidades text NOT NULL DEFAULT '' CHECK (char_length(responsabilidades) <= 2000);

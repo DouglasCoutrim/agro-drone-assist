@@ -1,0 +1,1 @@
+ALTER FUNCTION public.protect_profile_sensitive_fields() SET search_path = public, pg_temp;

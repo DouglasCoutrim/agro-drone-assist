@@ -1,0 +1,1 @@
+ALTER TABLE public.orcamentos ADD COLUMN vendedor_id uuid REFERENCES auth.users(id) DEFAULT NULL;
