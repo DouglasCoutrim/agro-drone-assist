@@ -21,7 +21,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
 import { SearchableInput } from "@/components/ui/searchable-input";
-import { CatalogAutocomplete } from "@/components/ui/catalog-autocomplete";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useNavigate } from "react-router-dom";
@@ -266,19 +265,11 @@ export default function Estoque() {
                     </div>
                     <div className="col-span-2 space-y-2">
                       <Label>Descrição *</Label>
-                      <CatalogAutocomplete
+                      <Input
                         value={formData.descricao}
-                        onChange={(v) => setFormData(prev => ({ ...prev, descricao: v }))}
-                        onSelect={(item) => setFormData(f => ({
-                          ...f,
-                          descricao: item.descricao,
-                          categoria: item.categoria || f.categoria,
-                        }))}
-                        placeholder="Buscar no catálogo ou digitar..."
-                        source="produtos"
-                        mode="text"
+                        onChange={(e) => setFormData(prev => ({ ...prev, descricao: e.target.value }))}
+                        placeholder="Digite a descrição do produto..."
                         required
-                        currentCategory={formData.categoria}
                       />
                     </div>
                     <div className="space-y-2"><Label>Quantidade</Label><NumberInput value={formData.quantidade} onChange={(v) => setFormData(prev => ({ ...prev, quantidade: v }))} placeholder="0" /></div>
