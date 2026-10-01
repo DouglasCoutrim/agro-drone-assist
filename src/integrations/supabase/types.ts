@@ -797,6 +797,10 @@ export type Database = {
           ciclos_carga_entrada: number | null
           ciclos_carga_saida: number | null
           cliente_id: string
+          commission_assistants_computed_at: string | null
+          commission_assistants_fixed: number
+          commission_assistants_percentage: number
+          commission_assistants_total: number
           commission_computed_at: string | null
           commission_products: number
           commission_services: number
@@ -840,6 +844,10 @@ export type Database = {
           ciclos_carga_entrada?: number | null
           ciclos_carga_saida?: number | null
           cliente_id: string
+          commission_assistants_computed_at?: string | null
+          commission_assistants_fixed?: number
+          commission_assistants_percentage?: number
+          commission_assistants_total?: number
           commission_computed_at?: string | null
           commission_products?: number
           commission_services?: number
@@ -883,6 +891,10 @@ export type Database = {
           ciclos_carga_entrada?: number | null
           ciclos_carga_saida?: number | null
           cliente_id?: string
+          commission_assistants_computed_at?: string | null
+          commission_assistants_fixed?: number
+          commission_assistants_percentage?: number
+          commission_assistants_total?: number
           commission_computed_at?: string | null
           commission_products?: number
           commission_services?: number
@@ -1120,54 +1132,6 @@ export type Database = {
             referencedRelation: "ordens_servico"
             referencedColumns: ["id"]
           },
-        ]}
-      }
-      os_tecnicos_ajudantes: {
-        Row: {
-          id: string
-          ordem_servico_id: string
-          tecnico_id: string
-          tipo_comissao: 'fixo' | 'porcentagem'
-          valor_comissao: number
-          porcentagem_comissao: number
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          ordem_servico_id: string
-          tecnico_id: string
-          tipo_comissao: 'fixo' | 'porcentagem'
-          valor_comissao?: number
-          porcentagem_comissao?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          ordem_servico_id?: string
-          tecnico_id?: string
-          tipo_comissao?: 'fixo' | 'porcentagem'
-          valor_comissao?: number
-          porcentagem_comissao?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "os_tecnicos_ajudantes_ordem_servico_id_fkey"
-            columns: ["ordem_servico_id"]
-            isOneToOne: false
-            referencedRelation: "ordens_servico"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "os_tecnicos_ajudantes_tecnico_id_fkey"
-            columns: ["tecnico_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       os_checklist_itens: {
@@ -1263,6 +1227,54 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      os_tecnicos_ajudantes: {
+        Row: {
+          created_at: string
+          id: string
+          ordem_servico_id: string
+          porcentagem_comissao: number | null
+          tecnico_id: string
+          tipo_comissao: string
+          updated_at: string
+          valor_comissao: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ordem_servico_id: string
+          porcentagem_comissao?: number | null
+          tecnico_id: string
+          tipo_comissao: string
+          updated_at?: string
+          valor_comissao?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ordem_servico_id?: string
+          porcentagem_comissao?: number | null
+          tecnico_id?: string
+          tipo_comissao?: string
+          updated_at?: string
+          valor_comissao?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_tecnicos_ajudantes_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_tecnicos_ajudantes_tecnico_id_fkey"
+            columns: ["tecnico_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
