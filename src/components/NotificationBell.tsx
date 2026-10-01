@@ -10,7 +10,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef } from "react";
 
-const NOTIFICATION_SOUND_URL = "https://iynljexyjhbkfxsurddn.supabase.co/storage/v1/object/sign/som/nova_os.mp3?token=eyJraWQiOiIxMWY5NDc4Yi0zNTgwLTQ2ODAtYmYxMC0xNzdiYThmOTdmMTgiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJzb20vbm92YV9vcy5tcDMiLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzkwNjQwNzU2LCJleHAiOjE3OTA2NDQzNTZ9.GIVzp08CGLDvHtP76yRn9gzfo_9JnJIw2BD27G-zr-g";
+const NOTIFICATION_SOUND_URL = "https://iynljexyjhbkfxsurddn.supabase.co/storage/v1/object/public/som/nova_os.mp3";
 
 const typeColor: Record<string, string> = {
   os: "bg-blue-500/15 text-blue-400",
