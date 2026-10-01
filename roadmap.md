@@ -21,3 +21,4 @@
 - [ ] Corrigir a tela em branco na versão publicada e validar a conexão no endereço público.
 - [x] Corrigir o salvamento e a leitura de ajudantes nas ordens de serviço.
 - [x] Manter ajudantes, comissões e observações internas fora da OS enviada ao cliente.
+- [x] Corrigir a edição de OS com orçamento legado, preservar lançamentos existentes e confirmar remoções antes de salvar.
