@@ -280,6 +280,7 @@ export default function Orcamentos() {
                     placeholder="Buscar ou digitar..."
                     source="produtos"
                     mode="text"
+                     allowCreate={false}
                     required
                   />
                 </div>
