@@ -20,3 +20,4 @@
 - [x] Remover o cache antigo do aplicativo sem perder a instalação pela tela inicial.
 - [ ] Corrigir a tela em branco na versão publicada e validar a conexão no endereço público.
 - [x] Corrigir o salvamento e a leitura de ajudantes nas ordens de serviço.
+- [x] Manter ajudantes, comissões e observações internas fora da OS enviada ao cliente.

@@ -1499,9 +1499,9 @@ tecnico_id: os.tecnico_id || "",
                 </CardContent>
               </Card>
 
-              {/* Técnicos Ajudantes */}
+              {/* Controle interno: nunca incluir ajudantes ou comissões na OS do cliente. */}
               <Card>
-                <CardHeader className="pb-3"><CardTitle className="text-sm">Técnicos Ajudantes</CardTitle></CardHeader>
+                <CardHeader className="pb-3"><CardTitle className="text-sm">Técnicos Ajudantes · Controle interno</CardTitle></CardHeader>
                 <CardContent>
                   <OSAssistantsSection
                     assistants={osAssistants}
@@ -1719,7 +1719,7 @@ tecnico_id: os.tecnico_id || "",
                       )}
                       <Separator />
 
-                      {/* Técnicos Ajudantes */}
+                      {/* Controle interno: esta seção não integra o PDF nem as mensagens ao cliente. */}
                       {viewOsAssistantsLoading ? (
                         <div className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
                           <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando ajudantes...

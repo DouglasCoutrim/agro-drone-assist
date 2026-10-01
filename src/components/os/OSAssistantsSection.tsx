@@ -373,7 +373,7 @@ export function OSAssistantsSection({
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Search className="h-4 w-4 text-blue-500" />
-        <h4 className="text-sm font-bold">Técnicos Ajudantes</h4>
+        <h4 className="text-sm font-bold">Técnicos Ajudantes · Controle interno</h4>
         {assistants.length > 0 && (
           <span className="ml-auto text-xs font-semibold text-primary">
             {assistants.length} ajudante{assistants.length > 1 ? "s" : ""}

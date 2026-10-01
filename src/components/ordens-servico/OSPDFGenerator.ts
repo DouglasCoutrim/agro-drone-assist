@@ -36,7 +36,6 @@ export const generateOSPDF = (
   // Extract mobility data
   const mobilityMatch = obsText.match(/\[MOBILIDADE:(\w+)\s*\|\s*Voltagem:(.*?)\s*\|\s*Bateria:(.*?)Ah\s*\|\s*Odômetro:(.*?)km\s*\|\s*Chave:(.*?)\s*\|\s*Carregador:(.*?)\s*\|\s*Checklist:(.*?)\]/);
   const hasMobility = !!mobilityMatch;
-  const cleanObs = obsText.replace(/\[MOBILIDADE:[\s\S]*?\]/g, "").trim();
   const mobilityCategory = mobilityMatch ? mobilityMatch[1] : "";
   // Get display type, fall back to tipo_equipamento
   const displayType = TIPO_EQUIPAMENTO[mobilityCategory] 
@@ -225,8 +224,6 @@ ${mobilityHTML}
       ${viewingOS.data_entrega ? `<div class="field"><div class="field-label">Entrega</div><div class="field-value">${fmtDt(viewingOS.data_entrega)}</div></div>` : ""}
     </div>
   </div>
-
-  ${cleanObs ? `<div class="section"><div class="section-title">Observações</div><p style="font-size:12px; white-space: pre-wrap;">${cleanObs}</p></div>` : ""}
 
   <div class="footer-sigs">
     <div class="signature">
