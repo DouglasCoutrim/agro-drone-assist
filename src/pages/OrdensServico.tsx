@@ -163,6 +163,11 @@ export default function OrdensServico() {
     const config = (configTipos || []).filter(t => t.ativo).map(t => ({ value: t.value, label: t.label, dbEnum: t.db_enum || "outro" }));
     return [...base, ...config.filter(t => !seen.has(t.value))];
   }, [orgSegmentos, orgCustomTypes, configTipos]);
+  const selectedEquipmentType = availableTypes.some(t => t.value === uiCategory)
+    ? null
+    : editingOS && uiCategory
+      ? { value: uiCategory, label: getTypeDisplayLabel(editingOS, orgSegmentos, orgCustomTypes, configTipos), dbEnum: editingOS.tipo_equipamento }
+      : null;
   const [newCustomLabel, setNewCustomLabel] = useState("");
 
   const [formData, setFormData] = useState({
@@ -418,7 +423,7 @@ export default function OrdensServico() {
         .trim();
 
       const isConfiguredCategory = (configTipos || []).some(t => t.value === uiCategory);
-      if (!isMobility && (uiCategory.startsWith("custom_") || isConfiguredCategory)) {
+      if (!isMobility && (uiCategory.startsWith("custom_") || isConfiguredCategory || (!!editingOS && uiCategory !== editingOS.tipo_equipamento && uiCategory === detectUiCategory(editingOS)))) {
         observacoesWithMobility = observacoesWithMobility
           ? `${observacoesWithMobility}\n[CUSTOM:${uiCategory}]`
           : `[CUSTOM:${uiCategory}]`;
@@ -1366,6 +1371,7 @@ tecnico_id: os.tecnico_id || "",
                           {availableTypes.map(t => (
                             <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                           ))}
+                          {selectedEquipmentType && <SelectItem value={selectedEquipmentType.value}>{selectedEquipmentType.label}</SelectItem>}
                           {availableTypes.length > 0 && (
                             <div className="border-t mt-1 p-2 space-y-1">
                               <p className="text-[10px] text-muted-foreground uppercase">Adicionar tipo personalizado</p>
