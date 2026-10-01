@@ -303,32 +303,26 @@ export default function OrdensServico() {
     return mapped;
   }, [organization?.id, isPlatformAdmin]);
 
-  const fetchOSAssistants = useCallback(async (osId: string, osOrgId?: string | null): Promise<OSAssistant[]> => {
-    const assistantsClient = supabase as any;
-    let query = assistantsClient
+  const fetchOSAssistants = useCallback(async (osId: string): Promise<OSAssistant[]> => {
+    const { data, error } = await supabase
       .from("os_tecnicos_ajudantes")
       .select("*, tecnico:profiles!os_tecnicos_ajudantes_tecnico_id_fkey(nome)")
       .eq("ordem_servico_id", osId)
       .order("created_at", { ascending: true });
-
-    const orgId = osOrgId || organization?.id;
-    if (orgId && !isPlatformAdmin) query = query.eq("organization_id", orgId);
-
-    const { data, error } = await query;
     if (error) {
       console.error("Erro ao carregar ajudantes da OS:", error);
       return [];
     }
 
-    return (data || []).map((a: any) => ({
+    return (data || []).filter((a) => a.tipo_comissao === "fixo" || a.tipo_comissao === "porcentagem").map((a) => ({
       id: a.id,
       tecnico_id: a.tecnico_id,
       tecnico_nome: a.tecnico?.nome,
-      tipo_comissao: a.tipo_comissao,
+      tipo_comissao: a.tipo_comissao as OSAssistant["tipo_comissao"],
       valor_comissao: Number(a.valor_comissao) || 0,
       porcentagem_comissao: Number(a.porcentagem_comissao) || 0,
     }));
-  }, [organization?.id, isPlatformAdmin]);
+  }, []);
 
   const getPendingRequiredChecklist = useCallback(async (osId: string, osOrgId?: string | null): Promise<string[]> => {
     const checklistClient = supabase as any;
@@ -467,22 +461,18 @@ export default function OrdensServico() {
       }
 
       let osId: string;
+      let createdOS: { numero: string; cliente_id: string; tipo_equipamento: string; modelo_equipamento: string } | null = null;
       if (editingOS) {
         const { error } = await supabase.from("ordens_servico").update(osData).eq("id", editingOS.id);
         if (error) throw error;
         osId = editingOS.id;
-        toast.success("OS atualizada com sucesso!");
       } else {
         const { data: insertedData, error } = await supabase.from("ordens_servico").insert({
           ...osData, numero: "", status: "recebido" as any,
         }).select("id, numero, cliente_id, tipo_equipamento, modelo_equipamento").single();
         if (error) throw error;
         osId = insertedData.id;
-        toast.success(`OS ${insertedData?.numero} criada com sucesso!`);
-        if (insertedData) {
-          setLastCreatedOS(insertedData);
-          setTermsDialogOpen(true);
-        }
+        createdOS = insertedData;
       }
 
 
@@ -533,7 +523,7 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
           .from("os_tecnicos_ajudantes")
           .delete()
           .eq("ordem_servico_id", osId);
-        if (delAssistantsErr) throw delAssistantsErr;
+        if (delAssistantsErr) throw new Error(`A OS foi salva, mas os ajudantes não: ${delAssistantsErr.message}`);
         if (osAssistants.length > 0) {
           const assistantsToInsert = osAssistants.map(a => ({
             ordem_servico_id: osId,
@@ -541,7 +531,6 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
             tipo_comissao: a.tipo_comissao,
             valor_comissao: a.tipo_comissao === "fixo" ? a.valor_comissao : 0,
             porcentagem_comissao: a.tipo_comissao === "porcentagem" ? a.porcentagem_comissao : 0,
-            organization_id: editingOS?.organization_id || organizationId,
           }));
           const { error: assistantsError } = await supabase
             .from("os_tecnicos_ajudantes")
@@ -558,6 +547,11 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
         await supabase.rpc('calculate_os_commission' as any, { _os_id: osId });
       } catch (err: any) {
         console.error("Erro ao calcular comissão:", err);
+      }
+      toast.success(editingOS ? "OS atualizada com sucesso!" : `OS ${createdOS?.numero} criada com sucesso!`);
+      if (createdOS) {
+        setLastCreatedOS(createdOS);
+        setTermsDialogOpen(true);
       }
       setDialogOpen(false);
       resetForm();
@@ -637,7 +631,7 @@ tecnico_id: os.tecnico_id || "",
     console.log("[handleEdit] Fetched items for edit:", fetchedItems);
     setOsItems(fetchedItems);
     setConfigCheckbox(await loadChecklistResponses(os.id, os.organization_id));
-    setOsAssistants(await fetchOSAssistants(os.id, os.organization_id));
+    setOsAssistants(await fetchOSAssistants(os.id));
     setWizardStep(0);
     setDialogOpen(true);
   };
@@ -653,7 +647,7 @@ tecnico_id: os.tecnico_id || "",
     try {
       const [items, assistants] = await Promise.all([
         fetchOSItems(os.id, os.organization_id),
-        fetchOSAssistants(os.id, os.organization_id),
+        fetchOSAssistants(os.id),
       ]);
       setViewOsItems(items);
       setViewOsAssistants(assistants);
