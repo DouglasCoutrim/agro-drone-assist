@@ -65,6 +65,7 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secon
   em_reparo: { label: "Em Reparo", variant: "default" },
   em_testes: { label: "Em Testes", variant: "default" },
   pronto_retirada: { label: "Pronto p/ Retirada", variant: "default" },
+  finalizada: { label: "Finalizada", variant: "default" },
   entregue: { label: "Entregue", variant: "default" },
   cancelada: { label: "Cancelado", variant: "destructive" },
   aberta: { label: "Recebido", variant: "outline" },
@@ -86,7 +87,7 @@ const TIPO_EQUIPAMENTO: Record<string, string> = {
 };
 
 const MOBILITY_CATEGORIES = ["patinete_eletrico", "bicicleta_eletrica", "moto_eletrica", "outros_autopropelidos"];
-const LOCK_CLOSED_STATUSES = new Set(["pronto_retirada", "concluida", "entregue"]);
+const LOCK_CLOSED_STATUSES = new Set(["pronto_retirada", "concluida", "entregue", "finalizada"]);
 const mapCategoryToDbEnum = (uiCategory: string): string => MOBILITY_CATEGORIES.includes(uiCategory) ? "outro" : uiCategory;
 const detectUiCategory = (os: any): string => {
   const obs = os.observacoes || "";
@@ -707,7 +708,7 @@ tecnico_id: os.tecnico_id || "",
       }
     }
     const updateData: any = { status: newStatus };
-    if (newStatus === "pronto_retirada" || newStatus === "concluida") updateData.data_conclusao = new Date().toISOString();
+    if (newStatus === "pronto_retirada" || newStatus === "concluida" || newStatus === "finalizada") updateData.data_conclusao = new Date().toISOString();
     if (newStatus === "entregue") updateData.data_entrega = new Date().toISOString();
     const { error } = await supabase.from("ordens_servico").update(updateData).eq("id", osId);
     if (error) throw error;
@@ -807,7 +808,7 @@ tecnico_id: os.tecnico_id || "",
       if (paymentDialog.nextStatus) {
         updateData.status = paymentDialog.nextStatus;
         if (paymentDialog.nextStatus === "entregue") updateData.data_entrega = new Date().toISOString();
-        if (paymentDialog.nextStatus === "pronto_retirada" || paymentDialog.nextStatus === "concluida")
+        if (paymentDialog.nextStatus === "pronto_retirada" || paymentDialog.nextStatus === "concluida" || paymentDialog.nextStatus === "finalizada")
           updateData.data_conclusao = new Date().toISOString();
       }
       const { error: osErr } = await supabase
@@ -1085,7 +1086,7 @@ tecnico_id: os.tecnico_id || "",
     recebidas: ordens.filter(os => os.status === "recebido" || os.status === "aberta").length,
     emReparo: ordens.filter(os => ["em_reparo", "em_andamento", "em_testes", "aprovado"].includes(os.status)).length,
     aguardando: ordens.filter(os => ["aguardando_diagnostico", "aguardando_aprovacao", "aguardando_peca"].includes(os.status)).length,
-    prontas: ordens.filter(os => ["pronto_retirada", "concluida", "entregue"].includes(os.status)).length,
+    prontas: ordens.filter(os => ["pronto_retirada", "concluida", "entregue", "finalizada"].includes(os.status)).length,
   };
 
   const STATUS_FILTERS = [
@@ -1095,6 +1096,7 @@ tecnico_id: os.tecnico_id || "",
     { key: "aguardando_aprovacao", label: "Aguardando" },
     { key: "pronto_retirada", label: "Prontas" },
     { key: "entregue", label: "Entregues" },
+    { key: "finalizada", label: "Finalizadas" },
     { key: "cancelada", label: "Canceladas" },
   ];
 

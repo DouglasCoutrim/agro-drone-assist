@@ -29,6 +29,7 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   em_reparo: { label: "Em Reparo", className: "bg-blue-100 text-blue-800" },
   em_testes: { label: "Em Testes", className: "bg-blue-100 text-blue-800" },
   pronto_retirada: { label: "Pronto p/ Retirada", className: "bg-green-100 text-green-800" },
+  finalizada: { label: "Finalizada", className: "bg-green-100 text-green-800" },
   entregue: { label: "Entregue", className: "bg-slate-100 text-slate-800 opacity-70" },
   cancelada: { label: "Cancelado", className: "bg-red-100 text-red-800" },
   aberta: { label: "Aberta", className: "bg-amber-100 text-amber-800" },
@@ -73,12 +74,12 @@ const Index = () => {
     try {
       const results = await Promise.allSettled([
         supabase.from("ordens_servico").select("id", { count: "exact", head: true }).eq("organization_id", orgId).in("status", ["aberta", "em_andamento", "aguardando_peca", "recebido", "aguardando_diagnostico", "aguardando_aprovacao"]),
-        supabase.from("ordens_servico").select("id", { count: "exact", head: true }).eq("organization_id", orgId).in("status", ["concluida", "pronto_retirada", "entregue"]),
+        supabase.from("ordens_servico").select("id", { count: "exact", head: true }).eq("organization_id", orgId).in("status", ["concluida", "pronto_retirada", "entregue", "finalizada"]),
         supabase.from("itens_estoque").select("quantidade, estoque_minimo").eq("organization_id", orgId),
         supabase.from("clientes").select("*", { count: "exact", head: true }).eq("organization_id", orgId),
         supabase.from("ordens_servico").select("*, clientes(nome, telefone)").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(5),
         supabase.from("financeiro").select("valor").eq("organization_id", orgId).eq("tipo", "receita").gte("data_transacao", startOfMonth.toISOString()),
-        supabase.from("ordens_servico").select("*, clientes(nome, telefone)").eq("organization_id", orgId).not("data_previsao", "is", null).lt("data_previsao", today).not("status", "in", "(entregue,cancelada,pronto_retirada,concluida)").order("data_previsao", { ascending: true }).limit(10),
+        supabase.from("ordens_servico").select("*, clientes(nome, telefone)").eq("organization_id", orgId).not("data_previsao", "is", null).lt("data_previsao", today).not("status", "in", "(entregue,cancelada,pronto_retirada,concluida,finalizada)").order("data_previsao", { ascending: true }).limit(10),
         supabase.from("empresa_config").select("gateway_clientes, gateway_clientes_credentials").eq("organization_id", orgId).maybeSingle(),
       ]);
 
@@ -105,7 +106,7 @@ const Index = () => {
       let aReceber = 0;
       try {
         const osValores = await fetchOsComValores(orgId);
-        const finalizadas = ["concluida", "pronto_retirada", "entregue"];
+        const finalizadas = ["concluida", "pronto_retirada", "entregue", "finalizada"];
         faturamentoMes += osValores
           .filter(o => !o.pago && o.valor > 0 && finalizadas.includes(o.status))
           .filter(o => {
@@ -125,15 +126,6 @@ const Index = () => {
         && typeof gatewayCredentials.api_key === "string"
         && gatewayCredentials.api_key.length > 0;
 
-      if (gatewayConfigRes.data?.gateway_clientes === "asaas" && hasAsaasCredentials) {
-        const { data: result, error } = await supabase.functions.invoke('asaas', {
-          body: { action: 'list_payments', status: 'OVERDUE' },
-        });
-        if (!error) setOverduePayments(result?.data || []);
-      } else {
-        setOverduePayments([]);
-      }
-
       setStats({
         osAbertas: osAbertasRes.count || 0,
         osConcluidas: osConcluidasRes.count || 0,
@@ -144,6 +136,15 @@ const Index = () => {
       });
       setRecentOS(recentOSRes.data || []);
       setOverdueOS(overdueOSRes.data || []);
+      setOverduePayments([]);
+      if (gatewayConfigRes.data?.gateway_clientes === "asaas" && hasAsaasCredentials) {
+        // The external gateway must never delay the local dashboard numbers.
+        void supabase.functions.invoke('asaas', {
+          body: { action: 'list_payments', status: 'OVERDUE' },
+        }).then(({ data: result, error }) => {
+          if (!error) setOverduePayments(result?.data || []);
+        }).catch((error) => console.error("Erro ao consultar pagamentos em atraso:", error));
+      }
     } catch (error) {
       console.error("Dashboard error:", error);
     } finally {
