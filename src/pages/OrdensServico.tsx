@@ -314,11 +314,11 @@ export default function OrdensServico() {
       return [];
     }
 
-    return (data || []).map((a) => ({
+    return (data || []).filter((a) => a.tipo_comissao === "fixo" || a.tipo_comissao === "porcentagem").map((a) => ({
       id: a.id,
       tecnico_id: a.tecnico_id,
       tecnico_nome: a.tecnico?.nome,
-      tipo_comissao: a.tipo_comissao,
+      tipo_comissao: a.tipo_comissao as OSAssistant["tipo_comissao"],
       valor_comissao: Number(a.valor_comissao) || 0,
       porcentagem_comissao: Number(a.porcentagem_comissao) || 0,
     }));

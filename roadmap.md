@@ -19,3 +19,4 @@
 - [x] Permitir custo e preço de venda independentes no estoque, sem cálculo por porcentagem.
 - [x] Remover o cache antigo do aplicativo sem perder a instalação pela tela inicial.
 - [ ] Corrigir a tela em branco na versão publicada e validar a conexão no endereço público.
+- [ ] Corrigir o salvamento e a leitura de ajudantes nas ordens de serviço.
