@@ -385,6 +385,18 @@ export default function OrdensServico() {
 
     setFormLoading(true);
     try {
+      // Read and confirm removals before changing the OS, so cancellation never leaves a partial save.
+      const originalItems = editingOS ? await fetchOSItems(editingOS.id, editingOS.organization_id) : [];
+      const removedIds = originalItems.filter(item => item.id && !osItems.some(current => current.id === item.id)).map(item => item.id as string);
+      if (removedIds.length) {
+        const approved = await confirm({
+          title: "Remover lançamentos da OS?",
+          description: `${removedIds.length} ${removedIds.length === 1 ? "peça ou serviço será removido" : "peças ou serviços serão removidos"} desta OS. Deseja continuar?`,
+          confirmText: "Remover e salvar",
+          variant: "destructive",
+        });
+        if (!approved) return;
+      }
       let organizationId = organization?.id || null;
       if (!organizationId) {
         const { data: profile } = await supabase
@@ -481,9 +493,7 @@ export default function OrdensServico() {
 
       // Preserve existing rows and only write changed items. Never replace an unread list with an empty one.
       if (osId) {
-        const originalItems = editingOS ? await fetchOSItems(osId, editingOS.organization_id) : [];
         const savedById = new Map(originalItems.map(item => [item.id, item]));
-        const removedIds = originalItems.filter(item => item.id && !osItems.some(current => current.id === item.id)).map(item => item.id as string);
         const changedItems = osItems.filter(item => !item.id || JSON.stringify(item) !== JSON.stringify(savedById.get(item.id)));
         const itemPayload = (item: OSItem) => ({
             ordem_servico_id: osId,
