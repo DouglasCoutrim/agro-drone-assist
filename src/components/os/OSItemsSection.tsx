@@ -317,6 +317,7 @@ function ItemCard({
 }
 
 export function OSItemsSection({ items, onChange, organizationId, disabled }: OSItemsSectionProps) {
+  console.log("[OSItemsSection] Received items:", items);
   const produtos = items.filter(i => i.tipo === "produto");
   const servicos = items.filter(i => i.tipo === "servico");
   const existingIds = new Set(items.map(i => i.produto_id || i.servico_id || "").filter(Boolean));

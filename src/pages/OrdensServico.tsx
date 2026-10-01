@@ -296,7 +296,10 @@ export default function OrdensServico() {
       return [];
     }
 
-    return mapDbItemsToOSItems(data as ItemOSRow[]);
+    console.log("[fetchOSItems] Raw data from DB:", data);
+    const mapped = mapDbItemsToOSItems(data as ItemOSRow[]);
+    console.log("[fetchOSItems] Mapped items:", mapped);
+    return mapped;
   }, [organization?.id, isPlatformAdmin]);
 
   const fetchOSAssistants = useCallback(async (osId: string, osOrgId?: string | null): Promise<OSAssistant[]> => {
@@ -627,7 +630,10 @@ tecnico_id: os.tecnico_id || "",
         tipo_os: (os as any).tipo_os || "normal",
         checklist_equipamento_tipo_id: (os as any).checklist_equipamento_tipo_id || "",
       });
-    setOsItems(await fetchOSItems(os.id, os.organization_id));
+    console.log("[handleEdit] OS ID:", os.id, "OS OrgID:", os.organization_id, "Current OrgID:", organization?.id);
+    const fetchedItems = await fetchOSItems(os.id, os.organization_id);
+    console.log("[handleEdit] Fetched items for edit:", fetchedItems);
+    setOsItems(fetchedItems);
     setConfigCheckbox(await loadChecklistResponses(os.id, os.organization_id));
     setOsAssistants(await fetchOSAssistants(os.id, os.organization_id));
     setWizardStep(0);
