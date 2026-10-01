@@ -303,7 +303,8 @@ export default function OrdensServico() {
   }, [organization?.id, isPlatformAdmin]);
 
   const fetchOSAssistants = useCallback(async (osId: string, osOrgId?: string | null): Promise<OSAssistant[]> => {
-    let query = supabase
+    const assistantsClient = supabase as any;
+    let query = assistantsClient
       .from("os_tecnicos_ajudantes")
       .select("*, tecnico:profiles!os_tecnicos_ajudantes_tecnico_id_fkey(nome)")
       .eq("ordem_servico_id", osId)
