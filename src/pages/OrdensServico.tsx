@@ -134,6 +134,7 @@ export default function OrdensServico() {
   const [lastCreatedOS, setLastCreatedOS] = useState<{ numero: string; cliente_id: string; tipo_equipamento: string; modelo_equipamento: string } | null>(null);
   const [quickClientPreName, setQuickClientPreName] = useState("");
   const [osItems, setOsItems] = useState<OSItem[]>([]);
+  const [itemsLoaded, setItemsLoaded] = useState(false);
   const [viewOsItems, setViewOsItems] = useState<OSItem[]>([]);
   const [viewOsItemsLoading, setViewOsItemsLoading] = useState(false);
   const [osAssistants, setOsAssistants] = useState<OSAssistant[]>([]);
@@ -205,6 +206,8 @@ export default function OrdensServico() {
   const configItems: ChecklistItem[] = activeConfigTipo?.itens || [];
   const itemsTotal = osItems.reduce((s, i) => s + (i.valor_total || 0), 0);
   const totalOrcamento = Math.max(0, itemsTotal - (formData.desconto || 0));
+  const legacyBudget = !!editingOS && osItems.length === 0 && Number(formData.valor_orcamento) > 0;
+  const displayedTotal = legacyBudget ? Number(formData.valor_orcamento) : totalOrcamento;
   const viewItemsTotal = viewOsItems.reduce((s, i) => s + (i.valor_total || 0), 0);
 
   const isOSFormDirty = useMemo(() => {
@@ -293,8 +296,7 @@ export default function OrdensServico() {
     const { data, error } = await query;
     if (error) {
       console.error("Erro ao carregar itens da OS:", error);
-      toast.error("Não foi possível carregar os itens/serviços desta OS: " + error.message);
-      return [];
+      throw new Error("Não foi possível carregar os itens/serviços desta OS: " + error.message);
     }
 
     console.log("[fetchOSItems] Raw data from DB:", data);
@@ -379,6 +381,7 @@ export default function OrdensServico() {
     if (!canEdit) { toast.error(readOnlyOsMessage); return; }
     if (!formData.cliente_id) { toast.error("Selecione um cliente"); return; }
     if (!formData.descricao_problema) { toast.error("Descreva o defeito"); return; }
+    if (editingOS && !itemsLoaded) { toast.error("Aguarde o carregamento dos itens antes de salvar a OS."); return; }
 
     setFormLoading(true);
     try {
@@ -476,14 +479,13 @@ export default function OrdensServico() {
       }
 
 
-      // Save OS items
+      // Preserve existing rows and only write changed items. Never replace an unread list with an empty one.
       if (osId) {
-        // Delete existing items for this OS
-        const { error: deleteItemsError } = await supabase.from("itens_os").delete().eq("ordem_servico_id", osId);
-        if (deleteItemsError) throw deleteItemsError;
-        // Insert new items
-        if (osItems.length > 0) {
-          const itemsToInsert = osItems.map(item => ({
+        const originalItems = editingOS ? await fetchOSItems(osId, editingOS.organization_id) : [];
+        const savedById = new Map(originalItems.map(item => [item.id, item]));
+        const removedIds = originalItems.filter(item => item.id && !osItems.some(current => current.id === item.id)).map(item => item.id as string);
+        const changedItems = osItems.filter(item => !item.id || JSON.stringify(item) !== JSON.stringify(savedById.get(item.id)));
+        const itemPayload = (item: OSItem) => ({
             ordem_servico_id: osId,
             tipo: item.tipo === "produto" ? "produto" : "servico",
             produto_id: item.tipo === "produto" && item.produto_id ? item.produto_id : null,
@@ -493,11 +495,19 @@ export default function OrdensServico() {
             valor_unitario: Number(item.valor_unitario) || 0,
             valor_total: Number(item.valor_total) || 0,
             organization_id: editingOS?.organization_id || organizationId,
-          }));
-const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInsert);
-          if (itemsError) {
-            console.error("Erro ao salvar itens:", itemsError);
-            throw new Error(`A OS foi salva, mas os itens não: ${itemsError.message}`);
+          });
+        for (const item of changedItems.filter(item => item.id)) {
+          const { error } = await supabase.from("itens_os").update(itemPayload(item)).eq("id", item.id as string).eq("ordem_servico_id", osId);
+          if (error) throw new Error(`A OS foi salva, mas os itens não: ${error.message}`);
+        }
+        const newItems = changedItems.filter(item => !item.id);
+        if (newItems.length) {
+          const { error } = await supabase.from("itens_os").insert(newItems.map(itemPayload));
+          if (error) throw new Error(`A OS foi salva, mas os itens não: ${error.message}`);
+        }
+        if (removedIds.length) {
+          const { error } = await supabase.from("itens_os").delete().eq("ordem_servico_id", osId).in("id", removedIds);
+          if (error) throw new Error(`A OS foi salva, mas os itens não: ${error.message}`);
           }
         }
         const checklistClient = supabase as any;
@@ -572,6 +582,7 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
 
   const handleEdit = async (os: OrdemServico) => {
     if (!canEdit) { toast.error(readOnlyOsMessage); return; }
+    setItemsLoaded(false);
     setEditingOS(os);
     setOsItems([]);
     setConfigCheckbox({});
@@ -626,14 +637,18 @@ tecnico_id: os.tecnico_id || "",
         tipo_os: (os as any).tipo_os || "normal",
         checklist_equipamento_tipo_id: (os as any).checklist_equipamento_tipo_id || "",
       });
-    console.log("[handleEdit] OS ID:", os.id, "OS OrgID:", os.organization_id, "Current OrgID:", organization?.id);
-    const fetchedItems = await fetchOSItems(os.id, os.organization_id);
-    console.log("[handleEdit] Fetched items for edit:", fetchedItems);
-    setOsItems(fetchedItems);
-    setConfigCheckbox(await loadChecklistResponses(os.id, os.organization_id));
-    setOsAssistants(await fetchOSAssistants(os.id));
-    setWizardStep(0);
-    setDialogOpen(true);
+    try {
+      const fetchedItems = await fetchOSItems(os.id, os.organization_id);
+      setOsItems(fetchedItems);
+      setConfigCheckbox(await loadChecklistResponses(os.id, os.organization_id));
+      setOsAssistants(await fetchOSAssistants(os.id));
+      setItemsLoaded(true);
+      setWizardStep(0);
+      setDialogOpen(true);
+    } catch (error) {
+      setEditingOS(null);
+      toast.error(getErrorMessage(error));
+    }
   };
 
   const handleView = async (os: OrdemServico) => {
@@ -666,6 +681,9 @@ tecnico_id: os.tecnico_id || "",
           marcado: !!r?.marcado,
         })));
       }
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+      setViewDialogOpen(false);
     } finally {
       setViewOsItemsLoading(false);
       setViewOsAssistantsLoading(false);
@@ -1034,6 +1052,7 @@ tecnico_id: os.tecnico_id || "",
     setConfigCheckbox({});
     setViewConfigChecklist([]);
     setEditingOS(null);
+    setItemsLoaded(false);
     setWizardStep(0);
     setOsItems([]);
     setOsAssistants([]);
@@ -1495,7 +1514,8 @@ tecnico_id: os.tecnico_id || "",
                     <div className="space-y-1.5"><Label className="text-xs">Previsão de Entrega</Label><Input type="date" value={formData.data_previsao} onChange={(e) => setFormData({ ...formData, data_previsao: e.target.value })} className="h-9" /></div>
                   </div>
                   <Separator />
-                  <OSItemsSection items={osItems} onChange={setOsItems} />
+                  {legacyBudget && <p className="text-xs text-muted-foreground">Esta OS tem um orçamento salvo de {formatCurrency(formData.valor_orcamento)}, mas não possui peças ou serviços detalhados. Cadastre os lançamentos reais para substituir esse valor.</p>}
+                  <OSItemsSection items={osItems} onChange={setOsItems} organizationId={editingOS?.organization_id || organization?.id} />
                 </CardContent>
               </Card>
 
@@ -1554,7 +1574,7 @@ tecnico_id: os.tecnico_id || "",
                     <Separator />
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5"><Label className="text-xs">Desconto (R$)</Label><NumberInput step="0.01" min="0" value={formData.desconto} onChange={(v) => setFormData({ ...formData, desconto: v })} className="h-9" placeholder="0,00" /></div>
-                      <div className="space-y-1.5"><Label className="text-xs">Total Geral da OS</Label><Input type="text" value={formatCurrency(totalOrcamento)} readOnly disabled className="h-9 font-bold text-primary" /></div>
+                      <div className="space-y-1.5"><Label className="text-xs">{legacyBudget ? "Orçamento salvo" : "Total Geral da OS"}</Label><Input type="text" value={formatCurrency(displayedTotal)} readOnly disabled className="h-9 font-bold text-primary" /></div>
                     </div>
                   </div>
                 </CardContent>
@@ -1574,9 +1594,9 @@ tecnico_id: os.tecnico_id || "",
               <div className="flex items-center gap-3">
                 <div className="text-right hidden sm:block">
                   <p className="text-[10px] text-muted-foreground uppercase leading-none">Total</p>
-                  <p className="text-sm font-bold text-primary leading-tight">{formatCurrency(totalOrcamento)}</p>
+                  <p className="text-sm font-bold text-primary leading-tight">{formatCurrency(displayedTotal)}</p>
                 </div>
-                <Button type="button" size="lg" className="gradient-primary min-w-[140px]" disabled={formLoading || !canEdit} onClick={() => handleSubmit()}>
+                <Button type="button" size="lg" className="gradient-primary min-w-[140px]" disabled={formLoading || !canEdit || (!!editingOS && !itemsLoaded)} onClick={() => handleSubmit()}>
                   {formLoading && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
                   {!canEdit ? "Somente leitura" : editingOS ? "Salvar Alterações" : "Criar OS"}
                 </Button>
@@ -1699,7 +1719,7 @@ tecnico_id: os.tecnico_id || "",
                           <div><p className="text-[10px] text-muted-foreground">Defeito</p><p className="text-sm">{viewingOS.descricao_problema}</p></div>
                           <div><p className="text-[10px] text-muted-foreground">Diagnóstico</p><p className="text-sm">{viewingOS.diagnostico || "-"}</p></div>
                           <div className="flex items-center justify-between rounded-md bg-muted/30 border border-border/50 px-3 py-2">
-                            <p className="text-xs text-muted-foreground uppercase font-medium">Total da OS</p>
+                            <p className="text-xs text-muted-foreground uppercase font-medium">{viewOsItems.length ? "Total da OS" : "Orçamento salvo"}</p>
                             <p className="text-base font-bold text-primary">{formatCurrency(viewItemsTotal > 0 ? viewItemsTotal - ((viewingOS as any).desconto || 0) : viewingOS.valor_orcamento)}</p>
                           </div>
                         </div>
@@ -1714,7 +1734,7 @@ tecnico_id: os.tecnico_id || "",
                         <OSItemsSection items={viewOsItems} onChange={() => {}} disabled />
                       ) : (
                         <div className="rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                          Nenhum item, peça ou serviço encontrado para esta OS.
+                          Nenhuma peça ou serviço detalhado foi cadastrado nesta OS. O valor exibido é o orçamento salvo.
                         </div>
                       )}
                       <Separator />
