@@ -31,6 +31,8 @@ interface CatalogAutocompleteProps {
   organizationId?: string | null;
   /** Current category to use when creating a new product (instead of hardcoded "geral") */
   currentCategory?: string;
+  /** Disable quick creation where only previously registered items should be selected. */
+  allowCreate?: boolean;
 }
 
 export function CatalogAutocomplete({
@@ -47,6 +49,7 @@ export function CatalogAutocomplete({
   mode = "select",
   organizationId,
   currentCategory,
+  allowCreate = true,
 }: CatalogAutocompleteProps) {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<CatalogResult[]>([]);
@@ -247,7 +250,7 @@ export function CatalogAutocomplete({
               </span>
             </button>
           ))}
-          {!exactMatch && displaySearch.trim() && (
+          {allowCreate && !exactMatch && displaySearch.trim() && (
             <button
               type="button"
               onClick={() => handleAddNew(displaySearch)}

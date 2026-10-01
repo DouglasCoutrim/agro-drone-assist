@@ -1,15 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Plus, Trash2, Search, Package, Wrench, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Trash2, Search, Package, Wrench, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { NumberInput } from "@/components/ui/number-input";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { formatCurrency, getErrorMessage } from "@/lib/formatters";
-import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/formatters";
 
 export interface OSItem {
   id?: string;
@@ -57,11 +53,6 @@ function ItemSearchRow({
   const [results, setResults] = useState<CatalogItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
-  const [quickCreateName, setQuickCreateName] = useState("");
-  const [quickCreatePrice, setQuickCreatePrice] = useState(0);
-  const [quickCreateUnit, setQuickCreateUnit] = useState("UN");
-  const [creating, setCreating] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -117,78 +108,10 @@ function ItemSearchRow({
     setTimeout(() => inputRef.current?.focus(), 50);
   };
 
-  const handleQuickCreate = async () => {
-    if (!quickCreateName.trim()) return;
-    setCreating(true);
-    try {
-      let orgId = organizationId || null;
-      if (!orgId) {
-        const { data: auth } = await supabase.auth.getUser();
-        if (!auth.user) throw new Error("Sessão expirada. Faça login novamente.");
-        const { data: profile } = await supabase
-          .from("profiles").select("organization_id").eq("id", auth.user.id).maybeSingle();
-        orgId = profile?.organization_id || null;
-      }
-      if (!orgId) {
-        throw new Error("Sua conta não está vinculada a uma empresa. Contate o administrador.");
-      }
-      if (tipo === "produto") {
-        const { data: existing } = await supabase
-          .from("produtos").select("id, descricao, preco_venda, codigo")
-          .eq("organization_id", orgId).ilike("descricao", quickCreateName.trim()).maybeSingle();
-        let row = existing;
-        if (!row) {
-          const { data, error } = await supabase.from("produtos").insert({
-            descricao: quickCreateName.trim(), preco_venda: quickCreatePrice, custo_unitario: 0,
-            categoria: "geral", codigo: null, organization_id: orgId,
-          }).select("id, descricao, preco_venda, codigo").single();
-          if (error) throw error;
-          row = data;
-          toast.success(`"${data.descricao}" cadastrado!`);
-        }
-        onAdd({
-          tipo: "produto", produto_id: row.id, servico_id: null,
-          descricao: row.descricao, codigo: row.codigo || undefined,
-          quantidade: 1, unidade: quickCreateUnit, valor_unitario: row.preco_venda ?? quickCreatePrice,
-          valor_total: row.preco_venda ?? quickCreatePrice,
-        });
-      } else {
-        const { data: existing } = await supabase
-          .from("servicos").select("id, descricao, preco")
-          .eq("organization_id", orgId).ilike("descricao", quickCreateName.trim()).maybeSingle();
-        let row = existing;
-        if (!row) {
-          const { data, error } = await supabase.from("servicos").insert({
-            descricao: quickCreateName.trim(), preco: quickCreatePrice,
-            organization_id: orgId,
-          }).select("id, descricao, preco").single();
-          if (error) throw error;
-          row = data;
-          toast.success(`"${data.descricao}" cadastrado!`);
-        }
-        onAdd({
-          tipo: "servico", produto_id: null, servico_id: row.id,
-          descricao: row.descricao, quantidade: 1, unidade: "HR",
-          valor_unitario: row.preco ?? quickCreatePrice, valor_total: row.preco ?? quickCreatePrice,
-        });
-      }
-
-      setQuickCreateOpen(false);
-      setSearch("");
-      setQuickCreateName("");
-      setQuickCreatePrice(0);
-      setQuickCreateUnit("UN");
-      setTimeout(() => inputRef.current?.focus(), 50);
-    } catch (err) { toast.error(getErrorMessage(err)); }
-    finally { setCreating(false); }
-  };
-
   const filtered = results.filter(r => !existingIds.has(r.id));
-  const exactMatch = results.some(r => r.descricao.toLowerCase() === search.trim().toLowerCase());
   const placeholder = tipo === "produto" ? "Buscar peça ou produto..." : "Buscar serviço...";
 
   return (
-    <>
       <div ref={wrapperRef} className="relative w-full">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
@@ -207,7 +130,9 @@ function ItemSearchRow({
         {isOpen && search.trim() && (
           <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-52 overflow-y-auto animate-in fade-in-0 zoom-in-95 duration-100">
             {filtered.length === 0 && !loading && (
-              <div className="px-3 py-3 text-center text-sm text-muted-foreground">Nenhum resultado</div>
+              <div className="px-3 py-3 text-center text-sm text-muted-foreground">
+                Nenhum resultado. Cadastre em {tipo === "produto" ? "Estoque" : "Serviços"}.
+              </div>
             )}
             {filtered.map((cat) => (
               <button key={cat.id} type="button" onClick={() => handleSelect(cat)}
@@ -220,47 +145,9 @@ function ItemSearchRow({
                 <span className="text-sm font-semibold text-primary shrink-0">{formatCurrency(cat.preco)}</span>
               </button>
             ))}
-            {!exactMatch && search.trim() && (
-              <button type="button"
-                onClick={() => { setQuickCreateName(search.trim()); setQuickCreateOpen(true); setIsOpen(false); }}
-                className="w-full text-left px-3 py-2.5 flex items-center gap-2 text-sm font-medium text-primary hover:bg-primary/5 transition-colors border-t border-border/50">
-                <Plus className="h-4 w-4" />
-                Cadastrar "{search.trim()}"
-              </button>
-            )}
           </div>
         )}
       </div>
-
-      <Dialog open={quickCreateOpen} onOpenChange={setQuickCreateOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-sm">Cadastrar {tipo === "produto" ? "Produto" : "Serviço"}</DialogTitle>
-            <DialogDescription className="sr-only">Cadastro rápido de item</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Descrição</Label>
-              <Input value={quickCreateName} onChange={(e) => setQuickCreateName(e.target.value)} className="h-9 text-sm" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Preço de Venda (R$)</Label>
-                <NumberInput step="0.01" min="0" value={quickCreatePrice} onChange={setQuickCreatePrice} className="h-9 text-sm" placeholder="0,00" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Unidade</Label>
-                <Input value={quickCreateUnit} onChange={(e) => setQuickCreateUnit(e.target.value)} className="h-9 text-sm" placeholder="UN" />
-              </div>
-            </div>
-            <Button size="sm" className="w-full gradient-primary" onClick={handleQuickCreate} disabled={creating}>
-              {creating && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
-              Salvar e Adicionar
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
   );
 }
 
