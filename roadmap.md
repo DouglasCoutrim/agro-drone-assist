@@ -17,3 +17,4 @@
 - [x] Sugerir papéis e permissões a partir das responsabilidades informadas pelo gestor, com confirmação antes de aplicar.
 - [x] Restaurar a logo quebrada da empresa e garantir novos uploads no armazenamento da empresa.
 - [x] Permitir custo e preço de venda independentes no estoque, sem cálculo por porcentagem.
+- [x] Remover o cache antigo do aplicativo sem perder a instalação pela tela inicial.
