@@ -508,7 +508,6 @@ export default function OrdensServico() {
         if (removedIds.length) {
           const { error } = await supabase.from("itens_os").delete().eq("ordem_servico_id", osId).in("id", removedIds);
           if (error) throw new Error(`A OS foi salva, mas os itens não: ${error.message}`);
-          }
         }
         const checklistClient = supabase as any;
         const { error: delChecklistErr } = await checklistClient
