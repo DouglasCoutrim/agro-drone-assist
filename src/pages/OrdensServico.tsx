@@ -609,7 +609,7 @@ const { error: itemsError } = await supabase.from("itens_os").insert(itemsToInse
       descricao_problema: os.descricao_problema,
       diagnostico: os.diagnostico || "",
       prioridade: os.prioridade,
-      data_previsao: os.data_previsao || "",
+      data_previsao: os.data_previsao ? os.data_previsao.split("T")[0] : "",
       desconto: (os as any).desconto || 0,
       valor_orcamento: os.valor_orcamento || 0,
       observacoes: cleanObs,
