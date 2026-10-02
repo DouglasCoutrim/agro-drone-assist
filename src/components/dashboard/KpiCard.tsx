@@ -56,23 +56,23 @@ export function KpiCard({ label, value, icon: Icon, color, trend, onClick }: Kpi
   return (
     <div
       className={cn(
-        "relative rounded-2xl p-5 transition-all duration-200 overflow-hidden shadow-sm border border-slate-100/50",
+        "relative rounded-lg p-4 transition-all duration-200 overflow-hidden shadow-sm border border-border",
         classes.bg,
         onClick && "cursor-pointer hover:-translate-y-0.5"
       )}
       onClick={onClick}
     >
       {/* Top color bar */}
-      <div className={cn("absolute top-0 left-0 right-0 h-[3px] rounded-t-2xl", classes.bar)} />
+      <div className={cn("absolute top-0 left-0 right-0 h-[3px] rounded-t-lg", classes.bar)} />
 
       <div className="flex items-start justify-between mb-3">
-        <p className="text-[11px] font-semibold tracking-[0.06em] uppercase text-slate-600">{label}</p>
+        <p className="text-[11px] font-semibold tracking-[0.06em] uppercase text-muted-foreground">{label}</p>
         <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0", classes.icon)}>
           <Icon className="h-4 w-4" />
         </div>
       </div>
 
-      <p className="text-3xl font-bold leading-none text-slate-800 mb-1.5">{value}</p>
+      <p className="text-2xl font-bold leading-none text-foreground mb-1.5">{value}</p>
 
       {trend && (
         <div className={cn("text-xs flex items-center gap-1", trend.value >= 0 ? "text-green-700" : "text-red-700")}>

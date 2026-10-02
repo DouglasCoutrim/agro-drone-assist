@@ -238,22 +238,23 @@ export default function Estoque() {
               <Button size="sm" className="gradient-primary" onClick={handleOpenNewDialog}>
                 <Plus className="mr-1.5 h-3.5 w-3.5" />Novo Item
               </Button>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-md max-h-[60vh] overflow-hidden">
                 <DialogHeader>
                   <DialogTitle>{editingItem ? 'Editar Item' : 'Novo Item'}</DialogTitle>
                   <DialogDescription>Preencha os dados do item de estoque</DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
                     <div className="space-y-2">
-                      <Label>Código *</Label>
-                      <Input value={formData.codigo} onChange={(e) => setFormData(prev => ({ ...prev, codigo: e.target.value }))} required />
+                      <Label htmlFor="codigo">Código *</Label>
+                      <Input id="codigo" value={formData.codigo} onChange={(e) => setFormData(prev => ({ ...prev, codigo: e.target.value }))} required className="h-10" />
                       {!editingItem && <p className="text-xs text-muted-foreground">Gerado automaticamente (editável)</p>}
                     </div>
                     <div className="space-y-2">
-                      <Label>Categoria *</Label>
+                      <Label htmlFor="categoria">Categoria *</Label>
                       <SearchableInput
+                        id="categoria"
                         value={formData.categoria}
                         onChange={(v) => setFormData(prev => ({ ...prev, categoria: v }))}
                         suggestions={categorias}
@@ -263,30 +264,35 @@ export default function Estoque() {
                         required
                       />
                     </div>
-                    <div className="col-span-2 space-y-2">
-                      <Label>Descrição *</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="descricao">Descrição *</Label>
                       <Input
+                        id="descricao"
                         value={formData.descricao}
                         onChange={(e) => setFormData(prev => ({ ...prev, descricao: e.target.value }))}
                         placeholder="Digite a descrição do produto..."
                         required
+                        className="h-10"
                       />
                     </div>
-                    <div className="space-y-2"><Label>Quantidade</Label><NumberInput value={formData.quantidade} onChange={(v) => setFormData(prev => ({ ...prev, quantidade: v }))} placeholder="0" /></div>
-                    <div className="space-y-2"><Label>Estoque Mínimo</Label><NumberInput value={formData.estoque_minimo} onChange={(v) => setFormData(prev => ({ ...prev, estoque_minimo: v }))} placeholder="0" /></div>
-                    <div className="space-y-2">
-                      <Label>Custo Unitário (R$)</Label>
-                      <NumberInput step="0.01" value={formData.custo_unitario}
-                        onChange={(v) => setFormData(prev => ({ ...prev, custo_unitario: v }))} placeholder="0,00" min={0} />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2"><Label htmlFor="quantidade">Quantidade</Label><NumberInput id="quantidade" value={formData.quantidade} onChange={(v) => setFormData(prev => ({ ...prev, quantidade: v }))} placeholder="0" className="h-10" /></div>
+                      <div className="space-y-2"><Label htmlFor="estoque_minimo">Estoque Mínimo</Label><NumberInput id="estoque_minimo" value={formData.estoque_minimo} onChange={(v) => setFormData(prev => ({ ...prev, estoque_minimo: v }))} placeholder="0" className="h-10" /></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="custo_unitario">Custo Unitário (R$)</Label>
+                        <NumberInput id="custo_unitario" step="0.01" value={formData.custo_unitario} onChange={(v) => setFormData(prev => ({ ...prev, custo_unitario: v }))} placeholder="0,00" min={0} className="h-10" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="preco_venda">Preço de Venda (R$)</Label>
+                        <NumberInput id="preco_venda" step="0.01" value={formData.preco_venda} onChange={(v) => setFormData(prev => ({ ...prev, preco_venda: v }))} placeholder="0,00" min={0} className="h-10" />
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Preço de Venda (R$)</Label>
-                      <NumberInput step="0.01" value={formData.preco_venda}
-                        onChange={(v) => setFormData(prev => ({ ...prev, preco_venda: v }))} placeholder="0,00" min={0} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Fornecedor</Label>
+                      <Label htmlFor="fornecedor">Fornecedor</Label>
                       <SearchableInput
+                        id="fornecedor"
                         value={formData.fornecedor}
                         onChange={(v) => setFormData(prev => ({ ...prev, fornecedor: v }))}
                         suggestions={fornecedores}
@@ -295,15 +301,18 @@ export default function Estoque() {
                         addNewLabel="Adicionar fornecedor"
                       />
                     </div>
-                    <div className="space-y-2"><Label>Localização</Label><Input value={formData.localizacao} onChange={(e) => setFormData(prev => ({ ...prev, localizacao: e.target.value }))} placeholder="Ex: Prateleira A1" /></div>
+                    <div className="space-y-2"><Label htmlFor="localizacao">Localização</Label><Input id="localizacao" value={formData.localizacao} onChange={(e) => setFormData(prev => ({ ...prev, localizacao: e.target.value }))} placeholder="Ex: Prateleira A1" className="h-10" /></div>
                   </div>
-                  <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                    <Button type="submit" className="gradient-primary" disabled={formLoading}>
-                      {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {editingItem ? 'Salvar' : 'Criar'}
-                    </Button>
-                  </div>
+                  <Separator />
+                  <DialogFooter className="sticky bottom-0 bg-background border-t pt-4">
+                    <div className="flex justify-end gap-2 w-full">
+                      <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+                      <Button type="submit" className="gradient-primary" disabled={formLoading}>
+                        {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {editingItem ? 'Salvar' : 'Criar'}
+                      </Button>
+                    </div>
+                  </DialogFooter>
                 </form>
               </DialogContent>
             </Dialog>
@@ -311,15 +320,15 @@ export default function Estoque() {
         </div>
 
         {/* Stats */}
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Total</p><p className="text-lg font-bold">{itens.length}</p></div><Package className="h-4 w-4 text-primary" /></div></CardContent></Card>
-          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Baixo</p><p className="text-lg font-bold text-destructive">{itensEstoqueBaixo.length}</p></div><AlertTriangle className="h-4 w-4 text-destructive" /></div></CardContent></Card>
-          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Valor</p><p className="text-lg font-bold">{formatCurrency(valorTotal)}</p></div><TrendingUp className="h-4 w-4 text-success" /></div></CardContent></Card>
-          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center justify-between"><div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Categorias</p><p className="text-lg font-bold">{new Set(itens.map(i => i.categoria)).size}</p></div><Package className="h-4 w-4 text-primary" /></div></CardContent></Card>
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+          <Card className="border border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground uppercase tracking-wide">Total</p><p className="text-xl font-bold">{itens.length}</p></div><Package className="h-5 w-5 text-primary" /></div></CardContent></Card>
+          <Card className="border border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground uppercase tracking-wide">Baixo</p><p className="text-xl font-bold text-destructive">{itensEstoqueBaixo.length}</p></div><AlertTriangle className="h-5 w-5 text-destructive" /></div></CardContent></Card>
+          <Card className="border border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground uppercase tracking-wide">Valor</p><p className="text-xl font-bold">{formatCurrency(valorTotal)}</p></div><TrendingUp className="h-5 w-5 text-success" /></div></CardContent></Card>
+          <Card className="border border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground uppercase tracking-wide">Categorias</p><p className="text-xl font-bold">{new Set(itens.map(i => i.categoria)).size}</p></div><Package className="h-5 w-5 text-primary" /></div></CardContent></Card>
         </div>
 
         {/* Search */}
-        <div className="relative"><Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Buscar por código, nome ou categoria..." className="pl-9 h-9 text-xs bg-muted/30 border-border/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+        <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Buscar por código, nome ou categoria..." className="pl-9 h-10 text-sm bg-muted/30 border-border/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
 
         {/* Table */}
         <Card className="shadow-soft border-border/50">
@@ -334,13 +343,14 @@ export default function Estoque() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Categoria</TableHead>
-                      <TableHead className="text-center">Qtd</TableHead>
-                      <TableHead className="text-right">Custo</TableHead>
-                      <TableHead className="text-right">Preço Venda</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
+                      <TableHead className="w-[80px]">Código</TableHead>
+                      <TableHead className="flex-1">Descrição</TableHead>
+                      <TableHead className="w-[100px] text-center">Categoria</TableHead>
+                      <TableHead className="w-[80px] text-right">Qtd</TableHead>
+                      <TableHead className="w-[100px] text-right">Custo</TableHead>
+                      <TableHead className="w-[120px] text-right">Preço Venda</TableHead>
+                      <TableHead className="w-[100px] text-center">Status</TableHead>
+                      <TableHead className="w-[100px]">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -348,16 +358,12 @@ export default function Estoque() {
                       const statusInfo = getStatusInfo(item);
                       const StatusIcon = statusInfo.icon;
                       return (
-                        <TableRow key={item.id} className="cursor-pointer" onClick={() => setViewingItem(item)}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{item.descricao}</p>
-                              <p className="text-xs text-muted-foreground">{item.codigo}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell><Badge variant="outline">{item.categoria}</Badge></TableCell>
-                          <TableCell className="text-center">
-                            <span className="font-bold text-lg">{item.quantidade}</span>
+                        <TableRow key={item.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => setViewingItem(item)}>
+                          <TableCell className="font-mono text-sm">{item.codigo}</TableCell>
+                          <TableCell className="truncate">{item.descricao}</TableCell>
+                          <TableCell className="text-center"><Badge variant="outline">{item.categoria}</Badge></TableCell>
+                          <TableCell className="text-right">
+                            <span className="font-bold">{item.quantidade}</span>
                             <span className="text-xs text-muted-foreground block">min: {item.estoque_minimo}</span>
                           </TableCell>
                           <TableCell className="text-right font-medium">{formatCurrency(item.custo_unitario)}</TableCell>
@@ -369,9 +375,9 @@ export default function Estoque() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex gap-1 justify-end" onClick={(e) => e.stopPropagation()}>
-                              <Button size="sm" variant="ghost" onClick={() => setViewingItem(item)}><Eye className="h-4 w-4" /></Button>
-                              <Button size="sm" variant="ghost" onClick={() => handleEdit(item)}><Edit className="h-4 w-4" /></Button>
-                              <Button size="sm" variant="ghost" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewingItem(item)}><Eye className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(item)}><Edit className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -386,30 +392,34 @@ export default function Estoque() {
 
         {/* View Item Dialog */}
         <Dialog open={!!viewingItem} onOpenChange={(open) => { if (!open) setViewingItem(null); }}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-md max-h-[60vh] overflow-hidden">
             <DialogHeader>
               <DialogTitle>Detalhes do Item</DialogTitle>
             </DialogHeader>
             {viewingItem && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div><p className="text-xs text-muted-foreground">Código</p><p className="font-medium">{viewingItem.codigo}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Categoria</p><Badge variant="outline">{viewingItem.categoria}</Badge></div>
-                  <div className="col-span-2"><p className="text-xs text-muted-foreground">Descrição</p><p className="font-medium">{viewingItem.descricao}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Quantidade</p><p className="font-bold text-lg">{viewingItem.quantidade}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Estoque Mínimo</p><p className="font-medium">{viewingItem.estoque_minimo}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Custo Unitário</p><p className="font-medium">{formatCurrency(viewingItem.custo_unitario)}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Preço de Venda</p><p className="font-medium text-success">{formatCurrency(viewingItem.preco_venda)}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Fornecedor</p><p className="font-medium">{viewingItem.fornecedor || "-"}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Localização</p><p className="font-medium">{viewingItem.localizacao || "-"}</p></div>
+              <>
+                <div className="space-y-4 py-4 overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><p className="text-xs text-muted-foreground">Código</p><p className="font-medium">{viewingItem.codigo}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Categoria</p><Badge variant="outline">{viewingItem.categoria}</Badge></div>
+                    <div className="col-span-2"><p className="text-xs text-muted-foreground">Descrição</p><p className="font-medium">{viewingItem.descricao}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Quantidade</p><p className="font-bold text-lg">{viewingItem.quantidade}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Estoque Mínimo</p><p className="font-medium">{viewingItem.estoque_minimo}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Custo Unitário</p><p className="font-medium">{formatCurrency(viewingItem.custo_unitario)}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Preço de Venda</p><p className="font-medium text-success">{formatCurrency(viewingItem.preco_venda)}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Fornecedor</p><p className="font-medium">{viewingItem.fornecedor || "-"}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Localização</p><p className="font-medium">{viewingItem.localizacao || "-"}</p></div>
+                  </div>
                 </div>
                 <Separator />
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => { handleEdit(viewingItem); setViewingItem(null); }}>
-                    <Edit className="mr-2 h-4 w-4" />Editar
-                  </Button>
-                </div>
-              </div>
+                <DialogFooter className="sticky bottom-0 bg-background border-t pt-4">
+                  <div className="flex justify-end gap-2 w-full">
+                    <Button variant="outline" onClick={() => { handleEdit(viewingItem); setViewingItem(null); }}>
+                      <Edit className="mr-2 h-4 w-4" />Editar
+                    </Button>
+                  </div>
+                </DialogFooter>
+              </>
             )}
           </DialogContent>
         </Dialog>

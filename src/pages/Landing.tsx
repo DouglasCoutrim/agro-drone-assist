@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrganization } from '@/hooks/useOrganization';
 import {
-  Zap, ClipboardList, Package, DollarSign, Users, MapPin,
+  Zap, ClipboardList, Package, DollarSign, Users,
   Smartphone, ShieldCheck, Sparkles, Check, ArrowRight, BarChart3, Wrench,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -26,7 +26,6 @@ const FEATURES = [
   { icon: Package, title: 'Estoque Inteligente', desc: 'Controle de peças, código sequencial, importação Mercado Livre e preços de venda definidos por você.' },
   { icon: DollarSign, title: 'Financeiro & Cobranças', desc: 'Integração com Asaas e Mercado Pago. Gere PIX e Boleto direto da OS.' },
   { icon: Users, title: 'CRM de Clientes', desc: 'Cadastro completo, histórico de atendimentos e infraestrutura técnica do cliente.' },
-  { icon: MapPin, title: 'Rotas & Deslocamentos', desc: 'Cálculo de rota OSRM, pedágios, combustível e compartilhamento via WhatsApp.' },
   { icon: BarChart3, title: 'Relatórios em Tempo Real', desc: 'KPIs de faturamento, OS, técnicos e estoque. Tudo num único painel.' },
 ];
 

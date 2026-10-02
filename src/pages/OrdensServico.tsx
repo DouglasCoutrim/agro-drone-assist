@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download, UserPlus, CreditCard, Clock, Wrench, CheckCircle2, XCircle, ChevronRight, MoreVertical, ArrowRight, Trash2, Printer, Check, Calculator } from "lucide-react";
+import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download, UserPlus, CreditCard, Clock, Wrench, CheckCircle2, XCircle, ChevronRight, MoreVertical, ArrowRight, Trash2, Printer, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
@@ -193,7 +193,6 @@ export default function OrdensServico() {
     condicao_visual: "",
     ciclos_carga_entrada: 0,
     ciclos_carga_saida: 0,
-    deslocamento: false,
     tipo_os: "normal" as Enums<"tipo_os">,
     checklist_equipamento_tipo_id: "",
   });
@@ -415,7 +414,7 @@ export default function OrdensServico() {
         throw new Error("Sua conta não está vinculada a uma empresa. Contate o administrador.");
       }
 
-      const { ciclos_carga_entrada, ciclos_carga_saida, tipo_os, checklist_equipamento_tipo_id, deslocamento, ...restForm } = formData;
+      const { ciclos_carga_entrada, ciclos_carga_saida, tipo_os, checklist_equipamento_tipo_id, ...restForm } = formData;
       let observacoesWithMobility = (restForm.observacoes || "")
         .replace(/\[MOBILIDADE:[\s\S]*?\]/g, "")
         .replace(/\[CUSTOM:[^\]]*\]/g, "")
@@ -646,8 +645,7 @@ export default function OrdensServico() {
       condicao_visual: (os as any).condicao_visual || "",
       ciclos_carga_entrada: (os as any).ciclos_carga_entrada || 0,
        ciclos_carga_saida: (os as any).ciclos_carga_saida || 0,
-tecnico_id: os.tecnico_id || "",
-        deslocamento: false,
+        tecnico_id: os.tecnico_id || "",
         tipo_os: (os as any).tipo_os || "normal",
         checklist_equipamento_tipo_id: (os as any).checklist_equipamento_tipo_id || "",
       });
@@ -1060,7 +1058,7 @@ tecnico_id: os.tecnico_id || "",
   const resetMobilityData = () => setMobilityData({ voltagem: "", capacidade_bateria: "", odometro: "", chave_ignicao: false, carregador_entregue: false, check_display: false, check_acelerador: false, check_freios: false, check_pneus: false, check_controladora: false, check_iluminacao: false, check_carenagem: false });
 
   const resetForm = () => {
-    setFormData({ cliente_id: "", tipo_equipamento: "bateria", marca: "", modelo_equipamento: "", numero_serie: "", descricao_problema: "", diagnostico: "", prioridade: "media", data_previsao: "", desconto: 0, valor_orcamento: 0, observacoes: "", tecnico_id: "", checklist_bateria: false, checklist_carregador: false, checklist_controle: false, checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "", ciclos_carga_entrada: 0, ciclos_carga_saida: 0, deslocamento: false, tipo_os: "normal", checklist_equipamento_tipo_id: "" });
+    setFormData({ cliente_id: "", tipo_equipamento: "bateria", marca: "", modelo_equipamento: "", numero_serie: "", descricao_problema: "", diagnostico: "", prioridade: "media", data_previsao: "", desconto: 0, valor_orcamento: 0, observacoes: "", tecnico_id: "", checklist_bateria: false, checklist_carregador: false, checklist_controle: false, checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "", ciclos_carga_entrada: 0, ciclos_carga_saida: 0, tipo_os: "normal", checklist_equipamento_tipo_id: "" });
     setUiCategory("bateria");
     resetMobilityData();
     setConfigCheckbox({});
@@ -1555,10 +1553,6 @@ tecnico_id: os.tecnico_id || "",
                 <CardHeader className="pb-3"><CardTitle className="text-sm">4. Observações e Resumo</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-1.5"><Label className="text-xs">Observações Técnicas / Internas</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={3} /></div>
-                  <div className="flex items-center gap-2">
-                    <Checkbox id="deslocamento" checked={formData.deslocamento} onCheckedChange={(c) => setFormData({ ...formData, deslocamento: !!c })} />
-                    <Label htmlFor="deslocamento" className="text-xs cursor-pointer flex items-center gap-1"><Calculator className="h-3 w-3" />Houve deslocamento?</Label>
-                  </div>
                   <Separator />
                   <div className="space-y-3">
                     <p className="text-xs font-semibold text-muted-foreground uppercase">Tipo de Ordem de Serviço</p>

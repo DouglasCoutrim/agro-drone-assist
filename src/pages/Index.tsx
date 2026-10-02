@@ -3,9 +3,13 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import {
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell
+} from "@/components/ui/table";
 import {
   FileText, Package, DollarSign, AlertTriangle, CheckCircle, Plus, Eye, Clock, ClipboardList
 } from "lucide-react";
@@ -18,7 +22,7 @@ import { fetchOsComValores } from "@/lib/os-billing";
 
 const TIPO_EQUIPAMENTO: Record<string, string> = {
   drone_agricola: "Drone Agrícola", drone_convencional: "Drone de Consumo",
-  controle: "Controle", bateria: "Bateria", outro: "Outro",
+  controle: "Controle", bateria: "Bateria", outro: "Outro", carregador: "Carregador",
 };
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
@@ -182,16 +186,16 @@ const Index = () => {
 
         {/* KPI Grid */}
         {loading ? (
-          <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
             {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="bg-card border border-border rounded-2xl p-5 space-y-3">
+              <div key={i} className="bg-card border border-border rounded-lg p-4 space-y-3">
                 <Skeleton className="h-3 w-20" />
                 <Skeleton className="h-8 w-16" />
               </div>
             ))}
           </div>
         ) : (
-          <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
             <KpiCard label="OS Abertas" value={stats.osAbertas} icon={ClipboardList} color="amber" onClick={() => navigate("/ordens-servico")} />
             <KpiCard label="Concluídas" value={stats.osConcluidas} icon={CheckCircle} color="green" onClick={() => navigate("/ordens-servico")} />
             <KpiCard label="Estoque Baixo" value={stats.itensEstoqueBaixo} icon={AlertTriangle} color="red" onClick={() => navigate("/estoque")} />
@@ -201,22 +205,22 @@ const Index = () => {
         )}
 
         {/* Main Grid */}
-        <div className="grid gap-5 lg:grid-cols-[2fr_1fr]">
+        <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
           {/* Recent OS */}
-          <div className="bg-card border border-border rounded-2xl shadow-soft overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
-              <h3 className="font-display text-[15px] font-bold text-foreground flex items-center gap-2">
+          <Card className="border border-border shadow-soft">
+            <CardHeader className="border-b border-border-subtle">
+              <CardTitle className="font-display text-[15px] font-bold text-foreground flex items-center gap-2">
                 <Clock className="h-4 w-4 text-primary" />OS Recentes
-              </h3>
-            </div>
-            <div className="p-5">
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
               {loading ? (
                 <div className="flex items-center justify-center py-6">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
                 </div>
               ) : recentOS.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-3">
-                  <div className="w-14 h-14 rounded-2xl bg-background flex items-center justify-center text-muted-foreground">
+                  <div className="w-14 h-14 rounded-xl bg-background flex items-center justify-center text-muted-foreground">
                     <FileText className="h-6 w-6" />
                   </div>
                   <p className="text-[15px] font-semibold text-foreground">Nenhuma OS encontrada</p>
@@ -224,77 +228,46 @@ const Index = () => {
                   <Button variant="outline" size="sm" onClick={() => navigate("/ordens-servico")}>Criar primeira OS</Button>
                 </div>
               ) : (
-                <>
-                  {/* Desktop table */}
-                  <div className="hidden md:block responsive-table-container">
-                    <table className="w-full border-collapse">
-
-                      <thead>
-                        <tr>
-                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground bg-background border-b border-border whitespace-nowrap">#</th>
-                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground bg-background border-b border-border whitespace-nowrap">Cliente</th>
-                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground bg-background border-b border-border whitespace-nowrap">Equipamento</th>
-                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground bg-background border-b border-border whitespace-nowrap">Status</th>
-                          <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground bg-background border-b border-border whitespace-nowrap" />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {recentOS.map(os => (
-                          <tr key={os.id} className="hover:bg-background transition-colors cursor-pointer" onClick={() => setViewingOS(os)}>
-                            <td className="px-4 py-3 border-b border-border-subtle">
-                              <span className="font-mono text-[13px] text-vc-green-text font-medium">{os.numero}</span>
-                            </td>
-                            <td className="px-4 py-3 border-b border-border-subtle text-sm text-foreground">{os.clientes?.nome || "Cliente"}</td>
-                            <td className="px-4 py-3 border-b border-border-subtle text-sm text-foreground">{TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento}</td>
-                            <td className="px-4 py-3 border-b border-border-subtle">{getStatusBadge(os.status)}</td>
-                            <td className="px-4 py-3 border-b border-border-subtle text-right">
-                              <button className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-background hover:text-foreground hover:border-border border border-transparent transition-all">
-                                <Eye className="h-3.5 w-3.5" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Mobile cards */}
-                  <div className="md:hidden space-y-2">
-                    {recentOS.map(os => {
-                      const statusKey = os.status;
-                      const borderColor = statusKey.includes("reparo") || statusKey.includes("teste") ? "border-l-blue-500"
-                        : statusKey.includes("pronto") || statusKey === "concluida" ? "border-l-green-500"
-                        : statusKey === "cancelada" ? "border-l-red-500"
-                        : "border-l-amber-500";
-                      return (
-                        <div
-                          key={os.id}
-                          className={`bg-card border border-border rounded-xl p-3 border-l-4 ${borderColor} transition-all hover:shadow-soft cursor-pointer`}
-                          onClick={() => setViewingOS(os)}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-sm font-semibold text-slate-800">{os.clientes?.nome || "Cliente"}</p>
-                            {getStatusBadge(os.status)}
-                          </div>
-                          <span className="font-mono text-xs text-slate-500 block mb-1">#{os.numero}</span>
-                          <p className="text-xs text-muted-foreground">{TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[70px]">#</TableHead>
+                        <TableHead className="flex-1">Cliente</TableHead>
+                        <TableHead className="w-[150px]">Equipamento</TableHead>
+                        <TableHead className="w-[140px]">Status</TableHead>
+                        <TableHead className="w-[50px] text-right" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {recentOS.map(os => (
+                        <TableRow key={os.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => setViewingOS(os)}>
+                          <TableCell className="font-mono text-[13px] font-medium">{os.numero}</TableCell>
+                          <TableCell className="text-sm">{os.clientes?.nome || "Cliente"}</TableCell>
+                          <TableCell className="text-sm truncate">{TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento}</TableCell>
+                          <TableCell>{getStatusBadge(os.status)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Visualizar OS">
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Alerts column */}
-          <div className="bg-card border border-border rounded-2xl shadow-soft overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
-              <h3 className="font-display text-[15px] font-bold text-foreground flex items-center gap-2">
+          <Card className="border border-border shadow-soft">
+            <CardHeader className="border-b border-border-subtle">
+              <CardTitle className="font-display text-[15px] font-bold text-foreground flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-warning" />Alertas
-              </h3>
-            </div>
-            <div className="p-5 space-y-3">
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 p-4">
               {overdueOS.length > 0 && (
                 <div className="flex items-start gap-3 p-3 rounded-lg border border-red-200 bg-red-50 text-red-800 text-[13px] cursor-pointer hover:bg-red-100 transition-colors" onClick={() => navigate("/ordens-servico")}>
                   <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0" />
@@ -331,8 +304,8 @@ const Index = () => {
                   <p className="font-medium">Tudo em dia!</p>
                 </div>
               )}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* FAB mobile */}
@@ -346,7 +319,7 @@ const Index = () => {
 
         {/* View OS Dialog */}
         <Dialog open={!!viewingOS} onOpenChange={(open) => { if (!open) setViewingOS(null); }}>
-          <DialogContent className="dialog-content-mobile-fix max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-md max-h-[60vh] overflow-hidden">
             <DialogHeader>
               <DialogTitle className="flex items-center justify-between text-base font-display">
                 <span>OS {viewingOS?.numero}</span>
@@ -355,21 +328,25 @@ const Index = () => {
               <DialogDescription className="text-xs">Visualização rápida</DialogDescription>
             </DialogHeader>
             {viewingOS && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Cliente</p><p className="text-sm font-medium">{viewingOS.clientes?.nome || "-"}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Equipamento</p><p className="text-sm">{TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Modelo</p><p className="text-sm">{viewingOS.modelo_equipamento || "-"}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Entrada</p><p className="text-sm">{formatDate(viewingOS.data_entrada)}</p></div>
-                  <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Defeito</p><p className="text-sm">{viewingOS.descricao_problema}</p></div>
+              <>
+                <div className="space-y-4 py-4 overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Cliente</p><p className="text-sm font-medium">{viewingOS.clientes?.nome || "-"}</p></div>
+                    <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Equipamento</p><p className="text-sm">{TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento}</p></div>
+                    <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Modelo</p><p className="text-sm">{viewingOS.modelo_equipamento || "-"}</p></div>
+                    <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Entrada</p><p className="text-sm">{formatDate(viewingOS.data_entrada)}</p></div>
+                    <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Defeito</p><p className="text-sm">{viewingOS.descricao_problema}</p></div>
+                  </div>
                 </div>
                 <Separator />
-                <div className="flex justify-end">
-                  <Button variant="outline" size="sm" onClick={() => { setViewingOS(null); navigate("/ordens-servico"); }}>
-                    <Eye className="mr-1.5 h-3.5 w-3.5" />Ver Completa
-                  </Button>
-                </div>
-              </div>
+                <DialogFooter className="sticky bottom-0 bg-background border-t pt-4">
+                  <div className="flex justify-end gap-2 w-full">
+                    <Button variant="outline" size="sm" onClick={() => { setViewingOS(null); navigate("/ordens-servico"); }}>
+                      <Eye className="mr-1.5 h-3.5 w-3.5" />Ver Completa
+                    </Button>
+                  </div>
+                </DialogFooter>
+              </>
             )}
           </DialogContent>
         </Dialog>
