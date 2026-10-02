@@ -163,7 +163,7 @@ export default function Financeiro() {
       <div className="space-y-4" data-tour="financeiro-page">
         {/* Header */}
         <PremiumCard delay={0}>
-          <PremiumCard.Header>
+          <div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
               <div>
                 <h1 className="text-lg font-bold flex items-center gap-2"><DollarSign className="h-5 w-5 text-primary" />Financeiro</h1>
@@ -229,7 +229,7 @@ export default function Financeiro() {
                 </Dialog>
               </div>
             </div>
-          </PremiumCard.Header>
+          </div>
         </PremiumCard>
 
         {/* KPI Cards */}
@@ -280,14 +280,14 @@ export default function Financeiro() {
         {/* OS em aberto para cobrança */}
         {osAbertas.length > 0 && (
           <PremiumCard delay={100}>
-            <PremiumCard.Header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
               <div className="flex items-center gap-1.5">
                 <ClipboardList className="h-4 w-4 text-primary" />
                 <span className="font-semibold">OS aguardando pagamento</span>
               </div>
               <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => abrirCobranca()}>Cobrar em lote</Button>
-            </PremiumCard.Header>
-            <PremiumCard.Content className="space-y-2 p-0">
+            </div>
+            <div className="space-y-2 p-0">
               {osAbertas.slice(0, 6).map(os => (
                 <div key={os.id} className="flex items-center justify-between gap-2 p-3 border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors">
                   <div className="min-w-0">
@@ -305,7 +305,7 @@ export default function Financeiro() {
               {osAbertas.length > 6 && (
                 <p className="text-[11px] text-muted-foreground text-center py-2">+{osAbertas.length - 6} outras OS em aberto</p>
               )}
-            </PremiumCard.Content>
+            </div>
           </PremiumCard>
         )}
 
@@ -321,13 +321,13 @@ export default function Financeiro() {
 
         {/* Transações Table */}
         <PremiumCard delay={300}>
-          <PremiumCard.Header className="flex items-center justify-between">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Receipt className="h-4 w-4 text-primary" />
               <span className="font-semibold">Transações Recentes</span>
             </div>
-          </PremiumCard.Header>
-          <PremiumCard.Content className="p-0">
+          </div>
+          <div className="p-0">
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -338,27 +338,27 @@ export default function Financeiro() {
                 <p className="text-sm">{searchTerm ? 'Nenhuma transação encontrada' : 'Nenhuma transação cadastrada'}</p>
               </div>
             ) : (
-              <PremiumTable<Transacao>
+              <PremiumTable
                 columns={[
-                  { key: 'data', header: 'Data', align: 'left' },
-                  { key: 'descricao', header: 'Descrição', align: 'left' },
-                  { key: 'categoria', header: 'Categoria', align: 'center' },
-                  { key: 'tipo', header: 'Tipo', align: 'center' },
-                  { key: 'valor', header: 'Valor', align: 'right' },
-                  { key: 'actions', header: '', align: 'right' },
+                  { key: 'data', label: 'Data', align: 'left' },
+                  { key: 'descricao', label: 'Descrição', align: 'left' },
+                  { key: 'categoria', label: 'Categoria', align: 'center' },
+                  { key: 'tipo', label: 'Tipo', align: 'center' },
+                  { key: 'valor', label: 'Valor', align: 'right' },
+                  { key: 'actions', label: '', align: 'right' },
                 ]}
                 data={filteredTransacoes.slice(0, 30)}
-                rowKey="id"
+                rowKey={(row) => row.id}
                 loading={loading}
                 emptyMessage={searchTerm ? 'Nenhuma transação encontrada' : 'Nenhuma transação cadastrada'}
-                emptyIcon={Receipt}
+                emptyIcon={<Receipt className="h-8 w-8" />}
                 emptyAction={{ label: "Nova Transação", onClick: () => { setDialogOpen(true); } }}
                 striped
                 hoverable
                 animateRows
-                renderCell={(column, row) => {
+                renderCell={(row, columnKey) => {
                   const tipoConfig = getTipoConfig(row.tipo);
-                  switch (column.key) {
+                  switch (columnKey) {
                     case 'data':
                       return <span className="text-sm font-mono text-muted-foreground">{new Date(row.data_transacao).toLocaleDateString('pt-BR')}</span>;
                     case 'descricao':
@@ -395,7 +395,7 @@ export default function Financeiro() {
                 onRowClick={(row) => setViewingTransacao(row)}
               />
             )}
-          </PremiumCard.Content>
+          </div>
         </PremiumCard>
 
         {/* View Transaction Dialog */}
