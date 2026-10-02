@@ -1187,26 +1187,26 @@ export default function OrdensServico() {
           </div>
           <PremiumTable
             columns={[
-              { key: "numero", header: "OS", width: "100px" },
-              { key: "status", header: "Status", width: "140px" },
-              { key: "cliente", header: "Cliente" },
-              { key: "equipamento", header: "Equipamento" },
-              { key: "prioridade", header: "Prioridade", width: "80px" },
-              { key: "valor", header: "Valor", width: "100px", align: "right" },
-              { key: "actions", header: "", width: "100px" },
+              { key: "numero", label: "OS", width: "w-[100px]" },
+              { key: "status", label: "Status", width: "w-[140px]" },
+              { key: "cliente", label: "Cliente" },
+              { key: "equipamento", label: "Equipamento" },
+              { key: "prioridade", label: "Prioridade", width: "w-[80px]" },
+              { key: "valor", label: "Valor", width: "w-[100px]", align: "right" },
+              { key: "actions", label: "", width: "w-[100px]" },
             ]}
             data={filteredOrdens}
             loading={loading}
             emptyMessage={statusFilter !== "todas" ? "Nenhuma OS com este filtro" : "Nenhuma OS encontrada"}
-            emptyIcon={FileText}
+            emptyIcon={<FileText className="h-8 w-8" />}
             emptyAction={{ label: "Nova OS", onClick: () => { if (!canEdit) { toast.error(readOnlyOsMessage); return; } if (!canCreateOS) { setShowUpgrade(true); return; } resetForm(); setDialogOpen(true); } }}
-            rowKey="id"
+            rowKey={(os) => os.id}
             striped
             hoverable
             animateRows
-            renderCell={(column, os) => {
+            renderCell={(os, columnKey) => {
               const statusConfig = STATUS_CONFIG[os.status] || { label: os.status, variant: "outline" as const };
-              switch (column.key) {
+              switch (columnKey) {
                 case "numero":
                   return <span className="font-bold text-primary text-sm">{os.numero}</span>;
                 case "status":
