@@ -6,3 +6,4 @@
 - Build da aplicação deve preferir variáveis públicas gerenciadas de conexão e fornecer fallback público específico do projeto via configuração do Vite, porque a publicação pode omitir `.env` e deixar a tela vazia.
 - Keep assistant assignments, commissions, and internal OS notes in staff-only views; customer-facing PDF and messages must use explicit customer-facing fields, because internal compensation must not leak to clients.
 - Ao editar uma OS, preservar o orçamento sem lançamentos detalhados e atualizar os itens por identidade, confirmando exclusões antes de salvar; substituir toda a lista apaga lançamentos quando uma leitura falha.
+- Autorizar edição de comissões pelo papel `admin` somente para perfis com papel `tecnico` da mesma organização, mesmo quando um usuário acumula os dois papéis; a verificação deve ficar no banco para impedir contorno pela interface.

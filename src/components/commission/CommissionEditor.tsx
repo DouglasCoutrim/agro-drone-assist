@@ -36,12 +36,15 @@ export function CommissionEditor({ profile, onSaved }: CommissionEditorProps) {
         product_commission_type: onProducts ? productType : "percentage",
         product_commission_value: onProducts ? Number(productValue) || 0 : 0,
       };
-      const { error } = await supabase.from("profiles").update(payload as any).eq("id", profile.id);
+      const { data, error } = await supabase.from("profiles").update(payload as any).eq("id", profile.id).select("id").maybeSingle();
       if (error) throw error;
+      if (!data) throw new Error("Não foi possível salvar. Confira seu acesso à empresa e tente novamente.");
       toast.success("Comissão atualizada!");
       onSaved?.();
     } catch (err: any) {
-      toast.error("Erro: " + (err.message || "Falha ao salvar comissão"));
+      toast.error(err?.message?.includes("Somente administradores")
+        ? "Somente administradores da empresa podem alterar a comissão de técnicos."
+        : "Erro: " + (err.message || "Falha ao salvar comissão"));
     } finally {
       setSaving(false);
     }
