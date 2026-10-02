@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
@@ -1161,7 +1162,7 @@ export default function OrdensServico() {
         {/* Stats */}
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
           <KpiCard label="Recebidas" value={stats.recebidas} icon={Clock} color="blue" delay={0} />
-          <KpiCard label="Em Reparo" value={stats.emReparo} icon={Wrench} color="amber" delay={100} />
+          <KpiCard label="Em Reparo" value={stats.emReparo} icon={Wrench} color="yellow" delay={100} />
           <KpiCard label="Aguardando" value={stats.aguardando} icon={Clock} color="orange" delay={200} />
           <KpiCard label="Prontas" value={stats.prontas} icon={CheckCircle2} color="green" delay={300} />
         </div>
@@ -1186,26 +1187,26 @@ export default function OrdensServico() {
           </div>
           <PremiumTable
             columns={[
-              { key: "numero", header: "OS", width: "100px" },
-              { key: "status", header: "Status", width: "140px" },
-              { key: "cliente", header: "Cliente" },
-              { key: "equipamento", header: "Equipamento" },
-              { key: "prioridade", header: "Prioridade", width: "80px" },
-              { key: "valor", header: "Valor", width: "100px", align: "right" },
-              { key: "actions", header: "", width: "100px" },
+              { key: "numero", label: "OS", width: "w-[100px]" },
+              { key: "status", label: "Status", width: "w-[140px]" },
+              { key: "cliente", label: "Cliente" },
+              { key: "equipamento", label: "Equipamento" },
+              { key: "prioridade", label: "Prioridade", width: "w-[80px]" },
+              { key: "valor", label: "Valor", width: "w-[100px]", align: "right" },
+              { key: "actions", label: "", width: "w-[100px]" },
             ]}
             data={filteredOrdens}
             loading={loading}
             emptyMessage={statusFilter !== "todas" ? "Nenhuma OS com este filtro" : "Nenhuma OS encontrada"}
-            emptyIcon={FileText}
+            emptyIcon={<FileText className="h-8 w-8" />}
             emptyAction={{ label: "Nova OS", onClick: () => { if (!canEdit) { toast.error(readOnlyOsMessage); return; } if (!canCreateOS) { setShowUpgrade(true); return; } resetForm(); setDialogOpen(true); } }}
-            rowKey="id"
+            rowKey={(os) => os.id}
             striped
             hoverable
             animateRows
-            renderCell={(column, os) => {
+            renderCell={(os, columnKey) => {
               const statusConfig = STATUS_CONFIG[os.status] || { label: os.status, variant: "outline" as const };
-              switch (column.key) {
+              switch (columnKey) {
                 case "numero":
                   return <span className="font-bold text-primary text-sm">{os.numero}</span>;
                 case "status":

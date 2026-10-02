@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SearchableInputProps {
+  id?: string;
   value: string;
   onChange: (value: string) => void;
   suggestions: string[];
@@ -17,6 +18,7 @@ interface SearchableInputProps {
 }
 
 export function SearchableInput({
+  id,
   value,
   onChange,
   suggestions,
@@ -55,6 +57,7 @@ export function SearchableInput({
   return (
     <div ref={wrapperRef} className={cn("relative", className)}>
       <Input
+        id={id}
         value={inputValue}
         onChange={(e) => {
           setInputValue(e.target.value);

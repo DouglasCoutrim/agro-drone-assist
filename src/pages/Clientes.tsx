@@ -239,7 +239,7 @@ export default function Clientes() {
 
         {/* KPIs */}
         <div className="grid gap-3 grid-cols-3 sm:grid-cols-4">
-          <KpiCard label="Total Clientes" value={totalClientes} icon={Users} color="blue" trend={{ value: `${syncedCount} sincronizados`, label: "com Asaas" }} delay={0} />
+          <KpiCard label="Total Clientes" value={totalClientes} icon={Users} color="blue" trend={`${syncedCount} sincronizados com Asaas`} delay={0} />
           <KpiCard label="Com CPF/CNPJ" value={withDocCount} icon={Building} color="green" delay={100} />
           <KpiCard label="Sincronizados" value={syncedCount} icon={Mail} color="purple" delay={200} />
           <KpiCard label="Taxa Documentos" value={`${totalClientes > 0 ? Math.round((withDocCount / totalClientes) * 100) : 0}%`} icon={AlertTriangle} color="orange" delay={300} />
@@ -255,28 +255,28 @@ export default function Clientes() {
           </div>
           <PremiumTable
             columns={[
-              { key: "tipo", header: "Tipo", width: "50px" },
-              { key: "nome", header: "Nome" },
-              { key: "telefone", header: "Telefone" },
-              { key: "cidade", header: "Cidade" },
-              { key: "documento", header: "CPF/CNPJ" },
-              { key: "asaas", header: "Asaas", width: "80px" },
-              { key: "actions", header: "", width: "90px" },
+              { key: "tipo", label: "Tipo", width: "w-[50px]" },
+              { key: "nome", label: "Nome" },
+              { key: "telefone", label: "Telefone" },
+              { key: "cidade", label: "Cidade" },
+              { key: "documento", label: "CPF/CNPJ" },
+              { key: "asaas", label: "Asaas", width: "w-[80px]" },
+              { key: "actions", label: "", width: "w-[90px]" },
             ]}
             data={filteredClientes}
             loading={loading}
             emptyMessage={searchTerm ? "Nenhum cliente encontrado" : "Nenhum cliente cadastrado"}
-            emptyIcon={Users}
+            emptyIcon={<Users className="h-8 w-8" />}
             emptyAction={{
               label: "Cadastrar primeiro cliente",
               onClick: () => setDialogOpen(true)
             }}
-            rowKey="id"
+            rowKey={(cliente) => cliente.id}
             striped
             hoverable
             animateRows={true}
-            renderCell={(column, cliente) => {
-              switch (column.key) {
+            renderCell={(cliente, columnKey) => {
+              switch (columnKey) {
                 case "tipo":
                   return (
                     <div className="p-1 rounded-full bg-primary/10">
