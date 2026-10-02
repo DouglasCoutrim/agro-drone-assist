@@ -1162,7 +1162,7 @@ export default function OrdensServico() {
         {/* Stats */}
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
           <KpiCard label="Recebidas" value={stats.recebidas} icon={Clock} color="blue" delay={0} />
-          <KpiCard label="Em Reparo" value={stats.emReparo} icon={Wrench} color="amber" delay={100} />
+          <KpiCard label="Em Reparo" value={stats.emReparo} icon={Wrench} color="yellow" delay={100} />
           <KpiCard label="Aguardando" value={stats.aguardando} icon={Clock} color="orange" delay={200} />
           <KpiCard label="Prontas" value={stats.prontas} icon={CheckCircle2} color="green" delay={300} />
         </div>
