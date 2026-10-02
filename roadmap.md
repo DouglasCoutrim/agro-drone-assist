@@ -23,3 +23,4 @@
 - [x] Manter ajudantes, comissões e observações internas fora da OS enviada ao cliente.
 - [x] Corrigir a edição de OS com orçamento legado, preservar lançamentos existentes e confirmar remoções antes de salvar.
 - [x] Remover cadastros rápidos de peças e serviços nas OS e orçamentos, preservando seleção de itens existentes.
+- [ ] Permitir salvar comissões de técnicos por administradores da mesma empresa, inclusive usuários com os dois papéis.
