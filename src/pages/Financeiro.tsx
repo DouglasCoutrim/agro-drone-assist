@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
@@ -10,8 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { DollarSign, TrendingUp, TrendingDown, Plus, CreditCard, Wallet, Receipt, Loader2, Edit, Trash2, Eye, Search, MessageCircle, ClipboardList } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, Plus, Wallet, Receipt, Loader2, Edit, Trash2, Search, MessageCircle, ClipboardList, CreditCard } from "lucide-react";
 import { CatalogAutocomplete } from "@/components/ui/catalog-autocomplete";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -22,6 +20,9 @@ import { useOrganization } from "@/hooks/useOrganization";
 import { formatCurrency } from "@/lib/formatters";
 import { CobrancaClienteDialog } from "@/components/financeiro/CobrancaClienteDialog";
 import { fetchOsComValores, OsCobranca } from "@/lib/os-billing";
+import { PremiumCard } from "@/components/premium/PremiumCard";
+import { KpiCard } from "@/components/premium/KpiCard";
+import { PremiumTable } from "@/components/premium/PremiumTable";
 
 type Transacao = Tables<"financeiro">;
 
@@ -160,94 +161,135 @@ export default function Financeiro() {
   return (
     <MainLayout>
       <div className="space-y-4" data-tour="financeiro-page">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-lg font-bold flex items-center gap-2"><DollarSign className="h-5 w-5 text-primary" />Financeiro</h1>
-            <p className="text-xs text-muted-foreground">Controle de receitas, despesas e cobranças</p>
-          </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-          <Button size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => abrirCobranca()}>
-            <MessageCircle className="mr-1.5 h-3.5 w-3.5" />Cobrar Cliente
-          </Button>
-          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-            <DialogTrigger asChild>
+        {/* Header */}
+        <PremiumCard delay={0}>
+          <PremiumCard.Header>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
+              <div>
+                <h1 className="text-lg font-bold flex items-center gap-2"><DollarSign className="h-5 w-5 text-primary" />Financeiro</h1>
+                <p className="text-xs text-muted-foreground">Controle de receitas, despesas e cobranças</p>
+              </div>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Button size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => abrirCobranca()}>
+                  <MessageCircle className="mr-1.5 h-3.5 w-3.5" />Cobrar Cliente
+                </Button>
+                <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="gradient-primary shadow-soft"><Plus className="mr-1.5 h-3.5 w-3.5" />Nova Transação</Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="text-base">{editingTransacao ? 'Editar Transação' : 'Nova Transação'}</DialogTitle>
+                      <DialogDescription className="text-xs">Registre uma nova transação financeira</DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmit} className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Tipo *</Label>
+                          <Select value={formData.tipo} onValueChange={(value: Enums<"tipo_transacao">) => setFormData({ ...formData, tipo: value })}>
+                            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="receita">Receita</SelectItem>
+                              <SelectItem value="despesa">Despesa</SelectItem>
+                              <SelectItem value="salario">Salário</SelectItem>
+                              <SelectItem value="comissao">Comissão</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5"><Label className="text-xs">Valor (R$) *</Label><NumberInput step="0.01" className="h-9" value={formData.valor} onChange={(v) => setFormData({ ...formData, valor: v })} placeholder="0,00" required /></div>
+                        <div className="sm:col-span-2 space-y-1.5">
+                          <Label className="text-xs">Descrição *</Label>
+                          <CatalogAutocomplete
+                            value={formData.descricao}
+                            onChange={(v) => setFormData({ ...formData, descricao: v })}
+                            onSelect={(item) => setFormData(f => ({
+                              ...f,
+                              descricao: item.descricao,
+                              valor: item.preco > 0 ? item.preco : f.valor,
+                              categoria: item.categoria || f.categoria,
+                            }))}
+                            placeholder="Buscar produto/serviço ou digitar..."
+                            mode="text"
+                            required
+                            currentCategory={formData.categoria}
+                          />
+                        </div>
+                        <div className="space-y-1.5"><Label className="text-xs">Categoria</Label><Input className="h-9" value={formData.categoria} onChange={(e) => setFormData({ ...formData, categoria: e.target.value })} placeholder="Ex: Serviços, Estoque" /></div>
+                        <div className="space-y-1.5"><Label className="text-xs">Data *</Label><Input type="date" className="h-9" value={formData.data_transacao} onChange={(e) => setFormData({ ...formData, data_transacao: e.target.value })} required /></div>
+                        <div className="sm:col-span-2 space-y-1.5"><Label className="text-xs">Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
+                      </div>
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button type="button" variant="outline" size="sm" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+                        <Button type="submit" size="sm" className="gradient-primary" disabled={formLoading}>
+                          {formLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}{editingTransacao ? 'Salvar' : 'Criar'}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+          </PremiumCard.Header>
+        </PremiumCard>
 
-              <Button size="sm" className="gradient-primary shadow-soft"><Plus className="mr-1.5 h-3.5 w-3.5" />Nova Transação</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="text-base">{editingTransacao ? 'Editar Transação' : 'Nova Transação'}</DialogTitle>
-                <DialogDescription className="text-xs">Registre uma nova transação financeira</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Tipo *</Label>
-                    <Select value={formData.tipo} onValueChange={(value: Enums<"tipo_transacao">) => setFormData({ ...formData, tipo: value })}>
-                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="receita">Receita</SelectItem>
-                        <SelectItem value="despesa">Despesa</SelectItem>
-                        <SelectItem value="salario">Salário</SelectItem>
-                        <SelectItem value="comissao">Comissão</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5"><Label className="text-xs">Valor (R$) *</Label><NumberInput step="0.01" className="h-9" value={formData.valor} onChange={(v) => setFormData({ ...formData, valor: v })} placeholder="0,00" required /></div>
-                  <div className="sm:col-span-2 space-y-1.5">
-                    <Label className="text-xs">Descrição *</Label>
-                    <CatalogAutocomplete
-                      value={formData.descricao}
-                      onChange={(v) => setFormData({ ...formData, descricao: v })}
-                      onSelect={(item) => setFormData(f => ({
-                        ...f,
-                        descricao: item.descricao,
-                        valor: item.preco > 0 ? item.preco : f.valor,
-                        categoria: item.categoria || f.categoria,
-                      }))}
-                      placeholder="Buscar produto/serviço ou digitar..."
-                      mode="text"
-                      required
-                      currentCategory={formData.categoria}
-                    />
-                  </div>
-                  <div className="space-y-1.5"><Label className="text-xs">Categoria</Label><Input className="h-9" value={formData.categoria} onChange={(e) => setFormData({ ...formData, categoria: e.target.value })} placeholder="Ex: Serviços, Estoque" /></div>
-                  <div className="space-y-1.5"><Label className="text-xs">Data *</Label><Input type="date" className="h-9" value={formData.data_transacao} onChange={(e) => setFormData({ ...formData, data_transacao: e.target.value })} required /></div>
-                  <div className="sm:col-span-2 space-y-1.5"><Label className="text-xs">Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button type="button" variant="outline" size="sm" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                  <Button type="submit" size="sm" className="gradient-primary" disabled={formLoading}>
-                    {formLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}{editingTransacao ? 'Salvar' : 'Criar'}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-          </div>
-        </div>
-
-        {/* Stats */}
+        {/* KPI Cards */}
         <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
-          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center gap-2.5"><div className="p-2 rounded-lg bg-success/10"><TrendingUp className="h-4 w-4 text-success" /></div><div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Receita</p><p className="text-base sm:text-lg font-bold text-success truncate">{formatCurrency(receitaMensal)}</p></div></div></CardContent></Card>
-          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center gap-2.5"><div className="p-2 rounded-lg bg-destructive/10"><TrendingDown className="h-4 w-4 text-destructive" /></div><div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Despesas</p><p className="text-base sm:text-lg font-bold text-destructive truncate">{formatCurrency(despesaMensal)}</p></div></div></CardContent></Card>
-          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center gap-2.5"><div className="p-2 rounded-lg bg-primary/10"><Wallet className="h-4 w-4 text-primary" /></div><div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Lucro</p><p className={`text-base sm:text-lg font-bold truncate ${lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>{formatCurrency(lucroLiquido)}</p></div></div></CardContent></Card>
-          <Card className="shadow-soft border-border/50"><CardContent className="p-3"><div className="flex items-center gap-2.5"><div className="p-2 rounded-lg bg-warning/10"><DollarSign className="h-4 w-4 text-warning" /></div><div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Comissões</p><p className="text-base sm:text-lg font-bold text-warning truncate">{formatCurrency(comissoesMensal)}</p></div></div></CardContent></Card>
-          <Card className="shadow-soft border-border/50 cursor-pointer hover:bg-muted/20 transition-colors" onClick={() => abrirCobranca()}><CardContent className="p-3"><div className="flex items-center gap-2.5"><div className="p-2 rounded-lg bg-blue-500/10"><ClipboardList className="h-4 w-4 text-blue-500" /></div><div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">A Receber (OS)</p><p className="text-base sm:text-lg font-bold truncate">{formatCurrency(totalAReceber)}</p></div></div></CardContent></Card>
+          <KpiCard
+            label="Receita do Mês"
+            value={formatCurrency(receitaMensal)}
+            trend={{ value: 0, label: "vs mês anterior" }}
+            icon={TrendingUp}
+            color="green"
+            delay={0}
+          />
+          <KpiCard
+            label="Despesas do Mês"
+            value={formatCurrency(despesaMensal)}
+            trend={{ value: 0, label: "vs mês anterior" }}
+            icon={TrendingDown}
+            color="red"
+            delay={100}
+          />
+          <KpiCard
+            label="Lucro Líquido"
+            value={formatCurrency(lucroLiquido)}
+            trend={{ value: 0, label: "vs mês anterior" }}
+            icon={Wallet}
+            color={lucroLiquido >= 0 ? "green" : "red"}
+            delay={200}
+          />
+          <KpiCard
+            label="Comissões do Mês"
+            value={formatCurrency(comissoesMensal)}
+            trend={{ value: 0, label: "vs mês anterior" }}
+            icon={DollarSign}
+            color="yellow"
+            delay={300}
+          />
+          <KpiCard
+            label="A Receber (OS)"
+            value={formatCurrency(totalAReceber)}
+            trend={{ value: 0, label: "em aberto" }}
+            icon={ClipboardList}
+            color="blue"
+            onClick={() => abrirCobranca()}
+            delay={400}
+          />
         </div>
 
         {/* OS em aberto para cobrança */}
         {osAbertas.length > 0 && (
-          <Card className="shadow-soft border-border/50">
-            <CardHeader className="pb-2 px-4 pt-4">
-              <CardTitle className="text-sm flex items-center justify-between gap-2">
-                <span className="flex items-center gap-1.5"><ClipboardList className="h-4 w-4 text-primary" />OS aguardando pagamento</span>
-                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => abrirCobranca()}>Cobrar em lote</Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4 space-y-2">
+          <PremiumCard delay={100}>
+            <PremiumCard.Header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <ClipboardList className="h-4 w-4 text-primary" />
+                <span className="font-semibold">OS aguardando pagamento</span>
+              </div>
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => abrirCobranca()}>Cobrar em lote</Button>
+            </PremiumCard.Header>
+            <PremiumCard.Content className="space-y-2 p-0">
               {osAbertas.slice(0, 6).map(os => (
-                <div key={os.id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-border/50">
+                <div key={os.id} className="flex items-center justify-between gap-2 p-3 border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors">
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{os.cliente_nome}</p>
                     <p className="text-[11px] text-muted-foreground font-mono">#{os.numero} · {os.equipamento}</p>
@@ -261,55 +303,100 @@ export default function Financeiro() {
                 </div>
               ))}
               {osAbertas.length > 6 && (
-                <p className="text-[11px] text-muted-foreground text-center pt-1">+{osAbertas.length - 6} outras OS em aberto</p>
+                <p className="text-[11px] text-muted-foreground text-center py-2">+{osAbertas.length - 6} outras OS em aberto</p>
               )}
-            </CardContent>
-          </Card>
+            </PremiumCard.Content>
+          </PremiumCard>
         )}
 
-
         {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Buscar por descrição, categoria..." className="pl-9 h-9 text-xs bg-muted/30 border-border/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-        </div>
+        <PremiumCard delay={200}>
+          <div className="p-4 border-b border-border">
+            <div className="relative max-w-xs">
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input placeholder="Buscar por descrição, categoria..." className="pl-9 h-9 text-xs bg-muted/30 border-border/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            </div>
+          </div>
+        </PremiumCard>
 
-        {/* List */}
-        <Card className="shadow-soft border-border/50">
-          <CardHeader className="pb-2 px-4 pt-4"><CardTitle className="text-sm flex items-center gap-1.5"><Receipt className="h-4 w-4 text-primary" />Transações Recentes</CardTitle></CardHeader>
-          <CardContent className="px-4 pb-4">
+        {/* Transações Table */}
+        <PremiumCard delay={300}>
+          <PremiumCard.Header className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Receipt className="h-4 w-4 text-primary" />
+              <span className="font-semibold">Transações Recentes</span>
+            </div>
+          </PremiumCard.Header>
+          <PremiumCard.Content className="p-0">
             {loading ? (
-              <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-            ) : filteredTransacoes.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground"><Receipt className="h-10 w-10 mx-auto mb-3 opacity-30" /><p className="text-sm">{searchTerm ? 'Nenhuma transação encontrada' : 'Nenhuma transação cadastrada'}</p></div>
-            ) : (
-              <div className="space-y-2">
-                {filteredTransacoes.slice(0, 30).map((transacao) => {
-                  const tipoConfig = getTipoConfig(transacao.tipo);
-                  return (
-                    <div key={transacao.id} className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setViewingTransacao(transacao)}>
-                      <div className="space-y-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{transacao.descricao}</p>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <Badge variant={tipoConfig.badgeVariant} className="text-[10px] h-5">{tipoConfig.label}</Badge>
-                          {transacao.categoria && <Badge variant="secondary" className="text-[10px] h-5">{transacao.categoria}</Badge>}
-                          <span className="text-[10px] text-muted-foreground">{new Date(transacao.data_transacao).toLocaleDateString('pt-BR')}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <p className={`text-sm font-bold ${tipoConfig.color}`}>{transacao.tipo === 'receita' ? '+' : '-'}{formatCurrency(transacao.valor)}</p>
-                        <div className="flex gap-0.5" onClick={(e) => e.stopPropagation()}>
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleEdit(transacao)}><Edit className="h-3.5 w-3.5" /></Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(transacao.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
+            ) : filteredTransacoes.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Receipt className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">{searchTerm ? 'Nenhuma transação encontrada' : 'Nenhuma transação cadastrada'}</p>
+              </div>
+            ) : (
+              <PremiumTable<Transacao>
+                columns={[
+                  { key: 'data', header: 'Data', align: 'left' },
+                  { key: 'descricao', header: 'Descrição', align: 'left' },
+                  { key: 'categoria', header: 'Categoria', align: 'center' },
+                  { key: 'tipo', header: 'Tipo', align: 'center' },
+                  { key: 'valor', header: 'Valor', align: 'right' },
+                  { key: 'actions', header: '', align: 'right' },
+                ]}
+                data={filteredTransacoes.slice(0, 30)}
+                rowKey="id"
+                loading={loading}
+                emptyMessage={searchTerm ? 'Nenhuma transação encontrada' : 'Nenhuma transação cadastrada'}
+                emptyIcon={Receipt}
+                emptyAction={{ label: "Nova Transação", onClick: () => { setDialogOpen(true); } }}
+                striped
+                hoverable
+                animateRows
+                renderCell={(column, row) => {
+                  const tipoConfig = getTipoConfig(row.tipo);
+                  switch (column.key) {
+                    case 'data':
+                      return <span className="text-sm font-mono text-muted-foreground">{new Date(row.data_transacao).toLocaleDateString('pt-BR')}</span>;
+                    case 'descricao':
+                      return <span className="text-sm font-medium truncate max-w-[250px]">{row.descricao}</span>;
+                    case 'categoria':
+                      return row.categoria ? (
+                        <Badge variant="secondary" className="text-[10px] h-5">{row.categoria}</Badge>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground">-</span>
+                      );
+                    case 'tipo':
+                      return <Badge variant={tipoConfig.badgeVariant} className="text-[10px] h-5">{tipoConfig.label}</Badge>;
+                    case 'valor':
+                      return (
+                        <span className={`text-sm font-bold ${tipoConfig.color}`}>
+                          {row.tipo === 'receita' ? '+' : '-'}{formatCurrency(row.valor)}
+                        </span>
+                      );
+                    case 'actions':
+                      return (
+                        <div className="flex items-center justify-end gap-1">
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleEdit(row); }}>
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }}>
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </div>
+                      );
+                    default:
+                      return null;
+                  }
+                }}
+                onRowClick={(row) => setViewingTransacao(row)}
+              />
             )}
-          </CardContent>
-        </Card>
+          </PremiumCard.Content>
+        </PremiumCard>
 
         {/* View Transaction Dialog */}
         <Dialog open={!!viewingTransacao} onOpenChange={(open) => { if (!open) setViewingTransacao(null); }}>
@@ -338,7 +425,6 @@ export default function Financeiro() {
 
         <CobrancaClienteDialog open={cobrancaOpen} onOpenChange={setCobrancaOpen} clienteIdInicial={cobrancaCliente} />
       </div>
-
     </MainLayout>
   );
 }

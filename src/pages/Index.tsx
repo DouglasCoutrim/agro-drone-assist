@@ -1,17 +1,12 @@
 import { useEffect, useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { KpiCard } from "@/components/dashboard/KpiCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
-  Table, TableHeader, TableBody, TableRow, TableHead, TableCell
-} from "@/components/ui/table";
-import {
-  FileText, Package, DollarSign, AlertTriangle, CheckCircle, Plus, Eye, Clock, ClipboardList
+  FileText, Package, DollarSign, AlertTriangle, CheckCircle, Plus, Eye, Clock, ClipboardList, Wrench
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -19,43 +14,51 @@ import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import { formatCurrency } from "@/lib/formatters";
 import { fetchOsComValores } from "@/lib/os-billing";
+import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 
 const TIPO_EQUIPAMENTO: Record<string, string> = {
-  drone_agricola: "Drone Agrícola", drone_convencional: "Drone de Consumo",
-  controle: "Controle", bateria: "Bateria", outro: "Outro", carregador: "Carregador",
+  drone_agricola: "Drone Agrícola",
+  drone_convencional: "Drone de Consumo",
+  controle: "Controle",
+  bateria: "Bateria",
+  outro: "Outro",
+  carregador: "Carregador",
 };
 
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  recebido: { label: "Recebido", className: "bg-amber-100 text-amber-800" },
-  aguardando_diagnostico: { label: "Aguard. Diagnóstico", className: "bg-slate-100 text-slate-800" },
-  aguardando_aprovacao: { label: "Aguard. Aprovação", className: "bg-slate-100 text-slate-800" },
-  aprovado: { label: "Aprovado", className: "bg-blue-100 text-blue-800" },
-  em_reparo: { label: "Em Reparo", className: "bg-blue-100 text-blue-800" },
-  em_testes: { label: "Em Testes", className: "bg-blue-100 text-blue-800" },
-  pronto_retirada: { label: "Pronto p/ Retirada", className: "bg-green-100 text-green-800" },
-  finalizada: { label: "Finalizada", className: "bg-green-100 text-green-800" },
-  entregue: { label: "Entregue", className: "bg-slate-100 text-slate-800 opacity-70" },
-  cancelada: { label: "Cancelado", className: "bg-red-100 text-red-800" },
-  aberta: { label: "Aberta", className: "bg-amber-100 text-amber-800" },
-  em_andamento: { label: "Em Andamento", className: "bg-blue-100 text-blue-800" },
-  aguardando_peca: { label: "Aguardando Peça", className: "bg-slate-100 text-slate-800" },
-  concluida: { label: "Concluída", className: "bg-green-100 text-green-800" },
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  recebido: { label: "Recebido", color: "yellow" },
+  aguardando_diagnostico: { label: "Aguard. Diagnóstico", color: "slate" },
+  aguardando_aprovacao: { label: "Aguard. Aprovação", color: "slate" },
+  aprovado: { label: "Aprovado", color: "blue" },
+  em_reparo: { label: "Em Reparo", color: "blue" },
+  em_testes: { label: "Em Testes", color: "yellow" },
+  pronto_retirada: { label: "Pronto p/ Retirada", color: "green" },
+  finalizada: { label: "Finalizada", color: "green" },
+  entregue: { label: "Entregue", color: "slate" },
+  cancelada: { label: "Cancelado", color: "red" },
+  aberta: { label: "Aberta", color: "yellow" },
+  em_andamento: { label: "Em Andamento", color: "blue" },
+  aguardando_peca: { label: "Aguardando Peça", color: "slate" },
+  concluida: { label: "Concluída", color: "green" },
 };
 
 const Index = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { organization, isPlatformAdmin, loading: orgLoading } = useOrganization();
-  const [stats, setStats] = useState({ osAbertas: 0, osConcluidas: 0, itensEstoqueBaixo: 0, totalClientes: 0, faturamentoMes: 0, aReceber: 0 });
+  const [stats, setStats] = useState({
+    osAbertas: 0,
+    osConcluidas: 0,
+    itensEstoqueBaixo: 0,
+    totalClientes: 0,
+    faturamentoMes: 0,
+    aReceber: 0,
+  });
   const [recentOS, setRecentOS] = useState<any[]>([]);
   const [overdueOS, setOverdueOS] = useState<any[]>([]);
   const [overduePayments, setOverduePayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewingOS, setViewingOS] = useState<any | null>(null);
-
-
-
-
 
   useEffect(() => {
     if (orgLoading) return;
@@ -72,7 +75,9 @@ const Index = () => {
       return;
     }
     const orgId = organization.id;
-    const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
     const today = new Date().toISOString();
 
     try {
@@ -105,7 +110,6 @@ const Index = () => {
       const itensEstoqueBaixo = (itensEstoqueRes.data || []).filter((item: any) => item.quantidade <= item.estoque_minimo).length;
       const receitasLancadas = (receitasRes.data || []).reduce((acc: number, r: any) => acc + Number(r.valor), 0);
 
-      // Valores das OS: soma o que já foi lançado no Financeiro + OS finalizadas no mês sem lançamento
       let faturamentoMes = receitasLancadas;
       let aReceber = 0;
       try {
@@ -142,7 +146,6 @@ const Index = () => {
       setOverdueOS(overdueOSRes.data || []);
       setOverduePayments([]);
       if (gatewayConfigRes.data?.gateway_clientes === "asaas" && hasAsaasCredentials) {
-        // The external gateway must never delay the local dashboard numbers.
         void supabase.functions.invoke('asaas', {
           body: { action: 'list_payments', status: 'OVERDUE' },
         }).then(({ data: result, error }) => {
@@ -157,38 +160,75 @@ const Index = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const config = STATUS_CONFIG[status] || { label: status, className: "bg-muted text-muted-foreground" };
+    const config = STATUS_CONFIG[status] || { label: status, color: "slate" };
+    const colorMap: Record<string, string> = {
+      yellow: "bg-yellow-50 text-yellow-700",
+      slate: "bg-slate-50 text-slate-700",
+      blue: "bg-blue-50 text-blue-700",
+      green: "bg-green-50 text-green-700",
+      red: "bg-red-50 text-red-700",
+    };
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${config.className}`}>
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${colorMap[config.color] || "bg-slate-50 text-slate-700"}`}>
         <span className="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0" />
         {config.label}
       </span>
     );
   };
 
-  
   const formatDate = (d: string | null) => d ? new Date(d).toLocaleDateString("pt-BR") : "-";
+
+  // Transform data for PremiumTable
+  const recentOSData = recentOS.map(os => ({
+    id: os.id,
+    numero: os.numero,
+    cliente: os.clientes?.nome || "Cliente",
+    equipamento: TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento,
+    status: os.status,
+    originalData: os,
+  }));
+
+  const recentOSColumns = [
+    { key: "numero", label: "#", width: "w-[80px]" },
+    { key: "cliente", label: "Cliente", width: "flex-1" },
+    { key: "equipamento", label: "Equipamento", width: "w-[150px]" },
+    { key: "status", label: "Status", width: "w-[140px]" },
+    { key: "acao", label: "", width: "w-[50px]" },
+  ];
+
+  const renderOSCell = (item: any, key: string) => {
+    if (key === "status") {
+      return getStatusBadge(item.status);
+    }
+    if (key === "acao") {
+      return (
+        <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Visualizar OS" onClick={(e) => { e.stopPropagation(); setViewingOS(item.originalData); }}>
+          <Eye className="h-3.5 w-3.5 text-gray-500" />
+        </Button>
+      );
+    }
+    return item[key];
+  };
 
   return (
     <MainLayout>
-      <div className="space-y-6 pb-28" data-tour="dashboard-content">
+      <div className="space-y-8 py-8" data-tour="dashboard-content">
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="w-full">
-            <h1 className="font-display text-2xl font-bold text-foreground leading-tight">Dashboard</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Visão geral da oficina</p>
+            <h1 className="text-3xl font-bold text-gray-900 font-display leading-tight">Dashboard</h1>
+            <p className="text-gray-600 mt-1">Visão geral da sua oficina e operações em tempo real</p>
           </div>
-          <Button className="gradient-primary w-full sm:w-auto hidden sm:inline-flex" onClick={() => navigate("/ordens-servico")}>
-            <Plus className="mr-1.5 h-4 w-4" />Nova OS
+          <Button className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold" onClick={() => navigate("/ordens-servico")}>
+            + Nova OS
           </Button>
         </div>
-
 
         {/* KPI Grid */}
         {loading ? (
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
             {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="bg-card border border-border rounded-lg p-4 space-y-3">
+              <div key={i} className="bg-white border border-gray-200 rounded-lg p-6 space-y-3">
                 <Skeleton className="h-3 w-20" />
                 <Skeleton className="h-8 w-16" />
               </div>
@@ -196,121 +236,105 @@ const Index = () => {
           </div>
         ) : (
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-            <KpiCard label="OS Abertas" value={stats.osAbertas} icon={ClipboardList} color="amber" onClick={() => navigate("/ordens-servico")} />
-            <KpiCard label="Concluídas" value={stats.osConcluidas} icon={CheckCircle} color="green" onClick={() => navigate("/ordens-servico")} />
-            <KpiCard label="Estoque Baixo" value={stats.itensEstoqueBaixo} icon={AlertTriangle} color="red" onClick={() => navigate("/estoque")} />
-            <KpiCard label="Faturamento" value={formatCurrency(stats.faturamentoMes)} icon={DollarSign} color="blue" onClick={() => navigate("/financeiro")} />
-            <KpiCard label="A Receber" value={formatCurrency(stats.aReceber)} icon={DollarSign} color="amber" onClick={() => navigate("/financeiro")} />
+            <KpiCard label="OS Abertas" value={stats.osAbertas} icon={ClipboardList} color="blue" onClick={() => navigate("/ordens-servico")} delay={0} />
+            <KpiCard label="Concluídas" value={stats.osConcluidas} icon={CheckCircle} color="green" onClick={() => navigate("/ordens-servico")} delay={100} />
+            <KpiCard label="Estoque Baixo" value={stats.itensEstoqueBaixo} icon={Package} color="yellow" onClick={() => navigate("/estoque")} delay={200} />
+            <KpiCard label="Faturamento" value={formatCurrency(stats.faturamentoMes)} icon={DollarSign} color="green" onClick={() => navigate("/financeiro")} delay={300} />
+            <KpiCard label="A Receber" value={formatCurrency(stats.aReceber)} icon={Wrench} color="red" onClick={() => navigate("/financeiro")} delay={400} />
           </div>
         )}
 
-        {/* Main Grid */}
-        <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-          {/* Recent OS */}
-          <Card className="border border-border shadow-soft">
-            <CardHeader className="border-b border-border-subtle">
-              <CardTitle className="font-display text-[15px] font-bold text-foreground flex items-center gap-2">
-                <Clock className="h-4 w-4 text-primary" />OS Recentes
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="flex items-center justify-center py-6">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
-                </div>
-              ) : recentOS.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-3">
-                  <div className="w-14 h-14 rounded-xl bg-background flex items-center justify-center text-muted-foreground">
-                    <FileText className="h-6 w-6" />
-                  </div>
-                  <p className="text-[15px] font-semibold text-foreground">Nenhuma OS encontrada</p>
-                  <p className="text-[13px] text-muted-foreground max-w-[280px] text-center leading-relaxed">Crie sua primeira Ordem de Serviço</p>
-                  <Button variant="outline" size="sm" onClick={() => navigate("/ordens-servico")}>Criar primeira OS</Button>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[70px]">#</TableHead>
-                        <TableHead className="flex-1">Cliente</TableHead>
-                        <TableHead className="w-[150px]">Equipamento</TableHead>
-                        <TableHead className="w-[140px]">Status</TableHead>
-                        <TableHead className="w-[50px] text-right" />
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {recentOS.map(os => (
-                        <TableRow key={os.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => setViewingOS(os)}>
-                          <TableCell className="font-mono text-[13px] font-medium">{os.numero}</TableCell>
-                          <TableCell className="text-sm">{os.clientes?.nome || "Cliente"}</TableCell>
-                          <TableCell className="text-sm truncate">{TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento}</TableCell>
-                          <TableCell>{getStatusBadge(os.status)}</TableCell>
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Visualizar OS">
-                              <Eye className="h-3.5 w-3.5" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        {/* Main Content Grid */}
+        <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
+          {/* OS Recentes - 2 columns */}
+          <div className="lg:col-span-2">
+            <PremiumCard delay={100}>
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-gray-900">OS Recentes</h2>
 
-          {/* Alerts column */}
-          <Card className="border border-border shadow-soft">
-            <CardHeader className="border-b border-border-subtle">
-              <CardTitle className="font-display text-[15px] font-bold text-foreground flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-warning" />Alertas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 p-4">
-              {overdueOS.length > 0 && (
-                <div className="flex items-start gap-3 p-3 rounded-lg border border-red-200 bg-red-50 text-red-800 text-[13px] cursor-pointer hover:bg-red-100 transition-colors" onClick={() => navigate("/ordens-servico")}>
-                  <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="font-medium">{overdueOS.length} OS em Atraso</p>
-                    {overdueOS.slice(0, 2).map(os => (
-                      <p key={os.id} className="text-xs mt-0.5 opacity-80">• {os.numero} - {os.clientes?.nome || "N/A"}</p>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {overduePayments.length > 0 && (
-                <div className="flex items-start gap-3 p-3 rounded-lg border border-red-200 bg-red-50 text-red-800 text-[13px] cursor-pointer hover:bg-red-100 transition-colors" onClick={() => navigate("/cobrancas")}>
-                  <DollarSign className="h-5 w-5 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="font-medium">{overduePayments.length} Cobranças Vencidas</p>
-                    <p className="text-xs font-medium mt-0.5">
-                      Total: {formatCurrency(overduePayments.reduce((a: number, p: any) => a + (p?.value || 0), 0))}
-                    </p>
-                  </div>
-                </div>
-              )}
-              {stats.itensEstoqueBaixo > 0 && (
-                <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-[13px] cursor-pointer hover:bg-amber-100 transition-colors" onClick={() => navigate("/estoque")}>
-                  <Package className="h-5 w-5 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="font-medium">{stats.itensEstoqueBaixo} Itens com Estoque Baixo</p>
-                  </div>
-                </div>
-              )}
-              {overdueOS.length === 0 && overduePayments.length === 0 && stats.itensEstoqueBaixo === 0 && (
-                <div className="flex items-start gap-3 p-3 rounded-lg border border-green-200 bg-green-50 text-green-800 text-[13px]">
-                  <CheckCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
-                  <p className="font-medium">Tudo em dia!</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                <PremiumTable
+                  columns={recentOSColumns}
+                  data={recentOSData}
+                  renderCell={renderOSCell}
+                  onRowClick={(item) => setViewingOS(item.originalData)}
+                  loading={loading}
+                  emptyMessage="Nenhuma OS criada"
+                  emptyIcon={<FileText className="h-8 w-8" />}
+                  emptyAction={{
+                    label: "Criar primeira OS",
+                    onClick: () => navigate("/ordens-servico")
+                  }}
+                  animateRows={true}
+                />
+              </div>
+            </PremiumCard>
+          </div>
+
+          {/* Alerts - 1 column */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">Alertas</h2>
+
+            {overdueOS.length > 0 && (
+              <AlertBox
+                title={`${overdueOS.length} Ordens em Atraso`}
+                items={overdueOS.slice(0, 3).map(os => ({
+                  label: os.numero,
+                  value: os.clientes?.nome || "N/A",
+                }))}
+                type="error"
+                icon={AlertTriangle}
+                onAction={() => navigate("/ordens-servico")}
+                actionLabel="Ver Detalhes"
+                delay={0}
+              />
+            )}
+
+            {overduePayments.length > 0 && (
+              <AlertBox
+                title={`${overduePayments.length} Cobranças Vencidas`}
+                items={[
+                  {
+                    label: "Total",
+                    value: formatCurrency(overduePayments.reduce((a: number, p: any) => a + (p?.value || 0), 0)),
+                  },
+                ]}
+                type="error"
+                icon={DollarSign}
+                onAction={() => navigate("/cobrancas")}
+                actionLabel="Ver Cobranças"
+                delay={100}
+              />
+            )}
+
+            {stats.itensEstoqueBaixo > 0 && (
+              <AlertBox
+                title={`${stats.itensEstoqueBaixo} Itens com Estoque Baixo`}
+                items={[
+                  { label: "Itens", value: `${stats.itensEstoqueBaixo} abaixo do mínimo` },
+                ]}
+                type="warning"
+                icon={Package}
+                onAction={() => navigate("/estoque")}
+                actionLabel="Ver Estoque"
+                delay={200}
+              />
+            )}
+
+            {overdueOS.length === 0 && overduePayments.length === 0 && stats.itensEstoqueBaixo === 0 && (
+              <AlertBox
+                title="Tudo em dia!"
+                items={[]}
+                type="success"
+                icon={CheckCircle}
+                delay={300}
+              />
+            )}
+          </div>
         </div>
 
         {/* FAB mobile */}
         <button
-          className="fixed bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom)+16px)] right-5 w-[52px] h-[52px] rounded-full bg-primary text-primary-foreground flex items-center justify-center z-[90] transition-all hover:bg-vc-green-hover hover:scale-105 lg:hidden"
+          className="fixed bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom)+16px)] right-5 w-[52px] h-[52px] rounded-full bg-primary-600 text-white flex items-center justify-center z-[90] transition-all hover:bg-primary-700 hover:scale-105 lg:hidden"
           style={{ boxShadow: "0 4px 16px rgba(22,163,74,0.40)" }}
           onClick={() => navigate("/ordens-servico")}
         >

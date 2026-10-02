@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
@@ -24,7 +23,6 @@ import { QuickClientModal } from "@/components/os/QuickClientModal";
 import { LegalTermsFooter, getLegalTermsHTML } from "@/components/os/LegalTermsFooter";
 import { SmartSelect, SmartSelectOption } from "@/components/ui/smart-select";
 import { StatusPipeline, getNextStatus, getStatusLabel } from "@/components/os/StatusPipeline";
-import { EmptyState } from "@/components/os/EmptyState";
 import { OSItemsSection, OSItem } from "@/components/os/OSItemsSection";
 import { OSAssistantsSection, OSAssistant } from "@/components/os/OSAssistantsSection";
 import { formatCurrency, formatDate, getErrorMessage } from "@/lib/formatters";
@@ -39,6 +37,7 @@ import type { CustomType } from "@/lib/equipment-segments";
 import { useChecklistConfig } from "@/hooks/useChecklistConfig";
 import type { ChecklistItem, ChecklistTipo } from "@/hooks/useChecklistConfig";
 import { PaymentConfirmDialog, PaymentData } from "@/components/os/PaymentConfirmDialog";
+import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 
 
 type OrdemServico = Tables<"ordens_servico"> & { clientes: { nome: string; telefone?: string } | null };
@@ -1130,7 +1129,8 @@ export default function OrdensServico() {
     <MainLayout>
       <div className="space-y-4" data-tour="os-page">
         {/* Header */}
-<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <PremiumCard className="p-4" delay={0}>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               {empresa.logo_url && (
                 <img src={empresa.logo_url} alt={empresa.nome_empresa} className="h-8 w-auto rounded" />
@@ -1140,155 +1140,168 @@ export default function OrdensServico() {
                 <p className="text-xs text-muted-foreground">Gestão completa de reparos e manutenção</p>
               </div>
             </div>
-          <div className="flex flex-col items-end gap-1">
-            <Button size="sm" className="gradient-primary shadow-soft" onClick={() => {
-              if (!canEdit) { toast.error(readOnlyOsMessage); return; }
-              if (!canCreateOS) { setShowUpgrade(true); return; }
-              resetForm(); setDialogOpen(true);
-            }}>
-              <Plus className="mr-1.5 h-3.5 w-3.5" />Nova OS
-            </Button>
-            {osLimit !== -1 && (
-              <span className="text-[10px] text-muted-foreground">
-                {osUsed}/{osLimit} OS este mês
-              </span>
-            )}
+            <div className="flex flex-col items-end gap-1">
+              <Button size="sm" className="gradient-primary shadow-soft" onClick={() => {
+                if (!canEdit) { toast.error(readOnlyOsMessage); return; }
+                if (!canCreateOS) { setShowUpgrade(true); return; }
+                resetForm(); setDialogOpen(true);
+              }}>
+                <Plus className="mr-1.5 h-3.5 w-3.5" />Nova OS
+              </Button>
+              {osLimit !== -1 && (
+                <span className="text-[10px] text-muted-foreground">
+                  {osUsed}/{osLimit} OS este mês
+                </span>
+              )}
+            </div>
           </div>
-        </div>
+        </PremiumCard>
         <UpgradePlanModal open={showUpgrade} onOpenChange={setShowUpgrade} reason="os" currentPlan={plan} />
 
         {/* Stats */}
-        <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
-          {[
-            { label: "Recebidas", value: stats.recebidas, icon: Clock, color: "text-blue-500" },
-            { label: "Em Reparo", value: stats.emReparo, icon: Wrench, color: "text-amber-500" },
-            { label: "Aguardando", value: stats.aguardando, icon: Clock, color: "text-orange-500" },
-            { label: "Prontas", value: stats.prontas, icon: CheckCircle2, color: "text-primary" },
-          ].map(s => (
-            <Card key={s.label} className="shadow-soft border-border/50">
-              <CardContent className="p-3 text-center">
-                <s.icon className={`h-4 w-4 mx-auto mb-1 ${s.color}`} />
-                <p className="text-lg font-bold">{s.value}</p>
-                <p className="text-[9px] text-muted-foreground uppercase tracking-wide">{s.label}</p>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+          <KpiCard label="Recebidas" value={stats.recebidas} icon={Clock} color="blue" delay={0} />
+          <KpiCard label="Em Reparo" value={stats.emReparo} icon={Wrench} color="amber" delay={100} />
+          <KpiCard label="Aguardando" value={stats.aguardando} icon={Clock} color="orange" delay={200} />
+          <KpiCard label="Prontas" value={stats.prontas} icon={CheckCircle2} color="green" delay={300} />
         </div>
 
         {/* Status Filter Tabs */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          {STATUS_FILTERS.map(f => (
-            <button
-              key={f.key}
-              onClick={() => setStatusFilter(f.key)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                statusFilter === f.key
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted/50 text-muted-foreground hover:bg-muted"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Buscar por número, cliente ou defeito..." className="pl-9 h-9 text-xs bg-muted/30 border-border/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-        </div>
+        <PremiumCard delay={100}>
+          <div className="p-4 border-b border-border">
+            <div className="relative max-w-xs">
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input placeholder="Buscar por número, cliente ou defeito..." className="pl-9 h-9 text-xs bg-muted/30 border-border/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            </div>
+          </div>
+        </PremiumCard>
 
         {/* OS List */}
-        <Card className="shadow-soft border-border/50">
-          <CardContent className="p-0">
-            {loading ? (
-              <div className="flex items-center justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-            ) : filteredOrdens.length === 0 ? (
-              <EmptyState
-                icon={FileText}
-                title={statusFilter !== "todas" ? "Nenhuma OS com este filtro" : "Nenhuma OS encontrada"}
-                description={statusFilter !== "todas" ? "Tente um status diferente ou limpe a busca." : "Crie uma nova ordem de serviço para começar."}
-                actionLabel={statusFilter !== "todas" ? "Limpar filtros" : "Criar primeira OS"}
-                onAction={() => statusFilter !== "todas" ? setStatusFilter("todas") : setDialogOpen(true)}
-              />
-            ) : (
-              <div className="divide-y divide-border/30">
-                {filteredOrdens.map((os) => (
-                  <div key={os.id} className="p-3 hover:bg-muted/20 transition-colors">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1 cursor-pointer" onClick={() => handleView(os)}>
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className="font-bold text-primary text-sm">{os.numero}</span>
-                          {getStatusBadge(os.status)}
-                          {os.prioridade === "alta" && <Badge variant="destructive" className="text-[9px]">Alta</Badge>}
-                        </div>
-                        <p className="text-sm font-medium truncate">{os.clientes?.nome || "—"}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {getTypeDisplayLabel(os, orgSegmentos, orgCustomTypes)}
-                          {os.modelo_equipamento ? ` · ${os.modelo_equipamento}` : ""}
-                          <span className="ml-2">{formatDate(os.data_entrada)}</span>
-                        </p>
-                        <p className="text-sm font-bold text-primary mt-1">{formatCurrency((os as any).valor_orcamento)}</p>
-
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {/* Quick advance button */}
-                        {getNextStatus(os.status) && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7"
-                            title={`Avançar para ${getStatusLabel(getNextStatus(os.status)!)}`}
-                            onClick={() => handleAdvanceStatus(os)}
-                          >
-                            <ChevronRight className="h-4 w-4 text-primary" />
-                          </Button>
-                        )}
-                        {/* Context menu */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button size="icon" variant="ghost" className="h-7 w-7"><MoreVertical className="h-4 w-4" /></Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem onClick={() => handleView(os)}><Eye className="mr-2 h-3.5 w-3.5" />Ver detalhes</DropdownMenuItem>
-                            {canEdit && (
-                              <DropdownMenuItem onClick={() => handleEdit(os)}><Edit className="mr-2 h-3.5 w-3.5" />Editar OS</DropdownMenuItem>
-                            )}
-                            {canEdit && getNextStatus(os.status) && (
-                              <DropdownMenuItem onClick={() => handleAdvanceStatus(os)}>
-                                <ArrowRight className="mr-2 h-3.5 w-3.5" />Avançar para {getStatusLabel(getNextStatus(os.status)!)}
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => { setViewingOS(os); handleWhatsAppTemplate("statusUpdate"); }}>
-                              <MessageCircle className="mr-2 h-3.5 w-3.5" />Enviar WhatsApp
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => { setViewingOS(os); setTimeout(handlePrintOS, 100); }}>
-                              <Printer className="mr-2 h-3.5 w-3.5" />Imprimir OS
-                            </DropdownMenuItem>
-                            {canEdit && (
-                              <DropdownMenuItem onClick={() => handleRegisterPaymentForExisting(os)}>
-                                <CreditCard className="mr-2 h-3.5 w-3.5" />Registrar Recebimento
-                              </DropdownMenuItem>
-                            )}
-                            {isAdmin && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handleDeleteOS(os)} className="text-destructive focus:text-destructive">
-                                  <Trash2 className="mr-2 h-3.5 w-3.5" />Deletar OS
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
+        <PremiumCard delay={200}>
+          <div className="p-4 border-b border-border">
+            <div className="relative max-w-xs">
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input placeholder="Buscar por número, cliente ou defeito..." className="pl-9 h-9 text-xs bg-muted/30 border-border/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            </div>
+          </div>
+          <PremiumTable
+            columns={[
+              { key: "numero", header: "OS", width: "100px" },
+              { key: "status", header: "Status", width: "140px" },
+              { key: "cliente", header: "Cliente" },
+              { key: "equipamento", header: "Equipamento" },
+              { key: "prioridade", header: "Prioridade", width: "80px" },
+              { key: "valor", header: "Valor", width: "100px", align: "right" },
+              { key: "actions", header: "", width: "100px" },
+            ]}
+            data={filteredOrdens}
+            loading={loading}
+            emptyMessage={statusFilter !== "todas" ? "Nenhuma OS com este filtro" : "Nenhuma OS encontrada"}
+            emptyIcon={FileText}
+            emptyAction={{ label: "Nova OS", onClick: () => { if (!canEdit) { toast.error(readOnlyOsMessage); return; } if (!canCreateOS) { setShowUpgrade(true); return; } resetForm(); setDialogOpen(true); } }}
+            rowKey="id"
+            striped
+            hoverable
+            animateRows
+            renderCell={(column, os) => {
+              const statusConfig = STATUS_CONFIG[os.status] || { label: os.status, variant: "outline" as const };
+              switch (column.key) {
+                case "numero":
+                  return <span className="font-bold text-primary text-sm">{os.numero}</span>;
+                case "status":
+                  return (
+                    <Badge variant={statusConfig.variant} className="text-[10px]">
+                      {statusConfig.label}
+                    </Badge>
+                  );
+                case "cliente":
+                  return (
+                    <div>
+                      <p className="font-medium text-sm">{os.clientes?.nome || "—"}</p>
+                      <p className="text-xs text-muted-foreground truncate max-w-xs">{formatDate(os.data_entrada)}</p>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  );
+                case "equipamento":
+                  return (
+                    <div>
+                      <p className="text-sm text-muted-foreground truncate max-w-xs">
+                        {getTypeDisplayLabel(os, orgSegmentos, orgCustomTypes)}
+                        {os.modelo_equipamento ? ` · ${os.modelo_equipamento}` : ""}
+                      </p>
+                    </div>
+                  );
+                case "prioridade":
+                  if (os.prioridade === "alta") {
+                    return <Badge variant="destructive" className="text-[9px]">Alta</Badge>;
+                  }
+                  if (os.prioridade === "media") {
+                    return <Badge variant="secondary" className="text-[9px]">Média</Badge>;
+                  }
+                  return <Badge variant="outline" className="text-[9px]">Baixa</Badge>;
+                case "valor":
+                  return (
+                    <span className="font-bold text-primary text-sm">
+                      {formatCurrency((os as any).valor_orcamento)}
+                    </span>
+                  );
+                case "actions":
+                  return (
+                    <div className="flex items-center justify-end gap-1">
+                      {getNextStatus(os.status) && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          title={`Avançar para ${getStatusLabel(getNextStatus(os.status)!)}`}
+                          onClick={(e) => { e.stopPropagation(); handleAdvanceStatus(os); }}
+                        >
+                          <ChevronRight className="h-4 w-4 text-primary" />
+                        </Button>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="icon" variant="ghost" className="h-7 w-7"><MoreVertical className="h-4 w-4" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleView(os); }}><Eye className="mr-2 h-3.5 w-3.5" />Ver detalhes</DropdownMenuItem>
+                          {canEdit && (
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEdit(os); }}><Edit className="mr-2 h-3.5 w-3.5" />Editar OS</DropdownMenuItem>
+                          )}
+                          {canEdit && getNextStatus(os.status) && (
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAdvanceStatus(os); }}>
+                              <ArrowRight className="mr-2 h-3.5 w-3.5" />Avançar para {getStatusLabel(getNextStatus(os.status)!)}
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setViewingOS(os); handleWhatsAppTemplate("statusUpdate"); }}>
+                            <MessageCircle className="mr-2 h-3.5 w-3.5" />Enviar WhatsApp
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setViewingOS(os); setTimeout(handlePrintOS, 100); }}>
+                            <Printer className="mr-2 h-3.5 w-3.5" />Imprimir OS
+                          </DropdownMenuItem>
+                          {canEdit && (
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRegisterPaymentForExisting(os); }}>
+                              <CreditCard className="mr-2 h-3.5 w-3.5" />Registrar Recebimento
+                            </DropdownMenuItem>
+                          )}
+                          {isAdmin && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteOS(os); }} className="text-destructive focus:text-destructive">
+                                <Trash2 className="mr-2 h-3.5 w-3.5" />Deletar OS
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  );
+                default:
+                  return null;
+              }
+            }}
+          />
+        </PremiumCard>
 
         {/* ===== OS FORM DIALOG (single-scroll) ===== */}
         <Dialog open={dialogOpen} onOpenChange={handleOSDialogOpenChange}>

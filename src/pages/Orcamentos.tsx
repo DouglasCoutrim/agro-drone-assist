@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
@@ -14,7 +13,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from "@/components/ui/alert-dialog";
-import { Plus, FileText, Loader2, Edit, Trash2, Eye, ArrowRight, Search, Send, Download } from "lucide-react";
+import { Plus, FileText, Loader2, Edit, Trash2, Eye, ArrowRight, Search, Send, Download, AlertCircle, CheckCircle } from "lucide-react";
 import { CatalogAutocomplete } from "@/components/ui/catalog-autocomplete";
 import { OSItemsSection, OSItem } from "@/components/os/OSItemsSection";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +26,9 @@ import { generateOrcamentoPDF, shareOrcamentoViaWhatsApp } from "@/lib/orcamento
 import { formatCurrency } from "@/lib/formatters";
 import { PayButton } from "@/components/PayButton";
 import { useConfirm } from "@/hooks/useConfirm";
+import { PremiumCard, PremiumCardHeader, PremiumCardContent } from "@/components/premium/PremiumCard";
+import { KpiCard } from "@/components/premium/KpiCard";
+import { PremiumTable } from "@/components/premium/PremiumTable";
 
 type Cliente = Tables<"clientes">;
 
@@ -249,153 +251,218 @@ export default function Orcamentos() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2"><FileText className="h-8 w-8 text-primary" />Orçamentos</h1>
-            <p className="text-muted-foreground">Orçamentos rápidos com peças, serviços e desconto</p>
-          </div>
-          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button className="gradient-primary shadow-medium"><Plus className="mr-2 h-4 w-4" />Novo Orçamento</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>{editingOrc ? "Editar Orçamento" : "Novo Orçamento"}</DialogTitle>
-                <DialogDescription>Preencha os dados do orçamento</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Cliente *</Label>
-                  <Select value={formData.cliente_id} onValueChange={(v) => setFormData({ ...formData, cliente_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
-                    <SelectContent>{clientes.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Equipamento / Objeto *</Label>
-                  <CatalogAutocomplete
-                    value={formData.equipamento}
-                    onChange={(v) => setFormData({ ...formData, equipamento: v })}
-                    onSelect={(item) => setFormData(f => ({ ...f, equipamento: item.descricao }))}
-                    placeholder="Buscar ou digitar..."
-                    source="produtos"
-                    mode="text"
-                     allowCreate={false}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Vendedor Responsável</Label>
-                  <Select value={formData.vendedor_id} onValueChange={(v) => setFormData({ ...formData, vendedor_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="Selecionar vendedor..." /></SelectTrigger>
-                    <SelectContent>{vendedores.map(v => <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Descrição</Label>
-                  <Textarea value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} rows={2} placeholder="Observações gerais do orçamento..." />
-                </div>
-
-                <Separator />
-
-                {/* Items: products + services */}
-                <div className="space-y-3">
-                  <Label className="text-sm font-bold">Itens e Serviços</Label>
-                  <OSItemsSection
-                    items={items}
-                    onChange={setItems}
-                    organizationId={orgId}
-                  />
-                </div>
-
-                <Separator />
-
-                {/* Totals + discount */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Desconto (R$)</Label>
-                    <NumberInput
-                      step="0.01" min="0"
-                      value={formData.desconto}
-                      onChange={(v) => setFormData({ ...formData, desconto: v })}
-                      placeholder="0,00"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Validade *</Label>
-                    <Input type="date" value={formData.validade} onChange={(e) => setFormData({ ...formData, validade: e.target.value })} required />
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-end gap-1 text-sm border-t pt-3">
-                  <p>Subtotal: <span className="font-semibold">{formatCurrency(subtotal)}</span></p>
-                  {formData.desconto > 0 && <p className="text-destructive">Desconto: - {formatCurrency(formData.desconto)}</p>}
-                  <p className="text-lg font-bold">Total: <span className="text-primary">{formatCurrency(total)}</span></p>
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                  <Button type="submit" className="gradient-primary" disabled={formLoading}>
-                    {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editingOrc ? "Salvar" : "Criar"}
+        <PremiumCard bordered={true} padding="lg" delay={0}>
+          <PremiumCardHeader
+            title="Orçamentos"
+            subtitle="Orçamentos rápidos com peças, serviços e desconto"
+            action={
+              <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+                <DialogTrigger asChild>
+                  <Button className="gradient-primary shadow-medium">
+                    <Plus className="mr-2 h-4 w-4" />Novo Orçamento
                   </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>{editingOrc ? "Editar Orçamento" : "Novo Orçamento"}</DialogTitle>
+                    <DialogDescription>Preencha os dados do orçamento</DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Cliente *</Label>
+                      <Select value={formData.cliente_id} onValueChange={(v) => setFormData({ ...formData, cliente_id: v })}>
+                        <SelectTrigger><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
+                        <SelectContent>{clientes.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Equipamento / Objeto *</Label>
+                      <CatalogAutocomplete
+                        value={formData.equipamento}
+                        onChange={(v) => setFormData({ ...formData, equipamento: v })}
+                        onSelect={(item) => setFormData(f => ({ ...f, equipamento: item.descricao }))}
+                        placeholder="Buscar ou digitar..."
+                        source="produtos"
+                        mode="text"
+                        allowCreate={false}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Vendedor Responsável</Label>
+                      <Select value={formData.vendedor_id} onValueChange={(v) => setFormData({ ...formData, vendedor_id: v })}>
+                        <SelectTrigger><SelectValue placeholder="Selecionar vendedor..." /></SelectTrigger>
+                        <SelectContent>{vendedores.map(v => <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Descrição</Label>
+                      <Textarea value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} rows={2} placeholder="Observações gerais do orçamento..." />
+                    </div>
+
+                    <Separator />
+
+                    {/* Items: products + services */}
+                    <div className="space-y-3">
+                      <Label className="text-sm font-bold">Itens e Serviços</Label>
+                      <OSItemsSection
+                        items={items}
+                        onChange={setItems}
+                        organizationId={orgId}
+                      />
+                    </div>
+
+                    <Separator />
+
+                    {/* Totals + discount */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Desconto (R$)</Label>
+                        <NumberInput
+                          step="0.01" min="0"
+                          value={formData.desconto}
+                          onChange={(v) => setFormData({ ...formData, desconto: v })}
+                          placeholder="0,00"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Validade *</Label>
+                        <Input type="date" value={formData.validade} onChange={(e) => setFormData({ ...formData, validade: e.target.value })} required />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-1 text-sm border-t pt-3">
+                      <p>Subtotal: <span className="font-semibold">{formatCurrency(subtotal)}</span></p>
+                      {formData.desconto > 0 && <p className="text-destructive">Desconto: - {formatCurrency(formData.desconto)}</p>}
+                      <p className="text-lg font-bold">Total: <span className="text-primary">{formatCurrency(total)}</span></p>
+                    </div>
+
+                    <div className="flex justify-end gap-2">
+                      <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+                      <Button type="submit" className="gradient-primary" disabled={formLoading}>
+                        {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editingOrc ? "Salvar" : "Criar"}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            }
+          />
+        </PremiumCard>
 
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-3">
-          <Card className="shadow-soft card-hover"><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-primary">{orcamentos.length}</p><p className="text-sm text-muted-foreground">Total</p></CardContent></Card>
-          <Card className="shadow-soft card-hover"><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-warning">{orcamentos.filter(o => o.status === "pendente").length}</p><p className="text-sm text-muted-foreground">Pendentes</p></CardContent></Card>
-          <Card className="shadow-soft card-hover"><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-success">{orcamentos.filter(o => o.status === "convertido").length}</p><p className="text-sm text-muted-foreground">Convertidos em OS</p></CardContent></Card>
+          <KpiCard
+            label="Total de Orçamentos"
+            value={orcamentos.length}
+            icon={FileText}
+            color="blue"
+            delay={0}
+          />
+          <KpiCard
+            label="Pendentes"
+            value={orcamentos.filter(o => o.status === "pendente").length}
+            icon={AlertCircle}
+            color="yellow"
+            delay={100}
+          />
+          <KpiCard
+            label="Convertidos em OS"
+            value={orcamentos.filter(o => o.status === "convertido").length}
+            icon={CheckCircle}
+            color="green"
+            delay={200}
+          />
         </div>
 
         {/* Search */}
-        <Card className="shadow-soft"><CardContent className="p-4"><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Buscar por cliente, equipamento..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div></CardContent></Card>
+        <PremiumCard padding="sm" hover={false} bordered={true} delay={100}>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por cliente, equipamento..."
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </PremiumCard>
 
         {/* List */}
-        <Card className="shadow-soft">
-          <CardHeader><CardTitle>Lista de Orçamentos</CardTitle></CardHeader>
-          <CardContent>
+        <PremiumCard bordered={true} delay={200}>
+          <PremiumCardHeader
+            title="Lista de Orçamentos"
+            subtitle={`${filteredOrcamentos.length} orçamento${filteredOrcamentos.length !== 1 ? 's' : ''} encontrado${filteredOrcamentos.length !== 1 ? 's' : ''}`}
+          />
+          <PremiumCardContent>
             {loading ? (
-              <div className="flex items-center justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-            ) : filteredOrcamentos.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground"><FileText className="h-12 w-12 mx-auto mb-4 opacity-50" /><p>Nenhum orçamento encontrado</p></div>
-            ) : (
-              <div className="space-y-4">
-                {filteredOrcamentos.map((orc) => {
-                  const sc = statusConfig[orc.status] || { label: orc.status, variant: "outline" as const };
-                  return (
-                    <div key={orc.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setViewingOrc(orc)}>
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <div className="space-y-1 min-w-0">
-                          <p className="font-medium truncate">{orc.clientes?.nome || "Cliente"}</p>
-                          <p className="text-sm text-muted-foreground truncate">{orc.equipamento}</p>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant={sc.variant}>{sc.label}</Badge>
-                            <span className="text-xs text-muted-foreground">Validade: {new Date(orc.validade).toLocaleDateString("pt-BR")}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <p className="text-xl font-bold text-primary">{formatCurrency(orc.valor)}</p>
-                          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                            <Button size="sm" variant="ghost" title="Enviar WhatsApp" onClick={() => handleSendWhatsApp(orc)}>
-                              <Send className="h-4 w-4 text-success" />
-                            </Button>
-                            <Button size="sm" variant="ghost" title="Visualizar" onClick={() => setViewingOrc(orc)}><Eye className="h-4 w-4" /></Button>
-                            <Button size="sm" variant="ghost" title="Editar" onClick={() => handleEdit(orc)}><Edit className="h-4 w-4" /></Button>
-                            <Button size="sm" variant="ghost" title="Excluir" onClick={() => handleDelete(orc.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
+            ) : (
+              <PremiumTable
+                columns={[
+                  { key: "cliente", label: "Cliente", width: "w-[200px]" },
+                  { key: "equipamento", label: "Equipamento", width: "w-[200px]" },
+                  { key: "status", label: "Status", width: "w-[150px]" },
+                  { key: "validade", label: "Validade", width: "w-[120px]" },
+                  { key: "valor", label: "Valor", width: "w-[120px]", align: "right" },
+                  { key: "actions", label: "Ações", width: "w-[160px]", align: "center" },
+                ]}
+                data={filteredOrcamentos}
+                renderCell={(item, columnKey) => {
+                  const sc = statusConfig[item.status] || { label: item.status, variant: "outline" as const };
+                  switch (columnKey) {
+                    case "cliente":
+                      return (
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{item.clientes?.nome || "Cliente"}</p>
+                          <p className="text-xs text-muted-foreground truncate">{item.equipamento}</p>
+                        </div>
+                      );
+                    case "equipamento":
+                      return <span className="text-sm text-gray-700">{item.equipamento}</span>;
+                    case "status":
+                      return <Badge variant={sc.variant}>{sc.label}</Badge>;
+                    case "validade":
+                      return <span className="text-sm text-gray-700">{new Date(item.validade).toLocaleDateString("pt-BR")}</span>;
+                    case "valor":
+                      return <span className="text-sm font-semibold text-primary">{formatCurrency(item.valor)}</span>;
+                    case "actions":
+                      return (
+                        <div className="flex items-center justify-center gap-1">
+                          <Button size="sm" variant="ghost" title="Enviar WhatsApp" onClick={(e) => { e.stopPropagation(); handleSendWhatsApp(item); }}>
+                            <Send className="h-4 w-4 text-success" />
+                          </Button>
+                          <Button size="sm" variant="ghost" title="Visualizar" onClick={(e) => { e.stopPropagation(); setViewingOrc(item); }}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" title="Editar" onClick={(e) => { e.stopPropagation(); handleEdit(item); }}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" title="Excluir" onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      );
+                    default:
+                      return null;
+                  }
+                }}
+                onRowClick={(item) => setViewingOrc(item)}
+                emptyMessage="Nenhum orçamento encontrado"
+                emptyIcon={<FileText className="h-8 w-8 text-gray-400" />}
+                emptyAction={{
+                  label: "Criar primeiro orçamento",
+                  onClick: () => setDialogOpen(true)
+                }}
+                hoverable={true}
+                striped={true}
+                animateRows={true}
+              />
             )}
-          </CardContent>
-        </Card>
+          </PremiumCardContent>
+        </PremiumCard>
 
         {/* View Dialog */}
         <Dialog open={!!viewingOrc} onOpenChange={(open) => { if (!open) setViewingOrc(null); }}>

@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import { COLORS, SHADOWS, SPACING, TRANSITIONS, RADIUS } from "./src/lib/design-system";
 
 export default {
   darkMode: ["class"],
@@ -18,6 +19,7 @@ export default {
         sans: ["DM Sans", "sans-serif"],
       },
       colors: {
+        // Existing CSS variable colors (keep for backward compatibility)
         border: "hsl(var(--border))",
         "border-subtle": "hsl(var(--border-subtle))",
         input: "hsl(var(--input))",
@@ -27,6 +29,16 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          50: COLORS.primary[50],
+          100: COLORS.primary[100],
+          200: COLORS.primary[200],
+          300: COLORS.primary[300],
+          400: COLORS.primary[400],
+          500: COLORS.primary[500],
+          600: COLORS.primary[600],
+          700: COLORS.primary[700],
+          800: COLORS.primary[800],
+          900: COLORS.primary[900],
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -70,7 +82,7 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // Semantic status
+        // Semantic status (existing)
         vc: {
           green: "hsl(var(--green))",
           "green-hover": "hsl(var(--green-hover))",
@@ -89,12 +101,45 @@ export default {
           "slate-light": "hsl(var(--slate-light))",
           "slate-text": "hsl(var(--slate-text))",
         },
+        // NEW: Design System Colors - Neutral grays
+        gray: {
+          50: COLORS.gray[50],
+          100: COLORS.gray[100],
+          200: COLORS.gray[200],
+          300: COLORS.gray[300],
+          400: COLORS.gray[400],
+          500: COLORS.gray[500],
+          600: COLORS.gray[600],
+          700: COLORS.gray[700],
+          800: COLORS.gray[800],
+          900: COLORS.gray[900],
+        },
+        // Status colors (using direct hex values from design system)
+        success: COLORS.status.success,
+        warning: COLORS.status.warning,
+        error: COLORS.status.error,
+        info: COLORS.status.info,
       },
+      boxShadow: {
+        xs: SHADOWS.xs,
+        sm: SHADOWS.sm,
+        md: SHADOWS.md,
+        lg: SHADOWS.lg,
+        xl: SHADOWS.xl,
+      },
+      spacing: SPACING,
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
-        xl: "1.25rem",
+        sm: RADIUS.sm,
+        md: RADIUS.md,
+        lg: RADIUS.lg,
+        xl: RADIUS.xl,
+        "2xl": RADIUS["2xl"],
+        full: RADIUS.full,
+      },
+      transitionDuration: {
+        fast: TRANSITIONS.fast,
+        base: TRANSITIONS.base,
+        slow: TRANSITIONS.slow,
       },
       keyframes: {
         "accordion-down": { from: { height: "0" }, to: { height: "var(--radix-accordion-content-height)" } },

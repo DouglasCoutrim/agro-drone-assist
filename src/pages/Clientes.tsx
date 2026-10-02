@@ -1,24 +1,23 @@
 import { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Users, Search, Plus, Phone, Mail, MapPin, User, Building, Edit, Trash2, Loader2, AlertTriangle } from "lucide-react";
+import { Users, Search, Plus, Phone, Mail, MapPin, User, Building, Edit, Trash2, Loader2, AlertTriangle, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
 import { useViaCep } from "@/hooks/useViaCep";
 import { UF_LIST } from "@/lib/constants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { EmptyState } from "@/components/os/EmptyState";
-import { formatCpfCnpj, formatPhone, validateCpfCnpj, getErrorMessage } from "@/lib/formatters";
+import { formatCpfCnpj, formatPhone, getErrorMessage } from "@/lib/formatters";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useConfirm } from "@/hooks/useConfirm";
 import { CsvImportExport, emptyToNull } from "@/components/CsvImportExport";
+import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 
 const CLIENTES_CSV_COLUMNS = [
   "nome", "telefone", "email", "cpf_cnpj",
@@ -49,6 +48,11 @@ export default function Clientes() {
     () => !!editingCliente || Object.values(formData).some(value => String(value || "").trim() !== ""),
     [editingCliente, formData]
   );
+
+  // Stats para KpiCard
+  const totalClientes = clientes.length;
+  const syncedCount = clientes.filter(c => (c as any).asaas_id).length;
+  const withDocCount = clientes.filter(c => c.cpf_cnpj).length;
 
   useEffect(() => { if (organization?.id) fetchClientes(); }, [organization?.id]);
 
@@ -187,175 +191,137 @@ export default function Clientes() {
   return (
     <MainLayout>
       <div className="space-y-4" data-tour="clientes-page">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-bold font-display flex items-center gap-2"><Users className="h-5 w-5 text-primary" />Clientes</h1>
-            <p className="text-xs text-muted-foreground">Cadastro e gestão de clientes</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <CsvImportExport
-              tableName="clientes"
-              organizationId={organization?.id}
-              exportColumns={CLIENTES_CSV_COLUMNS}
-              templateColumns={CLIENTES_CSV_COLUMNS}
-              filename="clientes"
-              onImported={fetchClientes}
-              transformRow={(row) => {
-                const nome = (row.nome || "").trim();
-                const telefone = (row.telefone || "").trim();
-                if (!nome || !telefone) return null;
-                return {
-                  nome,
-                  telefone,
-                  email: emptyToNull(row.email),
-                  cpf_cnpj: emptyToNull(row.cpf_cnpj),
-                  endereco: emptyToNull(row.endereco),
-                  cidade: emptyToNull(row.cidade),
-                  estado: emptyToNull(row.estado),
-                  cep: emptyToNull(row.cep),
-                  observacoes: emptyToNull(row.observacoes),
-                };
-              }}
-            />
-            <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="gradient-primary"><Plus className="mr-1.5 h-3.5 w-3.5" />Novo Cliente</Button>
-              </DialogTrigger>
-            <DialogContent
-              className="max-w-2xl max-h-[90vh] overflow-y-auto"
-              onInteractOutside={(e) => e.preventDefault()}
-              onEscapeKeyDown={(e) => e.preventDefault()}
-            >
-              <DialogHeader>
-                <DialogTitle className="text-base">{editingCliente ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
-                <DialogDescription className="text-xs">Preencha os dados do cliente</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="sm:col-span-2 space-y-1">
-                    <Label className="text-xs">Nome *</Label>
-                    <Input value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required className="h-9" minLength={3} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Telefone *</Label>
-                    <Input
-                      value={formData.telefone}
-                      onChange={(e) => setFormData({ ...formData, telefone: formatPhone(e.target.value) })}
-                      required className="h-9"
-                      placeholder="(99) 99999-9999"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">E-mail</Label>
-                    <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="h-9" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">CPF/CNPJ</Label>
-                    <Input
-                      value={formData.cpf_cnpj}
-                      onChange={(e) => setFormData({ ...formData, cpf_cnpj: formatCpfCnpj(e.target.value) })}
-                      onBlur={() => checkDuplicate(formData.cpf_cnpj)}
-                      className="h-9"
-                      placeholder="000.000.000-00"
-                    />
-                    {duplicateWarning && (
-                      <p className="text-xs text-amber-600 flex items-center gap-1 mt-1">
-                        <AlertTriangle className="h-3 w-3" />{duplicateWarning}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">CEP</Label>
-                    <div className="relative">
-                      <Input value={formData.cep} className="h-9" onChange={async (e) => {
-                        const val = e.target.value;
-                        setFormData({ ...formData, cep: val });
-                        const clean = val.replace(/\D/g, "");
-                        if (clean.length === 8) {
-                          const result = await fetchCep(clean);
-                          if (result) setFormData(f => ({ ...f, cep: val, endereco: result.logradouro, cidade: result.localidade, estado: result.uf }));
-                        }
-                      }} placeholder="00000-000" />
-                      {cepLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-                    </div>
-                  </div>
-                  <div className="sm:col-span-2 space-y-1"><Label className="text-xs">Endereço</Label><Input value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} className="h-9" /></div>
-                  <div className="space-y-1"><Label className="text-xs">Cidade</Label><Input value={formData.cidade} onChange={(e) => setFormData({ ...formData, cidade: e.target.value })} className="h-9" /></div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Estado</Label>
-                    <Select value={formData.estado} onValueChange={v => setFormData({ ...formData, estado: v })}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="UF" /></SelectTrigger>
-                      <SelectContent>{UF_LIST.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div className="sm:col-span-2 space-y-1"><Label className="text-xs">Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" size="sm" onClick={requestCloseDialog}>Cancelar</Button>
-                  <Button type="submit" size="sm" className="gradient-primary" disabled={formLoading}>
-                    {formLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}{editingCliente ? 'Salvar' : 'Criar'}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-          </div>
-        </div>
-
-
-        {/* Stats */}
-        <div className="grid gap-3 grid-cols-3">
-          <Card className="shadow-soft border-border/50"><CardContent className="p-3 text-center"><p className="text-lg font-bold text-primary">{clientes.length}</p><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Total</p></CardContent></Card>
-          <Card className="shadow-soft border-border/50"><CardContent className="p-3 text-center"><p className="text-lg font-bold text-primary">{clientes.filter(c => (c as any).asaas_id).length}</p><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Sincronizados</p></CardContent></Card>
-          <Card className="shadow-soft border-border/50"><CardContent className="p-3 text-center"><p className="text-lg font-bold text-primary">{clientes.filter(c => c.cpf_cnpj).length}</p><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Com CPF/CNPJ</p></CardContent></Card>
-        </div>
-
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Buscar por nome, telefone, e-mail ou documento..." className="pl-9 h-9 text-xs bg-muted/30 border-border/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-        </div>
-
-        {/* List */}
-        <Card className="shadow-soft border-border/50">
-          <CardContent className="p-0">
-            {loading ? (
-              <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-            ) : filteredClientes.length === 0 ? (
-              <EmptyState
-                icon={Users}
-                title={searchTerm ? "Nenhum cliente encontrado" : "Nenhum cliente cadastrado"}
-                description={searchTerm ? "Tente buscar com outros termos." : "Cadastre seu primeiro cliente para criar ordens de serviço."}
-                actionLabel={searchTerm ? undefined : "Cadastrar primeiro cliente"}
-                onAction={searchTerm ? undefined : () => setDialogOpen(true)}
-              />
-            ) : (
-              <div className="divide-y divide-border">
-                {filteredClientes.map((cliente) => (
-                  <div key={cliente.id} className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setViewingCliente(cliente)}>
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="p-1.5 rounded-full bg-primary/10 shrink-0">
-                        {cliente.cpf_cnpj && cliente.cpf_cnpj.replace(/\D/g, '').length > 11 ? <Building className="h-3.5 w-3.5 text-primary" /> : <User className="h-3.5 w-3.5 text-primary" />}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{cliente.nome}</p>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{cliente.telefone}</span>
-                          {cliente.cidade && <span className="hidden sm:flex items-center gap-1"><MapPin className="h-3 w-3" />{cliente.cidade}</span>}
-                          {(cliente as any).asaas_id && <span className="text-primary text-[10px]">● Asaas</span>}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleEdit(cliente)}><Edit className="h-3.5 w-3.5" /></Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(cliente)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                    </div>
-                  </div>
-                ))}
+        {/* Header */}
+        <PremiumCard className="p-4" delay={0}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-primary/10">
+                <Users className="h-5 w-5 text-primary" />
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <div>
+                <h1 className="text-lg font-bold font-display flex items-center gap-2">Clientes</h1>
+                <p className="text-xs text-muted-foreground">Cadastro e gestão de clientes</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <CsvImportExport
+                tableName="clientes"
+                organizationId={organization?.id}
+                exportColumns={CLIENTES_CSV_COLUMNS}
+                templateColumns={CLIENTES_CSV_COLUMNS}
+                filename="clientes"
+                onImported={fetchClientes}
+                transformRow={(row) => {
+                  const nome = (row.nome || "").trim();
+                  const telefone = (row.telefone || "").trim();
+                  if (!nome || !telefone) return null;
+                  return {
+                    nome,
+                    telefone,
+                    email: emptyToNull(row.email),
+                    cpf_cnpj: emptyToNull(row.cpf_cnpj),
+                    endereco: emptyToNull(row.endereco),
+                    cidade: emptyToNull(row.cidade),
+                    estado: emptyToNull(row.estado),
+                    cep: emptyToNull(row.cep),
+                    observacoes: emptyToNull(row.observacoes),
+                  };
+                }}
+              />
+              <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="gradient-primary"><Plus className="mr-1.5 h-3.5 w-3.5" />Novo Cliente</Button>
+                </DialogTrigger>
+              </Dialog>
+            </div>
+          </div>
+        </PremiumCard>
+
+        {/* KPIs */}
+        <div className="grid gap-3 grid-cols-3 sm:grid-cols-4">
+          <KpiCard label="Total Clientes" value={totalClientes} icon={Users} color="blue" trend={{ value: `${syncedCount} sincronizados`, label: "com Asaas" }} delay={0} />
+          <KpiCard label="Com CPF/CNPJ" value={withDocCount} icon={Building} color="green" delay={100} />
+          <KpiCard label="Sincronizados" value={syncedCount} icon={Mail} color="purple" delay={200} />
+          <KpiCard label="Taxa Documentos" value={`${totalClientes > 0 ? Math.round((withDocCount / totalClientes) * 100) : 0}%`} icon={AlertTriangle} color="orange" delay={300} />
+        </div>
+
+        {/* Search + Table */}
+        <PremiumCard delay={100}>
+          <div className="p-4 border-b border-border">
+            <div className="relative max-w-xs">
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input placeholder="Buscar por nome, telefone, e-mail ou documento..." className="pl-9 h-9 text-xs bg-muted/30 border-border/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            </div>
+          </div>
+          <PremiumTable
+            columns={[
+              { key: "tipo", header: "Tipo", width: "50px" },
+              { key: "nome", header: "Nome" },
+              { key: "telefone", header: "Telefone" },
+              { key: "cidade", header: "Cidade" },
+              { key: "documento", header: "CPF/CNPJ" },
+              { key: "asaas", header: "Asaas", width: "80px" },
+              { key: "actions", header: "", width: "90px" },
+            ]}
+            data={filteredClientes}
+            loading={loading}
+            emptyMessage={searchTerm ? "Nenhum cliente encontrado" : "Nenhum cliente cadastrado"}
+            emptyIcon={Users}
+            emptyAction={{
+              label: "Cadastrar primeiro cliente",
+              onClick: () => setDialogOpen(true)
+            }}
+            rowKey="id"
+            striped
+            hoverable
+            animateRows={true}
+            renderCell={(column, cliente) => {
+              switch (column.key) {
+                case "tipo":
+                  return (
+                    <div className="p-1 rounded-full bg-primary/10">
+                      {cliente.cpf_cnpj && cliente.cpf_cnpj.replace(/\D/g, '').length > 11 ? (
+                        <Building className="h-3.5 w-3.5 text-primary" />
+                      ) : (
+                        <User className="h-3.5 w-3.5 text-primary" />
+                      )}
+                    </div>
+                  );
+                case "nome":
+                  return (
+                    <div>
+                      <p className="font-medium text-sm">{cliente.nome}</p>
+                      <p className="text-xs text-muted-foreground truncate max-w-xs">{cliente.endereco || "Sem endereço"}</p>
+                    </div>
+                  );
+                case "telefone":
+                  return <span className="text-sm">{cliente.telefone}</span>;
+                case "cidade":
+                  return <span className="text-sm text-muted-foreground">{cliente.cidade || "-"}</span>;
+                case "documento":
+                  return <span className="text-sm font-mono text-muted-foreground">{cliente.cpf_cnpj || "-"}</span>;
+                case "asaas":
+                  return (cliente as any).asaas_id ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                      Sincronizado
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Pendente</span>
+                  );
+                case "actions":
+                  return (
+                    <div className="flex items-center justify-end gap-1">
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleEdit(cliente); }}><Edit className="h-3.5 w-3.5" /></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleDelete(cliente); }}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                    </div>
+                  );
+                default:
+                  return null;
+              }
+            }}
+          />
+        </PremiumCard>
 
         {/* View Client Dialog */}
         <Dialog open={!!viewingCliente} onOpenChange={(open) => { if (!open) setViewingCliente(null); }}>

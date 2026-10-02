@@ -1,18 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
-} from "@/components/ui/table";
-import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import {
   Plus, AlertTriangle, Package, TrendingDown, TrendingUp,
   Edit, Trash2, Loader2, Eye, Search
@@ -25,6 +19,7 @@ import { useOrganization } from "@/hooks/useOrganization";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useNavigate } from "react-router-dom";
 import { CsvImportExport, parseNumberBR, emptyToNull } from "@/components/CsvImportExport";
+import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 
 const ESTOQUE_CSV_COLUMNS = [
   "codigo", "descricao", "categoria", "quantidade", "estoque_minimo",
@@ -199,196 +194,271 @@ export default function Estoque() {
   const categorias = useMemo(() => [...new Set(itens.map(i => i.categoria).filter(Boolean))], [itens]);
   const fornecedores = useMemo(() => [...new Set(itens.map(i => i.fornecedor).filter(Boolean) as string[])], [itens]);
 
+  // Transform data for PremiumTable
+  const tableData = filteredItens.map(item => ({
+    ...item,
+    statusInfo: getStatusInfo(item),
+  }));
+
+  const columns = [
+    { key: "codigo", label: "Código", width: "w-[80px]" },
+    { key: "descricao", label: "Descrição", width: "flex-1" },
+    { key: "categoria", label: "Categoria", width: "w-[100px]", align: "center" as const },
+    { key: "quantidade", label: "Qtd", width: "w-[80px]", align: "right" as const },
+    { key: "custo_unitario", label: "Custo", width: "w-[100px]", align: "right" as const },
+    { key: "preco_venda", label: "Preço Venda", width: "w-[120px]", align: "right" as const },
+    { key: "status", label: "Status", width: "w-[100px]", align: "center" as const },
+    { key: "acoes", label: "Ações", width: "w-[120px]" },
+  ];
+
+  const renderCell = (item: any, key: string) => {
+    if (key === "quantidade") {
+      return (
+        <div className="text-right">
+          <span className="font-bold">{item.quantidade}</span>
+          <span className="text-xs text-gray-500 block">min: {item.estoque_minimo}</span>
+        </div>
+      );
+    }
+    if (key === "custo_unitario") {
+      return <span className="font-medium">{formatCurrency(item.custo_unitario)}</span>;
+    }
+    if (key === "preco_venda") {
+      return <span className="font-medium text-green-700">{formatCurrency(item.preco_venda)}</span>;
+    }
+    if (key === "categoria") {
+      return <Badge variant="outline">{item.categoria}</Badge>;
+    }
+    if (key === "status") {
+      const { status, variant, icon: Icon } = item.statusInfo;
+      const variantMap = {
+        destructive: "bg-red-50 text-red-700",
+        secondary: "bg-yellow-50 text-yellow-700",
+        default: "bg-green-50 text-green-700",
+      };
+      return (
+        <Badge variant="outline" className={`gap-1 ${variantMap[variant]}`}>
+          <Icon className="h-3 w-3" />{status}
+        </Badge>
+      );
+    }
+    if (key === "acoes") {
+      return (
+        <div className="flex gap-1 justify-end" onClick={(e) => e.stopPropagation()}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewingItem(item)}><Eye className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(item)}><Edit className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4 text-red-600" /></Button>
+        </div>
+      );
+    }
+    return item[key];
+  };
+
   return (
     <MainLayout>
-      <div className="space-y-4" data-tour="estoque-page">
-        <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="space-y-6 py-8" data-tour="estoque-page">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-lg font-bold flex items-center gap-2">
-              <Package className="h-5 w-5 text-primary" />Estoque
+            <h1 className="text-3xl font-bold text-gray-900 font-display leading-tight flex items-center gap-2">
+              <Package className="h-7 w-7 text-primary-600" />Estoque
             </h1>
-            <p className="text-xs text-muted-foreground">Peças e componentes</p>
+            <p className="text-gray-600 mt-1">Gerencie peças, componentes e materiais</p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <CsvImportExport
-              tableName="itens_estoque"
-              organizationId={organization?.id}
-              exportColumns={ESTOQUE_CSV_COLUMNS}
-              templateColumns={ESTOQUE_CSV_COLUMNS}
-              filename="estoque"
-              onImported={fetchItens}
-              transformRow={(row) => {
-                const codigo = (row.codigo || "").trim();
-                const descricao = (row.descricao || "").trim();
-                if (!codigo || !descricao) return null;
-                return {
-                  codigo,
-                  descricao,
-                  categoria: (row.categoria || "").trim() || "Geral",
-                  quantidade: parseNumberBR(row.quantidade),
-                  estoque_minimo: parseNumberBR(row.estoque_minimo),
-                  custo_unitario: parseNumberBR(row.custo_unitario),
-                  preco_venda: parseNumberBR(row.preco_venda),
-                  fornecedor: emptyToNull(row.fornecedor),
-                  localizacao: emptyToNull(row.localizacao),
-                };
-              }}
-            />
-            <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); resetForm(); } }}>
-              <Button size="sm" className="gradient-primary" onClick={handleOpenNewDialog}>
-                <Plus className="mr-1.5 h-3.5 w-3.5" />Novo Item
-              </Button>
-              <DialogContent className="max-w-md max-h-[60vh] overflow-hidden">
-                <DialogHeader>
-                  <DialogTitle>{editingItem ? 'Editar Item' : 'Novo Item'}</DialogTitle>
-                  <DialogDescription>Preencha os dados do item de estoque</DialogDescription>
-                </DialogHeader>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
-                    <div className="space-y-2">
-                      <Label htmlFor="codigo">Código *</Label>
-                      <Input id="codigo" value={formData.codigo} onChange={(e) => setFormData(prev => ({ ...prev, codigo: e.target.value }))} required className="h-10" />
-                      {!editingItem && <p className="text-xs text-muted-foreground">Gerado automaticamente (editável)</p>}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="categoria">Categoria *</Label>
-                      <SearchableInput
-                        id="categoria"
-                        value={formData.categoria}
-                        onChange={(v) => setFormData(prev => ({ ...prev, categoria: v }))}
-                        suggestions={categorias}
-                        placeholder="Digite ou selecione..."
-                        onAddNew={(v) => setFormData(prev => ({ ...prev, categoria: v }))}
-                        addNewLabel="Criar categoria"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="descricao">Descrição *</Label>
-                      <Input
-                        id="descricao"
-                        value={formData.descricao}
-                        onChange={(e) => setFormData(prev => ({ ...prev, descricao: e.target.value }))}
-                        placeholder="Digite a descrição do produto..."
-                        required
-                        className="h-10"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2"><Label htmlFor="quantidade">Quantidade</Label><NumberInput id="quantidade" value={formData.quantidade} onChange={(v) => setFormData(prev => ({ ...prev, quantidade: v }))} placeholder="0" className="h-10" /></div>
-                      <div className="space-y-2"><Label htmlFor="estoque_minimo">Estoque Mínimo</Label><NumberInput id="estoque_minimo" value={formData.estoque_minimo} onChange={(v) => setFormData(prev => ({ ...prev, estoque_minimo: v }))} placeholder="0" className="h-10" /></div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="custo_unitario">Custo Unitário (R$)</Label>
-                        <NumberInput id="custo_unitario" step="0.01" value={formData.custo_unitario} onChange={(v) => setFormData(prev => ({ ...prev, custo_unitario: v }))} placeholder="0,00" min={0} className="h-10" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="preco_venda">Preço de Venda (R$)</Label>
-                        <NumberInput id="preco_venda" step="0.01" value={formData.preco_venda} onChange={(v) => setFormData(prev => ({ ...prev, preco_venda: v }))} placeholder="0,00" min={0} className="h-10" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="fornecedor">Fornecedor</Label>
-                      <SearchableInput
-                        id="fornecedor"
-                        value={formData.fornecedor}
-                        onChange={(v) => setFormData(prev => ({ ...prev, fornecedor: v }))}
-                        suggestions={fornecedores}
-                        placeholder="Digite ou selecione..."
-                        onAddNew={(v) => setFormData(prev => ({ ...prev, fornecedor: v }))}
-                        addNewLabel="Adicionar fornecedor"
-                      />
-                    </div>
-                    <div className="space-y-2"><Label htmlFor="localizacao">Localização</Label><Input id="localizacao" value={formData.localizacao} onChange={(e) => setFormData(prev => ({ ...prev, localizacao: e.target.value }))} placeholder="Ex: Prateleira A1" className="h-10" /></div>
-                  </div>
-                  <Separator />
-                  <DialogFooter className="sticky bottom-0 bg-background border-t pt-4">
-                    <div className="flex justify-end gap-2 w-full">
-                      <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                      <Button type="submit" className="gradient-primary" disabled={formLoading}>
-                        {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {editingItem ? 'Salvar' : 'Criar'}
-                      </Button>
-                    </div>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
+          <Button className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold" onClick={handleOpenNewDialog}>
+            <Plus className="mr-2 h-4 w-4" />Novo Item
+          </Button>
         </div>
 
-        {/* Stats */}
+        {/* CSV Import/Export */}
+        <div className="flex items-center gap-2">
+          <CsvImportExport
+            tableName="itens_estoque"
+            organizationId={organization?.id}
+            exportColumns={ESTOQUE_CSV_COLUMNS}
+            templateColumns={ESTOQUE_CSV_COLUMNS}
+            filename="estoque"
+            onImported={fetchItens}
+            transformRow={(row) => {
+              const codigo = (row.codigo || "").trim();
+              const descricao = (row.descricao || "").trim();
+              if (!codigo || !descricao) return null;
+              return {
+                codigo,
+                descricao,
+                categoria: (row.categoria || "").trim() || "Geral",
+                quantidade: parseNumberBR(row.quantidade),
+                estoque_minimo: parseNumberBR(row.estoque_minimo),
+                custo_unitario: parseNumberBR(row.custo_unitario),
+                preco_venda: parseNumberBR(row.preco_venda),
+                fornecedor: emptyToNull(row.fornecedor),
+                localizacao: emptyToNull(row.localizacao),
+              };
+            }}
+          />
+        </div>
+
+        {/* KPI Grid */}
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
-          <Card className="border border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground uppercase tracking-wide">Total</p><p className="text-xl font-bold">{itens.length}</p></div><Package className="h-5 w-5 text-primary" /></div></CardContent></Card>
-          <Card className="border border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground uppercase tracking-wide">Baixo</p><p className="text-xl font-bold text-destructive">{itensEstoqueBaixo.length}</p></div><AlertTriangle className="h-5 w-5 text-destructive" /></div></CardContent></Card>
-          <Card className="border border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground uppercase tracking-wide">Valor</p><p className="text-xl font-bold">{formatCurrency(valorTotal)}</p></div><TrendingUp className="h-5 w-5 text-success" /></div></CardContent></Card>
-          <Card className="border border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground uppercase tracking-wide">Categorias</p><p className="text-xl font-bold">{new Set(itens.map(i => i.categoria)).size}</p></div><Package className="h-5 w-5 text-primary" /></div></CardContent></Card>
+          <KpiCard
+            label="Total de Itens"
+            value={itens.length}
+            icon={Package}
+            color="blue"
+            delay={0}
+          />
+          <KpiCard
+            label="Estoque Baixo"
+            value={itensEstoqueBaixo.length}
+            trend={{ value: itensEstoqueBaixo.length > 0 ? 1 : 0, label: itensEstoqueBaixo.length > 0 ? "itens críticos" : "tudo ok" }}
+            icon={AlertTriangle}
+            color="yellow"
+            delay={100}
+          />
+          <KpiCard
+            label="Valor Total (Custo)"
+            value={formatCurrency(valorTotal)}
+            icon={TrendingUp}
+            color="green"
+            delay={200}
+          />
+          <KpiCard
+            label="Categorias"
+            value={new Set(itens.map(i => i.categoria)).size}
+            icon={Package}
+            color="purple"
+            delay={300}
+          />
         </div>
 
         {/* Search */}
-        <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Buscar por código, nome ou categoria..." className="pl-9 h-10 text-sm bg-muted/30 border-border/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Input
+            placeholder="Buscar por código, nome ou categoria..."
+            className="pl-9 h-10 text-sm bg-gray-50 border-gray-200"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
 
-        {/* Table */}
-        <Card className="shadow-soft border-border/50">
-          <CardHeader className="pb-2 px-4 pt-4"><CardTitle className="text-sm">Inventário</CardTitle></CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex items-center justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-            ) : filteredItens.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground"><Package className="h-12 w-12 mx-auto mb-4 opacity-50" /><p>Nenhum item encontrado</p></div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[80px]">Código</TableHead>
-                      <TableHead className="flex-1">Descrição</TableHead>
-                      <TableHead className="w-[100px] text-center">Categoria</TableHead>
-                      <TableHead className="w-[80px] text-right">Qtd</TableHead>
-                      <TableHead className="w-[100px] text-right">Custo</TableHead>
-                      <TableHead className="w-[120px] text-right">Preço Venda</TableHead>
-                      <TableHead className="w-[100px] text-center">Status</TableHead>
-                      <TableHead className="w-[100px]">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredItens.map((item) => {
-                      const statusInfo = getStatusInfo(item);
-                      const StatusIcon = statusInfo.icon;
-                      return (
-                        <TableRow key={item.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => setViewingItem(item)}>
-                          <TableCell className="font-mono text-sm">{item.codigo}</TableCell>
-                          <TableCell className="truncate">{item.descricao}</TableCell>
-                          <TableCell className="text-center"><Badge variant="outline">{item.categoria}</Badge></TableCell>
-                          <TableCell className="text-right">
-                            <span className="font-bold">{item.quantidade}</span>
-                            <span className="text-xs text-muted-foreground block">min: {item.estoque_minimo}</span>
-                          </TableCell>
-                          <TableCell className="text-right font-medium">{formatCurrency(item.custo_unitario)}</TableCell>
-                          <TableCell className="text-right font-medium text-success">{formatCurrency(item.preco_venda)}</TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant={statusInfo.variant} className="gap-1">
-                              <StatusIcon className="h-3 w-3" />{statusInfo.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex gap-1 justify-end" onClick={(e) => e.stopPropagation()}>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewingItem(item)}><Eye className="h-4 w-4" /></Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(item)}><Edit className="h-4 w-4" /></Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+        {/* Main Table */}
+        <PremiumCard delay={100}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Inventário</h2>
+            {loading && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
+          </div>
+
+          <PremiumTable
+            columns={columns}
+            data={tableData}
+            renderCell={renderCell}
+            onRowClick={(item) => setViewingItem(item)}
+            loading={loading}
+            emptyMessage="Nenhum item encontrado"
+            emptyIcon={<Package className="h-8 w-8" />}
+            emptyAction={{
+              label: "Adicionar primeiro item",
+              onClick: handleOpenNewDialog
+            }}
+            animateRows={true}
+          />
+        </PremiumCard>
+
+        {/* Low Stock Alerts */}
+        {itensEstoqueBaixo.length > 0 && (
+          <AlertBox
+            title={`${itensEstoqueBaixo.length} Itens com Estoque Baixo`}
+            items={itensEstoqueBaixo.slice(0, 5).map(item => ({
+              label: item.descricao,
+              value: `${item.quantidade} un. (mín: ${item.estoque_minimo})`,
+            }))}
+            type="warning"
+            icon={AlertTriangle}
+            delay={200}
+          />
+        )}
+
+        {/* New/Edit Item Dialog */}
+        <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); resetForm(); } }}>
+          <DialogContent className="max-w-md max-h-[60vh] overflow-hidden">
+            <DialogHeader>
+              <DialogTitle>{editingItem ? 'Editar Item' : 'Novo Item'}</DialogTitle>
+              <DialogDescription>Preencha os dados do item de estoque</DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+                <div className="space-y-2">
+                  <Label htmlFor="codigo">Código *</Label>
+                  <Input id="codigo" value={formData.codigo} onChange={(e) => setFormData(prev => ({ ...prev, codigo: e.target.value }))} required className="h-10" />
+                  {!editingItem && <p className="text-xs text-gray-500">Gerado automaticamente (editável)</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="categoria">Categoria *</Label>
+                  <SearchableInput
+                    id="categoria"
+                    value={formData.categoria}
+                    onChange={(v) => setFormData(prev => ({ ...prev, categoria: v }))}
+                    suggestions={categorias}
+                    placeholder="Digite ou selecione..."
+                    onAddNew={(v) => setFormData(prev => ({ ...prev, categoria: v }))}
+                    addNewLabel="Criar categoria"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="descricao">Descrição *</Label>
+                  <Input
+                    id="descricao"
+                    value={formData.descricao}
+                    onChange={(e) => setFormData(prev => ({ ...prev, descricao: e.target.value }))}
+                    placeholder="Digite a descrição do produto..."
+                    required
+                    className="h-10"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2"><Label htmlFor="quantidade">Quantidade</Label><NumberInput id="quantidade" value={formData.quantidade} onChange={(v) => setFormData(prev => ({ ...prev, quantidade: v }))} placeholder="0" className="h-10" /></div>
+                  <div className="space-y-2"><Label htmlFor="estoque_minimo">Estoque Mínimo</Label><NumberInput id="estoque_minimo" value={formData.estoque_minimo} onChange={(v) => setFormData(prev => ({ ...prev, estoque_minimo: v }))} placeholder="0" className="h-10" /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="custo_unitario">Custo Unitário (R$)</Label>
+                    <NumberInput id="custo_unitario" step="0.01" value={formData.custo_unitario} onChange={(v) => setFormData(prev => ({ ...prev, custo_unitario: v }))} placeholder="0,00" min={0} className="h-10" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="preco_venda">Preço de Venda (R$)</Label>
+                    <NumberInput id="preco_venda" step="0.01" value={formData.preco_venda} onChange={(v) => setFormData(prev => ({ ...prev, preco_venda: v }))} placeholder="0,00" min={0} className="h-10" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="fornecedor">Fornecedor</Label>
+                  <SearchableInput
+                    id="fornecedor"
+                    value={formData.fornecedor}
+                    onChange={(v) => setFormData(prev => ({ ...prev, fornecedor: v }))}
+                    suggestions={fornecedores}
+                    placeholder="Digite ou selecione..."
+                    onAddNew={(v) => setFormData(prev => ({ ...prev, fornecedor: v }))}
+                    addNewLabel="Adicionar fornecedor"
+                  />
+                </div>
+                <div className="space-y-2"><Label htmlFor="localizacao">Localização</Label><Input id="localizacao" value={formData.localizacao} onChange={(e) => setFormData(prev => ({ ...prev, localizacao: e.target.value }))} placeholder="Ex: Prateleira A1" className="h-10" /></div>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <Separator />
+              <DialogFooter className="sticky bottom-0 bg-background border-t pt-4">
+                <div className="flex justify-end gap-2 w-full">
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+                  <Button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white" disabled={formLoading}>
+                    {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {editingItem ? 'Salvar' : 'Criar'}
+                  </Button>
+                </div>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {/* View Item Dialog */}
         <Dialog open={!!viewingItem} onOpenChange={(open) => { if (!open) setViewingItem(null); }}>
@@ -400,15 +470,15 @@ export default function Estoque() {
               <>
                 <div className="space-y-4 py-4 overflow-y-auto">
                   <div className="grid grid-cols-2 gap-4">
-                    <div><p className="text-xs text-muted-foreground">Código</p><p className="font-medium">{viewingItem.codigo}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Categoria</p><Badge variant="outline">{viewingItem.categoria}</Badge></div>
-                    <div className="col-span-2"><p className="text-xs text-muted-foreground">Descrição</p><p className="font-medium">{viewingItem.descricao}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Quantidade</p><p className="font-bold text-lg">{viewingItem.quantidade}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Estoque Mínimo</p><p className="font-medium">{viewingItem.estoque_minimo}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Custo Unitário</p><p className="font-medium">{formatCurrency(viewingItem.custo_unitario)}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Preço de Venda</p><p className="font-medium text-success">{formatCurrency(viewingItem.preco_venda)}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Fornecedor</p><p className="font-medium">{viewingItem.fornecedor || "-"}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Localização</p><p className="font-medium">{viewingItem.localizacao || "-"}</p></div>
+                    <div><p className="text-xs text-gray-500">Código</p><p className="font-medium">{viewingItem.codigo}</p></div>
+                    <div><p className="text-xs text-gray-500">Categoria</p><Badge variant="outline">{viewingItem.categoria}</Badge></div>
+                    <div className="col-span-2"><p className="text-xs text-gray-500">Descrição</p><p className="font-medium">{viewingItem.descricao}</p></div>
+                    <div><p className="text-xs text-gray-500">Quantidade</p><p className="font-bold text-lg">{viewingItem.quantidade}</p></div>
+                    <div><p className="text-xs text-gray-500">Estoque Mínimo</p><p className="font-medium">{viewingItem.estoque_minimo}</p></div>
+                    <div><p className="text-xs text-gray-500">Custo Unitário</p><p className="font-medium">{formatCurrency(viewingItem.custo_unitario)}</p></div>
+                    <div><p className="text-xs text-gray-500">Preço de Venda</p><p className="font-medium text-green-700">{formatCurrency(viewingItem.preco_venda)}</p></div>
+                    <div><p className="text-xs text-gray-500">Fornecedor</p><p className="font-medium">{viewingItem.fornecedor || "-"}</p></div>
+                    <div><p className="text-xs text-gray-500">Localização</p><p className="font-medium">{viewingItem.localizacao || "-"}</p></div>
                   </div>
                 </div>
                 <Separator />
@@ -423,29 +493,6 @@ export default function Estoque() {
             )}
           </DialogContent>
         </Dialog>
-
-        {/* Low Stock Alerts */}
-        {itensEstoqueBaixo.length > 0 && (
-          <Card className="shadow-soft border-l-4 border-l-destructive">
-            <CardHeader><CardTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" />Alertas de Estoque Baixo</CardTitle></CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {itensEstoqueBaixo.map(item => (
-                  <div key={item.id} className="flex items-center justify-between p-3 bg-destructive/5 rounded-lg cursor-pointer hover:bg-destructive/10 transition-colors" onClick={() => setViewingItem(item)}>
-                    <div>
-                      <p className="font-medium">{item.descricao}</p>
-                      <p className="text-sm text-muted-foreground">{item.codigo} · {item.categoria}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-destructive">{item.quantidade} un.</p>
-                      <p className="text-xs text-muted-foreground">Mín: {item.estoque_minimo}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </MainLayout>
   );
