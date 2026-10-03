@@ -287,6 +287,7 @@ export type Database = {
           termos_servico: string | null
           updated_at: string
           valor_hora_padrao: number
+          tax_percentage_nfe: number
         }
         Insert: {
           cnpj?: string | null
@@ -312,6 +313,7 @@ export type Database = {
           termos_servico?: string | null
           updated_at?: string
           valor_hora_padrao?: number
+          tax_percentage_nfe?: number
         }
         Update: {
           cnpj?: string | null
@@ -337,6 +339,7 @@ export type Database = {
           termos_servico?: string | null
           updated_at?: string
           valor_hora_padrao?: number
+          tax_percentage_nfe?: number
         }
         Relationships: [
           {
@@ -1279,6 +1282,200 @@ export type Database = {
           },
         ]
       }
+      os_technicians: {
+        Row: {
+          id: string
+          ordem_servico_id: string
+          technician_id: string
+          role: Database["public"]["Enums"]["os_technician_role"]
+          commission_type: string
+          commission_value: number
+          payer_type: Database["public"]["Enums"]["os_technician_payer"]
+          net_value_received: number
+          tax_retained_amount: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          ordem_servico_id: string
+          technician_id: string
+          role?: Database["public"]["Enums"]["os_technician_role"]
+          commission_type: string
+          commission_value?: number
+          payer_type?: Database["public"]["Enums"]["os_technician_payer"]
+          net_value_received?: number
+          tax_retained_amount?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          ordem_servico_id?: string
+          technician_id?: string
+          role?: Database["public"]["Enums"]["os_technician_role"]
+          commission_type?: string
+          commission_value?: number
+          payer_type?: Database["public"]["Enums"]["os_technician_payer"]
+          net_value_received?: number
+          tax_retained_amount?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_technicians_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_technicians_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tax_retention_ledger: {
+        Row: {
+          id: string
+          os_id: string
+          technician_id: string
+          organization_id: string
+          amount: number
+          status: Database["public"]["Enums"]["tax_retention_status"]
+          retained_at: string
+          release_date: string
+          released_at: string | null
+          released_by: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          os_id: string
+          technician_id: string
+          organization_id: string
+          amount?: number
+          status?: Database["public"]["Enums"]["tax_retention_status"]
+          retained_at?: string
+          release_date?: string
+          released_at?: string | null
+          released_by?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          os_id?: string
+          technician_id?: string
+          organization_id?: string
+          amount?: number
+          status?: Database["public"]["Enums"]["tax_retention_status"]
+          retained_at?: string
+          release_date?: string
+          released_at?: string | null
+          released_by?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tax_retention_ledger_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tax_retention_ledger_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tax_retention_ledger_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      technician_expenses: {
+        Row: {
+          id: string
+          technician_id: string
+          organization_id: string
+          description: string
+          amount: number
+          expense_date: string
+          category: string
+          reference_type: string | null
+          reference_id: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          technician_id: string
+          organization_id: string
+          description: string
+          amount: number
+          expense_date?: string
+          category: string
+          reference_type?: string | null
+          reference_id?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          technician_id?: string
+          organization_id?: string
+          description?: string
+          amount?: number
+          expense_date?: string
+          category?: string
+          reference_type?: string | null
+          reference_id?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "technician_expenses_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "technician_expenses_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "technician_expenses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patrimonio_ferramentas: {
         Row: {
           created_at: string
@@ -2066,6 +2263,9 @@ export type Database = {
     }
     Functions: {
       calculate_os_commission: { Args: { _os_id: string }; Returns: number }
+      calculate_os_technician_commission: { Args: { _os_id: string }; Returns: Json }
+      release_expired_tax_retentions: { Args: Record<PropertyKey, never>; Returns: Json }
+      get_technician_financial_dashboard: { Args: { _tecnico_id?: string }; Returns: Json }
       count_active_users: { Args: { _org: string }; Returns: number }
       count_os_current_month: { Args: { _org: string }; Returns: number }
       get_dre_simplificada: {
@@ -2170,7 +2370,10 @@ export type Database = {
         | "bateria"
         | "outro"
       tipo_os: "normal" | "revisao"
-      tipo_transacao: "receita" | "despesa" | "salario" | "comissao"
+      tipo_transacao: "receita" | "despesa" | "salario" | "comissao",
+      os_technician_role: "PRINCIPAL" | "AUXILIARY",
+      os_technician_payer: "COMPANY" | "PRINCIPAL" | "SHARED",
+      tax_retention_status: "RETAINED" | "RELEASED_TO_TECH" | "PAID_TO_GOV",
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2324,6 +2527,9 @@ export const Constants = {
       ],
       tipo_os: ["normal", "revisao"],
       tipo_transacao: ["receita", "despesa", "salario", "comissao"],
+      os_technician_role: ["PRINCIPAL", "AUXILIARY"],
+      os_technician_payer: ["COMPANY", "PRINCIPAL", "SHARED"],
+      tax_retention_status: ["RETAINED", "RELEASED_TO_TECH", "PAID_TO_GOV"],
     },
   },
 } as const

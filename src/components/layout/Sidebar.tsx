@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, FileText, Package, BarChart3, DollarSign, Settings,
-  Users, CreditCard, UsersRound, Building2, ClipboardList, LogOut, LifeBuoy, BookOpen, Bell, ShieldCheck, Wrench, Monitor
+  Users, CreditCard, UsersRound, Building2, ClipboardList, LogOut, LifeBuoy, BookOpen, Bell, ShieldCheck, Wrench, Monitor, Calculator, PiggyBank
 } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,6 +18,7 @@ const navSections = [
       { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard", roles: ["admin", "tecnico", "consulta"] },
       { title: "Ordens de Serviço", icon: FileText, href: "/ordens-servico", roles: ["admin", "tecnico", "consulta"] },
       { title: "Meu Painel (Técnico)", icon: Wrench, href: "/technician/dashboard", roles: ["admin", "tecnico"] },
+      { title: "Meu Financeiro", icon: Calculator, href: "/technician/financeiro", roles: ["tecnico"] },
       { title: "Oficina ao Vivo (TV)", icon: Monitor, href: "/workshop/live", roles: ["admin", "tecnico", "consulta"] },
       { title: "Clientes", icon: Users, href: "/clientes", roles: ["admin", "tecnico", "consulta"] },
     ],
@@ -40,6 +41,7 @@ const navSections = [
       { title: "Empresa", icon: Building2, href: "/empresa", roles: ["admin"] },
       { title: "Configurações", icon: Settings, href: "/configuracoes", roles: ["admin"] },
       { title: "Checklist de OS", icon: ClipboardList, href: "/admin/configuracao-os", roles: ["admin"] },
+      { title: "Retenções de Imposto", icon: PiggyBank, href: "/admin/retencoes", roles: ["admin"] },
       { title: "Notificações", icon: Bell, href: "/notificacoes", roles: ["admin", "tecnico", "consulta"] },
       { title: "Central de Ajuda", icon: BookOpen, href: "/wiki", roles: ["admin", "tecnico", "consulta"] },
       { title: "Suporte", icon: LifeBuoy, href: "/suporte", roles: ["admin", "tecnico", "consulta"] },
