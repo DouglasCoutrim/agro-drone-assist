@@ -88,6 +88,14 @@ const TIPO_EQUIPAMENTO: Record<string, string> = {
 
 const MOBILITY_CATEGORIES = ["patinete_eletrico", "bicicleta_eletrica", "moto_eletrica", "outros_autopropelidos"];
 const LOCK_CLOSED_STATUSES = new Set(["pronto_retirada", "concluida", "entregue", "finalizada"]);
+
+// Helper: verifica se o usuário pode editar/fechar esta OS
+// Admin pode tudo; Técnico só se for o responsável (tecnico_id === user.id)
+const canUserManageOS = (os: OrdemServico, userId: string | undefined, isAdminUser: boolean): boolean => {
+  if (isAdminUser) return true;
+  if (!userId) return false;
+  return os.tecnico_id === userId;
+};
 const mapCategoryToDbEnum = (uiCategory: string): string => MOBILITY_CATEGORIES.includes(uiCategory) ? "outro" : uiCategory;
 const detectUiCategory = (os: any): string => {
   const obs = os.observacoes || "";
@@ -595,6 +603,7 @@ export default function OrdensServico() {
 
   const handleEdit = async (os: OrdemServico) => {
     if (!canEdit) { toast.error(readOnlyOsMessage); return; }
+    if (!canUserManageOS(os, user?.id, isAdmin)) { toast.error("Você só pode editar OSs designadas a você."); return; }
     setItemsLoaded(false);
     setEditingOS(os);
     setOsItems([]);
@@ -724,8 +733,9 @@ export default function OrdensServico() {
 
   const applyStatusUpdate = async (osId: string, newStatus: string) => {
     if (!canEdit) throw new Error(readOnlyOsMessage);
+    const os = ordens.find(o => o.id === osId);
+    if (os && !canUserManageOS(os, user?.id, isAdmin)) throw new Error("Você só pode alterar status de OSs designadas a você.");
     if (LOCK_CLOSED_STATUSES.has(newStatus)) {
-      const os = ordens.find(o => o.id === osId);
       const pending = await getPendingRequiredChecklist(osId, os?.organization_id || organization?.id);
       if (pending.length > 0) {
         throw new Error(`Itens obrigatórios pendentes no checklist de revisão: ${pending.slice(0, 3).join("; ")}${pending.length > 3 ? "…" : ""}.`);
@@ -1265,10 +1275,10 @@ export default function OrdensServico() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleView(os); }}><Eye className="mr-2 h-3.5 w-3.5" />Ver detalhes</DropdownMenuItem>
-                          {canEdit && (
+                          {canEdit && canUserManageOS(os, user?.id, isAdmin) && (
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEdit(os); }}><Edit className="mr-2 h-3.5 w-3.5" />Editar OS</DropdownMenuItem>
                           )}
-                          {canEdit && getNextStatus(os.status) && (
+                          {canEdit && canUserManageOS(os, user?.id, isAdmin) && getNextStatus(os.status) && (
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAdvanceStatus(os); }}>
                               <ArrowRight className="mr-2 h-3.5 w-3.5" />Avançar para {getStatusLabel(getNextStatus(os.status)!)}
                             </DropdownMenuItem>
@@ -1280,7 +1290,7 @@ export default function OrdensServico() {
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setViewingOS(os); setTimeout(handlePrintOS, 100); }}>
                             <Printer className="mr-2 h-3.5 w-3.5" />Imprimir OS
                           </DropdownMenuItem>
-                          {canEdit && (
+                          {canEdit && canUserManageOS(os, user?.id, isAdmin) && (
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRegisterPaymentForExisting(os); }}>
                               <CreditCard className="mr-2 h-3.5 w-3.5" />Registrar Recebimento
                             </DropdownMenuItem>
@@ -1815,7 +1825,7 @@ export default function OrdensServico() {
               </div>
               )}
             </div>
-          {viewingOS && viewingOS.status !== "entregue" && viewingOS.status !== "cancelada" && (
+          {viewingOS && viewingOS.status !== "entregue" && viewingOS.status !== "cancelada" && canUserManageOS(viewingOS, user?.id, isAdmin) && (
             <div className="p-4 border-t bg-muted/30 shrink-0">
               <Button className="w-full gradient-primary" onClick={() => handleAdvanceStatus(viewingOS)}>
                 Avançar para {getStatusLabel(getNextStatus(viewingOS.status) || "")}
