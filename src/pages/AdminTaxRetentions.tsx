@@ -23,6 +23,7 @@ import { PremiumCard } from "@/components/premium/PremiumCard";
 import { PremiumTable } from "@/components/premium/PremiumTable";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 type Retention = {
@@ -31,7 +32,6 @@ type Retention = {
   os_numero: string;
   technician_id: string;
   technician_nome: string;
-  organization_id: string;
   amount: number;
   status: "RETAINED" | "RELEASED_TO_TECH" | "PAID_TO_GOV";
   retained_at: string;
@@ -115,7 +115,7 @@ export default function AdminTaxRetentions() {
     if (!confirm(`Liberar retenção de R$ ${formatCurrency(retention.amount)} para o técnico ${retention.technician_nome}?`)) return;
     setReleasingIds(prev => new Set(prev).add(retention.id));
     try {
-      const { error } = await supabase.rpc("release_expired_tax_retentions");
+      const { error } = await supabase.rpc("release_expired_tax_retentions" as any);
       if (error) throw error;
       toast.success("Retenções vencidas liberadas automaticamente");
       fetchData();
@@ -229,30 +229,34 @@ export default function AdminTaxRetentions() {
         {/* KPIs */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
-            title="Retidas (Pendentes)"
+            label="Retidas (Pendentes)"
             value={retainedAmount}
-            icon={<Clock className="h-5 w-5 text-amber-500" />}
+            icon={Clock}
+            color="yellow"
             trend={{ value: retainedCount, label: `${retainedCount} item(ns)` }}
             delay={0}
           />
           <KpiCard
-            title="Liberadas p/ Técnico"
+            label="Liberadas p/ Técnico"
             value={releasedAmount}
-            icon={<ArrowUpRight className="h-5 w-5 text-green-500" />}
+            icon={ArrowUpRight}
+            color="green"
             trend={{ value: releasedCount, label: `${releasedCount} item(ns)` }}
             delay={100}
           />
           <KpiCard
-            title="Vencidas (+6 meses)"
+            label="Vencidas (+6 meses)"
             value={overdueAmount}
-            icon={<AlertTriangle className="h-5 w-5 text-red-500" />}
+            icon={AlertTriangle}
+            color="red"
             trend={{ value: overdueCount, label: `${overdueCount} item(ns) prontos para liberar` }}
             delay={200}
           />
           <KpiCard
-            title="Total no Fundo"
+            label="Total no Fundo"
             value={retainedAmount + releasedAmount}
-            icon={<FileText className="h-5 w-5 text-blue-500" />}
+            icon={FileText}
+            color="blue"
             trend={{ value: retentions.length, label: `${retentions.length} registros` }}
             delay={300}
           />
@@ -276,10 +280,10 @@ export default function AdminTaxRetentions() {
               </div>
               <div className="space-y-1.5 flex-1 min-w-[200px]">
                 <Label className="text-xs">Técnico</Label>
-                <Select value={filter.technician} onValueChange={v => setFilter(f => ({ ...f, technician: v }))}>
+                <Select value={filter.technician || "all"} onValueChange={v => setFilter(f => ({ ...f, technician: v === "all" ? "" : v }))}>
                   <SelectTrigger className="h-9"><SelectValue placeholder="Todos" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos os técnicos</SelectItem>
+                    <SelectItem value="all">Todos os técnicos</SelectItem>
                     {tecnicos.map(t => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -314,21 +318,31 @@ export default function AdminTaxRetentions() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <PremiumTable<Retention>
+            <PremiumTable
               data={filteredRetentions}
               columns={[
-                { key: "os_numero", header: "OS", render: (r) => <span className="font-mono text-sm">{r.os_numero}</span> },
-                { key: "technician_nome", header: "Técnico" },
-                { key: "retained_at", header: "Retido em", render: (r) => formatDate(r.retained_at) },
-                { key: "release_date", header: "Liberação prevista", render: (r) => (
+                { key: "os_numero", label: "OS" },
+                { key: "technician_nome", label: "Técnico" },
+                { key: "retained_at", label: "Retido em" },
+                { key: "release_date", label: "Liberação prevista" },
+                { key: "amount", label: "Valor", align: "right" },
+                { key: "status", label: "Status" },
+                { key: "actions", label: "Ações", align: "right" },
+              ]}
+              renderCell={(r: Retention, key) => {
+                switch (key) {
+                  case "os_numero": return <span className="font-mono text-sm">{r.os_numero}</span>;
+                  case "technician_nome": return r.technician_nome;
+                  case "retained_at": return formatDate(r.retained_at);
+                  case "release_date": return (
                   <span className={cn(isOverdue(r) && "text-red-600 font-medium")}>
                     {formatDate(r.release_date)}
                     {isOverdue(r) && <AlertTriangle className="inline h-3 w-3 ml-1" />}
                   </span>
-                )},
-                { key: "amount", header: "Valor", render: (r) => formatCurrency(r.amount), align: "right" },
-                { key: "status", header: "Status", render: (r) => getStatusBadge(r) },
-                { key: "actions", header: "Ações", render: (r) => {
+                  );
+                  case "amount": return formatCurrency(r.amount);
+                  case "status": return getStatusBadge(r.status);
+                  case "actions": {
                   if (r.status !== "RETAINED") return <span className="text-xs text-muted-foreground">—</span>;
                   return (
                     <Button
@@ -342,12 +356,11 @@ export default function AdminTaxRetentions() {
                       {isOverdue(r) ? "Liberar (vencida)" : "Liberar"}
                     </Button>
                   );
-                }, align: "right" },
-              ]}
-              emptyState={{
-                title: "Nenhuma retenção encontrada",
-                description: "Ajuste os filtros ou aguarde novas retenções serem geradas.",
+                  }
+                  default: return null;
+                }
               }}
+              emptyMessage="Nenhuma retenção encontrada"
             />
           </CardContent>
         </PremiumCard>

@@ -24,7 +24,7 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import { KpiCard } from "@/components/premium/KpiCard";
 import { PremiumCard } from "@/components/premium/PremiumCard";
 import { PremiumTable } from "@/components/premium/PremiumTable";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -95,11 +95,11 @@ export default function TechnicianFinancialDashboard() {
   const fetchFinancialData = async () => {
     if (!user?.id) return;
     try {
-      const { data: result, error } = await supabase.rpc("get_technician_financial_dashboard", {
+      const { data: result, error } = await supabase.rpc("get_technician_financial_dashboard" as any, {
         _tecnico_id: user.id,
-      });
+      } as any);
       if (error) throw error;
-      setData(result);
+      setData(result as unknown as FinancialData);
     } catch (err: any) {
       console.error("Erro ao buscar dashboard financeiro:", err);
       toast.error("Erro ao carregar dados financeiros");
@@ -285,30 +285,34 @@ export default function TechnicianFinancialDashboard() {
         {/* KPIs Principais */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
-            title="Comissões Realizadas (Mês)"
+            label="Comissões Realizadas (Mês)"
             value={data?.comissoes_realizadas_mes || 0}
-            icon={<DollarSign className="h-5 w-5 text-green-500" />}
+            icon={DollarSign}
+            color="green"
             trend={{ value: data?.retencoes_liberadas_mes || 0, label: "Retenções liberadas" }}
             delay={0}
           />
           <KpiCard
-            title="Impostos Retidos (Mês)"
+            label="Impostos Retidos (Mês)"
             value={data?.impostos_retidos_mes || 0}
-            icon={<AlertTriangle className="h-5 w-5 text-amber-500" />}
+            icon={AlertTriangle}
+            color="yellow"
             trend={{ value: data?.valor_bruto_mes || 0, label: "Valor bruto antes de impostos" }}
             delay={100}
           />
           <KpiCard
-            title="Despesas do Mês"
+            label="Despesas do Mês"
             value={data?.despesas_mes || 0}
-            icon={<CreditCard className="h-5 w-5 text-red-500" />}
+            icon={CreditCard}
+            color="red"
             trend={{ value: data?.despesas_count || 0, label: `${data?.despesas_count || 0} lançamento(s)` }}
             delay={200}
           />
           <KpiCard
-            title="Retenções Pendentes"
+            label="Retenções Pendentes"
             value={data?.retencoes_pendentes || 0}
-            icon={<Clock className="h-5 w-5 text-blue-500" />}
+            icon={Clock}
+            color="blue"
             trend={{ value: data?.retencoes_count || 0, label: `${data?.retencoes_count || 0} item(ns)` }}
             delay={300}
           />
@@ -387,19 +391,26 @@ export default function TechnicianFinancialDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <PremiumTable<Retention>
+            <PremiumTable
               data={retentions}
               columns={[
-                { key: "os_numero", header: "OS", render: (r) => <span className="font-mono text-sm">{r.os_numero}</span> },
-                { key: "retained_at", header: "Retido em", render: (r) => formatDate(r.retained_at) },
-                { key: "release_date", header: "Liberação prevista", render: (r) => formatDate(r.release_date) },
-                { key: "amount", header: "Valor", render: (r) => formatCurrency(r.amount), align: "right" },
-                { key: "status", header: "Status", render: (r) => getStatusBadge(r.status) },
+                { key: "os_numero", label: "OS" },
+                { key: "retained_at", label: "Retido em" },
+                { key: "release_date", label: "Liberação prevista" },
+                { key: "amount", label: "Valor", align: "right" },
+                { key: "status", label: "Status" },
               ]}
-              emptyState={{
-                title: "Nenhuma retenção encontrada",
-                description: "Quando você não emite NFS-e, o imposto (ex: ISS) fica retido no fundo e é liberado após 6 meses.",
+              renderCell={(r: Retention, key) => {
+                switch (key) {
+                  case "os_numero": return <span className="font-mono text-sm">{r.os_numero}</span>;
+                  case "retained_at": return formatDate(r.retained_at);
+                  case "release_date": return formatDate(r.release_date);
+                  case "amount": return formatCurrency(r.amount);
+                  case "status": return getStatusBadge(r.status);
+                  default: return null;
+                }
               }}
+              emptyMessage="Nenhuma retenção encontrada"
               emptyAction={{
                 label: "Ver como emitir NFS-e",
                 onClick: () => toast.info("Funcionalidade de emissão NFS-e em desenvolvimento"),
@@ -482,18 +493,26 @@ export default function TechnicianFinancialDashboard() {
             </Dialog>
           </CardHeader>
           <CardContent>
-            <PremiumTable<Expense>
+            <PremiumTable
               data={expenses}
               columns={[
-                { key: "expense_date", header: "Data", render: (e) => formatDate(e.expense_date) },
-                { key: "description", header: "Descrição" },
-                { key: "category", header: "Categoria", render: (e) => (
+                { key: "expense_date", label: "Data" },
+                { key: "description", label: "Descrição" },
+                { key: "category", label: "Categoria" },
+                { key: "amount", label: "Valor", align: "right" },
+                { key: "actions", label: "", align: "right" },
+              ]}
+              renderCell={(e: Expense, key) => {
+                switch (key) {
+                  case "expense_date": return formatDate(e.expense_date);
+                  case "description": return e.description;
+                  case "category": return (
                   <Badge variant="secondary" className="text-[10px]">
                     {EXPENSE_CATEGORIES.find(c => c.value === e.category)?.label || e.category}
                   </Badge>
-                )},
-                { key: "amount", header: "Valor", render: (e) => formatCurrency(e.amount), align: "right" },
-                { key: "actions", header: "", render: (e) => (
+                  );
+                  case "amount": return formatCurrency(e.amount);
+                  case "actions": return (
                   <div className="flex items-center justify-end gap-1">
                     <Button variant="ghost" size="icon" onClick={() => handleEditExpense(e)} className="h-7 w-7">
                       <Edit className="h-3.5 w-3.5" />
@@ -502,13 +521,12 @@ export default function TechnicianFinancialDashboard() {
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                )},
-              ]}
-              loading={expensesLoading}
-              emptyState={{
-                title: "Nenhuma despesa registrada",
-                description: "Adicione suas despesas com ferramentas, EPIs, treinamentos e deslocamentos.",
+                  );
+                  default: return null;
+                }
               }}
+              loading={expensesLoading}
+              emptyMessage="Nenhuma despesa registrada"
               emptyAction={{
                 label: "Adicionar primeira despesa",
                 onClick: openExpenseDialog,
@@ -522,5 +540,5 @@ export default function TechnicianFinancialDashboard() {
 }
 
 // Import missing icons
-import { Save, Edit } from "lucide-react";
+import { Save, Edit, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
