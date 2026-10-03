@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -294,7 +294,7 @@ export default function TechnicianFinancialDashboard() {
               Comissões, retenções de impostos e despesas pessoais
             </p>
           </div>
-          <PeriodFilterBar period={period} onChange={changePeriod} />
+          <PeriodFilterBar period={period} onChange={(range) => changePeriod(range.preset, range.start, range.end)} />
         </div>
 
         {/* KPIs Principais - Atualizados conforme spec Phase 3 */}
@@ -302,25 +302,24 @@ export default function TechnicianFinancialDashboard() {
           <KpiCard
             title="Ganhos com Serviços"
             value={kpis.ganhos_servicos}
-            icon={<DollarSign className="h-5 w-5 text-green-500" />}
+            icon={DollarSign}
+            color="green"
             trend={{ value: financialData?.os_count || 0, label: `${financialData?.os_count || 0} OS(s) no período` }}
             delay={0}
           />
           <KpiCard
             title="Despesas Pessoais"
             value={kpis.despesas_pessoais}
-            icon={<CreditCard className="h-5 w-5 text-red-500" />}
+            icon={CreditCard}
+            color="red"
             trend={{ value: financialData?.despesas_count || 0, label: `${financialData?.despesas_count || 0} lançamento(s)` }}
             delay={100}
           />
           <KpiCard
             title="Saldo Líquido do Técnico"
             value={kpis.saldo_liquido}
-            icon={
-              kpis.saldo_liquido >= 0 
-                ? <TrendingUp className="h-5 w-5 text-green-500" /> 
-                : <TrendingDown className="h-5 w-5 text-red-500" />
-            }
+            icon={kpis.saldo_liquido >= 0 ? TrendingUp : TrendingDown}
+            color={kpis.saldo_liquido >= 0 ? "green" : "red"}
             trend={{ 
               value: kpis.ganhos_servicos - kpis.despesas_pessoais, 
               label: `Ganhos: ${formatCurrency(kpis.ganhos_servicos)} - Despesas: ${formatCurrency(kpis.despesas_pessoais)}` 
@@ -330,7 +329,8 @@ export default function TechnicianFinancialDashboard() {
           <KpiCard
             title="Fundo de Retenção Acumulado"
             value={kpis.fundo_retencao_acumulado}
-            icon={<Clock className="h-5 w-5 text-blue-500" />}
+            icon={Clock}
+            color="blue"
             trend={{ value: financialData?.retencoes_count || 0, label: `${financialData?.retencoes_count || 0} item(ns) aguardando liberação` }}
             delay={300}
           />
@@ -414,20 +414,27 @@ export default function TechnicianFinancialDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <PremiumTable<Retention>
+            <PremiumTable
               data={retentions}
               columns={[
-                { key: "os_numero", header: "OS", render: (r) => <span className="font-mono text-sm">{r.os_numero}</span> },
-                { key: "retained_at", header: "Retido em", render: (r) => formatDate(r.retained_at) },
-                { key: "release_date", header: "Liberação prevista", render: (r) => formatDate(r.release_date) },
-                { key: "amount", header: "Valor", render: (r) => formatCurrency(r.amount), align: "right" },
-                { key: "status", header: "Status", render: (r) => getStatusBadge(r.status) },
+                { key: "os_numero", label: "OS" },
+                { key: "retained_at", label: "Retido em" },
+                { key: "release_date", label: "Liberação prevista" },
+                { key: "amount", label: "Valor", align: "right" },
+                { key: "status", label: "Status" },
               ]}
-              loading={retentionsLoading}
-              emptyState={{
-                title: "Nenhuma retenção encontrada",
-                description: "Quando você não emite NFS-e, o imposto (ex: ISS) fica retido no fundo e é liberado após 6 meses.",
+              renderCell={(item: Retention, key) => {
+                switch (key) {
+                  case "os_numero": return <span className="font-mono text-sm">{item.os_numero}</span>;
+                  case "retained_at": return formatDate(item.retained_at);
+                  case "release_date": return formatDate(item.release_date);
+                  case "amount": return formatCurrency(item.amount);
+                  case "status": return getStatusBadge(item.status);
+                  default: return null;
+                }
               }}
+              loading={retentionsLoading}
+              emptyMessage="Nenhuma retenção encontrada"
               emptyAction={{
                 label: "Ver como emitir NFS-e",
                 onClick: () => toast.info("Funcionalidade de emissão NFS-e em desenvolvimento"),
@@ -510,33 +517,30 @@ export default function TechnicianFinancialDashboard() {
             </Dialog>
           </CardHeader>
           <CardContent>
-            <PremiumTable<Expense>
+            <PremiumTable
               data={expenses}
               columns={[
-                { key: "expense_date", header: "Data", render: (e) => formatDate(e.expense_date) },
-                { key: "description", header: "Descrição" },
-                { key: "category", header: "Categoria", render: (e) => (
-                  <Badge variant="secondary" className="text-[10px]">
-                    {EXPENSE_CATEGORIES.find(c => c.value === e.category)?.label || e.category}
-                  </Badge>
-                )},
-                { key: "amount", header: "Valor", render: (e) => formatCurrency(e.amount), align: "right" },
-                { key: "actions", header: "", render: (e) => (
-                  <div className="flex items-center justify-end gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleEditExpense(e)} className="h-7 w-7">
-                      <Edit className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteExpense(e.id)} className="h-7 w-7 text-destructive">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                )},
+                { key: "expense_date", label: "Data" },
+                { key: "description", label: "Descrição" },
+                { key: "category", label: "Categoria" },
+                { key: "amount", label: "Valor", align: "right" },
+                { key: "actions", label: "" },
               ]}
-              loading={expensesLoading}
-              emptyState={{
-                title: "Nenhuma despesa registrada",
-                description: "Adicione suas despesas com ferramentas, EPIs, treinamentos e deslocamentos.",
+              renderCell={(item: Expense, key) => {
+                switch (key) {
+                  case "expense_date": return formatDate(item.expense_date);
+                  case "description": return item.description;
+                  case "category": return <Badge variant="secondary" className="text-[10px]">{EXPENSE_CATEGORIES.find(c => c.value === item.category)?.label || item.category}</Badge>;
+                  case "amount": return formatCurrency(item.amount);
+                  case "actions": return <div className="flex items-center justify-end gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => handleEditExpense(item)} className="h-7 w-7"><Edit className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteExpense(item.id)} className="h-7 w-7 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>;
+                  default: return null;
+                }
               }}
+              loading={expensesLoading}
+              emptyMessage="Nenhuma despesa registrada"
               emptyAction={{
                 label: "Adicionar primeira despesa",
                 onClick: openExpenseDialog,
