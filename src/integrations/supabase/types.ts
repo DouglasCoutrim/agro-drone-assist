@@ -814,12 +814,12 @@ export type Database = {
           data_entrega: string | null
           data_previsao: string | null
           desconto: number
-          nfe_emitida: boolean | null
           descricao_problema: string
           diagnostico: string | null
           id: string
           marca: string | null
           modelo_equipamento: string | null
+          nfe_emitida: boolean | null
           numero: string
           numero_serie: string | null
           observacoes: string | null
@@ -862,12 +862,12 @@ export type Database = {
           data_entrega?: string | null
           data_previsao?: string | null
           desconto?: number
-          nfe_emitida?: boolean | null
           descricao_problema: string
           diagnostico?: string | null
           id?: string
           marca?: string | null
           modelo_equipamento?: string | null
+          nfe_emitida?: boolean | null
           numero: string
           numero_serie?: string | null
           observacoes?: string | null
@@ -910,12 +910,12 @@ export type Database = {
           data_entrega?: string | null
           data_previsao?: string | null
           desconto?: number
-          nfe_emitida?: boolean | null
           descricao_problema?: string
           diagnostico?: string | null
           id?: string
           marca?: string | null
           modelo_equipamento?: string | null
+          nfe_emitida?: boolean | null
           numero?: string
           numero_serie?: string | null
           observacoes?: string | null
@@ -2269,6 +2269,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      batch_release_technician_retentions: {
+        Args: { _technician_id: string }
+        Returns: Json
+      }
       calculate_os_commission: { Args: { _os_id: string }; Returns: number }
       calculate_os_technician_commission: {
         Args: { _os_id: string }
@@ -2285,6 +2289,27 @@ export type Database = {
         Returns: Json
       }
       get_technician_dashboard: { Args: { _tecnico_id: string }; Returns: Json }
+      get_technician_financial_dashboard: {
+        Args: {
+          _period_end?: string
+          _period_start?: string
+          _tecnico_id?: string
+        }
+        Returns: Json
+      }
+      get_technician_os_statement: {
+        Args: {
+          _period_end: string
+          _period_start: string
+          _tecnico_id: string
+        }
+        Returns: Json
+      }
+      get_technician_retention_details: {
+        Args: { _technician_id: string }
+        Returns: Json
+      }
+      get_technician_retention_summary: { Args: never; Returns: Json }
       get_user_org_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -63,7 +63,7 @@ export default function AdminTaxRetentions() {
     try {
       const { data, error } = await supabase.rpc("get_technician_retention_summary");
       if (error) throw error;
-      setSummary(data || []);
+      setSummary(Array.isArray(data) ? data as unknown as TechnicianSummary[] : []);
     } catch (err: any) {
       console.error("Erro ao buscar resumo:", err);
       toast.error("Erro ao carregar resumo de retenções");
@@ -78,7 +78,7 @@ export default function AdminTaxRetentions() {
         _technician_id: technicianId,
       });
       if (error) throw error;
-      setDetails(prev => new Map(prev).set(technicianId, data || []));
+      setDetails(prev => new Map(prev).set(technicianId, Array.isArray(data) ? data as unknown as RetentionDetail[] : []));
     } catch (err: any) {
       console.error("Erro ao buscar detalhes:", err);
       toast.error("Erro ao carregar detalhes");
@@ -112,7 +112,7 @@ export default function AdminTaxRetentions() {
         _technician_id: tech.technician_id,
       });
       if (error) throw error;
-      toast.success(data?.message || "Repasse realizado com sucesso");
+      toast.success(data && typeof data === "object" && !Array.isArray(data) && typeof data.message === "string" ? data.message : "Repasse realizado com sucesso");
       fetchSummary();
       if (details.has(tech.technician_id)) {
         fetchDetails(tech.technician_id);
@@ -205,23 +205,26 @@ export default function AdminTaxRetentions() {
         {/* KPIs Gerais */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
-            title="Total Bloqueado (< 6 meses)"
+            label="Total Bloqueado (< 6 meses)"
             value={totals.saldo_bloqueado}
-            icon={<Clock className="h-5 w-5 text-amber-500" />}
+            icon={Clock}
+            color="orange"
             trend={{ value: totals.count_bloqueado, label: `${totals.count_bloqueado} item(ns) aguardando prazo` }}
             delay={0}
           />
           <KpiCard
-            title="Total Liberado para Repasse (≥ 6 meses)"
+            label="Total Liberado para Repasse (≥ 6 meses)"
             value={totals.saldo_liberado}
-            icon={<ArrowUpRight className="h-5 w-5 text-green-500" />}
+            icon={ArrowUpRight}
+            color="green"
             trend={{ value: totals.count_liberado, label: `${totals.count_liberado} item(ns) prontos` }}
             delay={100}
           />
           <KpiCard
-            title="Total no Fundo de Retenção"
+            label="Total no Fundo de Retenção"
             value={totals.total_retido}
-            icon={<DollarSign className="h-5 w-5 text-blue-500" />}
+            icon={DollarSign}
+            color="blue"
             trend={{ value: summary.length, label: `${summary.length} técnico(s) com retenções` }}
             delay={200}
           />
@@ -257,7 +260,7 @@ export default function AdminTaxRetentions() {
                   </thead>
                   <tbody className="divide-y divide-border/30">
                     {summary.map((tech) => (
-                      <React.Fragment key={tech.technician_id}>
+                      <Fragment key={tech.technician_id}>
                         {/* Linha principal do técnico */}
                         <tr className={cn(
                           "hover:bg-muted/30 transition-colors cursor-pointer",
@@ -360,7 +363,7 @@ export default function AdminTaxRetentions() {
                             </td>
                           </tr>
                         )}
-                      </React.Fragment>
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>

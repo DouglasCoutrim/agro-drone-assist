@@ -553,6 +553,7 @@ export function OSTechniciansSection({
   osValorServicos,
   osValorProdutos,
   taxPercentageNfe,
+  nfeEmitida,
 }: OSTechniciansSectionProps) {
   const existingTecnicoIds = useMemo(() => new Set(technicians.map(t => t.technician_id).filter(Boolean)), [technicians]);
   const principal = technicians.find(t => t.role === "PRINCIPAL");

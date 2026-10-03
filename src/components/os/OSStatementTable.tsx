@@ -4,6 +4,7 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import { Shield, FileText, BadgePercent } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { OSStatementItem } from "@/hooks/useTechnicianFinancials";
+import { cn } from "@/lib/utils";
 
 interface OSStatementTableProps {
   data: OSStatementItem[];

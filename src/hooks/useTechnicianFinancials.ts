@@ -3,6 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/formatters";
 import { toast } from "sonner";
+import type { Database } from "@/integrations/supabase/types";
+
+export type Expense = Database["public"]["Tables"]["technician_expenses"]["Row"];
 
 export type PeriodPreset = "current_month" | "last_month" | "custom";
 
@@ -83,7 +86,7 @@ export function useTechnicianFinancials() {
       });
       
       if (rpcError) throw rpcError;
-      setData(result);
+      setData(result && typeof result === "object" && !Array.isArray(result) ? result as unknown as TechnicianFinancialData : null);
     } catch (err: any) {
       console.error("Erro ao buscar dados financeiros do técnico:", err);
       setError(err.message || "Erro ao carregar dados");
@@ -141,7 +144,7 @@ export function useTechnicianOSStatement(period: PeriodRange) {
       });
       
       if (rpcError) throw rpcError;
-      setData(result || []);
+      setData(Array.isArray(result) ? result as unknown as OSStatementItem[] : []);
     } catch (err: any) {
       console.error("Erro ao buscar extrato de serviços:", err);
       setError(err.message || "Erro ao carregar extrato");
