@@ -300,7 +300,7 @@ export default function TechnicianFinancialDashboard() {
         {/* KPIs Principais - Atualizados conforme spec Phase 3 */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
-            title="Ganhos com Serviços"
+            label="Ganhos com Serviços"
             value={kpis.ganhos_servicos}
             icon={DollarSign}
             color="green"
@@ -308,7 +308,7 @@ export default function TechnicianFinancialDashboard() {
             delay={0}
           />
           <KpiCard
-            title="Despesas Pessoais"
+            label="Despesas Pessoais"
             value={kpis.despesas_pessoais}
             icon={CreditCard}
             color="red"
@@ -316,7 +316,7 @@ export default function TechnicianFinancialDashboard() {
             delay={100}
           />
           <KpiCard
-            title="Saldo Líquido do Técnico"
+            label="Saldo Líquido do Técnico"
             value={kpis.saldo_liquido}
             icon={kpis.saldo_liquido >= 0 ? TrendingUp : TrendingDown}
             color={kpis.saldo_liquido >= 0 ? "green" : "red"}
@@ -327,7 +327,7 @@ export default function TechnicianFinancialDashboard() {
             delay={200}
           />
           <KpiCard
-            title="Fundo de Retenção Acumulado"
+            label="Fundo de Retenção Acumulado"
             value={kpis.fundo_retencao_acumulado}
             icon={Clock}
             color="blue"
