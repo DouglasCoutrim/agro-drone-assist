@@ -817,6 +817,7 @@ export type Database = {
           data_entrega: string | null
           data_previsao: string | null
           desconto: number
+          nfe_emitida: boolean | null
           descricao_problema: string
           diagnostico: string | null
           id: string
@@ -864,6 +865,7 @@ export type Database = {
           data_entrega?: string | null
           data_previsao?: string | null
           desconto?: number
+          nfe_emitida?: boolean | null
           descricao_problema: string
           diagnostico?: string | null
           id?: string
@@ -911,6 +913,7 @@ export type Database = {
           data_entrega?: string | null
           data_previsao?: string | null
           desconto?: number
+          nfe_emitida?: boolean | null
           descricao_problema?: string
           diagnostico?: string | null
           id?: string

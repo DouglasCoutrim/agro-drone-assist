@@ -208,6 +208,7 @@ export default function OrdensServico() {
     ciclos_carga_saida: 0,
     tipo_os: "normal" as Enums<"tipo_os">,
     checklist_equipamento_tipo_id: "",
+    nfe_emitida: false,
   });
 
   const [mobilityData, setMobilityData] = useState({
@@ -739,6 +740,7 @@ export default function OrdensServico() {
         tecnico_id: os.tecnico_id || "",
         tipo_os: (os as any).tipo_os || "normal",
         checklist_equipamento_tipo_id: (os as any).checklist_equipamento_tipo_id || "",
+        nfe_emitida: (os as any).nfe_emitida || false,
       });
     try {
       const [fetchedItems, fetchedAssistants, fetchedTechnicians] = await Promise.all([
@@ -1663,6 +1665,7 @@ export default function OrdensServico() {
                     osValorServicos={osItems.filter(i => i.tipo === "servico").reduce((s, i) => s + i.valor_total, 0)}
                     osValorProdutos={osItems.filter(i => i.tipo === "produto").reduce((s, i) => s + i.valor_total, 0)}
                     taxPercentageNfe={empresa?.tax_percentage_nfe || 0}
+                    nfeEmitida={formData.nfe_emitida}
                   />
                 </CardContent>
               </Card>
@@ -1699,6 +1702,23 @@ export default function OrdensServico() {
                       </div>
                     )}
                     
+                    <Separator />
+                    <div className="space-y-1.5">
+                      <Label className="text-xs flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.nfe_emitida}
+                          onChange={(e) => setFormData({ ...formData, nfe_emitida: e.target.checked })}
+                          className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                        />
+                        Houve emissão de NFe/NFS-e?
+                      </Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        Se marcada: imposto é responsabilidade da empresa (paga governo).
+                        Se desmarcada: imposto fica retido no fundo para liberação em 6 meses.
+                      </p>
+                    </div>
+
                     <Separator />
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5"><Label className="text-xs">Desconto (R$)</Label><NumberInput step="0.01" min="0" value={formData.desconto} onChange={(v) => setFormData({ ...formData, desconto: v })} className="h-9" placeholder="0,00" /></div>
@@ -1882,6 +1902,7 @@ export default function OrdensServico() {
                           osValorServicos={viewOsItems.filter(i => i.tipo === "servico").reduce((s, i) => s + i.valor_total, 0)}
                           osValorProdutos={viewOsItems.filter(i => i.tipo === "produto").reduce((s, i) => s + i.valor_total, 0)}
                           taxPercentageNfe={empresa?.tax_percentage_nfe || 0}
+                          nfeEmitida={viewingOS.nfe_emitida}
                         />
                       )}
                       <Separator />

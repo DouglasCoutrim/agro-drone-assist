@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+"use client";
+
+import { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,20 +19,28 @@ import {
   DollarSign,
   TrendingUp,
   TrendingDown,
+  Save,
+  Edit,
+  Trash2,
+  Shield,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { formatCurrency, formatDate } from "@/lib/formatters";
-import { KpiCard } from "@/components/premium/KpiCard";
-import { PremiumCard } from "@/components/premium/PremiumCard";
-import { PremiumTable } from "@/components/premium/PremiumTable";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NumberInput } from "@/components/ui/number-input";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { formatCurrency, formatDate } from "@/lib/formatters";
+import { KpiCard } from "@/components/premium/KpiCard";
+import { PremiumCard } from "@/components/premium/PremiumCard";
+import { PremiumTable } from "@/components/premium/PremiumTable";
 import { cn } from "@/lib/utils";
+import { useTechnicianFinancials, useTechnicianOSStatement, type PeriodRange, type OSStatementItem, type Expense } from "@/hooks/useTechnicianFinancials";
+import { PeriodFilterBar } from "@/components/os/PeriodFilterBar";
+import { OSStatementTable } from "@/components/os/OSStatementTable";
 
 const EXPENSE_CATEGORIES = [
   { value: "ferramenta", label: "Ferramentas" },
@@ -39,18 +49,6 @@ const EXPENSE_CATEGORIES = [
   { value: "deslocamento", label: "Deslocamentos" },
   { value: "outros", label: "Outros" },
 ];
-
-type FinancialData = {
-  comissoes_realizadas_mes: number;
-  impostos_retidos_mes: number;
-  valor_bruto_mes: number;
-  os_count: number;
-  despesas_mes: number;
-  despesas_count: number;
-  retencoes_pendentes: number;
-  retencoes_count: number;
-  retencoes_liberadas_mes: number;
-};
 
 type Retention = {
   id: string;
@@ -63,23 +61,31 @@ type Retention = {
   released_at: string | null;
 };
 
-type Expense = {
-  id: string;
-  description: string;
-  amount: number;
-  expense_date: string;
-  category: string;
-  reference_type: string | null;
-  reference_id: string | null;
-};
-
 export default function TechnicianFinancialDashboard() {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<FinancialData | null>(null);
+  
+  // Hooks principais
+  const { 
+    data: financialData, 
+    loading: financialLoading, 
+    error: financialError,
+    period, 
+    changePeriod, 
+    refetch: refetchFinancials,
+    kpis 
+  } = useTechnicianFinancials();
+  
+  const { 
+    data: osStatement, 
+    loading: statementLoading,
+    refetch: refetchStatement 
+  } = useTechnicianOSStatement(period);
+
+  // Estados locais
   const [retentions, setRetentions] = useState<Retention[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [expensesLoading, setExpensesLoading] = useState(false);
+  const [retentionsLoading, setRetentionsLoading] = useState(false);
 
   // Modal states
   const [showExpenseDialog, setShowExpenseDialog] = useState(false);
@@ -92,24 +98,10 @@ export default function TechnicianFinancialDashboard() {
   });
   const [savingExpense, setSavingExpense] = useState(false);
 
-  const fetchFinancialData = async () => {
+  // Buscar retenções (não filtradas por período - são históricas)
+  const fetchRetentions = useCallback(async () => {
     if (!user?.id) return;
-    try {
-      const { data: result, error } = await supabase.rpc("get_technician_financial_dashboard", {
-        _tecnico_id: user.id,
-      });
-      if (error) throw error;
-      setData(result);
-    } catch (err: any) {
-      console.error("Erro ao buscar dashboard financeiro:", err);
-      toast.error("Erro ao carregar dados financeiros");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchRetentions = async () => {
-    if (!user?.id) return;
+    setRetentionsLoading(true);
     try {
       const { data, error } = await supabase
         .from("tax_retention_ledger")
@@ -132,10 +124,13 @@ export default function TechnicianFinancialDashboard() {
       })));
     } catch (err: any) {
       console.error("Erro ao buscar retenções:", err);
+    } finally {
+      setRetentionsLoading(false);
     }
-  };
+  }, [user?.id]);
 
-  const fetchExpenses = async () => {
+  // Buscar despesas (não filtradas por período - são históricas)
+  const fetchExpenses = useCallback(async () => {
     if (!user?.id) return;
     setExpensesLoading(true);
     try {
@@ -151,13 +146,19 @@ export default function TechnicianFinancialDashboard() {
     } finally {
       setExpensesLoading(false);
     }
-  };
+  }, [user?.id]);
 
+  // Efeito inicial
   useEffect(() => {
-    fetchFinancialData();
     fetchRetentions();
     fetchExpenses();
-  }, [user?.id]);
+  }, [fetchRetentions, fetchExpenses]);
+
+  // Refetch quando período muda
+  useEffect(() => {
+    refetchFinancials();
+    refetchStatement();
+  }, [refetchFinancials, refetchStatement]);
 
   const handleSaveExpense = async () => {
     if (!user?.id) return;
@@ -167,9 +168,15 @@ export default function TechnicianFinancialDashboard() {
     }
     setSavingExpense(true);
     try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("organization_id")
+        .eq("id", user.id)
+        .single();
+      
       const payload = {
         technician_id: user.id,
-        organization_id: (await supabase.from("profiles").select("organization_id").eq("id", user.id).single()).data?.organization_id,
+        organization_id: profile?.organization_id,
         description: expenseForm.description,
         amount: expenseForm.amount,
         expense_date: expenseForm.expense_date,
@@ -193,7 +200,7 @@ export default function TechnicianFinancialDashboard() {
       setEditingExpense(null);
       resetExpenseForm();
       fetchExpenses();
-      fetchFinancialData(); // Atualiza totais
+      refetchFinancials();
     } catch (err: any) {
       toast.error("Erro ao salvar: " + (err.message || "tente novamente"));
     } finally {
@@ -219,7 +226,7 @@ export default function TechnicianFinancialDashboard() {
       if (error) throw error;
       toast.success("Despesa excluída");
       fetchExpenses();
-      fetchFinancialData();
+      refetchFinancials();
     } catch (err: any) {
       toast.error("Erro ao excluir: " + err.message);
     }
@@ -243,23 +250,27 @@ export default function TechnicianFinancialDashboard() {
   const getStatusBadge = (status: Retention["status"]) => {
     switch (status) {
       case "RETAINED":
-        return <Badge variant="default" className="bg-amber-100 text-amber-800 border-amber-200">Retido</Badge>;
+        return (
+          <Badge variant="default" className="bg-amber-100 text-amber-800 border-amber-200 gap-1">
+            <Clock className="h-3 w-3" /> Retido
+          </Badge>
+        );
       case "RELEASED_TO_TECH":
-        return <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">Liberado</Badge>;
+        return (
+          <Badge variant="default" className="bg-green-100 text-green-800 border-green-200 gap-1">
+            <ArrowUpRight className="h-3 w-3" /> Liberado
+          </Badge>
+        );
       case "PAID_TO_GOV":
-        return <Badge variant="default" className="bg-blue-100 text-blue-800 border-blue-200">Pago ao Gov</Badge>;
+        return (
+          <Badge variant="default" className="bg-blue-100 text-blue-800 border-blue-200 gap-1">
+            <Shield className="h-3 w-3" /> Pago ao Gov
+          </Badge>
+        );
     }
   };
 
-  const getStatusIcon = (status: Retention["status"]) => {
-    switch (status) {
-      case "RETAINED": return <Clock className="h-3.5 w-3.5 text-amber-600" />;
-      case "RELEASED_TO_TECH": return <ArrowUpRight className="h-3.5 w-3.5 text-green-600" />;
-      case "PAID_TO_GOV": return <FileText className="h-3.5 w-3.5 text-blue-600" />;
-    }
-  };
-
-  if (loading) {
+  if (financialLoading) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center py-20">
@@ -272,44 +283,55 @@ export default function TechnicianFinancialDashboard() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Wallet className="h-8 w-8 text-primary" />
-            Painel Financeiro
-          </h1>
-          <p className="text-muted-foreground">
-            Comissões, retenções de impostos e despesas pessoais
-          </p>
+        {/* Header com filtro de período */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Wallet className="h-8 w-8 text-primary" />
+              Painel Financeiro
+            </h1>
+            <p className="text-muted-foreground">
+              Comissões, retenções de impostos e despesas pessoais
+            </p>
+          </div>
+          <PeriodFilterBar period={period} onChange={changePeriod} />
         </div>
 
-        {/* KPIs Principais */}
+        {/* KPIs Principais - Atualizados conforme spec Phase 3 */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
-            title="Comissões Realizadas (Mês)"
-            value={data?.comissoes_realizadas_mes || 0}
+            title="Ganhos com Serviços"
+            value={kpis.ganhos_servicos}
             icon={<DollarSign className="h-5 w-5 text-green-500" />}
-            trend={{ value: data?.retencoes_liberadas_mes || 0, label: "Retenções liberadas" }}
+            trend={{ value: financialData?.os_count || 0, label: `${financialData?.os_count || 0} OS(s) no período` }}
             delay={0}
           />
           <KpiCard
-            title="Impostos Retidos (Mês)"
-            value={data?.impostos_retidos_mes || 0}
-            icon={<AlertTriangle className="h-5 w-5 text-amber-500" />}
-            trend={{ value: data?.valor_bruto_mes || 0, label: "Valor bruto antes de impostos" }}
+            title="Despesas Pessoais"
+            value={kpis.despesas_pessoais}
+            icon={<CreditCard className="h-5 w-5 text-red-500" />}
+            trend={{ value: financialData?.despesas_count || 0, label: `${financialData?.despesas_count || 0} lançamento(s)` }}
             delay={100}
           />
           <KpiCard
-            title="Despesas do Mês"
-            value={data?.despesas_mes || 0}
-            icon={<CreditCard className="h-5 w-5 text-red-500" />}
-            trend={{ value: data?.despesas_count || 0, label: `${data?.despesas_count || 0} lançamento(s)` }}
+            title="Saldo Líquido do Técnico"
+            value={kpis.saldo_liquido}
+            icon={
+              kpis.saldo_liquido >= 0 
+                ? <TrendingUp className="h-5 w-5 text-green-500" /> 
+                : <TrendingDown className="h-5 w-5 text-red-500" />
+            }
+            trend={{ 
+              value: kpis.ganhos_servicos - kpis.despesas_pessoais, 
+              label: `Ganhos: ${formatCurrency(kpis.ganhos_servicos)} - Despesas: ${formatCurrency(kpis.despesas_pessoais)}` 
+            }}
             delay={200}
           />
           <KpiCard
-            title="Retenções Pendentes"
-            value={data?.retencoes_pendentes || 0}
+            title="Fundo de Retenção Acumulado"
+            value={kpis.fundo_retencao_acumulado}
             icon={<Clock className="h-5 w-5 text-blue-500" />}
-            trend={{ value: data?.retencoes_count || 0, label: `${data?.retencoes_count || 0} item(ns)` }}
+            trend={{ value: financialData?.retencoes_count || 0, label: `${financialData?.retencoes_count || 0} item(ns) aguardando liberação` }}
             delay={300}
           />
         </div>
@@ -321,28 +343,28 @@ export default function TechnicianFinancialDashboard() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-primary" />
-                Comissões por Papel
+                Resumo do Período
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 rounded-lg bg-green-50 border border-green-100">
-                  <p className="text-xs text-green-700 font-medium">Como Principal</p>
-                  <p className="text-xl font-bold text-green-900">{formatCurrency(data?.comissoes_realizadas_mes || 0)}</p>
-                  <p className="text-[10px] text-green-600">{data?.os_count || 0} OS(s) finalizada(s)</p>
+                  <p className="text-xs text-green-700 font-medium">Comissões Líquidas</p>
+                  <p className="text-xl font-bold text-green-900">{formatCurrency(kpis.ganhos_servicos)}</p>
+                  <p className="text-[10px] text-green-600">{financialData?.os_count || 0} OS(s) concluída(s)</p>
                 </div>
-                <div className="p-3 rounded-lg bg-blue-50 border border-blue-100">
-                  <p className="text-xs text-blue-700 font-medium">Como Auxiliar</p>
-                  <p className="text-xl font-bold text-blue-900">{formatCurrency(data?.retencoes_liberadas_mes || 0)}</p>
-                  <p className="text-[10px] text-blue-600">Retenções liberadas no mês</p>
+                <div className="p-3 rounded-lg bg-amber-50 border border-amber-100">
+                  <p className="text-xs text-amber-700 font-medium">Impostos Retidos</p>
+                  <p className="text-xl font-bold text-amber-900">{formatCurrency(financialData?.impostos_retidos_periodo || 0)}</p>
+                  <p className="text-[10px] text-amber-600">Vão para o Fundo de Retenção</p>
                 </div>
               </div>
-              <div className="p-3 rounded-lg bg-amber-50 border border-amber-100">
-                <p className="text-xs text-amber-700 font-medium flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3" /> Impostos Retidos no Mês
+              <div className="p-3 rounded-lg bg-blue-50 border border-blue-100">
+                <p className="text-xs text-blue-700 font-medium flex items-center gap-1">
+                  <Shield className="h-3 w-3" /> Retenções Liberadas no Período
                 </p>
-                <p className="text-lg font-bold text-amber-900">{formatCurrency(data?.impostos_retidos_mes || 0)}</p>
-                <p className="text-[10px] text-amber-600">Vão para o Fundo de Retenção — liberação após 6 meses da conclusão da OS</p>
+                <p className="text-lg font-bold text-blue-900">{formatCurrency(financialData?.retencoes_liberadas_periodo || 0)}</p>
+                <p className="text-[10px] text-blue-600">Recebidas como complemento salarial</p>
               </div>
             </CardContent>
           </PremiumCard>
@@ -358,16 +380,18 @@ export default function TechnicianFinancialDashboard() {
             <CardContent className="space-y-3">
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="p-3 rounded-lg bg-amber-50 border border-amber-100">
-                  <p className="text-2xl font-bold text-amber-700">{formatCurrency(data?.retencoes_pendentes || 0)}</p>
-                  <p className="text-[10px] text-amber-600">Pendentes ({data?.retencoes_count || 0})</p>
+                  <p className="text-2xl font-bold text-amber-700">{formatCurrency(kpis.fundo_retencao_acumulado)}</p>
+                  <p className="text-[10px] text-amber-600">Pendentes ({financialData?.retencoes_count || 0})</p>
                 </div>
                 <div className="p-3 rounded-lg bg-green-50 border border-green-100">
-                  <p className="text-2xl font-bold text-green-700">{formatCurrency(data?.retencoes_liberadas_mes || 0)}</p>
-                  <p className="text-[10px] text-green-600">Liberadas este mês</p>
+                  <p className="text-2xl font-bold text-green-700">{formatCurrency(financialData?.retencoes_liberadas_periodo || 0)}</p>
+                  <p className="text-[10px] text-green-600">Liberadas no período</p>
                 </div>
                 <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
-                  <p className="text-2xl font-bold text-gray-700">{formatCurrency((data?.retencoes_pendentes || 0) + (data?.retencoes_liberadas_mes || 0))}</p>
-                  <p className="text-[10px] text-gray-600">Total no fundo</p>
+                  <p className="text-2xl font-bold text-gray-700">
+                    {formatCurrency(kpis.fundo_retencao_acumulado + (financialData?.retencoes_liberadas_periodo || 0))}
+                  </p>
+                  <p className="text-[10px] text-gray-600">Total movimentado</p>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground text-center">
@@ -378,12 +402,15 @@ export default function TechnicianFinancialDashboard() {
           </PremiumCard>
         </div>
 
-        {/* Tabela de Retenções */}
+        {/* Extrato de Serviços - NOVO conforme spec Phase 3 */}
+        <OSStatementTable data={osStatement} loading={statementLoading} />
+
+        {/* Tabela de Retenções Históricas */}
         <PremiumCard delay={200}>
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-blue-500" />
-              Histórico de Retenções
+              Histórico Completo de Retenções
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -396,6 +423,7 @@ export default function TechnicianFinancialDashboard() {
                 { key: "amount", header: "Valor", render: (r) => formatCurrency(r.amount), align: "right" },
                 { key: "status", header: "Status", render: (r) => getStatusBadge(r.status) },
               ]}
+              loading={retentionsLoading}
               emptyState={{
                 title: "Nenhuma retenção encontrada",
                 description: "Quando você não emite NFS-e, o imposto (ex: ISS) fica retido no fundo e é liberado após 6 meses.",
@@ -520,7 +548,3 @@ export default function TechnicianFinancialDashboard() {
     </MainLayout>
   );
 }
-
-// Import missing icons
-import { Save, Edit } from "lucide-react";
-import { Badge } from "@/components/ui/badge";

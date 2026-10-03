@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Plus, Trash2, Search, UserPlus, Percent, DollarSign, Loader2, X, User, Users, Shield, CreditCard, HelpCircle } from "lucide-react";
+import { Plus, Trash2, Search, UserPlus, Percent, DollarSign, Loader2, X, User, Users, Shield, CreditCard, HelpCircle, PiggyBank } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -46,6 +46,7 @@ interface OSTechniciansSectionProps {
   osValorServicos?: number; // Valor total dos serviços para cálculo
   osValorProdutos?: number; // Valor total dos produtos
   taxPercentageNfe?: number; // % imposto NFS-e da empresa
+  nfeEmitida?: boolean; // Se emitiu NFe - determina destino do imposto
 }
 
 const ROLE_LABELS: Record<"PRINCIPAL" | "AUXILIARY", string> = {
@@ -309,6 +310,7 @@ function TechnicianCard({
   osValorServicos,
   osValorProdutos,
   taxPercentageNfe,
+  nfeEmitida,
 }: {
   technician: OSTechnician;
   index: number;
@@ -319,6 +321,7 @@ function TechnicianCard({
   osValorServicos?: number;
   osValorProdutos?: number;
   taxPercentageNfe?: number;
+  nfeEmitida?: boolean;
 }) {
   const tecnico = tecnicos.find(t => t.id === technician.technician_id);
   const isPrincipal = technician.role === "PRINCIPAL";
@@ -500,7 +503,19 @@ function TechnicianCard({
                 <span className="font-medium text-orange-500">{formatCurrency(estimatedTax)}</span>
               </div>
               <div className="flex justify-between gap-2">
-                <span className="text-muted-foreground">Est. Líquido:</span>
+                <span className="text-muted-foreground flex items-center gap-1">
+                  {nfeEmitida ? (
+                    <>
+                      <Shield className="h-3 w-3 text-blue-500" />
+                      <span>Destino: Empresa paga governo</span>
+                    </>
+                  ) : (
+                    <>
+                      <PiggyBank className="h-3 w-3 text-amber-500" />
+                      <span>Destino: Fundo retenção (6 meses)</span>
+                    </>
+                  )}
+                </span>
                 <span className="font-bold text-green-600">{formatCurrency(estimatedNet)}</span>
               </div>
             </>
@@ -584,6 +599,7 @@ export function OSTechniciansSection({
               osValorServicos={osValorServicos}
               osValorProdutos={osValorProdutos}
               taxPercentageNfe={taxPercentageNfe}
+              nfeEmitida={nfeEmitida}
             />
           ) : (
             canAddPrincipal && (
@@ -633,6 +649,7 @@ export function OSTechniciansSection({
                 osValorServicos={osValorServicos}
                 osValorProdutos={osValorProdutos}
                 taxPercentageNfe={taxPercentageNfe}
+                nfeEmitida={nfeEmitida}
               />
             );
           })}
