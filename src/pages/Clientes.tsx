@@ -75,6 +75,21 @@ export default function Clientes() {
     }
   };
 
+  const handleCepChange = async (value: string) => {
+    setFormData(current => ({ ...current, cep: value }));
+    const cleanCep = value.replace(/\D/g, "");
+    if (cleanCep.length !== 8) return;
+
+    const address = await fetchCep(cleanCep);
+    if (!address) return;
+    setFormData(current => ({
+      ...current,
+      endereco: address.logradouro,
+      cidade: address.localidade,
+      estado: address.uf,
+    }));
+  };
+
   const createAsaasCustomer = async (clienteData: typeof formData, clienteId: string) => {
     try {
       const { data: result, error } = await supabase.functions.invoke('asaas-customer-sync', {
@@ -232,6 +247,127 @@ export default function Clientes() {
                 <DialogTrigger asChild>
                   <Button size="sm" className="gradient-primary"><Plus className="mr-1.5 h-3.5 w-3.5" />Novo Cliente</Button>
                 </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>{editingCliente ? "Editar Cliente" : "Novo Cliente"}</DialogTitle>
+                    <DialogDescription>
+                      {editingCliente ? "Atualize os dados do cliente." : "Preencha os dados para cadastrar o cliente."}
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="cliente-nome">Nome *</Label>
+                        <Input
+                          id="cliente-nome"
+                          value={formData.nome}
+                          onChange={(event) => setFormData({ ...formData, nome: event.target.value })}
+                          required
+                          autoFocus
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="cliente-telefone">Telefone *</Label>
+                        <Input
+                          id="cliente-telefone"
+                          value={formData.telefone}
+                          onChange={(event) => setFormData({ ...formData, telefone: formatPhone(event.target.value) })}
+                          required
+                          inputMode="tel"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="cliente-email">E-mail</Label>
+                        <Input
+                          id="cliente-email"
+                          type="email"
+                          value={formData.email}
+                          onChange={(event) => setFormData({ ...formData, email: event.target.value })}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="cliente-documento">CPF/CNPJ</Label>
+                        <Input
+                          id="cliente-documento"
+                          value={formData.cpf_cnpj}
+                          onChange={(event) => {
+                            const value = formatCpfCnpj(event.target.value);
+                            setFormData({ ...formData, cpf_cnpj: value });
+                            void checkDuplicate(value);
+                          }}
+                          inputMode="numeric"
+                        />
+                        {duplicateWarning && <p className="text-xs text-destructive">{duplicateWarning}</p>}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="cliente-cep">CEP</Label>
+                        <div className="relative">
+                          <Input
+                            id="cliente-cep"
+                            value={formData.cep}
+                            onChange={(event) => void handleCepChange(event.target.value)}
+                            placeholder="00000-000"
+                            inputMode="numeric"
+                          />
+                          {cepLoading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="cliente-endereco">Endereço</Label>
+                        <Input
+                          id="cliente-endereco"
+                          value={formData.endereco}
+                          onChange={(event) => setFormData({ ...formData, endereco: event.target.value })}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="cliente-cidade">Cidade</Label>
+                        <Input
+                          id="cliente-cidade"
+                          value={formData.cidade}
+                          onChange={(event) => setFormData({ ...formData, cidade: event.target.value })}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="cliente-estado">Estado</Label>
+                        <Select value={formData.estado} onValueChange={(value) => setFormData({ ...formData, estado: value })}>
+                          <SelectTrigger id="cliente-estado"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                          <SelectContent>
+                            {UF_LIST.map((uf) => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="cliente-observacoes">Observações</Label>
+                        <Textarea
+                          id="cliente-observacoes"
+                          value={formData.observacoes}
+                          onChange={(event) => setFormData({ ...formData, observacoes: event.target.value })}
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 border-t pt-4">
+                      <Button type="button" variant="outline" onClick={() => void requestCloseDialog()} disabled={formLoading}>
+                        Cancelar
+                      </Button>
+                      <Button type="submit" className="gradient-primary" disabled={formLoading || !!duplicateWarning}>
+                        {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {editingCliente ? "Salvar Alterações" : "Cadastrar Cliente"}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
               </Dialog>
             </div>
           </div>
