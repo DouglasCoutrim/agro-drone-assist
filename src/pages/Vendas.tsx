@@ -669,7 +669,7 @@ export default function Vendas() {
                     const colors = { nfe: "bg-blue-50 text-blue-700", nfse: "bg-green-50 text-green-700", nfce: "bg-purple-50 text-purple-700" };
                     return <Badge variant="outline" className={colors[item.tipo as keyof typeof colors] || "bg-gray-50 text-gray-700"}>{item.tipo.toUpperCase()}</Badge>;
                   }
-                  if (key === "emitida_em") return <span>{formatDateTime(item.emitida_em)}</span>;
+                  if (key === "emitida_em") return <span>{formatDate(item.emitida_em)}</span>;
                   if (key === "valor_total") return <span className="font-bold">{formatCurrency(item.valor_total || 0)}</span>;
                   if (key === "status") {
                     const statusMap: Record<string, { label: string; variant: "default" | "destructive" | "secondary" | "outline" }> = {
@@ -721,7 +721,7 @@ export default function Vendas() {
                 <div><Label>Tipo</Label><p>{viewingNF?.tipo?.toUpperCase()}</p></div>
                 <div><Label>Status</Label><p>{viewingNF?.status}</p></div>
                 <div><Label>Cliente</Label><p>{viewingNF?.cliente_nome}</p></div>
-                <div><Label>Emissão</Label><p>{formatDateTime(viewingNF?.emitida_em)}</p></div>
+                <div><Label>Emissão</Label><p>{formatDate(viewingNF?.emitida_em)}</p></div>
               </div>
               <Separator />
               <div className="grid grid-cols-2 gap-4">
