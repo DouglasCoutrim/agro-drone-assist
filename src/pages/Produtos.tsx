@@ -10,7 +10,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogHeader,
+  DialogFooter, DialogHeader,
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
@@ -347,10 +347,10 @@ export default function Produtos() {
 
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <KpiCard title="Total de Produtos" value={produtos.length} icon={Package} />
-          <KpiCard title="Estoque Baixo" value={produtosEstoqueBaixo.length} icon={AlertTriangle} variant="warning" />
-          <KpiCard title="Valor Estoque (Custo)" value={formatCurrency(valorTotalEstoque)} icon={DollarSign} />
-          <KpiCard title="Categorias" value={categorias.length} icon={Tag} />
+          <KpiCard label="Total de Produtos" value={produtos.length} icon={Package} />
+          <KpiCard label="Estoque Baixo" value={produtosEstoqueBaixo.length} icon={AlertTriangle} color="orange" />
+          <KpiCard label="Valor Estoque (Custo)" value={formatCurrency(valorTotalEstoque)} icon={DollarSign} />
+          <KpiCard label="Categorias" value={categorias.length} icon={Tag} />
         </div>
 
         {/* Tabs */}
@@ -471,7 +471,7 @@ export default function Produtos() {
                       </div>
                       <div>
                         <Label>Margem Lucro %</Label>
-                        <NumberInput value={produtoFormData.margem_lucro} onChange={(v) => setProdutoFormData({...produtoFormData, margem_lucro: v})} step={0.1} suffix="%" readOnly />
+                        <NumberInput value={produtoFormData.margem_lucro} onChange={(v) => setProdutoFormData({...produtoFormData, margem_lucro: v})} step={0.1} readOnly />
                       </div>
                     </div>
                     <Separator />
@@ -548,7 +548,7 @@ export default function Produtos() {
           <TabsContent value="categorias" className="mt-4">
             <div className="space-y-4">
               {categorias.length === 0 ? (
-                <AlertBox type="info" title="Nenhuma categoria" description="Crie categorias para organizar seus produtos" />
+                <AlertBox type="info" title="Nenhuma categoria" items={[{ label: "", value: "Crie categorias para organizar seus produtos" }]} />
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {categorias.map((cat) => (
@@ -599,7 +599,7 @@ export default function Produtos() {
           {/* MOVIMENTAÇÕES TAB */}
           <TabsContent value="movimentacoes" className="mt-4">
             {movimentacoes.length === 0 ? (
-              <AlertBox type="info" title="Sem movimentações" description="As movimentações aparecerão aqui conforme ajustes de estoque" />
+              <AlertBox type="info" title="Sem movimentações" items={[{ label: "", value: "As movimentações aparecerão aqui conforme ajustes de estoque" }]} />
             ) : (
               <PremiumTable
                 data={movimentacoes}
