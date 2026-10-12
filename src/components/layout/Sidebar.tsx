@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, FileText, Package, BarChart3, DollarSign, Settings,
-  Users, CreditCard, UsersRound, Building2, ClipboardList, LogOut, LifeBuoy, BookOpen, Bell, ShieldCheck, Wrench, Monitor, Calculator, PiggyBank
+  Users, CreditCard, UsersRound, Building2, ClipboardList, LogOut, LifeBuoy, BookOpen, Bell, ShieldCheck, Wrench, Monitor, Calculator, PiggyBank, ShoppingCart, Boxes
 } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,6 +27,8 @@ const navSections = [
         title: "GESTÃO",
         items: [
           { title: "Estoque", icon: Package, href: "/estoque", roles: ["admin", "tecnico", "consulta"] },
+          { title: "Produtos", icon: Boxes, href: "/produtos", roles: ["admin", "tecnico", "consulta"] },
+          { title: "Vendas", icon: ShoppingCart, href: "/vendas", roles: ["admin", "tecnico"] },
           { title: "Serviços", icon: Wrench, href: "/servicos", roles: ["admin", "tecnico", "consulta"] },
           { title: "Financeiro", icon: DollarSign, href: "/financeiro", roles: ["admin", "tecnico"] },
           { title: "Cobranças", icon: CreditCard, href: "/cobrancas", roles: ["admin", "tecnico"] },

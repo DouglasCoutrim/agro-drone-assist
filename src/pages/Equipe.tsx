@@ -316,55 +316,61 @@ export default function Equipe() {
           <UpgradePlanModal open={showUpgrade} onOpenChange={setShowUpgrade} reason="users" currentPlan={plan} />
           {isAdmin && (
             <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-              <DialogContent>
-                <DialogHeader>
+              <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
+                <DialogHeader className="shrink-0">
                   <DialogTitle>Novo Membro da Equipe</DialogTitle>
                   <DialogDescription>Adicione um novo membro ao sistema</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Nome Completo *</Label>
-                    <Input value={newMember.nome} onChange={(e) => setNewMember({ ...newMember, nome: e.target.value })} placeholder="Nome do membro" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Email *</Label>
-                    <Input type="email" value={newMember.email} onChange={(e) => setNewMember({ ...newMember, email: e.target.value })} placeholder="email@exemplo.com" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Senha *</Label>
-                    <Input type="password" minLength={8} maxLength={128} autoComplete="new-password" value={newMember.senha} onChange={(e) => setNewMember({ ...newMember, senha: e.target.value })} placeholder="Senha inicial forte" />
-                    <p className="text-xs text-muted-foreground">Use pelo menos 8 caracteres e evite senhas comuns ou fáceis de adivinhar.</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Papéis *</Label>
-                    <div className="grid gap-2 sm:grid-cols-3">
-                      {ROLE_OPTIONS.map((option) => (
-                        <label key={option.value} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-border p-3 text-sm">
-                          <Checkbox checked={newMember.roles.includes(option.value)} onCheckedChange={(checked) => toggleNewMemberRole(option.value, checked === true)} />
-                          {option.label}
-                        </label>
-                      ))}
+                <div className="flex-1 overflow-y-auto p-4 pb-24">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Nome Completo *</Label>
+                      <Input value={newMember.nome} onChange={(e) => setNewMember({ ...newMember, nome: e.target.value })} placeholder="Nome do membro" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Email *</Label>
+                      <Input type="email" value={newMember.email} onChange={(e) => setNewMember({ ...newMember, email: e.target.value })} placeholder="email@exemplo.com" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Senha *</Label>
+                      <Input type="password" minLength={8} maxLength={128} autoComplete="new-password" value={newMember.senha} onChange={(e) => setNewMember({ ...newMember, senha: e.target.value })} placeholder="Senha inicial forte" />
+                      <p className="text-xs text-muted-foreground">Use pelo menos 8 caracteres e evite senhas comuns ou fáceis de adivinhar.</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Papéis *</Label>
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        {ROLE_OPTIONS.map((option) => (
+                          <label key={option.value} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-border p-3 text-sm">
+                            <Checkbox checked={newMember.roles.includes(option.value)} onCheckedChange={(checked) => toggleNewMemberRole(option.value, checked === true)} />
+                            {option.label}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="new-responsibilities">Responsabilidades</Label>
+                       <Textarea id="new-responsibilities" maxLength={2000} value={newMember.responsabilidades} onChange={e => { setNewMember({ ...newMember, responsabilidades: e.target.value }); setAddSuggestion(null); setNewPermissions(null); }} placeholder="Ex.: atendimento ao cliente, diagnósticos e reparos" />
+                      <Button variant="outline" disabled={suggesting} onClick={() => suggestAccess(newMember.responsabilidades, 'add')}>
+                        {suggesting ? <Loader2 className="animate-spin" /> : <Sparkles />} Sugerir acessos
+                      </Button>
+                      {addSuggestion && suggestionPreview(addSuggestion, () => {
+                        setNewMember(current => ({ ...current, roles: addSuggestion.roles }));
+                        setNewPermissions(addSuggestion.permissions);
+                        setAddSuggestion(null);
+                        toast.success('Sugestão selecionada. Revise antes de adicionar.');
+                      })}
+                      {newPermissions && <p className="text-xs text-muted-foreground">Permissões selecionadas: {newPermissions.map(key => PERMISSION_LABELS[key]).join(', ') || 'Nenhuma'}</p>}
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="new-responsibilities">Responsabilidades</Label>
-                     <Textarea id="new-responsibilities" maxLength={2000} value={newMember.responsabilidades} onChange={e => { setNewMember({ ...newMember, responsabilidades: e.target.value }); setAddSuggestion(null); setNewPermissions(null); }} placeholder="Ex.: atendimento ao cliente, diagnósticos e reparos" />
-                    <Button variant="outline" disabled={suggesting} onClick={() => suggestAccess(newMember.responsabilidades, 'add')}>
-                      {suggesting ? <Loader2 className="animate-spin" /> : <Sparkles />} Sugerir acessos
-                    </Button>
-                    {addSuggestion && suggestionPreview(addSuggestion, () => {
-                      setNewMember(current => ({ ...current, roles: addSuggestion.roles }));
-                      setNewPermissions(addSuggestion.permissions);
-                      setAddSuggestion(null);
-                      toast.success('Sugestão selecionada. Revise antes de adicionar.');
-                    })}
-                    {newPermissions && <p className="text-xs text-muted-foreground">Permissões selecionadas: {newPermissions.map(key => PERMISSION_LABELS[key]).join(', ') || 'Nenhuma'}</p>}
-                  </div>
-                  <Button className="w-full gradient-primary" onClick={handleAddMember} disabled={addLoading}>
-                    {addLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
-                    Adicionar à Equipe
-                  </Button>
                 </div>
+                <DialogFooter className="shrink-0 border-t bg-background">
+                  <div className="flex justify-end gap-2 w-full p-4">
+                    <Button className="w-full gradient-primary" onClick={handleAddMember} disabled={addLoading}>
+                      {addLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                      Adicionar à Equipe
+                    </Button>
+                  </div>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
           )}
@@ -508,21 +514,22 @@ export default function Equipe() {
 
         {/* Edit User Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
+          <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
+            <DialogHeader className="shrink-0">
               <DialogTitle>Editar Membro</DialogTitle>
               <DialogDescription>Altere os dados do membro da equipe</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Nome Completo</Label>
-                <Input value={editForm.nome} onChange={(e) => setEditForm({ ...editForm, nome: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input value={editForm.email} disabled className="opacity-60" />
-                <p className="text-xs text-muted-foreground">O email não pode ser alterado</p>
-              </div>
+            <div className="flex-1 overflow-y-auto p-4 pb-24">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Nome Completo</Label>
+                  <Input value={editForm.nome} onChange={(e) => setEditForm({ ...editForm, nome: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input value={editForm.email} disabled className="opacity-60" />
+                  <p className="text-xs text-muted-foreground">O email não pode ser alterado</p>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-responsibilities">Responsabilidades</Label>
                   <Textarea id="edit-responsibilities" maxLength={2000} value={editForm.responsabilidades} onChange={e => { setEditForm({ ...editForm, responsabilidades: e.target.value }); setEditSuggestion(null); }} placeholder="Descreva as atividades do colaborador" />
@@ -546,10 +553,15 @@ export default function Equipe() {
                     finally { setSuggesting(false); }
                   })}
                 </div>
-              <Button className="w-full gradient-primary" onClick={handleEditUser}>
-                <Pencil className="mr-2 h-4 w-4" />Salvar Alterações
-              </Button>
+              </div>
             </div>
+            <DialogFooter className="shrink-0 border-t bg-background">
+              <div className="flex justify-end gap-2 w-full p-4">
+                <Button className="w-full gradient-primary" onClick={handleEditUser}>
+                  <Pencil className="mr-2 h-4 w-4" />Salvar Alterações
+                </Button>
+              </div>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

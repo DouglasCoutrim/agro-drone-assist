@@ -456,62 +456,66 @@ export default function TechnicianFinancialDashboard() {
                   <Plus className="mr-2 h-4 w-4" /> Nova Despesa
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
+              <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
+                <DialogHeader className="shrink-0">
                   <DialogTitle>{editingExpense ? "Editar Despesa" : "Nova Despesa"}</DialogTitle>
                   <DialogDescription>Registre despesas pessoais (ferramentas, EPIs, treinamentos, etc.)</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-2">
-                  <div className="space-y-2">
-                    <Label>Descrição *</Label>
-                    <Input
-                      value={expenseForm.description}
-                      onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
-                      placeholder="Ex: Compra de multímetro digital"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Valor (R$) *</Label>
-                    <NumberInput
-                      step="0.01"
-                      min="0.01"
-                      value={expenseForm.amount}
-                      onChange={(v) => setExpenseForm({ ...expenseForm, amount: v })}
-                      className="h-10"
-                      placeholder="0,00"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Data *</Label>
-                    <Input
-                      type="date"
-                      value={expenseForm.expense_date}
-                      onChange={(e) => setExpenseForm({ ...expenseForm, expense_date: e.target.value })}
-                      className="h-10"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Categoria *</Label>
-                    <Select value={expenseForm.category} onValueChange={(v) => setExpenseForm({ ...expenseForm, category: v })}>
-                      <SelectTrigger className="h-10">
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {EXPENSE_CATEGORIES.map(c => (
-                          <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <div className="flex-1 overflow-y-auto p-4 pb-24">
+                  <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                      <Label>Descrição *</Label>
+                      <Input
+                        value={expenseForm.description}
+                        onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
+                        placeholder="Ex: Compra de multímetro digital"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Valor (R$) *</Label>
+                      <NumberInput
+                        step="0.01"
+                        min="0.01"
+                        value={expenseForm.amount}
+                        onChange={(v) => setExpenseForm({ ...expenseForm, amount: v })}
+                        className="h-10"
+                        placeholder="0,00"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Data *</Label>
+                      <Input
+                        type="date"
+                        value={expenseForm.expense_date}
+                        onChange={(e) => setExpenseForm({ ...expenseForm, expense_date: e.target.value })}
+                        className="h-10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Categoria *</Label>
+                      <Select value={expenseForm.category} onValueChange={(v) => setExpenseForm({ ...expenseForm, category: v })}>
+                        <SelectTrigger className="h-10">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {EXPENSE_CATEGORIES.map(c => (
+                            <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => { setShowExpenseDialog(false); setEditingExpense(null); resetExpenseForm(); }}>
-                    Cancelar
-                  </Button>
-                  <Button className="gradient-primary" onClick={handleSaveExpense} disabled={savingExpense}>
-                    {savingExpense ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    {editingExpense ? "Atualizar" : "Adicionar"}
-                  </Button>
+                <DialogFooter className="shrink-0 border-t bg-background">
+                  <div className="flex justify-end gap-2 w-full p-4">
+                    <Button variant="outline" onClick={() => { setShowExpenseDialog(false); setEditingExpense(null); resetExpenseForm(); }}>
+                      Cancelar
+                    </Button>
+                    <Button className="gradient-primary" onClick={handleSaveExpense} disabled={savingExpense}>
+                      {savingExpense ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                      {editingExpense ? "Atualizar" : "Adicionar"}
+                    </Button>
+                  </div>
                 </DialogFooter>
               </DialogContent>
             </Dialog>

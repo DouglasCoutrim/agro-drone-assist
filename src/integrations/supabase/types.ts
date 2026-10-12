@@ -1339,6 +1339,634 @@ export type Database = {
           },
         ]
       }
+      categoria_produtos: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          organization_id: string
+          descricao: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          organization_id: string
+          descricao?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          organization_id?: string
+          descricao?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categoria_produtos_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      produtos: {
+        Row: {
+          id: string
+          organization_id: string
+          categoria_id: string | null
+          nome: string
+          descricao: string | null
+          ncm: string | null
+          cfop: string | null
+          preco_custo: number
+          preco_venda: number
+          margem_lucro: number
+          estoque_minimo: number
+          estoque_atual: number
+          aplica_icms: boolean
+          aplica_ipi: boolean
+          aplica_pis_cofins: boolean
+          ativo: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          categoria_id?: string | null
+          nome: string
+          descricao?: string | null
+          ncm?: string | null
+          cfop?: string | null
+          preco_custo?: number
+          preco_venda?: number
+          margem_lucro?: number
+          estoque_minimo?: number
+          estoque_atual?: number
+          aplica_icms?: boolean
+          aplica_ipi?: boolean
+          aplica_pis_cofins?: boolean
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          categoria_id?: string | null
+          nome?: string
+          descricao?: string | null
+          ncm?: string | null
+          cfop?: string | null
+          preco_custo?: number
+          preco_venda?: number
+          margem_lucro?: number
+          estoque_minimo?: number
+          estoque_atual?: number
+          aplica_icms?: boolean
+          aplica_ipi?: boolean
+          aplica_pis_cofins?: boolean
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produtos_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produtos_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categoria_produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estoque_movimentacao: {
+        Row: {
+          id: string
+          organization_id: string
+          produto_id: string
+          tipo: string
+          motivo: string | null
+          quantidade_anterior: number
+          quantidade_movimento: number
+          quantidade_final: number
+          documento_referencia: string | null
+          documento_tipo: string | null
+          registrado_por: string | null
+          registrado_em: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          produto_id: string
+          tipo: string
+          motivo?: string | null
+          quantidade_anterior: number
+          quantidade_movimento: number
+          quantidade_final: number
+          documento_referencia?: string | null
+          documento_tipo?: string | null
+          registrado_por?: string | null
+          registrado_em?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          produto_id?: string
+          tipo?: string
+          motivo?: string | null
+          quantidade_anterior?: number
+          quantidade_movimento?: number
+          quantidade_final?: number
+          documento_referencia?: string | null
+          documento_tipo?: string | null
+          registrado_por?: string | null
+          registrado_em?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estoque_movimentacao_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estoque_movimentacao_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estoque_movimentacao_registrado_por_fkey"
+            columns: ["registrado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendas: {
+        Row: {
+          id: string
+          organization_id: string
+          numero: string
+          data_venda: string
+          cliente_id: string | null
+          cliente_nome: string
+          cliente_cpf_cnpj: string | null
+          cliente_email: string | null
+          valor_produtos: number
+          valor_desconto: number
+          valor_impostos: number
+          valor_total: number
+          forma_pagamento: string | null
+          status_pagamento: string
+          obs: string | null
+          nf_numero: string | null
+          nf_chave: string | null
+          nf_emitida_em: string | null
+          nf_provider: string | null
+          vendido_por: string | null
+          criado_em: string
+          atualizado_em: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          numero: string
+          data_venda?: string
+          cliente_id?: string | null
+          cliente_nome: string
+          cliente_cpf_cnpj?: string | null
+          cliente_email?: string | null
+          valor_produtos?: number
+          valor_desconto?: number
+          valor_impostos?: number
+          valor_total?: number
+          forma_pagamento?: string | null
+          status_pagamento?: string
+          obs?: string | null
+          nf_numero?: string | null
+          nf_chave?: string | null
+          nf_emitida_em?: string | null
+          nf_provider?: string | null
+          vendido_por?: string | null
+          criado_em?: string
+          atualizado_em?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          numero?: string
+          data_venda?: string
+          cliente_id?: string | null
+          cliente_nome?: string
+          cliente_cpf_cnpj?: string | null
+          cliente_email?: string | null
+          valor_produtos?: number
+          valor_desconto?: number
+          valor_impostos?: number
+          valor_total?: number
+          forma_pagamento?: string | null
+          status_pagamento?: string
+          obs?: string | null
+          nf_numero?: string | null
+          nf_chave?: string | null
+          nf_emitida_em?: string | null
+          nf_provider?: string | null
+          vendido_por?: string | null
+          criado_em?: string
+          atualizado_em?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendas_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendas_vendido_por_fkey"
+            columns: ["vendido_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venda_itens: {
+        Row: {
+          id: string
+          venda_id: string
+          produto_id: string | null
+          nome_produto: string
+          ncm: string | null
+          cfop: string | null
+          quantidade: number
+          preco_unitario: number
+          valor_total: number
+          desconto_percentual: number
+          desconto_valor: number
+          icms_percentual: number | null
+          icms_valor: number | null
+          pis_cofins_valor: number | null
+          ipi_valor: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          venda_id: string
+          produto_id?: string | null
+          nome_produto: string
+          ncm?: string | null
+          cfop?: string | null
+          quantidade: number
+          preco_unitario: number
+          valor_total: number
+          desconto_percentual?: number
+          desconto_valor?: number
+          icms_percentual?: number | null
+          icms_valor?: number | null
+          pis_cofins_valor?: number | null
+          ipi_valor?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          venda_id?: string
+          produto_id?: string | null
+          nome_produto?: string
+          ncm?: string | null
+          cfop?: string | null
+          quantidade?: number
+          preco_unitario?: number
+          valor_total?: number
+          desconto_percentual?: number
+          desconto_valor?: number
+          icms_percentual?: number | null
+          icms_valor?: number | null
+          pis_cofins_valor?: number | null
+          ipi_valor?: number | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venda_itens_venda_id_fkey"
+            columns: ["venda_id"]
+            isOneToOne: false
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venda_itens_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tecnico_ganhos_venda: {
+        Row: {
+          id: string
+          organization_id: string
+          venda_id: string
+          tecnico_id: string
+          comissao_percentual: number | null
+          valor_venda: number | null
+          valor_comissao: number | null
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          venda_id: string
+          tecnico_id: string
+          comissao_percentual?: number | null
+          valor_venda?: number | null
+          valor_comissao?: number | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          venda_id?: string
+          tecnico_id?: string
+          comissao_percentual?: number | null
+          valor_venda?: number | null
+          valor_comissao?: number | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tecnico_ganhos_venda_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tecnico_ganhos_venda_venda_id_fkey"
+            columns: ["venda_id"]
+            isOneToOne: false
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tecnico_ganhos_venda_tecnico_id_fkey"
+            columns: ["tecnico_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nota_fiscal_emitida: {
+        Row: {
+          id: string
+          organization_id: string
+          tipo: string
+          numero: string | null
+          serie: string | null
+          chave_acesso: string | null
+          xml_url: string | null
+          pdf_url: string | null
+          xml_conteudo: string | null
+          cliente_id: string | null
+          cliente_nome: string | null
+          cliente_cpf_cnpj: string | null
+          cliente_email: string | null
+          valor_total: number | null
+          valor_impostos: number | null
+          valor_liquido: number | null
+          status: string | null
+          motivo_rejeicao: string | null
+          os_id: string | null
+          venda_id: string | null
+          provider: string | null
+          provider_id: string | null
+          emitida_por: string | null
+          emitida_em: string
+          cancelada_em: string | null
+          cancelada_por: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          tipo: string
+          numero?: string | null
+          serie?: string | null
+          chave_acesso?: string | null
+          xml_url?: string | null
+          pdf_url?: string | null
+          xml_conteudo?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          cliente_cpf_cnpj?: string | null
+          cliente_email?: string | null
+          valor_total?: number | null
+          valor_impostos?: number | null
+          valor_liquido?: number | null
+          status?: string | null
+          motivo_rejeicao?: string | null
+          os_id?: string | null
+          venda_id?: string | null
+          provider?: string | null
+          provider_id?: string | null
+          emitida_por?: string | null
+          emitida_em?: string
+          cancelada_em?: string | null
+          cancelada_por?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          tipo?: string
+          numero?: string | null
+          serie?: string | null
+          chave_acesso?: string | null
+          xml_url?: string | null
+          pdf_url?: string | null
+          xml_conteudo?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          cliente_cpf_cnpj?: string | null
+          cliente_email?: string | null
+          valor_total?: number | null
+          valor_impostos?: number | null
+          valor_liquido?: number | null
+          status?: string | null
+          motivo_rejeicao?: string | null
+          os_id?: string | null
+          venda_id?: string | null
+          provider?: string | null
+          provider_id?: string | null
+          emitida_por?: string | null
+          emitida_em?: string
+          cancelada_em?: string | null
+          cancelada_por?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nota_fiscal_emitida_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nota_fiscal_emitida_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nota_fiscal_emitida_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nota_fiscal_emitida_venda_id_fkey"
+            columns: ["venda_id"]
+            isOneToOne: false
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nota_fiscal_emitida_emitida_por_fkey"
+            columns: ["emitida_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nota_fiscal_emitida_cancelada_por_fkey"
+            columns: ["cancelada_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nota_fiscal_itens: {
+        Row: {
+          id: string
+          nf_id: string
+          descricao: string
+          quantidade: number
+          valor_unitario: number
+          valor_total: number
+          ncm: string | null
+          cfop: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          nf_id: string
+          descricao: string
+          quantidade: number
+          valor_unitario: number
+          valor_total: number
+          ncm?: string | null
+          cfop?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          nf_id?: string
+          descricao?: string
+          quantidade?: number
+          valor_unitario?: number
+          valor_total?: number
+          ncm?: string | null
+          cfop?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nota_fiscal_itens_nf_id_fkey"
+            columns: ["nf_id"]
+            isOneToOne: false
+            referencedRelation: "nota_fiscal_emitida"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nota_fiscal_eventos: {
+        Row: {
+          id: string
+          nf_id: string
+          tipo_evento: string | null
+          descricao: string | null
+          dados_evento: Json | null
+          criado_em: string
+        }
+        Insert: {
+          id?: string
+          nf_id: string
+          tipo_evento?: string | null
+          descricao?: string | null
+          dados_evento?: Json | null
+          criado_em?: string
+        }
+        Update: {
+          id?: string
+          nf_id?: string
+          tipo_evento?: string | null
+          descricao?: string | null
+          dados_evento?: Json | null
+          criado_em?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nota_fiscal_eventos_nf_id_fkey"
+            columns: ["nf_id"]
+            isOneToOne: false
+            referencedRelation: "nota_fiscal_emitida"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patrimonio_ferramentas: {
         Row: {
           created_at: string

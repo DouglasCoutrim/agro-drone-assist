@@ -179,8 +179,8 @@ export default function Servicos() {
                   Novo Serviço
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
+              <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
+                <DialogHeader className="shrink-0">
                   <DialogTitle className="text-base">
                     {editing ? "Editar Serviço" : "Novo Serviço"}
                   </DialogTitle>
@@ -188,51 +188,55 @@ export default function Servicos() {
                     Preencha os dados do serviço
                   </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Descrição *</Label>
-                    <Input
-                      value={formData.descricao}
-                      onChange={(e) =>
-                        setFormData({ ...formData, descricao: e.target.value })
-                      }
-                      required
-                      className="h-9"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="flex-1 overflow-y-auto p-4 pb-24">
+                  <form id="servico-form" onSubmit={handleSubmit} className="space-y-3">
                     <div className="space-y-1">
-                      <Label className="text-xs">Preço (R$)</Label>
+                      <Label className="text-xs">Descrição *</Label>
                       <Input
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        value={formData.preco}
+                        value={formData.descricao}
                         onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            preco: Number(e.target.value),
-                          })
+                          setFormData({ ...formData, descricao: e.target.value })
                         }
+                        required
                         className="h-9"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Tempo estimado</Label>
-                      <Input
-                        placeholder="ex: 1h30"
-                        value={formData.tempo_estimado}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            tempo_estimado: e.target.value,
-                          })
-                        }
-                        className="h-9"
-                      />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Preço (R$)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          value={formData.preco}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              preco: Number(e.target.value),
+                            })
+                          }
+                          className="h-9"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Tempo estimado</Label>
+                        <Input
+                          placeholder="ex: 1h30"
+                          value={formData.tempo_estimado}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              tempo_estimado: e.target.value,
+                            })
+                          }
+                          className="h-9"
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex justify-end gap-2 pt-2">
+                  </form>
+                </div>
+                <DialogFooter className="shrink-0 border-t bg-background">
+                  <div className="flex justify-end gap-2 w-full p-4">
                     <Button
                       type="button"
                       variant="outline"
@@ -243,6 +247,7 @@ export default function Servicos() {
                     </Button>
                     <Button
                       type="submit"
+                      form="servico-form"
                       size="sm"
                       className="gradient-primary"
                       disabled={formLoading}
@@ -253,7 +258,7 @@ export default function Servicos() {
                       {editing ? "Salvar" : "Criar"}
                     </Button>
                   </div>
-                </form>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>

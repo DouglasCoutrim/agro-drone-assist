@@ -28,6 +28,8 @@ const Financeiro = lazy(() => import("./pages/Financeiro"));
 const Clientes = lazy(() => import("./pages/Clientes"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes"));
 const Cobrancas = lazy(() => import("./pages/Cobrancas"));
+const Produtos = lazy(() => import("./pages/Produtos"));
+const Vendas = lazy(() => import("./pages/Vendas"));
 
 const Equipe = lazy(() => import("./pages/Equipe"));
 const ConfiguracaoOS = lazy(() => import("./pages/ConfiguracaoOS"));
@@ -106,6 +108,8 @@ const App = () => {
                   <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                   <Route path="/ordens-servico" element={<ProtectedRoute requiredPermission="acesso_os"><OrdensServico /></ProtectedRoute>} />
                   <Route path="/estoque" element={<ProtectedRoute requiredPermission="acesso_estoque"><Estoque /></ProtectedRoute>} />
+                  <Route path="/produtos" element={<ProtectedRoute requiredPermission="acesso_estoque"><Produtos /></ProtectedRoute>} />
+                  <Route path="/vendas" element={<ProtectedRoute requiredPermission="acesso_financeiro"><Vendas /></ProtectedRoute>} />
                   <Route path="/servicos" element={<ProtectedRoute><Servicos /></ProtectedRoute>} />
                   <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
                   <Route path="/financeiro" element={<ProtectedRoute requiredPermission="acesso_financeiro"><Financeiro /></ProtectedRoute>} />

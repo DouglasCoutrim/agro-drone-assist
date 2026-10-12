@@ -1424,8 +1424,7 @@ export default function OrdensServico() {
 
             <form
               onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}
-              className="flex-1 overflow-y-auto p-4 space-y-4"
-              style={{ paddingBottom: "140px" }}
+              className="flex-1 overflow-y-auto p-4 space-y-4 pb-24"
             >
               {!canEdit && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
@@ -1728,28 +1727,28 @@ export default function OrdensServico() {
                 </CardContent>
               </Card>
             </form>
-
-            {/* Sticky bottom save bar */}
-            <div className="border-t bg-background p-3 shrink-0 flex items-center justify-between gap-2 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={requestCloseOSForm}>Cancelar</Button>
-                {editingOS && isAdmin && (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => handleDeleteOS(editingOS)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                    <Trash2 className="h-4 w-4 sm:mr-1.5" /><span className="hidden sm:inline">Deletar</span>
-                  </Button>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right hidden sm:block">
-                  <p className="text-[10px] text-muted-foreground uppercase leading-none">Total</p>
-                  <p className="text-sm font-bold text-primary leading-tight">{formatCurrency(displayedTotal)}</p>
+            <DialogFooter className="shrink-0 border-t bg-background p-3 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+              <div className="flex items-center justify-between gap-2 w-full">
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={requestCloseOSForm}>Cancelar</Button>
+                  {editingOS && isAdmin && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => handleDeleteOS(editingOS)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                      <Trash2 className="h-4 w-4 sm:mr-1.5" /><span className="hidden sm:inline">Deletar</span>
+                    </Button>
+                  )}
                 </div>
-                <Button type="button" size="lg" className="gradient-primary min-w-[140px]" disabled={formLoading || !canEdit || (!!editingOS && !itemsLoaded)} onClick={() => handleSubmit()}>
-                  {formLoading && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-                  {!canEdit ? "Somente leitura" : editingOS ? "Salvar Alterações" : "Criar OS"}
-                </Button>
+                <div className="flex items-center gap-3 flex-1 justify-end">
+                  <div className="text-right hidden sm:block">
+                    <p className="text-[10px] text-muted-foreground uppercase leading-none">Total</p>
+                    <p className="text-sm font-bold text-primary leading-tight">{formatCurrency(displayedTotal)}</p>
+                  </div>
+                  <Button type="button" size="lg" className="gradient-primary min-w-[140px]" disabled={formLoading || !canEdit || (!!editingOS && !itemsLoaded)} onClick={() => handleSubmit()}>
+                    {formLoading && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+                    {!canEdit ? "Somente leitura" : editingOS ? "Salvar Alterações" : "Criar OS"}
+                  </Button>
+                </div>
               </div>
-            </div>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -1782,7 +1781,7 @@ export default function OrdensServico() {
               </div>
             </DialogHeader>
 
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 pb-24">
 
               {viewingOS && (
               <div className="space-y-4">
@@ -1944,38 +1943,44 @@ export default function OrdensServico() {
               </div>
               )}
             </div>
-          {viewingOS && viewingOS.status !== "entregue" && viewingOS.status !== "cancelada" && canUserManageOS(viewingOS, user?.id, isAdmin) && (
-            <div className="p-4 border-t bg-muted/30 shrink-0">
-              <Button className="w-full gradient-primary" onClick={() => handleAdvanceStatus(viewingOS)}>
-                Avançar para {getStatusLabel(getNextStatus(viewingOS.status) || "")}
-                <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+            {viewingOS && viewingOS.status !== "entregue" && viewingOS.status !== "cancelada" && canUserManageOS(viewingOS, user?.id, isAdmin) && (
+              <DialogFooter className="shrink-0 border-t bg-background">
+                <div className="p-4">
+                  <Button className="w-full gradient-primary" onClick={() => handleAdvanceStatus(viewingOS)}>
+                    Avançar para {getStatusLabel(getNextStatus(viewingOS.status) || "")}
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </DialogFooter>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Terms Dialog */}
         <Dialog open={termsDialogOpen} onOpenChange={(open) => { setTermsDialogOpen(open); if (!open) setLastCreatedOS(null); }}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
+          <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
+            <DialogHeader className="shrink-0">
               <DialogTitle className="flex items-center gap-2"><MessageCircle className="h-5 w-5 text-primary" />OS Criada!</DialogTitle>
               <DialogDescription>Enviar termos via WhatsApp?</DialogDescription>
             </DialogHeader>
-            <div className="space-y-3">
-              {lastCreatedOS && (
-                <div className="p-3 rounded-md bg-muted/30 border text-sm space-y-1">
-                  <p><span className="text-muted-foreground">OS:</span> <span className="font-bold text-primary">{lastCreatedOS.numero}</span></p>
-                  <p><span className="text-muted-foreground">Cliente:</span> {clientes.find(c => c.id === lastCreatedOS.cliente_id)?.nome || "-"}</p>
-                </div>
-              )}
-              <div className="flex gap-2 justify-end">
+            <div className="flex-1 overflow-y-auto p-4 pb-24">
+              <div className="space-y-3">
+                {lastCreatedOS && (
+                  <div className="p-3 rounded-md bg-muted/30 border text-sm space-y-1">
+                    <p><span className="text-muted-foreground">OS:</span> <span className="font-bold text-primary">{lastCreatedOS.numero}</span></p>
+                    <p><span className="text-muted-foreground">Cliente:</span> {clientes.find(c => c.id === lastCreatedOS.cliente_id)?.nome || "-"}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <DialogFooter className="shrink-0 border-t bg-background">
+              <div className="flex gap-2 justify-end w-full p-4">
                 <Button variant="outline" size="sm" onClick={() => { setTermsDialogOpen(false); setLastCreatedOS(null); }}>Pular</Button>
                 <Button size="sm" onClick={handleSendTermsWhatsApp} className="bg-[hsl(142,72%,37%)] hover:bg-[hsl(142,72%,32%)] text-white">
                   <MessageCircle className="mr-1.5 h-3.5 w-3.5" />Enviar
                 </Button>
               </div>
-            </div>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 

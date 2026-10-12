@@ -381,14 +381,14 @@ export default function Estoque() {
 
         {/* New/Edit Item Dialog */}
         <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); resetForm(); } }}>
-          <DialogContent className="max-w-md max-h-[60vh] overflow-hidden">
-            <DialogHeader>
+          <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
+            <DialogHeader className="shrink-0">
               <DialogTitle>{editingItem ? 'Editar Item' : 'Novo Item'}</DialogTitle>
               <DialogDescription>Preencha os dados do item de estoque</DialogDescription>
             </DialogHeader>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+            <div className="flex-1 overflow-y-auto p-4 pb-24">
+              <form onSubmit={handleSubmit} id="estoque-item-form">
+                <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="codigo">Código *</Label>
                   <Input id="codigo" value={formData.codigo} onChange={(e) => setFormData(prev => ({ ...prev, codigo: e.target.value }))} required className="h-10" />
@@ -446,44 +446,46 @@ export default function Estoque() {
                 </div>
                 <div className="space-y-2"><Label htmlFor="localizacao">Localização</Label><Input id="localizacao" value={formData.localizacao} onChange={(e) => setFormData(prev => ({ ...prev, localizacao: e.target.value }))} placeholder="Ex: Prateleira A1" className="h-10" /></div>
               </div>
-              <Separator />
-              <DialogFooter className="sticky bottom-0 bg-background border-t pt-4">
-                <div className="flex justify-end gap-2 w-full">
-                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                  <Button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white" disabled={formLoading}>
-                    {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {editingItem ? 'Salvar' : 'Criar'}
-                  </Button>
-                </div>
-              </DialogFooter>
             </form>
+          </div>
+            <DialogFooter className="shrink-0 border-t bg-background">
+              <div className="flex justify-end gap-2 w-full p-4">
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+                <Button type="submit" form="estoque-item-form" className="bg-primary-600 hover:bg-primary-700 text-white" disabled={formLoading}>
+                  {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {editingItem ? 'Salvar' : 'Criar'}
+                </Button>
+              </div>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
         {/* View Item Dialog */}
         <Dialog open={!!viewingItem} onOpenChange={(open) => { if (!open) setViewingItem(null); }}>
-          <DialogContent className="max-w-md max-h-[60vh] overflow-hidden">
-            <DialogHeader>
+          <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
+            <DialogHeader className="shrink-0">
               <DialogTitle>Detalhes do Item</DialogTitle>
             </DialogHeader>
             {viewingItem && (
               <>
-                <div className="space-y-4 py-4 overflow-y-auto">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div><p className="text-xs text-gray-500">Código</p><p className="font-medium">{viewingItem.codigo}</p></div>
-                    <div><p className="text-xs text-gray-500">Categoria</p><Badge variant="outline">{viewingItem.categoria}</Badge></div>
-                    <div className="col-span-2"><p className="text-xs text-gray-500">Descrição</p><p className="font-medium">{viewingItem.descricao}</p></div>
-                    <div><p className="text-xs text-gray-500">Quantidade</p><p className="font-bold text-lg">{viewingItem.quantidade}</p></div>
-                    <div><p className="text-xs text-gray-500">Estoque Mínimo</p><p className="font-medium">{viewingItem.estoque_minimo}</p></div>
-                    <div><p className="text-xs text-gray-500">Custo Unitário</p><p className="font-medium">{formatCurrency(viewingItem.custo_unitario)}</p></div>
-                    <div><p className="text-xs text-gray-500">Preço de Venda</p><p className="font-medium text-green-700">{formatCurrency(viewingItem.preco_venda)}</p></div>
-                    <div><p className="text-xs text-gray-500">Fornecedor</p><p className="font-medium">{viewingItem.fornecedor || "-"}</p></div>
-                    <div><p className="text-xs text-gray-500">Localização</p><p className="font-medium">{viewingItem.localizacao || "-"}</p></div>
+                <div className="flex-1 overflow-y-auto p-4 pb-24">
+                  <div className="space-y-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div><p className="text-xs text-gray-500">Código</p><p className="font-medium">{viewingItem.codigo}</p></div>
+                      <div><p className="text-xs text-gray-500">Categoria</p><Badge variant="outline">{viewingItem.categoria}</Badge></div>
+                      <div className="col-span-2"><p className="text-xs text-gray-500">Descrição</p><p className="font-medium">{viewingItem.descricao}</p></div>
+                      <div><p className="text-xs text-gray-500">Quantidade</p><p className="font-bold text-lg">{viewingItem.quantidade}</p></div>
+                      <div><p className="text-xs text-gray-500">Estoque Mínimo</p><p className="font-medium">{viewingItem.estoque_minimo}</p></div>
+                      <div><p className="text-xs text-gray-500">Custo Unitário</p><p className="font-medium">{formatCurrency(viewingItem.custo_unitario)}</p></div>
+                      <div><p className="text-xs text-gray-500">Preço de Venda</p><p className="font-medium text-green-700">{formatCurrency(viewingItem.preco_venda)}</p></div>
+                      <div><p className="text-xs text-gray-500">Fornecedor</p><p className="font-medium">{viewingItem.fornecedor || "-"}</p></div>
+                      <div><p className="text-xs text-gray-500">Localização</p><p className="font-medium">{viewingItem.localizacao || "-"}</p></div>
+                    </div>
                   </div>
                 </div>
                 <Separator />
-                <DialogFooter className="sticky bottom-0 bg-background border-t pt-4">
-                  <div className="flex justify-end gap-2 w-full">
+                <DialogFooter className="shrink-0 border-t bg-background">
+                  <div className="flex justify-end gap-2 w-full p-4">
                     <Button variant="outline" onClick={() => { handleEdit(viewingItem); setViewingItem(null); }}>
                       <Edit className="mr-2 h-4 w-4" />Editar
                     </Button>

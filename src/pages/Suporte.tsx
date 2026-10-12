@@ -147,36 +147,40 @@ export default function Suporte() {
             <DialogTrigger asChild>
               <Button><Plus className="h-4 w-4 mr-2" />Novo Ticket</Button>
             </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Abrir novo ticket</DialogTitle><DialogDescription className="sr-only">Formulário para abrir um novo ticket de suporte</DialogDescription></DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label>Assunto</Label>
-                  <Input value={newSubject} onChange={(e) => setNewSubject(e.target.value)} placeholder="Resumo do problema" />
-                </div>
-                <div>
-                  <Label>Categoria</Label>
-                  <Select value={newCategory} onValueChange={setNewCategory}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="duvida">Dúvida</SelectItem>
-                      <SelectItem value="bug">Bug / Erro</SelectItem>
-                      <SelectItem value="financeiro">Financeiro</SelectItem>
-                      <SelectItem value="sugestao">Sugestão</SelectItem>
-                      <SelectItem value="outro">Outro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Mensagem</Label>
-                  <Textarea rows={5} value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Descreva em detalhes..." />
+            <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
+              <DialogHeader className="shrink-0"><DialogTitle>Abrir novo ticket</DialogTitle><DialogDescription className="sr-only">Formulário para abrir um novo ticket de suporte</DialogDescription></DialogHeader>
+              <div className="flex-1 overflow-y-auto p-4 pb-24">
+                <div className="space-y-4">
+                  <div>
+                    <Label>Assunto</Label>
+                    <Input value={newSubject} onChange={(e) => setNewSubject(e.target.value)} placeholder="Resumo do problema" />
+                  </div>
+                  <div>
+                    <Label>Categoria</Label>
+                    <Select value={newCategory} onValueChange={setNewCategory}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="duvida">Dúvida</SelectItem>
+                        <SelectItem value="bug">Bug / Erro</SelectItem>
+                        <SelectItem value="financeiro">Financeiro</SelectItem>
+                        <SelectItem value="sugestao">Sugestão</SelectItem>
+                        <SelectItem value="outro">Outro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Mensagem</Label>
+                    <Textarea rows={5} value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Descreva em detalhes..." />
+                  </div>
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpenNew(false)}>Cancelar</Button>
-                <Button onClick={handleCreate} disabled={creating}>
-                  {creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Enviar
-                </Button>
+              <DialogFooter className="shrink-0 border-t bg-background">
+                <div className="flex justify-end gap-2 w-full p-4">
+                  <Button variant="outline" onClick={() => setOpenNew(false)}>Cancelar</Button>
+                  <Button onClick={handleCreate} disabled={creating}>
+                    {creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Enviar
+                  </Button>
+                </div>
               </DialogFooter>
             </DialogContent>
           </Dialog>

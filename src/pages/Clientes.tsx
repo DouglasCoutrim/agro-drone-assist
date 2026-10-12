@@ -75,21 +75,6 @@ export default function Clientes() {
     }
   };
 
-  const handleCepChange = async (value: string) => {
-    setFormData(current => ({ ...current, cep: value }));
-    const cleanCep = value.replace(/\D/g, "");
-    if (cleanCep.length !== 8) return;
-
-    const address = await fetchCep(cleanCep);
-    if (!address) return;
-    setFormData(current => ({
-      ...current,
-      endereco: address.logradouro,
-      cidade: address.localidade,
-      estado: address.uf,
-    }));
-  };
-
   const createAsaasCustomer = async (clienteData: typeof formData, clienteId: string) => {
     try {
       const { data: result, error } = await supabase.functions.invoke('asaas-customer-sync', {
@@ -247,126 +232,71 @@ export default function Clientes() {
                 <DialogTrigger asChild>
                   <Button size="sm" className="gradient-primary"><Plus className="mr-1.5 h-3.5 w-3.5" />Novo Cliente</Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
+                <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+                  <DialogHeader className="shrink-0">
                     <DialogTitle>{editingCliente ? "Editar Cliente" : "Novo Cliente"}</DialogTitle>
-                    <DialogDescription>
-                      {editingCliente ? "Atualize os dados do cliente." : "Preencha os dados para cadastrar o cliente."}
-                    </DialogDescription>
+                    <DialogDescription>Preencha os dados do cliente</DialogDescription>
                   </DialogHeader>
-
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="cliente-nome">Nome *</Label>
-                        <Input
-                          id="cliente-nome"
-                          value={formData.nome}
-                          onChange={(event) => setFormData({ ...formData, nome: event.target.value })}
-                          required
-                          autoFocus
-                        />
-                      </div>
-
+                  <div className="flex-1 overflow-y-auto p-4 pb-24">
+                    <form id="cliente-form" onSubmit={handleSubmit} className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="cliente-telefone">Telefone *</Label>
-                        <Input
-                          id="cliente-telefone"
-                          value={formData.telefone}
-                          onChange={(event) => setFormData({ ...formData, telefone: formatPhone(event.target.value) })}
-                          required
-                          inputMode="tel"
-                        />
+                        <Label>Nome *</Label>
+                        <Input value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} placeholder="Nome completo ou razão social" required />
                       </div>
-
                       <div className="space-y-2">
-                        <Label htmlFor="cliente-email">E-mail</Label>
-                        <Input
-                          id="cliente-email"
-                          type="email"
-                          value={formData.email}
-                          onChange={(event) => setFormData({ ...formData, email: event.target.value })}
-                        />
+                        <Label>Telefone *</Label>
+                        <Input value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: formatPhone(e.target.value) })} placeholder="(00) 00000-0000" required />
                       </div>
-
                       <div className="space-y-2">
-                        <Label htmlFor="cliente-documento">CPF/CNPJ</Label>
-                        <Input
-                          id="cliente-documento"
-                          value={formData.cpf_cnpj}
-                          onChange={(event) => {
-                            const value = formatCpfCnpj(event.target.value);
-                            setFormData({ ...formData, cpf_cnpj: value });
-                            void checkDuplicate(value);
-                          }}
-                          inputMode="numeric"
-                        />
-                        {duplicateWarning && <p className="text-xs text-destructive">{duplicateWarning}</p>}
+                        <Label>E-mail</Label>
+                        <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="email@exemplo.com" />
                       </div>
-
                       <div className="space-y-2">
-                        <Label htmlFor="cliente-cep">CEP</Label>
-                        <div className="relative">
-                          <Input
-                            id="cliente-cep"
-                            value={formData.cep}
-                            onChange={(event) => void handleCepChange(event.target.value)}
-                            placeholder="00000-000"
-                            inputMode="numeric"
-                          />
-                          {cepLoading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+                        <Label>CPF/CNPJ</Label>
+                        <Input value={formData.cpf_cnpj} onChange={(e) => { const val = formatCpfCnpj(e.target.value); setFormData({ ...formData, cpf_cnpj: val }); checkDuplicate(val); }} placeholder="000.000.000-00 ou 00.000.000/0000-00" />
+                        {duplicateWarning && <p className="text-xs text-warning">{duplicateWarning}</p>}
+                      </div>
+                      <Separator className="my-2" />
+                      <div className="space-y-2">
+                        <Label>CEP</Label>
+                        <div className="flex gap-2">
+                          <Input value={formData.cep} onChange={(e) => setFormData({ ...formData, cep: e.target.value })} placeholder="00000-000" maxLength={9} />
+                          <Button type="button" variant="outline" onClick={() => fetchCep(formData.cep).then(res => { if (res) { setFormData(f => ({ ...f, endereco: res.logradouro || f.endereco, cidade: res.localidade || f.cidade, estado: res.uf || f.estado })); } })} disabled={cepLoading || !formData.cep}>
+                            {cepLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                          </Button>
                         </div>
                       </div>
-
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="cliente-endereco">Endereço</Label>
-                        <Input
-                          id="cliente-endereco"
-                          value={formData.endereco}
-                          onChange={(event) => setFormData({ ...formData, endereco: event.target.value })}
-                        />
-                      </div>
-
                       <div className="space-y-2">
-                        <Label htmlFor="cliente-cidade">Cidade</Label>
-                        <Input
-                          id="cliente-cidade"
-                          value={formData.cidade}
-                          onChange={(event) => setFormData({ ...formData, cidade: event.target.value })}
-                        />
+                        <Label>Endereço</Label>
+                        <Input value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} placeholder="Rua, número, complemento" />
                       </div>
-
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Cidade</Label>
+                          <Input value={formData.cidade} onChange={(e) => setFormData({ ...formData, cidade: e.target.value })} placeholder="Cidade" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Estado</Label>
+                          <Select value={formData.estado} onValueChange={(v) => setFormData({ ...formData, estado: v })}>
+                            <SelectTrigger><SelectValue placeholder="UF" /></SelectTrigger>
+                            <SelectContent>{UF_LIST.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}</SelectContent>
+                          </Select>
+                        </div>
+                      </div>
                       <div className="space-y-2">
-                        <Label htmlFor="cliente-estado">Estado</Label>
-                        <Select value={formData.estado} onValueChange={(value) => setFormData({ ...formData, estado: value })}>
-                          <SelectTrigger id="cliente-estado"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                          <SelectContent>
-                            {UF_LIST.map((uf) => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <Label>Observações</Label>
+                        <Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={3} placeholder="Observações gerais..." />
                       </div>
-
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="cliente-observacoes">Observações</Label>
-                        <Textarea
-                          id="cliente-observacoes"
-                          value={formData.observacoes}
-                          onChange={(event) => setFormData({ ...formData, observacoes: event.target.value })}
-                          rows={3}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end gap-2 border-t pt-4">
-                      <Button type="button" variant="outline" onClick={() => void requestCloseDialog()} disabled={formLoading}>
-                        Cancelar
-                      </Button>
-                      <Button type="submit" className="gradient-primary" disabled={formLoading || !!duplicateWarning}>
-                        {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {editingCliente ? "Salvar Alterações" : "Cadastrar Cliente"}
+                    </form>
+                  </div>
+                  <DialogFooter className="shrink-0 border-t bg-background">
+                    <div className="flex justify-end gap-2 w-full p-4">
+                      <Button type="button" variant="outline" onClick={requestCloseDialog}>Cancelar</Button>
+                      <Button type="submit" form="cliente-form" className="gradient-primary" disabled={formLoading}>
+                        {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editingCliente ? "Salvar" : "Criar"}
                       </Button>
                     </div>
-                  </form>
+                  </DialogFooter>
                 </DialogContent>
               </Dialog>
             </div>
@@ -461,30 +391,37 @@ export default function Clientes() {
 
         {/* View Client Dialog */}
         <Dialog open={!!viewingCliente} onOpenChange={(open) => { if (!open) setViewingCliente(null); }}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle className="text-base">Detalhes do Cliente</DialogTitle></DialogHeader>
-            {viewingCliente && (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase">Nome</p><p className="font-medium">{viewingCliente.nome}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase">Telefone</p><p className="text-sm">{viewingCliente.telefone}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase">E-mail</p><p className="text-sm">{viewingCliente.email || "-"}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase">CPF/CNPJ</p><p className="text-sm">{viewingCliente.cpf_cnpj || "-"}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase">CEP</p><p className="text-sm">{viewingCliente.cep || "-"}</p></div>
-                  <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase">Endereço</p><p className="text-sm">{viewingCliente.endereco || "-"}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase">Cidade</p><p className="text-sm">{viewingCliente.cidade || "-"}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase">Estado</p><p className="text-sm">{viewingCliente.estado || "-"}</p></div>
-                  {(viewingCliente as any).asaas_id && <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase">ID Asaas</p><p className="text-sm text-primary">{(viewingCliente as any).asaas_id}</p></div>}
-                  {viewingCliente.observacoes && <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase">Observações</p><p className="text-sm">{viewingCliente.observacoes}</p></div>}
+          <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+            <DialogHeader className="shrink-0"><DialogTitle className="text-base">Detalhes do Cliente</DialogTitle></DialogHeader>
+            <div className="flex-1 overflow-y-auto p-4 pb-24">
+              {viewingCliente && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase">Nome</p><p className="font-medium">{viewingCliente.nome}</p></div>
+                    <div><p className="text-[10px] text-muted-foreground uppercase">Telefone</p><p className="text-sm">{viewingCliente.telefone}</p></div>
+                    <div><p className="text-[10px] text-muted-foreground uppercase">E-mail</p><p className="text-sm">{viewingCliente.email || "-"}</p></div>
+                    <div><p className="text-[10px] text-muted-foreground uppercase">CPF/CNPJ</p><p className="text-sm">{viewingCliente.cpf_cnpj || "-"}</p></div>
+                    <div><p className="text-[10px] text-muted-foreground uppercase">CEP</p><p className="text-sm">{viewingCliente.cep || "-"}</p></div>
+                    <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase">Endereço</p><p className="text-sm">{viewingCliente.endereco || "-"}</p></div>
+                    <div><p className="text-[10px] text-muted-foreground uppercase">Cidade</p><p className="text-sm">{viewingCliente.cidade || "-"}</p></div>
+                    <div><p className="text-[10px] text-muted-foreground uppercase">Estado</p><p className="text-sm">{viewingCliente.estado || "-"}</p></div>
+                    {(viewingCliente as any).asaas_id && <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase">ID Asaas</p><p className="text-sm text-primary">{(viewingCliente as any).asaas_id}</p></div>}
+                    {viewingCliente.observacoes && <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase">Observações</p><p className="text-sm">{viewingCliente.observacoes}</p></div>}
+                  </div>
+                  <Separator />
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" size="sm" onClick={() => { handleEdit(viewingCliente); setViewingCliente(null); }}>
+                      <Edit className="mr-1.5 h-3.5 w-3.5" />Editar
+                    </Button>
+                  </div>
                 </div>
-                <Separator />
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outline" size="sm" onClick={() => { handleEdit(viewingCliente); setViewingCliente(null); }}>
-                    <Edit className="mr-1.5 h-3.5 w-3.5" />Editar
-                  </Button>
-                </div>
+              )}
+            </div>
+            <DialogFooter className="shrink-0 border-t bg-background">
+              <div className="flex justify-end gap-2 w-full p-4">
+                <Button variant="outline" onClick={() => setViewingCliente(null)}>Fechar</Button>
               </div>
-            )}
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

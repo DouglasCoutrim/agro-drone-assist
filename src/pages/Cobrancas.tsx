@@ -132,52 +132,56 @@ export default function Cobrancas() {
               <DialogTrigger asChild>
                 <Button size="sm" className="gradient-primary"><Plus className="mr-1.5 h-3.5 w-3.5" />Gerar Cobrança</Button>
               </DialogTrigger>
-              <DialogContent className="max-w-lg">
-                <DialogHeader>
+              <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+                <DialogHeader className="shrink-0">
                   <DialogTitle className="text-base">Nova Cobrança</DialogTitle>
                   <DialogDescription className="text-xs">Selecione o cliente e defina os dados</DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="sm:col-span-2 space-y-1">
-                      <Label className="text-xs">Cliente *</Label>
-                      <Select value={formData.clienteId} onValueChange={(v) => setFormData({ ...formData, clienteId: v })}>
-                        <SelectTrigger className="h-9"><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
-                        <SelectContent>
-                          {clientes.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              <div className="flex items-center gap-1.5">
-                                <span>{c.nome}</span>
-                                {(c as any).asaas_id ? <span className="text-[10px] text-primary">✓</span> : <span className="text-[10px] text-muted-foreground">sem sync</span>}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                <div className="flex-1 overflow-y-auto p-4 pb-24">
+                  <form id="cobranca-form" onSubmit={handleSubmit} className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="sm:col-span-2 space-y-1">
+                        <Label className="text-xs">Cliente *</Label>
+                        <Select value={formData.clienteId} onValueChange={(v) => setFormData({ ...formData, clienteId: v })}>
+                          <SelectTrigger className="h-9"><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
+                          <SelectContent>
+                            {clientes.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                <div className="flex items-center gap-1.5">
+                                  <span>{c.nome}</span>
+                                  {(c as any).asaas_id ? <span className="text-[10px] text-primary">✓</span> : <span className="text-[10px] text-muted-foreground">sem sync</span>}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1"><Label className="text-xs">Valor (R$) *</Label><Input type="number" step="0.01" value={formData.valor} onChange={(e) => setFormData({ ...formData, valor: Number(e.target.value) })} required className="h-9" /></div>
+                      <div className="space-y-1"><Label className="text-xs">Vencimento *</Label><Input type="date" value={formData.vencimento} onChange={(e) => setFormData({ ...formData, vencimento: e.target.value })} required className="h-9" /></div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Forma *</Label>
+                        <Select value={formData.tipo} onValueChange={(v) => setFormData({ ...formData, tipo: v })}>
+                          <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="PIX">⚡ Pix</SelectItem>
+                            <SelectItem value="BOLETO">📄 Boleto</SelectItem>
+                            <SelectItem value="CREDIT_CARD">💳 Cartão</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1"><Label className="text-xs">Referência</Label><Input value={formData.externalReference} onChange={(e) => setFormData({ ...formData, externalReference: e.target.value })} placeholder="OS Nº" className="h-9" /></div>
+                      <div className="sm:col-span-2 space-y-1"><Label className="text-xs">Descrição</Label><Textarea value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} rows={2} /></div>
                     </div>
-                    <div className="space-y-1"><Label className="text-xs">Valor (R$) *</Label><Input type="number" step="0.01" value={formData.valor} onChange={(e) => setFormData({ ...formData, valor: Number(e.target.value) })} required className="h-9" /></div>
-                    <div className="space-y-1"><Label className="text-xs">Vencimento *</Label><Input type="date" value={formData.vencimento} onChange={(e) => setFormData({ ...formData, vencimento: e.target.value })} required className="h-9" /></div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Forma *</Label>
-                      <Select value={formData.tipo} onValueChange={(v) => setFormData({ ...formData, tipo: v })}>
-                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="PIX">⚡ Pix</SelectItem>
-                          <SelectItem value="BOLETO">📄 Boleto</SelectItem>
-                          <SelectItem value="CREDIT_CARD">💳 Cartão</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1"><Label className="text-xs">Referência</Label><Input value={formData.externalReference} onChange={(e) => setFormData({ ...formData, externalReference: e.target.value })} placeholder="OS Nº" className="h-9" /></div>
-                    <div className="sm:col-span-2 space-y-1"><Label className="text-xs">Descrição</Label><Textarea value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} rows={2} /></div>
-                  </div>
-                  <div className="flex justify-end gap-2">
+                  </form>
+                </div>
+                <DialogFooter className="shrink-0 border-t bg-background">
+                  <div className="flex justify-end gap-2 w-full p-4">
                     <Button type="button" variant="outline" size="sm" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                    <Button type="submit" size="sm" className="gradient-primary" disabled={formLoading}>
+                    <Button type="submit" form="cobranca-form" size="sm" className="gradient-primary" disabled={formLoading}>
                       {formLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}<Send className="mr-1.5 h-3.5 w-3.5" />Gerar
                     </Button>
                   </div>
-                </form>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
@@ -252,29 +256,33 @@ export default function Cobrancas() {
         {/* Detail Dialog */}
         {detailDialog && (
           <Dialog open={!!detailDialog} onOpenChange={() => setDetailDialog(null)}>
-            <DialogContent>
-              <DialogHeader><DialogTitle className="text-base">Detalhes da Cobrança</DialogTitle></DialogHeader>
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div><p className="text-[10px] text-muted-foreground uppercase">ID</p><p className="text-xs font-medium">{detailDialog.id}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase">Status</p><Badge variant={getStatusConfig(detailDialog.status).variant} className="text-[10px]">{getStatusConfig(detailDialog.status).label}</Badge></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase">Valor</p><p className="font-bold text-primary">{formatCurrency(detailDialog.value)}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase">Forma</p><p className="text-sm">{getTipoPagamento(detailDialog.billingType)}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase">Vencimento</p><p className="text-sm">{new Date(detailDialog.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p></div>
-                  {detailDialog.description && <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase">Descrição</p><p className="text-sm">{detailDialog.description}</p></div>}
-                </div>
-                {detailDialog.invoiceUrl && (
-                  <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/20">
-                    <p className="text-xs font-medium mb-1.5">Link de Pagamento</p>
-                    <div className="flex items-center gap-2">
-                      <Input value={detailDialog.invoiceUrl} readOnly className="text-[10px] h-8" />
-                      <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => { navigator.clipboard.writeText(detailDialog.invoiceUrl!); toast.success('Copiado!'); }}>
-                        <Copy className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+            <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+              <DialogHeader className="shrink-0"><DialogTitle className="text-base">Detalhes da Cobrança</DialogTitle></DialogHeader>
+              <div className="flex-1 overflow-y-auto p-4 pb-24">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><p className="text-[10px] text-muted-foreground uppercase">ID</p><p className="text-xs font-medium">{detailDialog.id}</p></div>
+                    <div><p className="text-[10px] text-muted-foreground uppercase">Status</p><Badge variant={getStatusConfig(detailDialog.status).variant} className="text-[10px]">{getStatusConfig(detailDialog.status).label}</Badge></div>
+                    <div><p className="text-[10px] text-muted-foreground uppercase">Valor</p><p className="font-bold text-primary">{formatCurrency(detailDialog.value)}</p></div>
+                    <div><p className="text-[10px] text-muted-foreground uppercase">Forma</p><p className="text-sm">{getTipoPagamento(detailDialog.billingType)}</p></div>
+                    <div><p className="text-[10px] text-muted-foreground uppercase">Vencimento</p><p className="text-sm">{new Date(detailDialog.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p></div>
+                    {detailDialog.description && <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase">Descrição</p><p className="text-sm">{detailDialog.description}</p></div>}
                   </div>
-                )}
-                <div className="flex gap-2">
+                  {detailDialog.invoiceUrl && (
+                    <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/20">
+                      <p className="text-xs font-medium mb-1.5">Link de Pagamento</p>
+                      <div className="flex items-center gap-2">
+                        <Input value={detailDialog.invoiceUrl} readOnly className="text-[10px] h-8" />
+                        <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => { navigator.clipboard.writeText(detailDialog.invoiceUrl!); toast.success('Copiado!'); }}>
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <DialogFooter className="shrink-0 border-t bg-background">
+                <div className="flex gap-2 justify-end w-full p-4">
                   {detailDialog.invoiceUrl && (
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => window.open(detailDialog.invoiceUrl, '_blank')}>
                       <ExternalLink className="mr-1.5 h-3.5 w-3.5" />Fatura
@@ -286,7 +294,7 @@ export default function Cobrancas() {
                     </Button>
                   )}
                 </div>
-              </div>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         )}

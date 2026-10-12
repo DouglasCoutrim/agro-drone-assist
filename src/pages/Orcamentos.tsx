@@ -262,88 +262,91 @@ export default function Orcamentos() {
                     <Plus className="mr-2 h-4 w-4" />Novo Orçamento
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
+                <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+                  <DialogHeader className="shrink-0">
                     <DialogTitle>{editingOrc ? "Editar Orçamento" : "Novo Orçamento"}</DialogTitle>
                     <DialogDescription>Preencha os dados do orçamento</DialogDescription>
                   </DialogHeader>
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Cliente *</Label>
-                      <Select value={formData.cliente_id} onValueChange={(v) => setFormData({ ...formData, cliente_id: v })}>
-                        <SelectTrigger><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
-                        <SelectContent>{clientes.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Equipamento / Objeto *</Label>
-                      <CatalogAutocomplete
-                        value={formData.equipamento}
-                        onChange={(v) => setFormData({ ...formData, equipamento: v })}
-                        onSelect={(item) => setFormData(f => ({ ...f, equipamento: item.descricao }))}
-                        placeholder="Buscar ou digitar..."
-                        source="produtos"
-                        mode="text"
-                        allowCreate={false}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Vendedor Responsável</Label>
-                      <Select value={formData.vendedor_id} onValueChange={(v) => setFormData({ ...formData, vendedor_id: v })}>
-                        <SelectTrigger><SelectValue placeholder="Selecionar vendedor..." /></SelectTrigger>
-                        <SelectContent>{vendedores.map(v => <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Descrição</Label>
-                      <Textarea value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} rows={2} placeholder="Observações gerais do orçamento..." />
-                    </div>
-
-                    <Separator />
-
-                    {/* Items: products + services */}
-                    <div className="space-y-3">
-                      <Label className="text-sm font-bold">Itens e Serviços</Label>
-                      <OSItemsSection
-                        items={items}
-                        onChange={setItems}
-                        organizationId={orgId}
-                      />
-                    </div>
-
-                    <Separator />
-
-                    {/* Totals + discount */}
-                    <div className="grid grid-cols-2 gap-4">
+                  <div className="flex-1 overflow-y-auto p-4 pb-24">
+                    <form id="orcamento-form" onSubmit={handleSubmit} className="space-y-4">
                       <div className="space-y-2">
-                        <Label>Desconto (R$)</Label>
-                        <NumberInput
-                          step="0.01" min="0"
-                          value={formData.desconto}
-                          onChange={(v) => setFormData({ ...formData, desconto: v })}
-                          placeholder="0,00"
+                        <Label>Cliente *</Label>
+                        <Select value={formData.cliente_id} onValueChange={(v) => setFormData({ ...formData, cliente_id: v })}>
+                          <SelectTrigger><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
+                          <SelectContent>{clientes.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Equipamento / Objeto *</Label>
+                        <CatalogAutocomplete
+                          value={formData.equipamento}
+                          onChange={(v) => setFormData({ ...formData, equipamento: v })}
+                          onSelect={(item) => setFormData(f => ({ ...f, equipamento: item.descricao }))}
+                          placeholder="Buscar ou digitar..."
+                          source="produtos"
+                          mode="text"
+                          allowCreate={false}
+                          required
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Validade *</Label>
-                        <Input type="date" value={formData.validade} onChange={(e) => setFormData({ ...formData, validade: e.target.value })} required />
+                        <Label>Vendedor Responsável</Label>
+                        <Select value={formData.vendedor_id} onValueChange={(v) => setFormData({ ...formData, vendedor_id: v })}>
+                          <SelectTrigger><SelectValue placeholder="Selecionar vendedor..." /></SelectTrigger>
+                          <SelectContent>{vendedores.map(v => <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>)}</SelectContent>
+                        </Select>
                       </div>
-                    </div>
+                      <div className="space-y-2">
+                        <Label>Descrição</Label>
+                        <Textarea value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} rows={2} placeholder="Observações gerais do orçamento..." />
+                      </div>
 
-                    <div className="flex flex-col items-end gap-1 text-sm border-t pt-3">
-                      <p>Subtotal: <span className="font-semibold">{formatCurrency(subtotal)}</span></p>
-                      {formData.desconto > 0 && <p className="text-destructive">Desconto: - {formatCurrency(formData.desconto)}</p>}
-                      <p className="text-lg font-bold">Total: <span className="text-primary">{formatCurrency(total)}</span></p>
-                    </div>
+                      <Separator />
 
-                    <div className="flex justify-end gap-2">
+                      {/* Items: products + services */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-bold">Itens e Serviços</Label>
+                        <OSItemsSection
+                          items={items}
+                          onChange={setItems}
+                          organizationId={orgId}
+                        />
+                      </div>
+
+                      <Separator />
+
+                      {/* Totals + discount */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Desconto (R$)</Label>
+                          <NumberInput
+                            step="0.01" min="0"
+                            value={formData.desconto}
+                            onChange={(v) => setFormData({ ...formData, desconto: v })}
+                            placeholder="0,00"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Validade *</Label>
+                          <Input type="date" value={formData.validade} onChange={(e) => setFormData({ ...formData, validade: e.target.value })} required />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-1 text-sm border-t pt-3">
+                        <p>Subtotal: <span className="font-semibold">{formatCurrency(subtotal)}</span></p>
+                        {formData.desconto > 0 && <p className="text-destructive">Desconto: - {formatCurrency(formData.desconto)}</p>}
+                        <p className="text-lg font-bold">Total: <span className="text-primary">{formatCurrency(total)}</span></p>
+                      </div>
+                    </form>
+                  </div>
+                  <DialogFooter className="shrink-0 border-t bg-background">
+                    <div className="flex justify-end gap-2 w-full p-4">
                       <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                      <Button type="submit" className="gradient-primary" disabled={formLoading}>
+                      <Button type="submit" form="orcamento-form" className="gradient-primary" disabled={formLoading}>
                         {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editingOrc ? "Salvar" : "Criar"}
                       </Button>
                     </div>
-                  </form>
+                  </DialogFooter>
                 </DialogContent>
               </Dialog>
             }
@@ -466,80 +469,87 @@ export default function Orcamentos() {
 
         {/* View Dialog */}
         <Dialog open={!!viewingOrc} onOpenChange={(open) => { if (!open) setViewingOrc(null); }}>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>Detalhes do Orçamento</DialogTitle></DialogHeader>
-            {viewingOrc && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div><p className="text-xs text-muted-foreground">Cliente</p><p className="font-medium">{viewingOrc.clientes?.nome || "-"}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Equipamento</p><p className="font-medium">{viewingOrc.equipamento}</p></div>
-                  {viewingOrc.descricao && <div className="col-span-2"><p className="text-xs text-muted-foreground">Descrição</p><p className="text-sm">{viewingOrc.descricao}</p></div>}
-                  <div><p className="text-xs text-muted-foreground">Total</p><p className="font-bold text-primary text-lg">{formatCurrency(viewingOrc.valor)}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Validade</p><p className="font-medium">{new Date(viewingOrc.validade).toLocaleDateString("pt-BR")}</p></div>
-                </div>
+          <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+            <DialogHeader className="shrink-0"><DialogTitle>Detalhes do Orçamento</DialogTitle></DialogHeader>
+            <div className="flex-1 overflow-y-auto p-4 pb-24">
+              {viewingOrc && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><p className="text-xs text-muted-foreground">Cliente</p><p className="font-medium">{viewingOrc.clientes?.nome || "-"}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Equipamento</p><p className="font-medium">{viewingOrc.equipamento}</p></div>
+                    {viewingOrc.descricao && <div className="col-span-2"><p className="text-xs text-muted-foreground">Descrição</p><p className="text-sm">{viewingOrc.descricao}</p></div>}
+                    <div><p className="text-xs text-muted-foreground">Total</p><p className="font-bold text-primary text-lg">{formatCurrency(viewingOrc.valor)}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Validade</p><p className="font-medium">{new Date(viewingOrc.validade).toLocaleDateString("pt-BR")}</p></div>
+                  </div>
 
-                {Array.isArray(viewingOrc.itens) && viewingOrc.itens.length > 0 && (
-                  <>
-                    <Separator />
-                    <div className="space-y-2">
-                      <p className="text-xs font-bold uppercase text-muted-foreground">Itens</p>
-                      {(viewingOrc.itens as OSItem[]).map((it, idx) => (
-                        <div key={idx} className="flex justify-between text-sm border-b pb-1">
-                          <span className="truncate flex-1">{it.tipo === "servico" ? "🔧 " : "📦 "}{it.descricao} × {it.quantidade}</span>
-                          <span className="font-semibold">{formatCurrency(it.valor_total)}</span>
-                        </div>
-                      ))}
-                      {Number(viewingOrc.desconto || 0) > 0 && (
-                        <div className="flex justify-between text-sm text-destructive">
-                          <span>Desconto</span>
-                          <span>- {formatCurrency(Number(viewingOrc.desconto))}</span>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-
-                <Separator />
-                <div className="flex gap-2 justify-end flex-wrap">
-                  <Button variant="outline" onClick={() => handleDownloadPdf(viewingOrc)}>
-                    <Download className="mr-2 h-4 w-4" />PDF
-                  </Button>
-                  <Button variant="default" className="gap-2 bg-success hover:bg-success/90" onClick={() => handleSendWhatsApp(viewingOrc)}>
-                    <Send className="h-4 w-4" />Enviar WhatsApp
-                  </Button>
-                  <PayButton
-                    cliente_id={viewingOrc.cliente_id}
-                    valor={Number(viewingOrc.valor) - Number(viewingOrc.desconto || 0)}
-                    descricao={`Orçamento ${viewingOrc.equipamento || ''}`.trim()}
-                    orcamento_id={viewingOrc.id}
-                  />
-                  {viewingOrc.status === "pendente" && (
-                    <AlertDialog open={convertId === viewingOrc.id} onOpenChange={(open) => setConvertId(open ? viewingOrc.id : null)}>
-                      <Button variant="default" className="gradient-primary gap-2" onClick={() => setConvertId(viewingOrc.id)}>
-                        <ArrowRight className="h-4 w-4" />Converter em OS
-                      </Button>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Converter em Ordem de Serviço?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Uma nova OS será criada com status "Aprovado" usando os dados deste orçamento.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleConvertToOS(viewingOrc)} disabled={formLoading}>
-                            {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Confirmar
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                  {Array.isArray(viewingOrc.itens) && viewingOrc.itens.length > 0 && (
+                    <>
+                      <Separator />
+                      <div className="space-y-2">
+                        <p className="text-xs font-bold uppercase text-muted-foreground">Itens</p>
+                        {(viewingOrc.itens as OSItem[]).map((it, idx) => (
+                          <div key={idx} className="flex justify-between text-sm border-b pb-1">
+                            <span className="truncate flex-1">{it.tipo === "servico" ? "🔧 " : "📦 "}{it.descricao} × {it.quantidade}</span>
+                            <span className="font-semibold">{formatCurrency(it.valor_total)}</span>
+                          </div>
+                        ))}
+                        {Number(viewingOrc.desconto || 0) > 0 && (
+                          <div className="flex justify-between text-sm text-destructive">
+                            <span>Desconto</span>
+                            <span>- {formatCurrency(Number(viewingOrc.desconto))}</span>
+                          </div>
+                        )}
+                      </div>
+                    </>
                   )}
-                  <Button variant="outline" onClick={() => { handleEdit(viewingOrc); setViewingOrc(null); }}>
-                    <Edit className="mr-2 h-4 w-4" />Editar
-                  </Button>
+
+                  <Separator />
+                  <div className="flex gap-2 justify-end flex-wrap">
+                    <Button variant="outline" onClick={() => handleDownloadPdf(viewingOrc)}>
+                      <Download className="mr-2 h-4 w-4" />PDF
+                    </Button>
+                    <Button variant="default" className="gap-2 bg-success hover:bg-success/90" onClick={() => handleSendWhatsApp(viewingOrc)}>
+                      <Send className="h-4 w-4" />Enviar WhatsApp
+                    </Button>
+                    <PayButton
+                      cliente_id={viewingOrc.cliente_id}
+                      valor={Number(viewingOrc.valor) - Number(viewingOrc.desconto || 0)}
+                      descricao={`Orçamento ${viewingOrc.equipamento || ''}`.trim()}
+                      orcamento_id={viewingOrc.id}
+                    />
+                    {viewingOrc.status === "pendente" && (
+                      <AlertDialog open={convertId === viewingOrc.id} onOpenChange={(open) => setConvertId(open ? viewingOrc.id : null)}>
+                        <Button variant="default" className="gradient-primary gap-2" onClick={() => setConvertId(viewingOrc.id)}>
+                          <ArrowRight className="h-4 w-4" />Converter em OS
+                        </Button>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Converter em Ordem de Serviço?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Uma nova OS será criada com status "Aprovado" usando os dados deste orçamento.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleConvertToOS(viewingOrc)} disabled={formLoading}>
+                              {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Confirmar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                    <Button variant="outline" onClick={() => { handleEdit(viewingOrc); setViewingOrc(null); }}>
+                      <Edit className="mr-2 h-4 w-4" />Editar
+                    </Button>
+                  </div>
                 </div>
+              )}
+            </div>
+            <DialogFooter className="shrink-0 border-t bg-background">
+              <div className="flex justify-end gap-2 w-full p-4">
+                <Button variant="outline" onClick={() => setViewingOrc(null)}>Fechar</Button>
               </div>
-            )}
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

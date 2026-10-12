@@ -343,8 +343,8 @@ const Index = () => {
 
         {/* View OS Dialog */}
         <Dialog open={!!viewingOS} onOpenChange={(open) => { if (!open) setViewingOS(null); }}>
-          <DialogContent className="max-w-md max-h-[60vh] overflow-hidden">
-            <DialogHeader>
+          <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
+            <DialogHeader className="shrink-0">
               <DialogTitle className="flex items-center justify-between text-base font-display">
                 <span>OS {viewingOS?.numero}</span>
                 {viewingOS && getStatusBadge(viewingOS.status)}
@@ -353,18 +353,20 @@ const Index = () => {
             </DialogHeader>
             {viewingOS && (
               <>
-                <div className="space-y-4 py-4 overflow-y-auto">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Cliente</p><p className="text-sm font-medium">{viewingOS.clientes?.nome || "-"}</p></div>
-                    <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Equipamento</p><p className="text-sm">{TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento}</p></div>
-                    <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Modelo</p><p className="text-sm">{viewingOS.modelo_equipamento || "-"}</p></div>
-                    <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Entrada</p><p className="text-sm">{formatDate(viewingOS.data_entrada)}</p></div>
-                    <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Defeito</p><p className="text-sm">{viewingOS.descricao_problema}</p></div>
+                <div className="flex-1 overflow-y-auto p-4 pb-24">
+                  <div className="space-y-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Cliente</p><p className="text-sm font-medium">{viewingOS.clientes?.nome || "-"}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Equipamento</p><p className="text-sm">{TIPO_EQUIPAMENTO[viewingOS.tipo_equipamento] || viewingOS.tipo_equipamento}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Modelo</p><p className="text-sm">{viewingOS.modelo_equipamento || "-"}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Entrada</p><p className="text-sm">{formatDate(viewingOS.data_entrada)}</p></div>
+                      <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Defeito</p><p className="text-sm">{viewingOS.descricao_problema}</p></div>
+                    </div>
                   </div>
                 </div>
                 <Separator />
-                <DialogFooter className="sticky bottom-0 bg-background border-t pt-4">
-                  <div className="flex justify-end gap-2 w-full">
+                <DialogFooter className="shrink-0 border-t bg-background">
+                  <div className="flex justify-end gap-2 w-full p-4">
                     <Button variant="outline" size="sm" onClick={() => { setViewingOS(null); navigate("/ordens-servico"); }}>
                       <Eye className="mr-1.5 h-3.5 w-3.5" />Ver Completa
                     </Button>

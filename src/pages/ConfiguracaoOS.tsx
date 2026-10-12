@@ -261,8 +261,8 @@ export default function ConfiguracaoOS() {
 
       {/* Dialog: criar/editar tipo de equipamento */}
       <Dialog open={typeDialogOpen} onOpenChange={setTypeDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+          <DialogHeader className="shrink-0">
             <DialogTitle>{editingTipo ? "Editar tipo de equipamento" : "Novo tipo de equipamento"}</DialogTitle>
             <DialogDescription>
               {editingTipo
@@ -270,52 +270,56 @@ export default function ConfiguracaoOS() {
                 : "Ao criar, você será direcionado para o fluxo de itens de checklist."}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Nome do tipo *</Label>
-              <Input
-                value={typeForm.label}
-                onChange={(e) => setTypeForm({ ...typeForm, label: e.target.value })}
-                placeholder="Ex: Drone de Pulverização"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Descrição</Label>
-              <Textarea
-                value={typeForm.descricao}
-                onChange={(e) => setTypeForm({ ...typeForm, descricao: e.target.value })}
-                rows={2}
-                placeholder="Ex: Drones utilizados na pulverização de lavouras..."
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Categoria de compatibilidade</Label>
-              <Select value={typeForm.db_enum} onValueChange={(v) => setTypeForm({ ...typeForm, db_enum: v })}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {DB_ENUM_OPCOES.map(o => (
-                    <SelectItem key={o} value={o}>{DB_ENUM_LABELS[o] || o}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                <ShieldAlert className="h-3 w-3" /> Usado para agrupar o equipamento no banco (OS). Manter "outro" em caso de dúvida.
-              </p>
-            </div>
-            <div className="flex items-center justify-between rounded-md border p-3">
-              <div>
-                <p className="text-sm font-medium">Tipo ativo</p>
-                <p className="text-xs text-muted-foreground">Tipos inativos não aparecem na OS.</p>
+          <div className="flex-1 overflow-y-auto p-4 pb-24">
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Nome do tipo *</Label>
+                <Input
+                  value={typeForm.label}
+                  onChange={(e) => setTypeForm({ ...typeForm, label: e.target.value })}
+                  placeholder="Ex: Drone de Pulverização"
+                />
               </div>
-              <Switch checked={typeForm.ativo} onCheckedChange={(v) => setTypeForm({ ...typeForm, ativo: v })} />
+              <div className="space-y-1.5">
+                <Label className="text-xs">Descrição</Label>
+                <Textarea
+                  value={typeForm.descricao}
+                  onChange={(e) => setTypeForm({ ...typeForm, descricao: e.target.value })}
+                  rows={2}
+                  placeholder="Ex: Drones utilizados na pulverização de lavouras..."
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Categoria de compatibilidade</Label>
+                <Select value={typeForm.db_enum} onValueChange={(v) => setTypeForm({ ...typeForm, db_enum: v })}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {DB_ENUM_OPCOES.map(o => (
+                      <SelectItem key={o} value={o}>{DB_ENUM_LABELS[o] || o}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <ShieldAlert className="h-3 w-3" /> Usado para agrupar o equipamento no banco (OS). Manter "outro" em caso de dúvida.
+                </p>
+              </div>
+              <div className="flex items-center justify-between rounded-md border p-3">
+                <div>
+                  <p className="text-sm font-medium">Tipo ativo</p>
+                  <p className="text-xs text-muted-foreground">Tipos inativos não aparecem na OS.</p>
+                </div>
+                <Switch checked={typeForm.ativo} onCheckedChange={(v) => setTypeForm({ ...typeForm, ativo: v })} />
+              </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setTypeDialogOpen(false)}>Cancelar</Button>
-            <Button className="gradient-primary" onClick={handleSaveTipo} disabled={typeSaving}>
-              {typeSaving && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
-              {editingTipo ? "Salvar alterações" : "Criar tipo"}
-            </Button>
+          <DialogFooter className="shrink-0 border-t bg-background">
+            <div className="flex justify-end gap-2 w-full p-4">
+              <Button variant="outline" onClick={() => setTypeDialogOpen(false)}>Cancelar</Button>
+              <Button className="gradient-primary" onClick={handleSaveTipo} disabled={typeSaving}>
+                {typeSaving && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+                {editingTipo ? "Salvar alterações" : "Criar tipo"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -323,7 +327,7 @@ export default function ConfiguracaoOS() {
       {/* Dialog: itens de checklist do tipo */}
       <Dialog open={!!itemsDialogTipoId} onOpenChange={(open) => { if (!open) { setItemsDialogTipoId(null); setEditingItem(null); } }}>
         <DialogContent className="max-w-xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
+          <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <ListChecks className="h-5 w-5 text-primary" />
               Checklist — {currentTipo?.label || "Tipo de equipamento"}
@@ -333,111 +337,118 @@ export default function ConfiguracaoOS() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Badge variant="secondary">{itens.length} item(ns)</Badge>
-            <Badge className="bg-warning/10 text-warning border-warning/20">{obrigatoriosCount} obrigatório(s)</Badge>
-          </div>
-
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[120px]">
-            {itens.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <ListChecks className="h-10 w-10 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">Nenhum item de verificação definido ainda.</p>
-              </div>
-            )}
-            {itens.map((item, idx) => (
-              <div key={item.id} className="flex items-center gap-2 border rounded-lg p-2.5 hover:bg-muted/30 transition-colors">
-                {editingItem?.id === item.id ? (
-                  <div className="flex-1 space-y-2">
-                    <Input
-                      value={editingItem.label}
-                      onChange={(e) => setEditingItem({ ...editingItem, label: e.target.value })}
-                      className="h-8 text-sm"
-                      placeholder="Descrição do item..."
-                    />
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={editingItem.obrigatorio}
-                          onCheckedChange={(v) => setEditingItem({ ...editingItem, obrigatorio: v })}
-                        />
-                        <span className="text-xs text-muted-foreground">
-                          {editingItem.obrigatorio ? "Obrigatório" : "Opcional"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button size="sm" variant="outline" onClick={handleUpdateItem} disabled={itemSaving}>
-                          {itemSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}Salvar
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setEditingItem(null)}><X className="h-4 w-4" /></Button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex flex-col">
-                      <button
-                        type="button"
-                        className="disabled:opacity-30 text-muted-foreground hover:text-foreground"
-                        disabled={idx === 0}
-                        onClick={() => moveItem(itemsDialogTipoId!, item.id, "up")}
-                        aria-label="Mover para cima"
-                      >
-                        <ChevronUp className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        className="disabled:opacity-30 text-muted-foreground hover:text-foreground"
-                        disabled={idx === itens.length - 1}
-                        onClick={() => moveItem(itemsDialogTipoId!, item.id, "down")}
-                        aria-label="Mover para baixo"
-                      >
-                        <ChevronDown className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm">{item.label}</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {item.obrigatorio ? "Obrigatório" : "Opcional"}
-                      </p>
-                    </div>
-                    <Button size="sm" variant="ghost" onClick={() => setEditingItem({ id: item.id, label: item.label, obrigatorio: item.obrigatorio })}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => handleDeleteItem(item.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <Separator />
-
-          <div className="space-y-2.5">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Novo item de verificação</Label>
-              <Input
-                value={newItemLabel}
-                onChange={(e) => setNewItemLabel(e.target.value)}
-                placeholder="Ex: Conferir hélices e fixações"
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddItem(); } }}
-              />
+          <div className="flex-1 overflow-y-auto p-4 pb-24">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
+              <Badge variant="secondary">{itens.length} item(ns)</Badge>
+              <Badge className="bg-warning/10 text-warning border-warning/20">{obrigatoriosCount} obrigatório(s)</Badge>
             </div>
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2">
-                <Switch checked={newItemRequired} onCheckedChange={setNewItemRequired} />
-                <span className="text-xs text-muted-foreground">
-                  {newItemRequired ? "Item obrigatório" : "Item opcional"}
-                </span>
+
+            <div className="space-y-2 pr-1 min-h-[120px]">
+              {itens.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <ListChecks className="h-10 w-10 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm">Nenhum item de verificação definido ainda.</p>
+                </div>
+              )}
+              {itens.map((item, idx) => (
+                <div key={item.id} className="flex items-center gap-2 border rounded-lg p-2.5 hover:bg-muted/30 transition-colors">
+                  {editingItem?.id === item.id ? (
+                    <div className="flex-1 space-y-2">
+                      <Input
+                        value={editingItem.label}
+                        onChange={(e) => setEditingItem({ ...editingItem, label: e.target.value })}
+                        className="h-8 text-sm"
+                        placeholder="Descrição do item..."
+                      />
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={editingItem.obrigatorio}
+                            onCheckedChange={(v) => setEditingItem({ ...editingItem, obrigatorio: v })}
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            {editingItem.obrigatorio ? "Obrigatório" : "Opcional"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="outline" onClick={handleUpdateItem} disabled={itemSaving}>
+                            {itemSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}Salvar
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingItem(null)}><X className="h-4 w-4" /></Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex flex-col">
+                        <button
+                          type="button"
+                          className="disabled:opacity-30 text-muted-foreground hover:text-foreground"
+                          disabled={idx === 0}
+                          onClick={() => moveItem(itemsDialogTipoId!, item.id, "up")}
+                          aria-label="Mover para cima"
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          className="disabled:opacity-30 text-muted-foreground hover:text-foreground"
+                          disabled={idx === itens.length - 1}
+                          onClick={() => moveItem(itemsDialogTipoId!, item.id, "down")}
+                          aria-label="Mover para baixo"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm">{item.label}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {item.obrigatorio ? "Obrigatório" : "Opcional"}
+                        </p>
+                      </div>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingItem({ id: item.id, label: item.label, obrigatorio: item.obrigatorio })}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleDeleteItem(item.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <Separator className="my-4" />
+
+            <div className="space-y-2.5">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Novo item de verificação</Label>
+                <Input
+                  value={newItemLabel}
+                  onChange={(e) => setNewItemLabel(e.target.value)}
+                  placeholder="Ex: Conferir hélices e fixações"
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddItem(); } }}
+                />
               </div>
-              <Button size="sm" className="gradient-primary" onClick={handleAddItem} disabled={itemSaving}>
-                {itemSaving ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Plus className="h-4 w-4 mr-1.5" />}
-                Adicionar item
-              </Button>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Switch checked={newItemRequired} onCheckedChange={setNewItemRequired} />
+                  <span className="text-xs text-muted-foreground">
+                    {newItemRequired ? "Item obrigatório" : "Item opcional"}
+                  </span>
+                </div>
+                <Button size="sm" className="gradient-primary" onClick={handleAddItem} disabled={itemSaving}>
+                  {itemSaving ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Plus className="h-4 w-4 mr-1.5" />}
+                  Adicionar item
+                </Button>
+              </div>
             </div>
           </div>
+          <DialogFooter className="shrink-0 border-t bg-background">
+            <div className="flex justify-end gap-2 w-full p-4">
+              <Button variant="outline" onClick={() => { setItemsDialogTipoId(null); setEditingItem(null); }}>Fechar</Button>
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </MainLayout>

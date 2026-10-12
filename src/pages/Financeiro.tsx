@@ -177,54 +177,58 @@ export default function Financeiro() {
                   <DialogTrigger asChild>
                     <Button size="sm" className="gradient-primary shadow-soft"><Plus className="mr-1.5 h-3.5 w-3.5" />Nova Transação</Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
+                  <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+                    <DialogHeader className="shrink-0">
                       <DialogTitle className="text-base">{editingTransacao ? 'Editar Transação' : 'Nova Transação'}</DialogTitle>
                       <DialogDescription className="text-xs">Registre uma nova transação financeira</DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleSubmit} className="space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Tipo *</Label>
-                          <Select value={formData.tipo} onValueChange={(value: Enums<"tipo_transacao">) => setFormData({ ...formData, tipo: value })}>
-                            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="receita">Receita</SelectItem>
-                              <SelectItem value="despesa">Despesa</SelectItem>
-                              <SelectItem value="salario">Salário</SelectItem>
-                              <SelectItem value="comissao">Comissão</SelectItem>
-                            </SelectContent>
-                          </Select>
+                    <div className="flex-1 overflow-y-auto p-4 pb-24">
+                      <form id="transacao-form" onSubmit={handleSubmit} className="space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Tipo *</Label>
+                            <Select value={formData.tipo} onValueChange={(value: Enums<"tipo_transacao">) => setFormData({ ...formData, tipo: value })}>
+                              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="receita">Receita</SelectItem>
+                                <SelectItem value="despesa">Despesa</SelectItem>
+                                <SelectItem value="salario">Salário</SelectItem>
+                                <SelectItem value="comissao">Comissão</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1.5"><Label className="text-xs">Valor (R$) *</Label><NumberInput step="0.01" className="h-9" value={formData.valor} onChange={(v) => setFormData({ ...formData, valor: v })} placeholder="0,00" required /></div>
+                          <div className="sm:col-span-2 space-y-1.5">
+                            <Label className="text-xs">Descrição *</Label>
+                            <CatalogAutocomplete
+                              value={formData.descricao}
+                              onChange={(v) => setFormData({ ...formData, descricao: v })}
+                              onSelect={(item) => setFormData(f => ({
+                                ...f,
+                                descricao: item.descricao,
+                                valor: item.preco > 0 ? item.preco : f.valor,
+                                categoria: item.categoria || f.categoria,
+                              }))}
+                              placeholder="Buscar produto/serviço ou digitar..."
+                              mode="text"
+                              required
+                              currentCategory={formData.categoria}
+                            />
+                          </div>
+                          <div className="space-y-1.5"><Label className="text-xs">Categoria</Label><Input className="h-9" value={formData.categoria} onChange={(e) => setFormData({ ...formData, categoria: e.target.value })} placeholder="Ex: Serviços, Estoque" /></div>
+                          <div className="space-y-1.5"><Label className="text-xs">Data *</Label><Input type="date" className="h-9" value={formData.data_transacao} onChange={(e) => setFormData({ ...formData, data_transacao: e.target.value })} required /></div>
+                          <div className="sm:col-span-2 space-y-1.5"><Label className="text-xs">Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
                         </div>
-                        <div className="space-y-1.5"><Label className="text-xs">Valor (R$) *</Label><NumberInput step="0.01" className="h-9" value={formData.valor} onChange={(v) => setFormData({ ...formData, valor: v })} placeholder="0,00" required /></div>
-                        <div className="sm:col-span-2 space-y-1.5">
-                          <Label className="text-xs">Descrição *</Label>
-                          <CatalogAutocomplete
-                            value={formData.descricao}
-                            onChange={(v) => setFormData({ ...formData, descricao: v })}
-                            onSelect={(item) => setFormData(f => ({
-                              ...f,
-                              descricao: item.descricao,
-                              valor: item.preco > 0 ? item.preco : f.valor,
-                              categoria: item.categoria || f.categoria,
-                            }))}
-                            placeholder="Buscar produto/serviço ou digitar..."
-                            mode="text"
-                            required
-                            currentCategory={formData.categoria}
-                          />
-                        </div>
-                        <div className="space-y-1.5"><Label className="text-xs">Categoria</Label><Input className="h-9" value={formData.categoria} onChange={(e) => setFormData({ ...formData, categoria: e.target.value })} placeholder="Ex: Serviços, Estoque" /></div>
-                        <div className="space-y-1.5"><Label className="text-xs">Data *</Label><Input type="date" className="h-9" value={formData.data_transacao} onChange={(e) => setFormData({ ...formData, data_transacao: e.target.value })} required /></div>
-                        <div className="sm:col-span-2 space-y-1.5"><Label className="text-xs">Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
-                      </div>
-                      <div className="flex justify-end gap-2 pt-2">
+                      </form>
+                    </div>
+                    <DialogFooter className="shrink-0 border-t bg-background">
+                      <div className="flex justify-end gap-2 w-full p-4">
                         <Button type="button" variant="outline" size="sm" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                        <Button type="submit" size="sm" className="gradient-primary" disabled={formLoading}>
+                        <Button type="submit" form="transacao-form" size="sm" className="gradient-primary" disabled={formLoading}>
                           {formLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}{editingTransacao ? 'Salvar' : 'Criar'}
                         </Button>
                       </div>
-                    </form>
+                    </DialogFooter>
                   </DialogContent>
                 </Dialog>
               </div>
@@ -400,25 +404,31 @@ export default function Financeiro() {
 
         {/* View Transaction Dialog */}
         <Dialog open={!!viewingTransacao} onOpenChange={(open) => { if (!open) setViewingTransacao(null); }}>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle className="text-base">Detalhes da Transação</DialogTitle></DialogHeader>
+          <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+            <DialogHeader className="shrink-0"><DialogTitle className="text-base">Detalhes da Transação</DialogTitle></DialogHeader>
             {viewingTransacao && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Descrição</p><p className="font-bold text-lg">{viewingTransacao.descricao}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Tipo</p><Badge variant={getTipoConfig(viewingTransacao.tipo).badgeVariant}>{getTipoConfig(viewingTransacao.tipo).label}</Badge></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Valor</p><p className={`font-bold text-lg ${getTipoConfig(viewingTransacao.tipo).color}`}>{formatCurrency(viewingTransacao.valor)}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Categoria</p><p className="text-sm font-medium">{viewingTransacao.categoria || "-"}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Data</p><p className="text-sm font-medium">{new Date(viewingTransacao.data_transacao).toLocaleDateString('pt-BR')}</p></div>
-                  {viewingTransacao.observacoes && <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Observações</p><p className="text-sm">{viewingTransacao.observacoes}</p></div>}
+              <>
+                <div className="flex-1 overflow-y-auto p-4 pb-24">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Descrição</p><p className="font-bold text-lg">{viewingTransacao.descricao}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Tipo</p><Badge variant={getTipoConfig(viewingTransacao.tipo).badgeVariant}>{getTipoConfig(viewingTransacao.tipo).label}</Badge></div>
+                      <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Valor</p><p className={`font-bold text-lg ${getTipoConfig(viewingTransacao.tipo).color}`}>{formatCurrency(viewingTransacao.valor)}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Categoria</p><p className="text-sm font-medium">{viewingTransacao.categoria || "-"}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Data</p><p className="text-sm font-medium">{new Date(viewingTransacao.data_transacao).toLocaleDateString('pt-BR')}</p></div>
+                      {viewingTransacao.observacoes && <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Observações</p><p className="text-sm">{viewingTransacao.observacoes}</p></div>}
+                    </div>
+                  </div>
                 </div>
                 <Separator />
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outline" size="sm" onClick={() => { handleEdit(viewingTransacao); setViewingTransacao(null); }}>
-                    <Edit className="mr-1.5 h-3.5 w-3.5" />Editar
-                  </Button>
-                </div>
-              </div>
+                <DialogFooter className="shrink-0 border-t bg-background">
+                  <div className="flex gap-2 justify-end w-full p-4">
+                    <Button variant="outline" size="sm" onClick={() => { handleEdit(viewingTransacao); setViewingTransacao(null); }}>
+                      <Edit className="mr-1.5 h-3.5 w-3.5" />Editar
+                    </Button>
+                  </div>
+                </DialogFooter>
+              </>
             )}
           </DialogContent>
         </Dialog>
