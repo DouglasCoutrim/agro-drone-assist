@@ -260,11 +260,15 @@ export default function Vendas() {
         status_pagamento: vendaFormData.status_pagamento as Venda["status_pagamento"],
         forma_pagamento: vendaFormData.forma_pagamento as Venda["forma_pagamento"],
         nf_numero: null,
+        nf_chave: null,
+        nf_emitida_em: null,
+        nf_provider: null,
+        vendido_por: null,
         status: "ativo"
       };
 
       if (editingVenda) {
-        await updateVenda(editingVenda.id, completeVendaData, itensForm);
+        await updateVenda(editingVenda.id, completeVendaData);
       } else {
         await createVenda(completeVendaData, itensForm);
       }
