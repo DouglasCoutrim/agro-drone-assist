@@ -10,7 +10,8 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter, DialogHeader,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
@@ -647,7 +648,7 @@ export default function Vendas() {
           {/* NOTAS FISCAIS TAB */}
           <TabsContent value="notas" className="mt-4">
             {notasFiscais.length === 0 ? (
-              <AlertBox type="info" title="Nenhuma nota fiscal" description="Notas emitidas para vendas e OS aparecerão aqui" />
+              <AlertBox type="info" title="Nenhuma nota fiscal" items={[{ label: "", value: "Notas emitidas para vendas e OS aparecerão aqui" }]} />
             ) : (
               <PremiumTable
                 data={notasFiscais}
