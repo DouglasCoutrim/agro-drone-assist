@@ -347,10 +347,10 @@ export default function Produtos() {
 
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <KpiCard label="Total de Produtos" value={produtos.length} icon={Package} />
+          <KpiCard label="Total de Produtos" value={produtos.length} icon={Package} color="blue" />
           <KpiCard label="Estoque Baixo" value={produtosEstoqueBaixo.length} icon={AlertTriangle} color="orange" />
-          <KpiCard label="Valor Estoque (Custo)" value={formatCurrency(valorTotalEstoque)} icon={DollarSign} />
-          <KpiCard label="Categorias" value={categorias.length} icon={Tag} />
+          <KpiCard label="Valor Estoque (Custo)" value={formatCurrency(valorTotalEstoque)} icon={DollarSign} color="green" />
+          <KpiCard label="Categorias" value={categorias.length} icon={Tag} color="purple" />
         </div>
 
         {/* Tabs */}

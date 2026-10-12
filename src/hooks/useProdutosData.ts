@@ -171,7 +171,7 @@ export function useProdutosData() {
       .select()
       .single();
     if (error) throw error;
-    setProdutos((prev) => [...prev, { ...data, categoria_nome: null } as Produto]);
+    setProdutos((prev) => [...prev, { ...data, categoria_nome: null } as unknown as Produto]);
     return data;
   };
 

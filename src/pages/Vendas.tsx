@@ -364,14 +364,14 @@ export default function Vendas() {
 
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <KpiCard label="Vendas do Mês" value={formatCurrency(valorTotalMes)} icon={DollarSign} />
+          <KpiCard label="Vendas do Mês" value={formatCurrency(valorTotalMes)} icon={DollarSign} color="green" />
           <KpiCard label="Pendentes" value={vendasPendentes} icon={AlertTriangle} color="orange" />
-          <KpiCard label="Total de Vendas" value={vendas.length} icon={Package} />
-          <KpiCard label="NFs Emitidas" value={notasFiscais.filter((n) => n.status === "autorizado").length} icon={FileCheck} />
+          <KpiCard label="Total de Vendas" value={vendas.length} icon={Package} color="blue" />
+          <KpiCard label="NFs Emitidas" value={notasFiscais.filter((n) => n.status === "autorizado").length} icon={FileCheck} color="purple" />
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="vendas"><Package className="h-4 w-4 mr-2" />Vendas</TabsTrigger>
             <TabsTrigger value="ganhos"><DollarSign className="h-4 w-4 mr-2" />Meus Ganhos</TabsTrigger>
