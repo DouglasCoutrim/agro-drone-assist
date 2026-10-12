@@ -1,4 +1,4 @@
-import { LucideIcon } from "lucide-react";
+import { LucideIcon, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
@@ -8,7 +8,7 @@ interface AlertBoxProps {
   type: "error" | "warning" | "info" | "success";
   onAction?: () => void;
   actionLabel?: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
   className?: string;
   delay?: number; // Stagger delay for entrance animation
 }
@@ -26,7 +26,7 @@ export function AlertBox({
   type,
   onAction,
   actionLabel,
-  icon: Icon,
+  icon: Icon = Info,
   className,
   delay = 0,
 }: AlertBoxProps) {

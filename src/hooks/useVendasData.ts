@@ -265,7 +265,7 @@ export function useVendasData() {
         if (produto) {
           await supabase
             .from("produtos")
-            .update({ estoque_atual: produto.estoque_atual - item.quantidade })
+            .update({ estoque_atual: produto.estoque_atual - item.quantidade } as any)
             .eq("id", item.produto_id);
 
           await supabase
@@ -314,7 +314,7 @@ export function useVendasData() {
         if (produto) {
           await supabase
             .from("produtos")
-            .update({ estoque_atual: produto.estoque_atual + item.quantidade })
+            .update({ estoque_atual: produto.estoque_atual + item.quantidade } as any)
             .eq("id", item.produto_id);
 
           await supabase

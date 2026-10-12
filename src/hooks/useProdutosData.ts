@@ -171,7 +171,7 @@ export function useProdutosData() {
       .select()
       .single();
     if (error) throw error;
-    setProdutos((prev) => [...prev, { ...data, categoria_nome: null }]);
+    setProdutos((prev) => [...prev, { ...data, categoria_nome: null } as unknown as Produto]);
     return data;
   };
 
@@ -206,7 +206,7 @@ export function useProdutosData() {
     // Atualizar produto
     const { error: prodErr } = await supabase
       .from("produtos")
-      .update({ estoque_atual: qtdFinal })
+      .update({ estoque_atual: qtdFinal } as any)
       .eq("id", produtoId);
     if (prodErr) throw prodErr;
 

@@ -10,9 +10,9 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Tabs,
@@ -260,11 +260,15 @@ export default function Vendas() {
         status_pagamento: vendaFormData.status_pagamento as Venda["status_pagamento"],
         forma_pagamento: vendaFormData.forma_pagamento as Venda["forma_pagamento"],
         nf_numero: null,
+        nf_chave: null,
+        nf_emitida_em: null,
+        nf_provider: null,
+        vendido_por: null,
         status: "ativo"
       };
 
       if (editingVenda) {
-        await updateVenda(editingVenda.id, completeVendaData, itensForm);
+        await updateVenda(editingVenda.id, completeVendaData);
       } else {
         await createVenda(completeVendaData, itensForm);
       }
@@ -360,14 +364,14 @@ export default function Vendas() {
 
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <KpiCard title="Vendas do Mês" value={formatCurrency(valorTotalMes)} icon={DollarSign} />
-          <KpiCard title="Pendentes" value={vendasPendentes} icon={AlertTriangle} variant="warning" />
-          <KpiCard title="Total de Vendas" value={vendas.length} icon={Package} />
-          <KpiCard title="NFs Emitidas" value={notasFiscais.filter((n) => n.status === "autorizado").length} icon={FileCheck} />
+          <KpiCard label="Vendas do Mês" value={formatCurrency(valorTotalMes)} icon={DollarSign} color="green" />
+          <KpiCard label="Pendentes" value={vendasPendentes} icon={AlertTriangle} color="orange" />
+          <KpiCard label="Total de Vendas" value={vendas.length} icon={Package} color="blue" />
+          <KpiCard label="NFs Emitidas" value={notasFiscais.filter((n) => n.status === "autorizado").length} icon={FileCheck} color="purple" />
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="vendas"><Package className="h-4 w-4 mr-2" />Vendas</TabsTrigger>
             <TabsTrigger value="ganhos"><DollarSign className="h-4 w-4 mr-2" />Meus Ganhos</TabsTrigger>
@@ -545,15 +549,15 @@ export default function Vendas() {
                           </div>
                           <div className="col-span-2">
                             <Label className="text-xs">Preço Unit.</Label>
-                            <NumberInput value={item.preco_unitario} onChange={(v) => handleItemChange(idx, "preco_unitario", v)} step={0.01} prefix="R$ " />
+                            <NumberInput value={item.preco_unitario} onChange={(v) => handleItemChange(idx, "preco_unitario", v)} />
                           </div>
                           <div className="col-span-1">
                             <Label className="text-xs">Desc. %</Label>
-                            <NumberInput value={item.desconto_percentual} onChange={(v) => handleItemChange(idx, "desconto_percentual", v)} step={0.1} suffix="%" />
+                            <NumberInput value={item.desconto_percentual} onChange={(v) => handleItemChange(idx, "desconto_percentual", v)} step={0.1} />
                           </div>
                           <div className="col-span-1">
                             <Label className="text-xs">Desc. R$</Label>
-                            <NumberInput value={item.desconto_valor} onChange={(v) => handleItemChange(idx, "desconto_valor", v)} step={0.01} prefix="R$ " />
+                            <NumberInput value={item.desconto_valor} onChange={(v) => handleItemChange(idx, "desconto_valor", v)} />
                           </div>
                           <div className="col-span-1">
                             <Label className="text-xs">Total</Label>
@@ -614,7 +618,7 @@ export default function Vendas() {
           {/* GANHOS TAB */}
           <TabsContent value="ganhos" className="mt-4">
             {ganhosTecnico.length === 0 ? (
-              <AlertBox type="info" title="Nenhum ganho registrado" description="Suas comissões sobre vendas aparecerão aqui" />
+              <AlertBox type="info" title="Nenhum ganho registrado" items={[{ label: "", value: "Suas comissões sobre vendas aparecerão aqui" }]} />
             ) : (
               <PremiumTable
                 data={ganhosTecnico}
@@ -647,7 +651,7 @@ export default function Vendas() {
           {/* NOTAS FISCAIS TAB */}
           <TabsContent value="notas" className="mt-4">
             {notasFiscais.length === 0 ? (
-              <AlertBox type="info" title="Nenhuma nota fiscal" description="Notas emitidas para vendas e OS aparecerão aqui" />
+              <AlertBox type="info" title="Nenhuma nota fiscal" items={[{ label: "", value: "Notas emitidas para vendas e OS aparecerão aqui" }]} />
             ) : (
               <PremiumTable
                 data={notasFiscais}
@@ -665,7 +669,7 @@ export default function Vendas() {
                     const colors = { nfe: "bg-blue-50 text-blue-700", nfse: "bg-green-50 text-green-700", nfce: "bg-purple-50 text-purple-700" };
                     return <Badge variant="outline" className={colors[item.tipo as keyof typeof colors] || "bg-gray-50 text-gray-700"}>{item.tipo.toUpperCase()}</Badge>;
                   }
-                  if (key === "emitida_em") return <span>{formatDateTime(item.emitida_em)}</span>;
+                  if (key === "emitida_em") return <span>{formatDate(item.emitida_em)}</span>;
                   if (key === "valor_total") return <span className="font-bold">{formatCurrency(item.valor_total || 0)}</span>;
                   if (key === "status") {
                     const statusMap: Record<string, { label: string; variant: "default" | "destructive" | "secondary" | "outline" }> = {
@@ -717,7 +721,7 @@ export default function Vendas() {
                 <div><Label>Tipo</Label><p>{viewingNF?.tipo?.toUpperCase()}</p></div>
                 <div><Label>Status</Label><p>{viewingNF?.status}</p></div>
                 <div><Label>Cliente</Label><p>{viewingNF?.cliente_nome}</p></div>
-                <div><Label>Emissão</Label><p>{formatDateTime(viewingNF?.emitida_em)}</p></div>
+                <div><Label>Emissão</Label><p>{formatDate(viewingNF?.emitida_em)}</p></div>
               </div>
               <Separator />
               <div className="grid grid-cols-2 gap-4">
