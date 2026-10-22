@@ -207,9 +207,10 @@ export function generateOrcamentoConsolidadoPDF(data: ConsolidadoPDFData): jsPDF
     if (!g.itens.length) {
       doc.setTextColor(130).text("Sem itens detalhados.", M + 2, y); y += 6;
     }
-    for (const it of g.itens) {
+    g.itens.forEach((it, idx) => {
       const h = rowH(it);
-      if (y + h > BOTTOM) {
+      const isLast = idx === g.itens.length - 1;
+      if (y + h + (isLast ? 9 : 0) > BOTTOM) {
         newPage();
         doc.setTextColor(...GREEN).setFont("helvetica", "bold").setFontSize(9);
         doc.text(`${g.os_numero} (continuação)`, M, y); y += 6;
@@ -222,7 +223,7 @@ export function generateOrcamentoConsolidadoPDF(data: ConsolidadoPDFData): jsPDF
       doc.text(formatCurrency(it.valor_total), COL_TOTAL, y, { align: "right" });
       doc.setDrawColor(235).setLineWidth(0.2).line(M, y + h - 4, W - M, y + h - 4);
       y += h;
-    }
+    });
     ensure(8);
     doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(30);
     doc.text(`Subtotal ${g.os_numero}:`, COL_UNIT, y, { align: "right" });
