@@ -151,7 +151,7 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>Cliente</Label>
-            <SmartSelect options={clientes.map(c => ({ value: c.id, label: c.nome }))} value={clienteId} onValueChange={setClienteId} placeholder="Selecione o cliente" />
+            <SmartSelect options={clientes.map(c => ({ id: c.id, label: c.nome, sublabel: c.telefone }))} value={clienteId} onSelect={(o) => setClienteId(o.id)} onClear={() => setClienteId("")} placeholder="Buscar cliente..." />
           </div>
 
           {clienteId && (
@@ -200,7 +200,7 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
           {grupos.length > 0 && (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5"><Label>Desconto geral (R$)</Label><NumberInput value={desconto} onChange={(v: any) => setDesconto(Number(v) || 0)} /></div>
+                <div className="space-y-1.5"><Label>Desconto geral (R$)</Label><NumberInput value={desconto} onChange={(v) => setDesconto(v || 0)} /></div>
                 <div className="space-y-1.5"><Label>Validade</Label><Input type="date" value={validade} onChange={e => setValidade(e.target.value)} /></div>
               </div>
               <div className="space-y-1.5"><Label>Observação para o cliente</Label><Textarea rows={2} value={observacao} onChange={e => setObservacao(e.target.value)} placeholder="Ex.: condições de pagamento, prazo de execução..." /></div>
