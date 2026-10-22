@@ -232,8 +232,13 @@ export function generateOrcamentoConsolidadoPDF(data: ConsolidadoPDFData): jsPDF
   const subtotal = data.grupos.reduce((s, g) => s + grupoSubtotal(g), 0);
   const total = Math.max(0, subtotal - (data.desconto || 0));
   const obsLines = data.observacao ? split(data.observacao, W - 2 * M - 6, 8.5) : [];
-  const closingH = 26 + (obsLines.length ? obsLines.length * LINE + 10 : 0) + 30;
-  ensure(closingH);
+  const termLines = data.termos ? split(data.termos, W - 2 * M, 7.5) : [];
+  const termsH = termLines.length ? 8 + termLines.length * 3.4 : 0;
+  const totalsH = 26 + (obsLines.length ? obsLines.length * LINE + 10 : 0);
+  const sigH = 30;
+  // Keep totals + terms + signatures together when they fit on a page; otherwise totals stay with terms start.
+  if (totalsH + termsH + sigH <= BOTTOM - TOP) ensure(totalsH + termsH + sigH);
+  else ensure(totalsH + 20);
 
   doc.setDrawColor(200).setLineWidth(0.3).line(W - M - 85, y, W - M, y);
   y += 6;
@@ -254,22 +259,25 @@ export function generateOrcamentoConsolidadoPDF(data: ConsolidadoPDFData): jsPDF
     doc.setTextColor(50).setFont("helvetica", "normal").text(obsLines, M, y); y += obsLines.length * LINE + 5;
   }
 
-  y += 14;
+  if (termLines.length) {
+    doc.setTextColor(110).setFont("helvetica", "bold").setFontSize(7.5).text("TERMOS E CONDIÇÕES", M, y); y += 4;
+    doc.setFont("helvetica", "normal");
+    termLines.forEach((l, idx) => {
+      // keep the signatures together with the last terms lines
+      const remaining = termLines.length - idx;
+      if (remaining <= 3 ? y + remaining * 3.4 + sigH > BOTTOM : y + 3.4 > BOTTOM) newPage();
+      doc.setTextColor(110).setFontSize(7.5).text(l, M, y); y += 3.4;
+    });
+    y += 4;
+  }
+
+  ensure(sigH);
+  y += 16;
   doc.setDrawColor(80).setLineWidth(0.3);
   doc.line(M + 5, y, M + 75, y); doc.line(W - M - 75, y, W - M - 5, y);
   doc.setFont("helvetica", "normal").setFontSize(8.5).setTextColor(60);
   doc.text(data.empresa.nome || "Empresa", M + 40, y + 4.5, { align: "center" });
   doc.text(`${data.cliente.nome} — De acordo`, W - M - 40, y + 4.5, { align: "center" });
-  y += 12;
-
-  // ---------- Termos (fluxo por linha) ----------
-  if (data.termos) {
-    const tl = split(data.termos, W - 2 * M, 7.5);
-    ensure(10 + Math.min(tl.length, 4) * 3.4);
-    doc.setTextColor(110).setFont("helvetica", "bold").setFontSize(7.5).text("TERMOS E CONDIÇÕES", M, y); y += 4;
-    doc.setFont("helvetica", "normal");
-    for (const l of tl) { ensure(3.4); doc.text(l, M, y); y += 3.4; }
-  }
 
   // ---------- Rodapé numerado ----------
   const pages = doc.getNumberOfPages();
