@@ -174,7 +174,6 @@ export default function Orcamentos() {
           tipo: it.tipo,
           produto_id: it.produto_id || null,
           item_estoque_id: it.item_estoque_id || null,
-          item_estoque_id: it.item_estoque_id || null,
           servico_id: it.servico_id || null,
           descricao: it.descricao,
           quantidade: it.quantidade,
