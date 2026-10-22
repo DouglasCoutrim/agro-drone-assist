@@ -668,6 +668,7 @@ export type Database = {
           created_at: string
           descricao: string
           id: string
+          item_estoque_id: string | null
           ordem_servico_id: string
           organization_id: string | null
           produto_id: string | null
@@ -683,6 +684,7 @@ export type Database = {
           created_at?: string
           descricao: string
           id?: string
+          item_estoque_id?: string | null
           ordem_servico_id: string
           organization_id?: string | null
           produto_id?: string | null
@@ -698,6 +700,7 @@ export type Database = {
           created_at?: string
           descricao?: string
           id?: string
+          item_estoque_id?: string | null
           ordem_servico_id?: string
           organization_id?: string | null
           produto_id?: string | null
@@ -710,6 +713,13 @@ export type Database = {
           valor_unitario?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "itens_os_item_estoque_id_fkey"
+            columns: ["item_estoque_id"]
+            isOneToOne: false
+            referencedRelation: "itens_estoque"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "itens_os_ordem_servico_id_fkey"
             columns: ["ordem_servico_id"]
