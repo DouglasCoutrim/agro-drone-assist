@@ -184,7 +184,9 @@ export function generateOrcamentoConsolidadoPDF(data: ConsolidadoPDFData): jsPDF
     if (y + fullH > BOTTOM) {
       const fitsFresh = fullH <= BOTTOM - TOP;
       const minStart = headH + 6 + (g.itens[0] ? rowH(g.itens[0]) : 6) * Math.min(3, Math.max(1, g.itens.length));
-      if (fitsFresh || y + minStart > BOTTOM) newPage();
+      const remaining = BOTTOM - y;
+      // move whole block only when the gap left behind is small; otherwise continue with a labelled continuation
+      if ((fitsFresh && remaining < 75) || y + minStart > BOTTOM) newPage();
     }
 
     // block title
