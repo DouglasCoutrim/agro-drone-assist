@@ -1,0 +1,2 @@
+ALTER TABLE public.itens_os ADD COLUMN IF NOT EXISTS item_estoque_id uuid REFERENCES public.itens_estoque(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_itens_os_item_estoque ON public.itens_os(item_estoque_id);
