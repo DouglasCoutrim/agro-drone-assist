@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Trash2, Search, Package, Wrench, Loader2 } from "lucide-react";
+import { Trash2, Search, Package, Wrench, Loader2, Plus } from "lucide-react";
+import { EstoqueItemDialog, ServicoDialog } from "@/components/os/QuickCatalogDialogs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -11,6 +12,7 @@ export interface OSItem {
   id?: string;
   tipo: "produto" | "servico";
   produto_id?: string | null;
+  item_estoque_id?: string | null;
   servico_id?: string | null;
   descricao: string;
   codigo?: string;
@@ -27,6 +29,7 @@ interface CatalogItem {
   tipo: "produto" | "servico";
   codigo?: string;
   categoria?: string;
+  quantidade?: number;
 }
 
 interface OSItemsSectionProps {
@@ -156,7 +159,7 @@ function ItemSearchRow({
                 {cat.tipo === "produto" ? <Package className="h-4 w-4 text-blue-500 shrink-0" /> : <Wrench className="h-4 w-4 text-amber-500 shrink-0" />}
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">{cat.descricao}</p>
-                  {cat.codigo && <p className="text-xs text-muted-foreground">{cat.codigo}</p>}
+                  <p className="text-xs text-muted-foreground">{[cat.codigo, cat.categoria, cat.quantidade != null ? `Estoque: ${cat.quantidade}` : null].filter(Boolean).join(" · ")}</p>
                 </div>
                 <span className="text-sm font-semibold text-primary shrink-0">{formatCurrency(cat.preco)}</span>
               </button>
@@ -220,10 +223,9 @@ function ItemCard({
 }
 
 export function OSItemsSection({ items, onChange, organizationId, disabled }: OSItemsSectionProps) {
-  console.log("[OSItemsSection] Received items:", items);
   const produtos = items.filter(i => i.tipo === "produto");
   const servicos = items.filter(i => i.tipo === "servico");
-  const existingIds = new Set(items.map(i => i.produto_id || i.servico_id || "").filter(Boolean));
+  const existingIds = new Set(items.map(i => i.item_estoque_id || i.produto_id || i.servico_id || "").filter(Boolean));
 
   const updateItem = (index: number, field: keyof OSItem, value: any) => {
     const updated = [...items];
