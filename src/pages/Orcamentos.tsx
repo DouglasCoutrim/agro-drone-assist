@@ -23,6 +23,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { generateOrcamentoPDF, shareOrcamentoViaWhatsApp } from "@/lib/orcamento-pdf";
+import { generateOrcamentoConsolidadoPDF, groupsFromStoredItems, isGroupedOrcamento, loadImageAsDataUrl, shareConsolidadoPDF } from "@/lib/orcamento-consolidado-pdf";
 import { formatCurrency } from "@/lib/formatters";
 import { PayButton } from "@/components/PayButton";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -214,7 +215,20 @@ export default function Orcamentos() {
     };
   };
 
-  const handleDownloadPdf = (orc: Orcamento) => {
+  const buildGroupedDoc = async (orc: Orcamento) => generateOrcamentoConsolidadoPDF({
+    data: new Date(orc.created_at).toLocaleDateString("pt-BR"),
+    validade: new Date(orc.validade).toLocaleDateString("pt-BR"),
+    cliente: { nome: orc.clientes?.nome || "Cliente", telefone: orc.clientes?.telefone },
+    empresa: { nome: empresa.nome_empresa, telefone: empresa.telefone, cnpj: empresa.cnpj, endereco: empresa.endereco, logoDataUrl: await loadImageAsDataUrl(empresa.logo_url) },
+    grupos: groupsFromStoredItems(orc.itens as any),
+    desconto: Number(orc.desconto || 0),
+    observacao: orc.descricao?.startsWith("Orçamento consolidado de") ? undefined : orc.descricao,
+    termos: empresa.termos_servico,
+  });
+  const groupedName = (orc: Orcamento) => `orcamento-consolidado-${(orc.clientes?.nome || "cliente").replace(/\s+/g, "-").toLowerCase()}.pdf`;
+
+  const handleDownloadPdf = async (orc: Orcamento) => {
+    if (isGroupedOrcamento(orc.itens)) { (await buildGroupedDoc(orc)).save(groupedName(orc)); return; }
     const doc = generateOrcamentoPDF(buildPdfData(orc));
     doc.save(`orcamento-${(orc.clientes?.nome || "cliente").replace(/\s+/g, "-").toLowerCase()}.pdf`);
   };
@@ -223,6 +237,11 @@ export default function Orcamentos() {
     const phone = orc.clientes?.telefone;
     if (!phone) { toast.error("Cliente não tem telefone cadastrado"); return; }
     try {
+      if (isGroupedOrcamento(orc.itens)) {
+        await shareConsolidadoPDF(await buildGroupedDoc(orc), groupedName(orc), `Olá *${orc.clientes?.nome}*! Segue o orçamento consolidado da *${empresa.nome_empresa}*.\n\n💰 *Total: ${formatCurrency(Number(orc.valor))}*`, phone);
+        toast.success("Compartilhamento iniciado!");
+        return;
+      }
       await shareOrcamentoViaWhatsApp(buildPdfData(orc), phone);
       toast.success("Compartilhamento iniciado!");
     } catch (err: any) {
@@ -425,7 +444,9 @@ export default function Orcamentos() {
                         </div>
                       );
                     case "equipamento":
-                      return <span className="text-sm text-gray-700">{item.equipamento}</span>;
+                      return isGroupedOrcamento(item.itens)
+                        ? <Badge variant="outline">Agrupado · {new Set((item.itens as any[]).map((i: any) => i.os_numero)).size} OS</Badge>
+                        : <span className="text-sm text-gray-700">{item.equipamento}</span>;
                     case "status":
                       return <Badge variant={sc.variant}>{sc.label}</Badge>;
                     case "validade":

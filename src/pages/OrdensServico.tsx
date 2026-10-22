@@ -38,6 +38,7 @@ import { getAvailableTypes, findTypeByValue, SEGMENTOS } from "@/lib/equipment-s
 import type { CustomType } from "@/lib/equipment-segments";
 import { useChecklistConfig } from "@/hooks/useChecklistConfig";
 import type { ChecklistItem, ChecklistTipo } from "@/hooks/useChecklistConfig";
+import { AgruparOSDialog } from "@/components/os/AgruparOSDialog";
 import { PaymentConfirmDialog, PaymentData } from "@/components/os/PaymentConfirmDialog";
 import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 
@@ -123,6 +124,7 @@ export default function OrdensServico() {
   const { user, canEdit, isAdmin } = useAuth();
   const { organization, isPlatformAdmin, loading: orgLoading } = useOrganization();
   const { config: empresa } = useEmpresaConfig();
+  const [agruparOpen, setAgruparOpen] = useState(false);
   const { tecnicos } = useTeamMembers();
   const confirm = useConfirm();
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
@@ -1248,6 +1250,10 @@ export default function OrdensServico() {
               </div>
             </div>
             <div className="flex flex-col items-end gap-1">
+              <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setAgruparOpen(true)}>
+                <FileText className="mr-1.5 h-3.5 w-3.5" />Agrupar em orçamento
+              </Button>
               <Button size="sm" className="gradient-primary shadow-soft" onClick={() => {
                 if (!canEdit) { toast.error(readOnlyOsMessage); return; }
                 if (!canCreateOS) { setShowUpgrade(true); return; }
@@ -1255,6 +1261,8 @@ export default function OrdensServico() {
               }}>
                 <Plus className="mr-1.5 h-3.5 w-3.5" />Nova OS
               </Button>
+              </div>
+              <AgruparOSDialog open={agruparOpen} onOpenChange={setAgruparOpen} />
               {osLimit !== -1 && (
                 <span className="text-[10px] text-muted-foreground">
                   {osUsed}/{osLimit} OS este mês
