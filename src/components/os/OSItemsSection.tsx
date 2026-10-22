@@ -64,26 +64,26 @@ function ItemSearchRow({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createName, setCreateName] = useState("");
+
   useEffect(() => {
     if (!search.trim()) { setResults([]); return; }
     const timeout = setTimeout(async () => {
       setLoading(true);
       try {
-        const term = `%${search.trim()}%`;
+        const safe = search.trim().replace(/[,()%]/g, " ");
+        const term = `%${safe}%`;
         if (tipo === "produto") {
-          let query = supabase.from("produtos").select("id, descricao, preco_venda, codigo, categoria").or(`descricao.ilike.${term},codigo.ilike.${term}`).limit(8);
-          if (organizationId) {
-            query = query.eq("organization_id", organizationId);
-          }
+          let query = supabase.from("itens_estoque").select("id, descricao, preco_venda, codigo, categoria, quantidade").or(`descricao.ilike.${term},codigo.ilike.${term}`).order("descricao").limit(20);
+          if (organizationId) query = query.eq("organization_id", organizationId);
           const { data } = await query;
-          setResults((data || []).map(p => ({ id: p.id, descricao: p.descricao, preco: p.preco_venda, tipo: "produto" as const, codigo: p.codigo || undefined, categoria: p.categoria || undefined })));
+          setResults((data || []).map(p => ({ id: p.id, descricao: p.descricao, preco: Number(p.preco_venda) || 0, tipo: "produto" as const, codigo: p.codigo || undefined, categoria: p.categoria || undefined, quantidade: p.quantidade })));
         } else {
-          let query = supabase.from("servicos").select("id, descricao, preco").ilike("descricao", term).limit(8);
-          if (organizationId) {
-            query = query.eq("organization_id", organizationId);
-          }
+          let query = supabase.from("servicos").select("id, descricao, preco").ilike("descricao", term).order("descricao").limit(20);
+          if (organizationId) query = query.eq("organization_id", organizationId);
           const { data } = await query;
-          setResults((data || []).map(s => ({ id: s.id, descricao: s.descricao, preco: s.preco, tipo: "servico" as const })));
+          setResults((data || []).map(s => ({ id: s.id, descricao: s.descricao, preco: Number(s.preco) || 0, tipo: "servico" as const })));
         }
       } catch (err) { console.error(err); }
       finally { setLoading(false); }
@@ -94,7 +94,8 @@ function ItemSearchRow({
   const handleSelect = (cat: CatalogItem) => {
     onAdd({
       tipo: cat.tipo,
-      produto_id: cat.tipo === "produto" ? cat.id : null,
+      produto_id: null,
+      item_estoque_id: cat.tipo === "produto" ? cat.id : null,
       servico_id: cat.tipo === "servico" ? cat.id : null,
       descricao: cat.descricao,
       codigo: cat.codigo,
@@ -108,8 +109,10 @@ function ItemSearchRow({
     setTimeout(() => inputRef.current?.focus(), 50);
   };
 
+  const openCreate = () => { setCreateName(search.trim()); setIsOpen(false); setCreateOpen(true); };
+
   const filtered = results.filter(r => !existingIds.has(r.id));
-  const placeholder = tipo === "produto" ? "Buscar peça ou produto..." : "Buscar serviço...";
+  const placeholder = tipo === "produto" ? "Buscar peça ou produto do estoque..." : "Buscar serviço...";
 
   return (
       <div ref={wrapperRef} className="relative w-full">
@@ -127,12 +130,25 @@ function ItemSearchRow({
           {loading && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />}
         </div>
 
+        {tipo === "produto" ? (
+          <EstoqueItemDialog open={createOpen} onOpenChange={setCreateOpen} organizationId={organizationId} initialName={createName}
+            onSaved={(i) => handleSelect({ id: i.id, descricao: i.descricao, preco: Number(i.preco_venda) || 0, tipo: "produto", codigo: i.codigo, categoria: i.categoria })} />
+        ) : (
+          <ServicoDialog open={createOpen} onOpenChange={setCreateOpen} organizationId={organizationId} initialName={createName}
+            onSaved={(s) => handleSelect({ id: s.id, descricao: s.descricao, preco: Number(s.preco) || 0, tipo: "servico" })} />
+        )}
+
         {isOpen && search.trim() && (
-          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-52 overflow-y-auto animate-in fade-in-0 zoom-in-95 duration-100">
+          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-64 overflow-y-auto animate-in fade-in-0 zoom-in-95 duration-100">
             {filtered.length === 0 && !loading && (
-              <div className="px-3 py-3 text-center text-sm text-muted-foreground">
-                Nenhum resultado. Cadastre em {tipo === "produto" ? "Estoque" : "Serviços"}.
-              </div>
+              <div className="px-3 py-2 text-center text-sm text-muted-foreground">Nenhum resultado.</div>
+            )}
+            {!loading && (
+              <button type="button" onClick={openCreate}
+                className="w-full text-left px-3 py-2.5 hover:bg-muted/50 border-b border-border/30 flex items-center gap-2 text-sm font-medium text-primary">
+                <Plus className="h-4 w-4" />
+                {tipo === "produto" ? `Cadastrar no estoque: "${search.trim()}"` : `Cadastrar serviço: "${search.trim()}"`}
+              </button>
             )}
             {filtered.map((cat) => (
               <button key={cat.id} type="button" onClick={() => handleSelect(cat)}
