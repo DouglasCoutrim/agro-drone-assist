@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     const referencia = `${orgId.slice(0, 8)}-nfse-${os.numero}-${Date.now()}`;
     const doc = onlyDigits(cli.cpf_cnpj);
     const payload = {
-      data_emissao: new Date().toISOString(),
+      data_emissao: dataEmissaoBrasil(),
       natureza_operacao: config.nfse_natureza_operacao || '1',
       optante_simples_nacional: config.regime_tributario === 1 || config.regime_tributario === 2,
       prestador: {

@@ -278,7 +278,7 @@ function buildPayload(config: any, venda: any, estoque: Map<string, any>, transp
 
   return {
     natureza_operacao: nd.natureza_operacao || config.natureza_operacao || 'Venda de mercadoria',
-    data_emissao: new Date().toISOString(),
+    data_emissao: dataEmissaoBrasil(),
     tipo_documento: Number(nd.tipo ?? 1),
     finalidade_emissao: Number(nd.finalidade || 1),
     local_destino: interestadual ? 2 : 1,
