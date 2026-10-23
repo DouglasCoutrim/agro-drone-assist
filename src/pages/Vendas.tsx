@@ -394,14 +394,15 @@ export default function Vendas() {
           {/* VENDAS TAB */}
           <TabsContent value="vendas" className="mt-4">
             <div className="mb-4 flex gap-2">
-              <Input
-                placeholder="Buscar venda, cliente, CPF/CNPJ..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 max-w-md"
-              >
-                <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              </Input>
+              <div className="relative flex-1 max-w-md">
+                <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                <Input
+                  placeholder="Buscar venda, cliente, CPF/CNPJ..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
             </div>
 
             <PremiumTable
