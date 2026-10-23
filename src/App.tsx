@@ -1,6 +1,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { GlobalIconTooltip } from "@/components/GlobalIconTooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
@@ -91,6 +92,7 @@ const App = () => {
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <TooltipProvider>
+        <GlobalIconTooltip />
         <Toaster />
         <Sonner />
         <BrowserRouter>

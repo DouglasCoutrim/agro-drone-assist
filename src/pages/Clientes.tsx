@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { validarClienteFiscal } from "@/lib/fiscal-validation";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,6 +96,8 @@ export default function Clientes() {
     e.preventDefault();
     if (formData.nome.length < 3) { toast.error("Nome muito curto (mínimo 3 caracteres)"); return; }
     if (!formData.telefone) { toast.error("Informe o telefone"); return; }
+    const faltando = validarClienteFiscal(formData as any);
+    if (faltando.length) { toast.error("Preencha os dados exigidos pela nota fiscal", { description: faltando.join(" • "), duration: 10000 }); return; }
     
     setFormLoading(true);
     try {
