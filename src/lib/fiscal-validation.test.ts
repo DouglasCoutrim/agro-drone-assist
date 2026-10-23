@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { validarClienteFiscal, validarProdutoFiscal } from "./fiscal-validation.ts";
+import { validarClienteFiscal, validarProdutoFiscal } from "./fiscal-validation";
 
 const cliOk = { cpf_cnpj: "123.456.789-09", cep: "01001-000", endereco: "Rua A", numero: "10", bairro: "Centro", cidade: "SP", estado: "SP", codigo_municipio: "3550308", indicador_ie: 9 };
 
