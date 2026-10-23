@@ -4,7 +4,7 @@ import { z } from 'npm:zod@3';
 import { absoluteUrl, focusErrorMessage, focusRequest, focusToken, mapStatus, onlyDigits } from '../_shared/focus-nfe.ts';
 
 const Body = z.object({
-  action: z.enum(['validar', 'emitir', 'consultar']).default('emitir'),
+  action: z.enum(['validar', 'emitir', 'consultar', 'diagnosticar']).default('emitir'),
   venda_id: z.string().uuid().optional(),
   nf_id: z.string().uuid().optional(),
 });
@@ -42,6 +42,50 @@ Deno.serve(async (req) => {
 
     const { data: config } = await admin.from('nfe_config').select('*').eq('organization_id', orgId).maybeSingle();
 
+    // ---------- DIAGNOSTICAR ----------
+    if (action === 'diagnosticar') {
+      if (!config) return json({ success: false, itens: [{ ok: false, texto: 'Configuração fiscal não salva.' }] });
+      const itens: { ok: boolean; texto: string }[] = [];
+      const token = focusToken(config);
+      itens.push({ ok: !!token, texto: token ? `Token de ${config.ambiente} informado.` : `Token de ${config.ambiente} não informado.` });
+      if (token) {
+        // Uma referência inexistente devolve 404 com token válido e 401/403 com token inválido.
+        const t = await focusRequest(config, 'GET', `/v2/nfe/teste-conexao-livreos`);
+        const tokenOk = t.status === 404 || t.ok;
+        itens.push({ ok: tokenOk, texto: tokenOk ? 'Conexão com a Focus NFe funcionando e token aceito.' : `A Focus recusou o token (${focusErrorMessage(t.data)}).` });
+        if (tokenOk) {
+          const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/focus-webhook`;
+          const hooks = await focusRequest(config, 'GET', '/v2/hooks');
+          const lista = Array.isArray(hooks.data) ? hooks.data : [];
+          for (const event of ['nfe', 'nfse']) {
+            if (lista.some((h: any) => h.url === url && h.event === event)) {
+              itens.push({ ok: true, texto: `Aviso automático de ${event.toUpperCase()} já ativo.` });
+              continue;
+            }
+            const r = await focusRequest(config, 'POST', '/v2/hooks', { cnpj: onlyDigits(config.cnpj), event, url });
+            itens.push({ ok: r.ok, texto: r.ok ? `Aviso automático de ${event.toUpperCase()} ativado.` : `Não foi possível ativar o aviso de ${event.toUpperCase()}: ${focusErrorMessage(r.data)}` });
+          }
+        }
+      }
+      const master = Deno.env.get('FOCUS_NFE_TOKEN_MASTER');
+      if (master && onlyDigits(config.cnpj).length === 14) {
+        const r = await fetch(`https://api.focusnfe.com.br/v2/empresas?cnpj=${onlyDigits(config.cnpj)}`, { headers: { Authorization: `Basic ${btoa(`${master}:`)}` } });
+        const lista = await r.json().catch(() => []);
+        const emp = Array.isArray(lista) ? lista[0] : null;
+        if (!emp) itens.push({ ok: false, texto: 'CNPJ não encontrado na sua conta Focus NFe.' });
+        else {
+          itens.push({ ok: !!emp.habilita_nfe, texto: emp.habilita_nfe ? 'Emissão de NF-e liberada na Focus.' : 'Emissão de NF-e NÃO liberada na Focus.' });
+          itens.push({ ok: !!(emp.habilita_nfse || emp.habilita_nfsen_producao || emp.habilita_nfsen_homologacao), texto: 'Emissão de NFS-e ' + ((emp.habilita_nfse || emp.habilita_nfsen_producao || emp.habilita_nfsen_homologacao) ? 'liberada' : 'NÃO liberada') + ' na Focus.' });
+          const venc = emp.certificado_valido_ate;
+          if (venc) itens.push({ ok: new Date(venc) > new Date(), texto: `Certificado digital válido até ${new Date(venc).toLocaleDateString('pt-BR')}.` });
+        }
+      }
+      itens.push(...validar(config, { clientes: {}, venda_itens: [{ quantidade: 1, ncm: '00000000' }], cliente_cpf_cnpj: '00000000000' }, new Map())
+        .filter((x) => !x.startsWith('Cliente') && !x.startsWith('CEP') && !x.startsWith('CPF'))
+        .map((texto) => ({ ok: false, texto })));
+      return json({ success: itens.every((i) => i.ok), itens });
+    }
+
     // ---------- CONSULTAR ----------
     if (action === 'consultar') {
       if (!nf_id) return json({ error: 'nf_id é obrigatório' }, 400);
@@ -77,7 +121,13 @@ Deno.serve(async (req) => {
     if (existente) return json({ error: existente.status === 'autorizado' ? 'Esta venda já possui NF-e autorizada' : 'Já existe uma NF-e em processamento para esta venda', nf_id: existente.id }, 409);
 
     const referencia = `${orgId.slice(0, 8)}-venda-${venda.numero}-${Date.now()}`;
-    const payload = buildPayload(config, venda, estoqueMap);
+    const nd = venda.nfe_dados || {};
+    let transportadora: any = null;
+    if (nd.por_transportadora && nd.transportadora_id) {
+      const { data: t } = await admin.from('transportadoras').select('*').eq('id', nd.transportadora_id).eq('organization_id', orgId).maybeSingle();
+      transportadora = t;
+    }
+    const payload = buildPayload(config, venda, estoqueMap, transportadora);
 
     const { data: nf, error: nfErr } = await admin.from('nota_fiscal_emitida').insert({
       organization_id: orgId, tipo: 'nfe', ambiente: config.ambiente, referencia,
@@ -188,7 +238,8 @@ function validar(config: any, venda: any, estoque: Map<string, any>): string[] {
   return p;
 }
 
-function buildPayload(config: any, venda: any, estoque: Map<string, any>) {
+function buildPayload(config: any, venda: any, estoque: Map<string, any>, transp: any = null) {
+  const nd = venda.nfe_dados || {};
   const cli = venda.clientes;
   const doc = onlyDigits(venda.cliente_cpf_cnpj || cli?.cpf_cnpj);
   const interestadual = (cli?.estado || '').toUpperCase() !== (config.uf || '').toUpperCase();
@@ -196,7 +247,7 @@ function buildPayload(config: any, venda: any, estoque: Map<string, any>) {
 
   const items = (venda.venda_itens || []).map((i: any, idx: number) => {
     const e = estoque.get(i.produto_id) || {};
-    let cfop = String(e.cfop || i.cfop || '5102');
+    let cfop = String(e.cfop || i.cfop || nd.cfop || '5102');
     if (interestadual && cfop.startsWith('5')) cfop = '6' + cfop.slice(1);
     const qtd = Number(i.quantidade);
     const unit = Number(i.preco_unitario);
@@ -219,19 +270,19 @@ function buildPayload(config: any, venda: any, estoque: Map<string, any>) {
       ...(Number(i.desconto_valor) > 0 ? { valor_desconto: Number(i.desconto_valor) } : {}),
       inclui_no_total: 1,
       icms_origem: Number(e.origem ?? 0),
-      icms_situacao_tributaria: simples ? (e.csosn || '102') : (e.cst_icms || '00'),
+      icms_situacao_tributaria: simples ? (e.csosn || nd.csosn || '102') : (e.cst_icms || '00'),
       pis_situacao_tributaria: simples ? '49' : '01',
       cofins_situacao_tributaria: simples ? '49' : '01',
     };
   });
 
   return {
-    natureza_operacao: config.natureza_operacao || 'Venda de mercadoria',
+    natureza_operacao: nd.natureza_operacao || config.natureza_operacao || 'Venda de mercadoria',
     data_emissao: new Date().toISOString(),
-    tipo_documento: 1,
-    finalidade_emissao: 1,
+    tipo_documento: Number(nd.tipo ?? 1),
+    finalidade_emissao: Number(nd.finalidade || 1),
     local_destino: interestadual ? 2 : 1,
-    consumidor_final: cli?.indicador_ie === 1 ? 0 : 1,
+    consumidor_final: nd.consumidor_final === undefined ? (cli?.indicador_ie === 1 ? 0 : 1) : (nd.consumidor_final ? 1 : 0),
     presenca_comprador: 1,
     serie: config.serie || 1,
     cnpj_emitente: onlyDigits(config.cnpj),
@@ -260,10 +311,40 @@ function buildPayload(config: any, venda: any, estoque: Map<string, any>) {
     pais_destinatario: 'Brasil',
     ...(venda.cliente_email || cli?.email ? { email_destinatario: venda.cliente_email || cli?.email } : {}),
     ...(onlyDigits(cli?.telefone) ? { telefone_destinatario: onlyDigits(cli?.telefone) } : {}),
-    modalidade_frete: 9,
+    modalidade_frete: Number(nd.modalidade_frete ?? 9),
+    ...(transp ? (() => {
+      const d = onlyDigits(transp.cpf_cnpj);
+      return {
+        ...(d.length === 14 ? { cnpj_transportador: d } : d.length === 11 ? { cpf_transportador: d } : {}),
+        nome_transportador: transp.nome,
+        ...(transp.inscricao_estadual ? { inscricao_estadual_transportador: onlyDigits(transp.inscricao_estadual) } : {}),
+        ...(transp.endereco ? { endereco_transportador: [transp.endereco, transp.numero].filter(Boolean).join(', ') } : {}),
+        ...(transp.cidade ? { municipio_transportador: transp.cidade } : {}),
+        ...(transp.estado ? { uf_transportador: String(transp.estado).toUpperCase() } : {}),
+      };
+    })() : {}),
     ...(Number(venda.valor_desconto) > 0 ? { valor_desconto: Number(venda.valor_desconto) } : {}),
-    formas_pagamento: [{ forma_pagamento: FORMA_PAGAMENTO[venda.forma_pagamento] || '99', valor_pagamento: Number(venda.valor_total) }],
-    informacoes_adicionais_contribuinte: [config.informacoes_complementares, venda.obs].filter(Boolean).join(' ') || undefined,
+    ...parcelamento(venda, nd),
+    informacoes_adicionais_contribuinte: [config.informacoes_complementares, nd.obs_complementares, venda.obs].filter(Boolean).join(' ') || undefined,
     items,
+  };
+}
+
+function parcelamento(venda: any, nd: any) {
+  const total = Number(venda.valor_total);
+  const forma = FORMA_PAGAMENTO[venda.forma_pagamento] || '99';
+  const n = nd.tipo_pagamento === '1' ? Math.max(1, Number(nd.parcelas || 1)) : 1;
+  if (n === 1) return { formas_pagamento: [{ indicador_pagamento: nd.tipo_pagamento === '1' ? 1 : 0, forma_pagamento: forma, valor_pagamento: total }] };
+  const base = Math.floor((total / n) * 100) / 100;
+  const intervalo = Number(nd.intervalo_dias ?? 30);
+  const duplicatas = Array.from({ length: n }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() + intervalo * (i + 1));
+    const valor = i === n - 1 ? Number((total - base * (n - 1)).toFixed(2)) : base;
+    return { numero: String(i + 1).padStart(3, '0'), data_vencimento: d.toISOString().slice(0, 10), valor };
+  });
+  return {
+    formas_pagamento: [{ indicador_pagamento: 1, forma_pagamento: forma, valor_pagamento: total }],
+    numero_fatura: String(venda.numero || '1'), valor_original_fatura: total, valor_liquido_fatura: total,
+    duplicatas,
   };
 }
