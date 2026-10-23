@@ -345,6 +345,15 @@ export default function Vendas() {
     }
   };
 
+  const handleReconsultarNF = async (nf: any) => {
+    const fn = nf.tipo === "nfse" ? "emitir-nfse-os" : "emitir-nfe-venda";
+    const { data, error } = await supabase.functions.invoke(fn, { body: { action: "consultar", nf_id: nf.id } });
+    if (error && !data) { toast.error("Erro ao consultar: " + error.message); return; }
+    const st = data?.nf?.status;
+    toast[st === "autorizado" ? "success" : "info"](st === "autorizado" ? "Nota autorizada!" : st === "processando" ? "A nota ainda está em processamento." : `Situação: ${st}${data?.nf?.motivo_rejeicao ? " — " + data.nf.motivo_rejeicao : ""}`);
+    if (typeof fetchNotasFiscais === "function") fetchNotasFiscais();
+  };
+
   const handleCancelarNF = async (nfId: string) => {
     const motivo = prompt("Justificativa do cancelamento (mínimo 15 caracteres):");
     if (!motivo) return;
@@ -839,8 +848,10 @@ export default function Vendas() {
                       rejeitado: { label: "Rejeitado", variant: "destructive" },
                       cancelado: { label: "Cancelado", variant: "destructive" },
                       pendente: { label: "Pendente", variant: "secondary" },
+                      processando: { label: "Processando", variant: "secondary" },
+                      denegado: { label: "Denegado", variant: "destructive" },
                     };
-                    const cfg = statusMap[item.status || "pendente"];
+                    const cfg = statusMap[item.status || "pendente"] || { label: item.status, variant: "outline" as const };
                     return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
                   }
                   if (key === "acoes") {
@@ -856,8 +867,17 @@ export default function Vendas() {
                             <Button variant="ghost" size="icon" className="h-8 w-8" title="Ver PDF"><FileText className="h-4 w-4" /></Button>
                           </a>
                         )}
+                        {item.status === "processando" && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Atualizar situação da nota" onClick={() => handleReconsultarNF(item)}><RefreshCw className="h-4 w-4" /></Button>
+                        )}
+                        {item.status === "autorizado" && item.pdf_url && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Enviar nota pelo WhatsApp" onClick={() => {
+                            const msg = `Olá ${item.cliente_nome || ""}! Segue sua nota fiscal nº ${item.numero || ""}:\n${item.pdf_url}${item.xml_url ? `\nXML: ${item.xml_url}` : ""}`;
+                            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+                          }}><MessageCircle className="h-4 w-4" /></Button>
+                        )}
                         {item.status === "autorizado" && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => handleCancelarNF(item.id)}><XCircle className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" title="Cancelar nota" onClick={() => handleCancelarNF(item.id)}><XCircle className="h-4 w-4" /></Button>
                         )}
                       </div>
                     );
