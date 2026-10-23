@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Users, User, Shield, Loader2, Trash2, FileText, Package, DollarSign, UserPlus, Pencil, LayoutDashboard, Wrench, Settings, BookOpen, Bell, BarChart3, Navigation, CreditCard, ClipboardList, MapPin, Monitor, UserRound, Building2, LifeBuoy, Sparkles } from "lucide-react";
+import { Users, User, Shield, Loader2, Trash2, FileText, Package, DollarSign, UserPlus, Pencil, LayoutDashboard, Wrench, Settings, BookOpen, Bell, BarChart3, Navigation, CreditCard, ClipboardList, MapPin, Monitor, UserRound, Building2, LifeBuoy, Sparkles, Search } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -90,7 +90,10 @@ export default function Equipe() {
   const { user, role, isAdmin } = useAuth();
   const confirm = useConfirm();
   const [users, setUsers] = useState<UserWithRoleAndPerms[]>([]);
-  const pagination = usePagination(users);
+  const [search, setSearch] = useState("");
+  const [permUserId, setPermUserId] = useState<string | null>(null);
+  const filteredUsers = users.filter(u => `${u.nome ?? ''} ${u.email ?? ''}`.toLowerCase().includes(search.trim().toLowerCase()));
+  const pagination = usePagination(filteredUsers, search);
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
@@ -391,47 +394,74 @@ export default function Equipe() {
             ) : users.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground"><Users className="h-12 w-12 mx-auto mb-4 opacity-50" /><p>Nenhum membro encontrado</p></div>
             ) : (
-              <div className="space-y-6">
-                {pagination.items.map((u) => (
-                  <div key={u.id} className="border rounded-lg p-5 hover:bg-muted/30 transition-colors space-y-4">
-                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10 shrink-0">
-                          {(u as any).avatar_url ? <AvatarImage src={(u as any).avatar_url} alt={u.nome} /> : null}
-                          <AvatarFallback className="bg-primary/20 text-primary">{u.nome?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0">
-                          <p className="font-medium truncate">{u.nome}</p>
-                          <p className="text-sm text-muted-foreground truncate">{u.email}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap sm:justify-end">
-                         {isAdmin ? (
-                           <div className="flex flex-wrap gap-2" aria-label={`Papéis de ${u.nome}`}>
-                             {ROLE_OPTIONS.map((option) => (
-                               <label key={option.value} className="flex min-h-9 cursor-pointer items-center gap-2 rounded-md border border-border px-2.5 text-xs">
-                                 <Checkbox checked={u.roles.includes(option.value)} disabled={u.id === user?.id && option.value === 'admin'} onCheckedChange={(checked) => handleChangeRoles(u.id, u.roles, option.value, checked === true)} />
-                                 {option.label}
-                               </label>
-                             ))}
-                           </div>
-                         ) : (
-                           <div className="flex flex-wrap gap-1">{u.roles.map((assignedRole) => <span key={assignedRole}>{getRoleBadge(assignedRole)}</span>)}</div>
-                         )}
+              <div className="space-y-3">
+                <div className="flex justify-end">
+                  <div className="relative w-full sm:w-64">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Pesquisar" className="pl-9" />
+                  </div>
+                </div>
+                <div className="overflow-hidden rounded-lg border">
+                  <div className="hidden md:grid grid-cols-[88px_1.2fr_1.2fr_1fr] gap-3 bg-muted/60 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <span>Ações</span><span>Usuário</span><span>Email</span><span>Papéis</span>
+                  </div>
+                  {pagination.items.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">Nenhum membro encontrado</p>}
+                  {pagination.items.map((u) => (
+                    <div key={u.id} className="grid grid-cols-1 md:grid-cols-[88px_1.2fr_1.2fr_1fr] items-center gap-2 md:gap-3 border-t first:border-t-0 px-4 py-3 text-sm hover:bg-muted/30">
+                      <div className="order-last md:order-none flex gap-1">
+                        {isAdmin && (
+                          <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`Permissões de ${u.nome}`} onClick={() => setPermUserId(u.id)}>
+                            <Shield className="h-4 w-4 text-primary" />
+                          </Button>
+                        )}
                         {isAdmin && u.id !== user?.id && (
-                          <>
-                            <Button size="sm" variant="outline" onClick={() => openEditDialog(u)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleDeleteUser(u.id)}>
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`Editar ${u.nome}`} onClick={() => openEditDialog(u)}>
+                            <Pencil className="h-4 w-4 text-primary" />
+                          </Button>
+                        )}
+                        {isAdmin && u.id !== user?.id && (
+                          <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`Excluir ${u.nome}`} onClick={() => handleDeleteUser(u.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
                         )}
                       </div>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Avatar className="h-8 w-8 shrink-0">
+                          {(u as any).avatar_url ? <AvatarImage src={(u as any).avatar_url} alt={u.nome} /> : null}
+                          <AvatarFallback className="bg-primary/20 text-primary text-xs">{u.nome?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+                        </Avatar>
+                        <span className="truncate font-medium">{u.nome}</span>
+                      </div>
+                      <span className="truncate text-muted-foreground">{u.email}</span>
+                      <div className="flex flex-wrap gap-1">{u.roles.map(r => <span key={r}>{getRoleBadge(r)}</span>)}</div>
                     </div>
+                  ))}
+                </div>
+                <RecordPagination {...pagination} />
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-<div className="space-y-4 sm:pl-13">
+        <Dialog open={!!permUserId} onOpenChange={o => !o && setPermUserId(null)}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            {(() => { const u = users.find(x => x.id === permUserId); if (!u) return null; return (<>
+              <DialogHeader>
+                <DialogTitle>Papéis e permissões</DialogTitle>
+                <DialogDescription>{u.nome} · {u.email}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                <Label>Papéis</Label>
+                <div className="flex flex-wrap gap-2">
+                  {ROLE_OPTIONS.map((option) => (
+                    <label key={option.value} className="flex min-h-9 cursor-pointer items-center gap-2 rounded-md border border-border px-2.5 text-xs">
+                      <Checkbox checked={u.roles.includes(option.value)} disabled={u.id === user?.id && option.value === 'admin'} onCheckedChange={(checked) => handleChangeRoles(u.id, u.roles, option.value, checked === true)} />
+                      {option.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-4 ">
                       {/* PRINCIPAL */}
                       <div>
                         <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Principal</p>
@@ -504,17 +534,14 @@ export default function Equipe() {
                     </div>
 
                     {isAdmin && u.roles.includes('tecnico') && (
-                      <div className="sm:pl-14">
+                      <div className="">
                         <CommissionEditor profile={u as any} onSaved={fetchUsers} />
                       </div>
                     )}
-                  </div>
-                ))}
-                <RecordPagination {...pagination} />
-              </div>
-            )}
-          </CardContent>
-        </Card>
+
+            </>); })()}
+          </DialogContent>
+        </Dialog>
 
         {/* Edit User Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
