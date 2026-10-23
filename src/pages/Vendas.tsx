@@ -6,6 +6,10 @@ import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+
+const FORM_TABS: [string, string][] = [["dados","Dados"],["destinatario","Destinatário"],["transporte","Transporte"],["produtos","Produtos"],["pagamento","Pagamento"],["obs","Observações"]];
 import {
   Dialog,
   DialogContent,
@@ -72,10 +76,12 @@ export default function Vendas() {
   }, [location.search]);
   const [produtos, setProdutos] = useState<any[]>([]);
   const [clientesList, setClientesList] = useState<any[]>([]);
+  const [transportadorasList, setTransportadorasList] = useState<any[]>([]);
   useEffect(() => {
     if (!organization?.id) return;
     supabase.from("itens_estoque").select("id,codigo,descricao,preco_venda,ncm,cfop,quantidade").eq("organization_id", organization.id).order("descricao").then(({ data }) => setProdutos(data || []));
-    supabase.from("clientes").select("id,nome,cpf_cnpj,email").eq("organization_id", organization.id).order("nome").then(({ data }) => setClientesList(data || []));
+    supabase.from("transportadoras").select("id,nome").eq("organization_id", organization.id).eq("ativo", true).order("nome").then(({ data }) => setTransportadorasList(data || []));
+    supabase.from("clientes").select("*").eq("organization_id", organization.id).order("nome").then(({ data }) => setClientesList(data || []));
   }, [organization?.id]);
   const {
     vendas,
@@ -396,11 +402,10 @@ export default function Vendas() {
                 </TabsList>
                 <form onSubmit={handleSubmitVenda} id="venda-form" className="pt-4">
                   <div className="space-y-4">
-                    <TabsContent value="dados" className="mt-0" forceMount hidden={formTab !== "dados"}>
+                    <TabsContent value="dados" className="mt-0">
                     <section className="rounded-xl border bg-card p-4 md:p-6 space-y-4 shadow-sm"><h4 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4 text-primary" />Dados da nota</h4>
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="md:col-span-3"><Label>Natureza da Operação</Label><Input value={nfeDados.natureza_operacao} onChange={(e) => nf("natureza_operacao", e.target.value)} /></div>
-                        <div><Label>Data da Venda</Label><Input type="date" value={vendaFormData.data_venda} onChange={(e) => setVendaFormData({...vendaFormData, data_venda: e.target.value})} /></div>
                         <div><Label>Finalidade</Label>
                           <Select value={nfeDados.finalidade} onValueChange={(v) => nf("finalidade", v)}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
@@ -435,7 +440,7 @@ export default function Vendas() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="md:col-span-2">
                         <Label>Nome do Cliente *</Label>
-                        <Select value={vendaFormData.cliente_id || ""} onValueChange={(v) => { const c = clientesList.find((x) => x.id === v); setVendaFormData({ ...vendaFormData, cliente_id: v, cliente_nome: c?.nome || "", cliente_cpf_cnpj: c?.cpf_cnpj || "", cliente_email: c?.email || "" }); }}>
+                        <Select value={vendaFormData.cliente_id || ""} onValueChange={(v) => { const c = clientesList.find((x) => x.id === v); setVendaFormData({ ...vendaFormData, cliente_id: v, cliente_nome: c?.nome || "", cliente_cpf_cnpj: c?.cpf_cnpj || "", cliente_email: c?.email || "" }); if (c) setNfeDados((p) => ({ ...p, inscricao_estadual: c.inscricao_estadual || "", indicador_ie: c.indicador_ie || p.indicador_ie, telefone: c.telefone || c.whatsapp || "", cep: c.cep || "", logradouro: c.endereco || c.logradouro || "", numero: c.numero || "", bairro: c.bairro || "", cidade: c.cidade || "", uf: c.estado || c.uf || "", pessoa_fisica: (c.cpf_cnpj || "").replace(/\D/g, "").length === 11 })); }}>
                           <SelectTrigger><SelectValue placeholder="Selecione o cliente cadastrado" /></SelectTrigger>
                           <SelectContent>{clientesList.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
                         </Select>
