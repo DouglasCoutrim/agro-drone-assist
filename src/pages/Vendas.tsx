@@ -294,7 +294,8 @@ export default function Vendas() {
         forma_pagamento: vendaFormData.forma_pagamento as Venda["forma_pagamento"],
         cliente_id: vendaFormData.cliente_id || null,
         vendido_por: user!.id,
-        nf_numero: null, nf_chave: null, nf_emitida_em: null, nf_provider: null,
+        nf_numero: editingVenda?.nf_numero ?? null, nf_chave: editingVenda?.nf_chave ?? null,
+        nf_emitida_em: editingVenda?.nf_emitida_em ?? null, nf_provider: editingVenda?.nf_provider ?? null,
         nfe_dados: nfeDados,
       };
 
