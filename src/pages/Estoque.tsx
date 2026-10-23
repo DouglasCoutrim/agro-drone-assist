@@ -44,7 +44,8 @@ export default function Estoque() {
   const [formData, setFormData] = useState({
     codigo: "", descricao: "", categoria: "", quantidade: 0,
     estoque_minimo: 0, custo_unitario: 0, preco_venda: 0,
-    fornecedor: "", localizacao: ""
+    fornecedor: "", localizacao: "",
+    ncm: "", cest: "", cfop: "5102", origem: 0, csosn: "102", unidade: "UN", gtin: ""
   });
 
   useEffect(() => {
@@ -98,6 +99,15 @@ export default function Estoque() {
     }
   };
 
+  const fiscalClean = (d: typeof formData) => ({
+    ...d,
+    ncm: d.ncm.replace(/\D/g, "") || null,
+    cest: d.cest.replace(/\D/g, "") || null,
+    gtin: d.gtin || null,
+    cfop: d.cfop || "5102",
+    unidade: d.unidade || "UN",
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmittingRef.current) return;
@@ -109,11 +119,11 @@ export default function Estoque() {
     setFormLoading(true);
     try {
       if (editingItem) {
-        const { error } = await supabase.from('itens_estoque').update(formData).eq('id', editingItem.id);
+        const { error } = await supabase.from('itens_estoque').update(fiscalClean(formData) as any).eq('id', editingItem.id);
         if (error) throw error;
         toast.success('Item atualizado com sucesso!');
       } else {
-        const payload = { ...formData, organization_id: organization.id };
+        const payload = { ...fiscalClean(formData), organization_id: organization.id };
         const { error } = await supabase.from('itens_estoque').insert(payload as any);
 
         if (error?.code === '23505') {
@@ -145,7 +155,9 @@ export default function Estoque() {
       codigo: item.codigo, descricao: item.descricao, categoria: item.categoria,
       quantidade: item.quantidade, estoque_minimo: item.estoque_minimo,
       custo_unitario: item.custo_unitario, preco_venda: item.preco_venda,
-      fornecedor: item.fornecedor || "", localizacao: item.localizacao || ""
+      fornecedor: item.fornecedor || "", localizacao: item.localizacao || "",
+      ncm: (item as any).ncm || "", cest: (item as any).cest || "", cfop: (item as any).cfop || "5102",
+      origem: (item as any).origem ?? 0, csosn: (item as any).csosn || "102", unidade: (item as any).unidade || "UN", gtin: (item as any).gtin || ""
     });
     setDialogOpen(true);
   };
@@ -160,7 +172,7 @@ export default function Estoque() {
   };
 
   const resetForm = () => {
-    setFormData({ codigo: "", descricao: "", categoria: "", quantidade: 0, estoque_minimo: 0, custo_unitario: 0, preco_venda: 0, fornecedor: "", localizacao: "" });
+    setFormData({ codigo: "", descricao: "", categoria: "", quantidade: 0, estoque_minimo: 0, custo_unitario: 0, preco_venda: 0, fornecedor: "", localizacao: "", ncm: "", cest: "", cfop: "5102", origem: 0, csosn: "102", unidade: "UN", gtin: "" });
     setEditingItem(null);
   };
 
@@ -445,6 +457,45 @@ export default function Estoque() {
                   />
                 </div>
                 <div className="space-y-2"><Label htmlFor="localizacao">Localização</Label><Input id="localizacao" value={formData.localizacao} onChange={(e) => setFormData(prev => ({ ...prev, localizacao: e.target.value }))} placeholder="Ex: Prateleira A1" className="h-10" /></div>
+              </div>
+              <div className="space-y-3 rounded-lg border p-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase">Dados fiscais (NF-e)</p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div className="space-y-1.5"><Label htmlFor="ncm">NCM</Label><Input id="ncm" value={formData.ncm} onChange={(e) => setFormData(p => ({ ...p, ncm: e.target.value.replace(/[^\d.]/g, "") }))} placeholder="8 dígitos" inputMode="numeric" maxLength={10} className="h-10 font-mono" /></div>
+                  <div className="space-y-1.5"><Label htmlFor="cfop">CFOP</Label><Input id="cfop" value={formData.cfop} onChange={(e) => setFormData(p => ({ ...p, cfop: e.target.value.replace(/\D/g, "") }))} maxLength={4} inputMode="numeric" className="h-10 font-mono" /></div>
+                  <div className="space-y-1.5"><Label htmlFor="unidade">Unidade</Label><Input id="unidade" value={formData.unidade} onChange={(e) => setFormData(p => ({ ...p, unidade: e.target.value.toUpperCase() }))} maxLength={6} className="h-10" /></div>
+                  <div className="space-y-1.5">
+                    <Label>Origem</Label>
+                    <Select value={String(formData.origem)} onValueChange={(v) => setFormData(p => ({ ...p, origem: Number(v) }))}>
+                      <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">0 — Nacional</SelectItem>
+                        <SelectItem value="1">1 — Importação direta</SelectItem>
+                        <SelectItem value="2">2 — Importada (mercado interno)</SelectItem>
+                        <SelectItem value="3">3 — Nacional, 40–70% importado</SelectItem>
+                        <SelectItem value="5">5 — Nacional, até 40% importado</SelectItem>
+                        <SelectItem value="8">8 — Nacional, mais de 70% importado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>CSOSN (Simples)</Label>
+                    <Select value={formData.csosn} onValueChange={(v) => setFormData(p => ({ ...p, csosn: v }))}>
+                      <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="101">101 — Com crédito</SelectItem>
+                        <SelectItem value="102">102 — Sem crédito</SelectItem>
+                        <SelectItem value="103">103 — Isenção (faixa)</SelectItem>
+                        <SelectItem value="300">300 — Imune</SelectItem>
+                        <SelectItem value="400">400 — Não tributada</SelectItem>
+                        <SelectItem value="500">500 — ICMS já retido (ST)</SelectItem>
+                        <SelectItem value="900">900 — Outros</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5"><Label htmlFor="cest">CEST</Label><Input id="cest" value={formData.cest} onChange={(e) => setFormData(p => ({ ...p, cest: e.target.value }))} placeholder="Se houver ST" className="h-10 font-mono" /></div>
+                  <div className="space-y-1.5 col-span-2 sm:col-span-3"><Label htmlFor="gtin">Código de barras (GTIN/EAN)</Label><Input id="gtin" value={formData.gtin} onChange={(e) => setFormData(p => ({ ...p, gtin: e.target.value.replace(/\D/g, "") }))} placeholder="Opcional" inputMode="numeric" className="h-10 font-mono" /></div>
+                </div>
               </div>
             </form>
           </div>
