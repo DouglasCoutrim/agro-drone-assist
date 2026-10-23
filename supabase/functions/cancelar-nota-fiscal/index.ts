@@ -1,152 +1,66 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { z } from 'npm:zod@3';
+import { focusErrorMessage, focusRequest } from '../_shared/focus-nfe.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const Body = z.object({
+  nf_id: z.string().uuid(),
+  motivo: z.string().trim().min(15, 'A justificativa deve ter pelo menos 15 caracteres').max(255),
+});
 
-const corsHeadersRestricted = {
-  'Access-Control-Allow-Origin': 'https://iynljexyjhbkfxsurddn.supabase.co',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+function json(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
   try {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return json({ error: 'Unauthorized' }, 401);
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claims } = await supabase.auth.getClaims(token);
-    if (!claims?.claims) return json({ error: 'Unauthorized' }, 401);
-    const userId = claims.claims.sub as string;
+    if (!authHeader) return json({ error: 'Não autenticado' }, 401);
+    const userClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: claims } = await userClient.auth.getClaims(authHeader.replace('Bearer ', ''));
+    const userId = claims?.claims?.sub as string | undefined;
+    if (!userId) return json({ error: 'Não autenticado' }, 401);
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-
-    // Role check - apenas admin
-    const { data: roleRows } = await admin
-      .from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin');
-    if (!roleRows?.length) {
-      return json({ error: 'Forbidden: apenas administradores podem cancelar NF' }, 403);
-    }
-
+    const { data: roles } = await admin.from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin');
+    if (!roles?.length) return json({ error: 'Apenas administradores podem cancelar notas fiscais' }, 403);
     const { data: profile } = await admin.from('profiles').select('organization_id').eq('id', userId).maybeSingle();
-    if (!profile?.organization_id) return json({ error: 'Sem organização' }, 400);
+    if (!profile?.organization_id) return json({ error: 'Usuário sem empresa vinculada' }, 400);
 
-    const { nf_id, motivo } = await req.json();
-    if (!nf_id || !motivo) return json({ error: 'nf_id e motivo são obrigatórios' }, 400);
+    const parsed = Body.safeParse(await req.json().catch(() => ({})));
+    if (!parsed.success) {
+      const msg = Object.values(parsed.error.flatten().fieldErrors).flat()[0] || 'Requisição inválida';
+      return json({ error: msg }, 400);
+    }
+    const { nf_id, motivo } = parsed.data;
 
-    // Buscar NF
-    const { data: nf, error: nfErr } = await admin
-      .from('nota_fiscal_emitida')
-      .select('*')
-      .eq('id', nf_id)
-      .eq('organization_id', profile.organization_id)
-      .maybeSingle();
-
-    if (nfErr) throw nfErr;
+    const { data: nf } = await admin.from('nota_fiscal_emitida').select('*')
+      .eq('id', nf_id).eq('organization_id', profile.organization_id).maybeSingle();
     if (!nf) return json({ error: 'Nota fiscal não encontrada' }, 404);
+    if (nf.status !== 'autorizado') return json({ error: 'Somente notas autorizadas podem ser canceladas' }, 400);
 
-    if (nf.status === 'cancelado') {
-      return json({ error: 'Nota fiscal já cancelada' }, 400);
+    const { data: config } = await admin.from('nfe_config').select('*').eq('organization_id', profile.organization_id).maybeSingle();
+    if (!config) return json({ error: 'Configuração fiscal não encontrada' }, 400);
+    const cfg = { ...config, ambiente: nf.ambiente };
+
+    const r = await focusRequest(cfg, 'DELETE', `/v2/nfe/${encodeURIComponent(nf.referencia)}`, { justificativa: motivo });
+    if (!r.ok || (r.data?.status && r.data.status !== 'cancelado')) {
+      return json({ error: focusErrorMessage(r.data) }, 422);
     }
 
-    if (nf.status !== 'autorizado') {
-      return json({ error: 'Apenas notas autorizadas podem ser canceladas' }, 400);
-    }
-
-    // Buscar configuração da empresa
-    const { data: empresa } = await admin
-      .from('empresa_config')
-      .select('*')
-      .eq('organization_id', profile.organization_id)
-      .maybeSingle();
-
-    if (!empresa) return json({ error: 'Configuração da empresa não encontrada' }, 400);
-
-    // Cancelar na Focus NFe
-    if (nf.provider === 'focusnfe' && nf.provider_id) {
-      const focusApiKey = empresa.focus_nfe_api_key || Deno.env.get('FOCUS_NFE_API_KEY');
-      const focusEnvironment = empresa.focus_nfe_environment || 'homologacao';
-      
-      if (focusApiKey) {
-        const baseUrl = focusEnvironment === 'producao'
-          ? 'https://api.focusnfe.com.br/v2'
-          : 'https://homologacao.focusnfe.com.br/v2';
-
-        const endpoint = nf.tipo === 'nfse' ? 'nfse' : 'nfe';
-        
-        const cancelResp = await fetch(`${baseUrl}/${endpoint}/${nf.provider_id}/cancelar`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${focusApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ justificativa: motivo }),
-        });
-
-        const cancelResult = await cancelResp.json();
-        
-        if (!cancelResp.ok) {
-          console.warn('Erro ao cancelar na Focus NFe:', cancelResult);
-          // Continua mesmo com erro na API externa para marcar como cancelado localmente
-        }
-      }
-    }
-
-    // Atualizar NF local
     await admin.from('nota_fiscal_emitida').update({
-      status: 'cancelado',
-      cancelada_em: new Date().toISOString(),
-      cancelada_por: userId,
-      motivo_rejeicao: motivo,
+      status: 'cancelado', cancelada_em: new Date().toISOString(), cancelada_por: userId, payload_retorno: r.data,
     }).eq('id', nf_id);
-
-    // Registrar evento
-    await admin.from('nota_fiscal_eventos').insert({
-      nf_id,
-      tipo_evento: 'cancelamento',
-      descricao: 'Nota fiscal cancelada',
-      dados_evento: { motivo },
-    });
-
-    // Se era NF de venda, limpar referência
+    await admin.from('nota_fiscal_eventos').insert({ nf_id, tipo_evento: 'cancelamento', descricao: motivo, dados_evento: r.data });
     if (nf.venda_id) {
-      await admin.from('vendas').update({
-        nf_numero: null,
-        nf_chave: null,
-        nf_emitida_em: null,
-        nf_provider: null,
-      }).eq('id', nf.venda_id);
+      await admin.from('vendas').update({ nf_numero: null, nf_chave: null, nf_emitida_em: null, nf_provider: null }).eq('id', nf.venda_id);
     }
-
-    // Se era NF de OS, limpar referência
-    if (nf.os_id) {
-      await admin.from('ordens_servico').update({
-        nf_numero: null,
-        nf_chave: null,
-        nf_emitida_em: null,
-        nf_provider: null,
-      }).eq('id', nf.os_id);
-    }
-
-    return json({ success: true, message: 'Nota fiscal cancelada com sucesso' });
-
+    return json({ success: true });
   } catch (e: any) {
-    console.error('cancelar-nota-fiscal error:', e);
+    console.error('cancelar-nota-fiscal', e);
     return json({ error: e?.message || 'Erro interno' }, 500);
   }
 });
-
-function json(data: any, status = 200) {
-  return new Response(JSON.stringify(data), {
-    headers: { ...corsHeadersRestricted, 'Content-Type': 'application/json' },
-    status,
-  });
-}
