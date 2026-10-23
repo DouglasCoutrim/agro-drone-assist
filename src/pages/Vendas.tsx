@@ -37,7 +37,7 @@ import { toast } from "sonner";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 import { useVendasData, Venda, VendaItem, NotaFiscalEmitida } from "@/hooks/useVendasData";
@@ -63,6 +63,13 @@ export default function Vendas() {
   const { user } = useAuth();
   const confirm = useConfirm();
   const navigate = useNavigate();
+  const location = useLocation();
+  useEffect(() => {
+    const q = new URLSearchParams(location.search);
+    if (q.get("tab") === "notas") { setActiveTab("notas"); setDialogOpen(false); }
+    if (q.get("nova") === "1") { setEditingVenda(null); setDialogOpen(true); }
+    window.scrollTo(0, 0);
+  }, [location.search]);
   const [produtos, setProdutos] = useState<any[]>([]);
   const [clientesList, setClientesList] = useState<any[]>([]);
   useEffect(() => {
