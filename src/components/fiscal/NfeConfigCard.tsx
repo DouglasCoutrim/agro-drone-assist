@@ -36,6 +36,14 @@ type Cfg = {
   serie: number;
   natureza_operacao: string;
   informacoes_complementares: string;
+  nfse_habilitado: boolean;
+  nfse_item_lista_servico: string;
+  nfse_codigo_tributario_municipio: string;
+  nfse_codigo_cnae: string;
+  nfse_aliquota: number | string;
+  nfse_iss_retido: boolean;
+  nfse_natureza_operacao: string;
+  nfse_discriminacao_padrao: string;
 };
 
 const EMPTY: Cfg = {
@@ -44,6 +52,8 @@ const EMPTY: Cfg = {
   regime_tributario: 1, logradouro: "", numero: "", complemento: "", bairro: "", municipio: "",
   codigo_municipio: "", uf: "", cep: "", telefone: "", serie: 1, natureza_operacao: "Venda de mercadoria",
   informacoes_complementares: "",
+  nfse_habilitado: false, nfse_item_lista_servico: "", nfse_codigo_tributario_municipio: "", nfse_codigo_cnae: "",
+  nfse_aliquota: 0, nfse_iss_retido: false, nfse_natureza_operacao: "1", nfse_discriminacao_padrao: "",
 };
 
 function F({ label, k, cfg, set, ...rest }: { label: string; k: keyof Cfg; cfg: Cfg; set: (k: keyof Cfg, v: any) => void } & React.InputHTMLAttributes<HTMLInputElement>) {
@@ -90,6 +100,8 @@ export function NfeConfigCard() {
     for (const k of Object.keys(payload)) if (payload[k] === "") payload[k] = null;
     payload.serie = Number(cfg.serie) || 1;
     payload.regime_tributario = Number(cfg.regime_tributario);
+    payload.nfse_aliquota = Number(cfg.nfse_aliquota) || 0;
+    payload.nfse_natureza_operacao = cfg.nfse_natureza_operacao || "1";
     payload.natureza_operacao = cfg.natureza_operacao || "Venda de mercadoria";
     const { error } = await supabase.from("nfe_config").upsert(payload as any, { onConflict: "organization_id" });
     setSaving(false);
@@ -189,6 +201,45 @@ export function NfeConfigCard() {
             <Label>Informações complementares (saem em todas as notas)</Label>
             <Textarea rows={3} value={cfg.informacoes_complementares} onChange={(e) => set("informacoes_complementares", e.target.value)}
               placeholder="Ex.: Documento emitido por ME ou EPP optante pelo Simples Nacional." />
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div>
+              <p className="font-medium text-sm">Emissão de NFS-e (serviços) ativada</p>
+              <p className="text-xs text-muted-foreground">Libera a emissão de nota de serviço a partir das ordens de serviço. Usa o mesmo token e certificado da Focus.</p>
+            </div>
+            <Switch checked={cfg.nfse_habilitado} onCheckedChange={(v) => set("nfse_habilitado", v)} />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <F cfg={cfg} set={set} label="Item da lista de serviço (LC 116) *" k="nfse_item_lista_servico" placeholder="Ex.: 14.01" />
+            <F cfg={cfg} set={set} label="Código de tributação do município" k="nfse_codigo_tributario_municipio" />
+            <F cfg={cfg} set={set} label="CNAE" k="nfse_codigo_cnae" inputMode="numeric" />
+            <F cfg={cfg} set={set} label="Alíquota ISS (%)" k="nfse_aliquota" type="number" step="0.01" min={0} />
+            <div className="space-y-1.5">
+              <Label>Natureza da operação (NFS-e)</Label>
+              <Select value={cfg.nfse_natureza_operacao} onValueChange={(v) => set("nfse_natureza_operacao", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 — Tributação no município</SelectItem>
+                  <SelectItem value="2">2 — Tributação fora do município</SelectItem>
+                  <SelectItem value="3">3 — Isenção</SelectItem>
+                  <SelectItem value="4">4 — Imune</SelectItem>
+                  <SelectItem value="5">5 — Exigibilidade suspensa (judicial)</SelectItem>
+                  <SelectItem value="6">6 — Exigibilidade suspensa (administrativa)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <Label>ISS retido pelo tomador</Label>
+              <Switch checked={cfg.nfse_iss_retido} onCheckedChange={(v) => set("nfse_iss_retido", v)} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Discriminação padrão do serviço (opcional)</Label>
+            <Textarea rows={2} value={cfg.nfse_discriminacao_padrao} onChange={(e) => set("nfse_discriminacao_padrao", e.target.value)}
+              placeholder="Se vazio, usa os serviços lançados na OS." />
           </div>
         </section>
 
