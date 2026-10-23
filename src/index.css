@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -267,4 +267,86 @@ iframe[src*="lovable"] {
   height: 0 !important;
   position: absolute !important;
   overflow: hidden !important;
+}
+
+/* ===== Tema LivreOS v1.1 (esmeralda) ===== */
+@layer base {
+  :root {
+    --background: 220 33% 96%;
+    --foreground: 57 30% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 57 30% 13%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 57 30% 13%;
+    --primary: 160 83% 26%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 152 47% 94%;
+    --secondary-foreground: 160 83% 26%;
+    --muted: 220 22% 95%;
+    --muted-foreground: 57 10% 38%;
+    --accent: 152 47% 94%;
+    --accent-foreground: 160 83% 26%;
+    --border: 225 21% 93%;
+    --border-subtle: 220 22% 95%;
+    --input: 225 18% 88%;
+    --ring: 160 84% 34%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 56 12% 25%;
+    --sidebar-primary: 160 83% 26%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 33% 96%;
+    --sidebar-accent-foreground: 57 30% 13%;
+    --sidebar-border: 225 21% 93%;
+    --sidebar-ring: 160 84% 34%;
+    --kg-bg: #EAF7F1; --kg-bd: #CDEBDD; --kg-tx: #0B7A55;
+    --kb-bg: #EAF1FF; --kb-bd: #CFE0FF; --kb-tx: #1D4ED8;
+    --ko-bg: #FFF3E3; --ko-bd: #FBDDB5; --ko-tx: #B45309;
+    --kp-bg: #F3EBFF; --kp-bd: #E2D0FB; --kp-tx: #7E22CE;
+  }
+  .dark {
+    --background: 154 20% 7%;
+    --foreground: 137 17% 92%;
+    --card: 150 18% 11%;
+    --card-foreground: 137 17% 92%;
+    --popover: 150 18% 11%;
+    --popover-foreground: 137 17% 92%;
+    --primary: 149 58% 49%;
+    --primary-foreground: 154 20% 7%;
+    --secondary: 159 51% 14%;
+    --secondary-foreground: 152 68% 62%;
+    --muted: 154 17% 16%;
+    --muted-foreground: 141 8% 63%;
+    --accent: 159 51% 14%;
+    --accent-foreground: 152 68% 62%;
+    --border: 152 15% 17%;
+    --border-subtle: 154 17% 16%;
+    --input: 152 15% 20%;
+    --ring: 149 58% 49%;
+    --sidebar-background: 150 18% 11%;
+    --sidebar-foreground: 142 10% 74%;
+    --sidebar-primary: 160 85% 29%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 154 20% 7%;
+    --sidebar-accent-foreground: 137 17% 92%;
+    --sidebar-border: 152 15% 17%;
+    --sidebar-ring: 149 58% 49%;
+    --kg-bg: #12372A; --kg-bd: #1D5A43; --kg-tx: #5EE0A8;
+    --kb-bg: #16294A; --kb-bd: #24407A; --kb-tx: #93C5FD;
+    --ko-bg: #3A2E12; --ko-bd: #5C4A1E; --ko-tx: #FCD34D;
+    --kp-bg: #2A1C4A; --kp-bd: #46307A; --kp-tx: #D8B4FE;
+  }
+  body { font-family: 'Plus Jakarta Sans', 'DM Sans', sans-serif; }
+}
+
+@layer components {
+  .kpi-card { background: var(--tone-bg, hsl(var(--card))); border-color: var(--tone-bd, hsl(var(--border))); }
+  .tone-green  { --tone-bg: var(--kg-bg); --tone-bd: var(--kg-bd); --tone-tx: var(--kg-tx); }
+  .tone-blue   { --tone-bg: var(--kb-bg); --tone-bd: var(--kb-bd); --tone-tx: var(--kb-tx); }
+  .tone-orange { --tone-bg: var(--ko-bg); --tone-bd: var(--ko-bd); --tone-tx: var(--ko-tx); }
+  .tone-purple { --tone-bg: var(--kp-bg); --tone-bd: var(--kp-bd); --tone-tx: var(--kp-tx); }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff !important; color: #000 !important; }
 }

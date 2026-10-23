@@ -13,10 +13,10 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ["Syne", "sans-serif"],
-        body: ["DM Sans", "sans-serif"],
+        display: ["Plus Jakarta Sans", "sans-serif"],
+        body: ["Plus Jakarta Sans", "DM Sans", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
-        sans: ["DM Sans", "sans-serif"],
+        sans: ["Plus Jakarta Sans", "DM Sans", "sans-serif"],
       },
       colors: {
         // Existing CSS variable colors (keep for backward compatibility)
