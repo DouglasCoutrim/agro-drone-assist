@@ -1281,15 +1281,6 @@ export default function OrdensServico() {
           <KpiCard label="Prontas" value={stats.prontas} icon={CheckCircle2} color="green" delay={300} />
         </div>
 
-        {/* Status Filter Tabs */}
-        <PremiumCard delay={100}>
-          <div className="p-4 border-b border-border">
-            <div className="relative max-w-xs">
-              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Buscar por número, cliente ou defeito..." className="pl-9 h-9 text-xs bg-muted/30 border-border/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-            </div>
-          </div>
-        </PremiumCard>
 
         {/* OS List */}
         <PremiumCard delay={200}>
