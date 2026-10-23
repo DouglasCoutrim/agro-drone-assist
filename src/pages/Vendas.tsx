@@ -6,6 +6,10 @@ import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+
+const FORM_TABS: [string, string][] = [["dados","Dados"],["destinatario","Destinatário"],["transporte","Transporte"],["produtos","Produtos"],["pagamento","Pagamento"],["obs","Observações"]];
 import {
   Dialog,
   DialogContent,
@@ -72,10 +76,12 @@ export default function Vendas() {
   }, [location.search]);
   const [produtos, setProdutos] = useState<any[]>([]);
   const [clientesList, setClientesList] = useState<any[]>([]);
+  const [transportadorasList, setTransportadorasList] = useState<any[]>([]);
   useEffect(() => {
     if (!organization?.id) return;
     supabase.from("itens_estoque").select("id,codigo,descricao,preco_venda,ncm,cfop,quantidade").eq("organization_id", organization.id).order("descricao").then(({ data }) => setProdutos(data || []));
-    supabase.from("clientes").select("id,nome,cpf_cnpj,email").eq("organization_id", organization.id).order("nome").then(({ data }) => setClientesList(data || []));
+    supabase.from("transportadoras").select("id,nome").eq("organization_id", organization.id).eq("ativo", true).order("nome").then(({ data }) => setTransportadorasList(data || []));
+    supabase.from("clientes").select("*").eq("organization_id", organization.id).order("nome").then(({ data }) => setClientesList(data || []));
   }, [organization?.id]);
   const {
     vendas,
@@ -112,6 +118,16 @@ export default function Vendas() {
     status_pagamento: "pendente",
     obs: "",
   });
+  const NFE_DEFAULT = {
+    natureza_operacao: "Venda de mercadoria", finalidade: "1", tipo: "1", destacar_impostos: false,
+    cfop: "", csosn: "102", consumidor_final: true, pessoa_fisica: false,
+    inscricao_estadual: "", indicador_ie: "9", telefone: "", cep: "", logradouro: "", numero: "", bairro: "", cidade: "", uf: "",
+    modalidade_frete: "9", por_transportadora: false, transportadora_id: "",
+    tipo_pagamento: "0", parcelas: 1, intervalo_dias: 30, obs_complementares: "",
+  };
+  const [nfeDados, setNfeDados] = useState<typeof NFE_DEFAULT>(NFE_DEFAULT);
+  const [formTab, setFormTab] = useState("dados");
+  const nf = (k: keyof typeof NFE_DEFAULT, v: any) => setNfeDados((p) => ({ ...p, [k]: v }));
 
   const [itensForm, setItensForm] = useState<Array<{
     id: string;
@@ -142,6 +158,8 @@ export default function Vendas() {
     });
     setItensForm([]);
     setEditingVenda(null);
+    setNfeDados(NFE_DEFAULT);
+    setFormTab("dados");
   };
 
   const handleOpenNewVenda = () => {
@@ -151,6 +169,8 @@ export default function Vendas() {
 
   const handleEditVenda = (venda: Venda) => {
     setEditingVenda(venda);
+    setNfeDados({ ...NFE_DEFAULT, ...(((venda as any).nfe_dados) || {}) });
+    setFormTab("dados");
     setVendaFormData({
       cliente_id: venda.cliente_id || "",
       cliente_nome: venda.cliente_nome,
@@ -270,15 +290,13 @@ export default function Vendas() {
         valor_desconto: totalDescontos,
         valor_impostos: totalImpostos,
         valor_total: valorTotal,
-        vendedor_id: user!.id,
         status_pagamento: vendaFormData.status_pagamento as Venda["status_pagamento"],
         forma_pagamento: vendaFormData.forma_pagamento as Venda["forma_pagamento"],
-        nf_numero: null,
-        nf_chave: null,
-        nf_emitida_em: null,
-        nf_provider: null,
-        vendido_por: null,
-        status: "ativo"
+        cliente_id: vendaFormData.cliente_id || null,
+        vendido_por: user!.id,
+        nf_numero: editingVenda?.nf_numero ?? null, nf_chave: editingVenda?.nf_chave ?? null,
+        nf_emitida_em: editingVenda?.nf_emitida_em ?? null, nf_provider: editingVenda?.nf_provider ?? null,
+        nfe_dados: nfeDados,
       };
 
       if (editingVenda) {
@@ -385,18 +403,51 @@ export default function Vendas() {
                     <Button type="submit" form="venda-form" disabled={formLoading}>{formLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}</Button>
                   </div>
                 </div>
-                <nav className="sticky top-0 z-10 flex gap-1 overflow-x-auto rounded-full border bg-card p-1 w-fit max-w-full">
-                  {[["sec-cliente","Destinatário"],["sec-itens","Produtos"],["sec-pagamento","Pagamento"],["sec-totais","Totais e Observações"]].map(([id,l]) => (
-                    <a key={id} href={"#"+id} className="whitespace-nowrap rounded-full px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">{l}</a>
-                  ))}
-                </nav>
-                <form onSubmit={handleSubmitVenda} id="venda-form" className="pb-24">
+                <Tabs value={formTab} onValueChange={setFormTab}>
+                <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-full p-1">
+                  {FORM_TABS.map(([v, l]) => <TabsTrigger key={v} value={v} className="rounded-full">{l}</TabsTrigger>)}
+                </TabsList>
+                <form onSubmit={handleSubmitVenda} id="venda-form" className="pt-4">
                   <div className="space-y-4">
-                    <section id="sec-cliente" className="scroll-mt-20 rounded-xl border bg-card p-4 md:p-6 space-y-4 shadow-sm"><h4 className="font-semibold flex items-center gap-2"><User className="h-4 w-4 text-primary" />Destinatário</h4>
+                    <TabsContent value="dados" className="mt-0">
+                    <section className="rounded-xl border bg-card p-4 md:p-6 space-y-4 shadow-sm"><h4 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4 text-primary" />Dados da nota</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="md:col-span-3"><Label>Natureza da Operação</Label><Input value={nfeDados.natureza_operacao} onChange={(e) => nf("natureza_operacao", e.target.value)} /></div>
+                        <div><Label>Finalidade</Label>
+                          <Select value={nfeDados.finalidade} onValueChange={(v) => nf("finalidade", v)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent><SelectItem value="1">Normal</SelectItem><SelectItem value="2">Complementar</SelectItem><SelectItem value="3">Ajuste</SelectItem><SelectItem value="4">Devolução</SelectItem></SelectContent>
+                          </Select></div>
+                        <div><Label>Tipo</Label>
+                          <Select value={nfeDados.tipo} onValueChange={(v) => nf("tipo", v)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent><SelectItem value="1">Saída</SelectItem><SelectItem value="0">Entrada</SelectItem></SelectContent>
+                          </Select></div>
+                        <div><Label>CFOP padrão</Label><Input placeholder="5102" value={nfeDados.cfop} onChange={(e) => nf("cfop", e.target.value.replace(/\D/g, "").slice(0, 4))} /></div>
+                        <div><Label>CSOSN padrão</Label>
+                          <Select value={nfeDados.csosn} onValueChange={(v) => nf("csosn", v)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="101">101 - Tributada com crédito</SelectItem>
+                              <SelectItem value="102">102 - Tributada sem crédito</SelectItem>
+                              <SelectItem value="103">103 - Isenção por faixa de receita</SelectItem>
+                              <SelectItem value="300">300 - Imune</SelectItem>
+                              <SelectItem value="400">400 - Não tributada</SelectItem>
+                              <SelectItem value="500">500 - ICMS cobrado por ST</SelectItem>
+                              <SelectItem value="900">900 - Outros</SelectItem>
+                            </SelectContent>
+                          </Select></div>
+                        <div className="flex items-center gap-3 md:col-span-2"><Switch checked={nfeDados.destacar_impostos} onCheckedChange={(v) => nf("destacar_impostos", v)} /><Label>Precisa destacar impostos?</Label></div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Número e série são reservados automaticamente na emissão.</p>
+                    </section>
+                    </TabsContent>
+                    <TabsContent value="destinatario" className="mt-0">
+                    <section id="sec-cliente" className="rounded-xl border bg-card p-4 md:p-6 space-y-4 shadow-sm"><h4 className="font-semibold flex items-center gap-2"><User className="h-4 w-4 text-primary" />Destinatário</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="md:col-span-2">
                         <Label>Nome do Cliente *</Label>
-                        <Select value={vendaFormData.cliente_id || ""} onValueChange={(v) => { const c = clientesList.find((x) => x.id === v); setVendaFormData({ ...vendaFormData, cliente_id: v, cliente_nome: c?.nome || "", cliente_cpf_cnpj: c?.cpf_cnpj || "", cliente_email: c?.email || "" }); }}>
+                        <Select value={vendaFormData.cliente_id || ""} onValueChange={(v) => { const c = clientesList.find((x) => x.id === v); setVendaFormData({ ...vendaFormData, cliente_id: v, cliente_nome: c?.nome || "", cliente_cpf_cnpj: c?.cpf_cnpj || "", cliente_email: c?.email || "" }); if (c) setNfeDados((p) => ({ ...p, inscricao_estadual: c.inscricao_estadual || "", indicador_ie: c.indicador_ie || p.indicador_ie, telefone: c.telefone || c.whatsapp || "", cep: c.cep || "", logradouro: c.endereco || c.logradouro || "", numero: c.numero || "", bairro: c.bairro || "", cidade: c.cidade || "", uf: c.estado || c.uf || "", pessoa_fisica: (c.cpf_cnpj || "").replace(/\D/g, "").length === 11 })); }}>
                           <SelectTrigger><SelectValue placeholder="Selecione o cliente cadastrado" /></SelectTrigger>
                           <SelectContent>{clientesList.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
                         </Select>
@@ -410,9 +461,30 @@ export default function Vendas() {
                         <Label>Email</Label>
                         <Input type="email" value={vendaFormData.cliente_email} onChange={(e) => setVendaFormData({...vendaFormData, cliente_email: e.target.value})} />
                       </div>
+                      <div><Label>Inscr. Estadual</Label><Input value={nfeDados.inscricao_estadual} onChange={(e) => nf("inscricao_estadual", e.target.value)} /></div>
+                      <div><Label>Indicador IE</Label>
+                        <Select value={nfeDados.indicador_ie} onValueChange={(v) => nf("indicador_ie", v)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent><SelectItem value="1">Contribuinte ICMS</SelectItem><SelectItem value="2">Isento</SelectItem><SelectItem value="9">Não contribuinte</SelectItem></SelectContent>
+                        </Select></div>
+                      <div><Label>Telefone</Label><Input value={nfeDados.telefone} onChange={(e) => nf("telefone", e.target.value)} /></div>
+                      <div><Label>CEP</Label><Input value={nfeDados.cep} onChange={(e) => nf("cep", e.target.value)} /></div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                      <div className="md:col-span-3"><Label>Rua</Label><Input value={nfeDados.logradouro} onChange={(e) => nf("logradouro", e.target.value)} /></div>
+                      <div><Label>Número</Label><Input value={nfeDados.numero} onChange={(e) => nf("numero", e.target.value)} /></div>
+                      <div className="md:col-span-2"><Label>Bairro</Label><Input value={nfeDados.bairro} onChange={(e) => nf("bairro", e.target.value)} /></div>
+                      <div className="md:col-span-4"><Label>Cidade</Label><Input value={nfeDados.cidade} onChange={(e) => nf("cidade", e.target.value)} /></div>
+                      <div className="md:col-span-2"><Label>Estado (UF)</Label><Input maxLength={2} value={nfeDados.uf} onChange={(e) => nf("uf", e.target.value.toUpperCase())} /></div>
+                    </div>
+                    <div className="flex flex-wrap gap-6">
+                      <div className="flex items-center gap-3"><Switch checked={nfeDados.consumidor_final} onCheckedChange={(v) => nf("consumidor_final", v)} /><Label>Consumidor final?</Label></div>
+                      <div className="flex items-center gap-3"><Switch checked={nfeDados.pessoa_fisica} onCheckedChange={(v) => nf("pessoa_fisica", v)} /><Label>Pessoa física?</Label></div>
                     </div>
                     </section>
-                    <section id="sec-itens" className="scroll-mt-20 rounded-xl border bg-card p-4 md:p-6 space-y-4 shadow-sm"><h4 className="font-semibold flex items-center gap-2"><Package className="h-4 w-4 text-primary" />Produtos</h4>
+                    </TabsContent>
+                    <TabsContent value="produtos" className="mt-0">
+                    <section id="sec-itens" className="rounded-xl border bg-card p-4 md:p-6 space-y-4 shadow-sm"><h4 className="font-semibold flex items-center gap-2"><Package className="h-4 w-4 text-primary" />Produtos</h4>
                     {itensForm.length === 0 && <p className="text-muted-foreground text-center py-4">Nenhum item adicionado</p>}
                     <div className="space-y-2">
                       {itensForm.map((item, idx) => (
@@ -459,7 +531,42 @@ export default function Vendas() {
                     </div>
                     <Button type="button" variant="outline" onClick={handleAddItem} className="w-fit"><Plus className="h-4 w-4 mr-2" />Adicionar Item</Button>
                     </section>
-                    <section id="sec-pagamento" className="scroll-mt-20 rounded-xl border bg-card p-4 md:p-6 space-y-4 shadow-sm"><h4 className="font-semibold flex items-center gap-2"><CreditCard className="h-4 w-4 text-primary" />Pagamento</h4>
+                    </TabsContent>
+                    <TabsContent value="transporte" className="mt-0">
+                    <section className="rounded-xl border bg-card p-4 md:p-6 space-y-4 shadow-sm"><h4 className="font-semibold flex items-center gap-2"><Truck className="h-4 w-4 text-primary" />Transporte</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><Label>Frete</Label>
+                          <Select value={nfeDados.modalidade_frete} onValueChange={(v) => nf("modalidade_frete", v)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="0">Por conta do emitente</SelectItem>
+                              <SelectItem value="1">Por conta do destinatário</SelectItem>
+                              <SelectItem value="2">Por conta de terceiros</SelectItem>
+                              <SelectItem value="9">Sem frete</SelectItem>
+                            </SelectContent>
+                          </Select></div>
+                        <div className="flex items-center gap-3 pt-6"><Switch checked={nfeDados.por_transportadora} onCheckedChange={(v) => nf("por_transportadora", v)} /><Label>Frete feito por transportadora?</Label></div>
+                        {nfeDados.por_transportadora && <div className="md:col-span-2"><Label>Transportadora</Label>
+                          <Select value={nfeDados.transportadora_id} onValueChange={(v) => nf("transportadora_id", v)}>
+                            <SelectTrigger><SelectValue placeholder="Selecione a transportadora" /></SelectTrigger>
+                            <SelectContent>{transportadorasList.map((t) => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}</SelectContent>
+                          </Select></div>}
+                      </div>
+                    </section>
+                    </TabsContent>
+                    <TabsContent value="pagamento" className="mt-0">
+                    <section id="sec-pagamento" className="rounded-xl border bg-card p-4 md:p-6 space-y-4 shadow-sm"><h4 className="font-semibold flex items-center gap-2"><CreditCard className="h-4 w-4 text-primary" />Informações de Pagamento</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div><Label>Tipo de Pagamento</Label>
+                        <Select value={nfeDados.tipo_pagamento} onValueChange={(v) => nf("tipo_pagamento", v)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent><SelectItem value="0">À vista</SelectItem><SelectItem value="1">A prazo</SelectItem></SelectContent>
+                        </Select></div>
+                      {nfeDados.tipo_pagamento === "1" && <>
+                        <div><Label>Quantidade de parcelas</Label><NumberInput value={nfeDados.parcelas} onChange={(v) => nf("parcelas", Math.max(1, Math.round(v)))} min={1} step={1} /></div>
+                        <div><Label>Intervalo entre parcelas (dias)</Label><NumberInput value={nfeDados.intervalo_dias} onChange={(v) => nf("intervalo_dias", Math.max(0, Math.round(v)))} min={0} step={1} /></div>
+                      </>}
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <Label>Data da Venda</Label>
@@ -485,7 +592,9 @@ export default function Vendas() {
                       </div>
                     </div>
                     </section>
-                    <section id="sec-totais" className="scroll-mt-20 rounded-xl border bg-card p-4 md:p-6 space-y-4 shadow-sm"><h4 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4 text-primary" />Totais e Observações</h4>
+                    </TabsContent>
+                    <TabsContent value="obs" className="mt-0">
+                    <section id="sec-totais" className="rounded-xl border bg-card p-4 md:p-6 space-y-4 shadow-sm"><h4 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4 text-primary" />Informações sobre a nota</h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div><Label>Subtotal</Label><p className="text-xl font-bold">{formatCurrency(itensForm.reduce((s, i) => s + i.quantidade * i.preco_unitario, 0))}</p></div>
                       <div><Label>Descontos</Label><p className="text-xl font-bold text-destructive">-{formatCurrency(itensForm.reduce((s, i) => s + i.desconto_valor, 0))}</p></div>
@@ -493,12 +602,25 @@ export default function Vendas() {
                       <div><Label>Total</Label><p className="text-xl font-bold text-primary">{formatCurrency(itensForm.reduce((s, i) => s + i.valor_total, 0))}</p></div>
                     </div>
                     <div>
-                      <Label>Observações</Label>
+                      <Label>Observações internas</Label>
                       <Input value={vendaFormData.obs} onChange={(e) => setVendaFormData({...vendaFormData, obs: e.target.value})} />
                     </div>
+                    <div>
+                      <Label>Observações complementares (saem na nota)</Label>
+                      <Textarea rows={3} value={nfeDados.obs_complementares} onChange={(e) => nf("obs_complementares", e.target.value)} />
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg bg-primary/10 px-4 py-3"><span className="font-medium">Total da Nota</span><span className="text-lg font-bold text-primary">{formatCurrency(itensForm.reduce((s, i) => s + i.valor_total, 0))}</span></div>
                     </section>
+                    </TabsContent>
                   </div>
                 </form>
+                <div className="flex justify-between pb-6">
+                  <Button type="button" variant="outline" disabled={formTab === FORM_TABS[0][0]} onClick={() => setFormTab(FORM_TABS[Math.max(0, FORM_TABS.findIndex((t) => t[0] === formTab) - 1)][0])}>Anterior</Button>
+                  {formTab !== FORM_TABS[FORM_TABS.length - 1][0]
+                    ? <Button type="button" onClick={() => setFormTab(FORM_TABS[FORM_TABS.findIndex((t) => t[0] === formTab) + 1][0])}>Próxima</Button>
+                    : <Button type="submit" form="venda-form" disabled={formLoading}>Salvar</Button>}
+                </div>
+                </Tabs>
               </div>
     </MainLayout>
   );
