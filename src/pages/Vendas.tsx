@@ -1,3 +1,4 @@
+import { SmartSelect } from "@/components/ui/smart-select";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
