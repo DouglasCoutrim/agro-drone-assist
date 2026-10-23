@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { validarClienteFiscal } from "@/lib/fiscal-validation";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
