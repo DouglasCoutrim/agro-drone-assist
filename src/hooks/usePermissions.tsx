@@ -24,18 +24,23 @@ export interface UserPermissions {
   acesso_suporte: boolean;
 }
 
+const permCache = new Map<string, UserPermissions>();
+
 export function usePermissions() {
   const { user } = useAuth();
-  const [permissions, setPermissions] = useState<UserPermissions | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [permissions, setPermissions] = useState<UserPermissions | null>(user ? permCache.get(user.id) ?? null : null);
+  const [loading, setLoading] = useState(!(user && permCache.has(user.id)));
 
   useEffect(() => {
     if (!user) {
+      permCache.clear();
       setPermissions(null);
       setLoading(false);
       return;
     }
 
+    const hit = permCache.get(user.id);
+    if (hit) { setPermissions(hit); setLoading(false); return; }
     const fetchPermissions = async () => {
       try {
         const { data, error } = await supabase
@@ -54,11 +59,9 @@ export function usePermissions() {
           acesso_notificacoes: true, acesso_wiki: true, acesso_suporte: true,
         };
 
-        if (data) {
-          setPermissions({ ...defaultPerms, ...data });
-        } else {
-          setPermissions(defaultPerms);
-        }
+        const merged = data ? { ...defaultPerms, ...data } : defaultPerms;
+        permCache.set(user.id, merged);
+        setPermissions(merged);
       } catch (err) {
         console.error('Error fetching permissions:', err);
         setPermissions({

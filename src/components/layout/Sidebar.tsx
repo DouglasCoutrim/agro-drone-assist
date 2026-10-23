@@ -8,48 +8,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo-icon.png";
+import { sectionsForRoles } from "./navConfig";
 
 interface SidebarProps { className?: string; }
-
-const navSections = [
-  {
-    title: "PRINCIPAL",
-    items: [
-      { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard", roles: ["admin", "tecnico", "consulta"] },
-      { title: "Ordens de Serviço", icon: FileText, href: "/ordens-servico", roles: ["admin", "tecnico", "consulta"] },
-      { title: "Meu Painel (Técnico)", icon: Wrench, href: "/technician/dashboard", roles: ["admin", "tecnico"] },
-      { title: "Meu Financeiro", icon: Calculator, href: "/technician/financeiro", roles: ["tecnico"] },
-      { title: "Oficina ao Vivo (TV)", icon: Monitor, href: "/workshop/live", roles: ["admin", "tecnico", "consulta"] },
-      { title: "Clientes", icon: Users, href: "/clientes", roles: ["admin", "tecnico", "consulta"] },
-    ],
-  },
-{
-        title: "GESTÃO",
-        items: [
-          { title: "Estoque", icon: Package, href: "/estoque", roles: ["admin", "tecnico", "consulta"] },
-          { title: "Produtos", icon: Boxes, href: "/produtos", roles: ["admin", "tecnico", "consulta"] },
-          { title: "Vendas", icon: ShoppingCart, href: "/vendas", roles: ["admin", "tecnico"] },
-          { title: "Serviços", icon: Wrench, href: "/servicos", roles: ["admin", "tecnico", "consulta"] },
-          { title: "Financeiro", icon: DollarSign, href: "/financeiro", roles: ["admin", "tecnico"] },
-          { title: "Cobranças", icon: CreditCard, href: "/cobrancas", roles: ["admin", "tecnico"] },
-          { title: "Orçamentos", icon: ClipboardList, href: "/orcamentos", roles: ["admin", "tecnico"] },
-          { title: "Relatórios", icon: BarChart3, href: "/relatorios", roles: ["admin", "tecnico", "consulta"] },
-        ],
-      },
-  {
-    title: "SISTEMA",
-    items: [
-      { title: "Equipe", icon: UsersRound, href: "/equipe", roles: ["admin"] },
-      { title: "Empresa", icon: Building2, href: "/empresa", roles: ["admin"] },
-      { title: "Configurações", icon: Settings, href: "/configuracoes", roles: ["admin"] },
-      { title: "Checklist de OS", icon: ClipboardList, href: "/admin/configuracao-os", roles: ["admin"] },
-      { title: "Retenções de Imposto", icon: PiggyBank, href: "/admin/retencoes", roles: ["admin"] },
-      { title: "Notificações", icon: Bell, href: "/notificacoes", roles: ["admin", "tecnico", "consulta"] },
-      { title: "Central de Ajuda", icon: BookOpen, href: "/wiki", roles: ["admin", "tecnico", "consulta"] },
-      { title: "Suporte", icon: LifeBuoy, href: "/suporte", roles: ["admin", "tecnico", "consulta"] },
-    ],
-  },
-];
 
 // Platform section removed from main sidebar as requested to avoid confusion with client dashboard
 
@@ -89,11 +50,8 @@ export function Sidebar({ className }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-1 space-y-1 overflow-y-auto scrollbar-thin">
         {/* Regular navigation sections */}
-        {navSections.map((section) => {
-          // Tenant navigation requires a tenant role, including for platform admins.
-          // A platform-only admin still reaches the dedicated master panel below.
-          const sectionItems = section.items.filter(item => roles.some((assignedRole) => item.roles.includes(assignedRole)));
-          if (sectionItems.length === 0) return null;
+        {sectionsForRoles(roles).map((section) => {
+          const sectionItems = section.items;
           return (
             <div key={section.title}>
               <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground/70 px-2 pt-3 pb-1 mt-2 first:mt-0">

@@ -1659,25 +1659,6 @@ export default function OrdensServico() {
                 </CardContent>
               </Card>
 
-              {/* Controle interno: nunca incluir ajudantes ou comissões na OS do cliente. */}
-              <Card>
-                <CardHeader className="pb-3"><CardTitle className="text-sm">Técnicos da OS · Controle interno</CardTitle></CardHeader>
-                <CardContent>
-                  <OSTechniciansSection
-                    technicians={osTechnicians}
-                    onChange={setOsTechnicians}
-                    tecnicos={tecnicos}
-                    organizationId={organization?.id || null}
-                    disabled={!canEdit}
-                    isMainTecnico={formData.tecnico_id === user?.id}
-                    canManage={canEdit && (isAdmin || formData.tecnico_id === user?.id)}
-                    osValorServicos={osItems.filter(i => i.tipo === "servico").reduce((s, i) => s + i.valor_total, 0)}
-                    osValorProdutos={osItems.filter(i => i.tipo === "produto").reduce((s, i) => s + i.valor_total, 0)}
-                    taxPercentageNfe={empresa?.tax_percentage_nfe || 0}
-                    nfeEmitida={formData.nfe_emitida}
-                  />
-                </CardContent>
-              </Card>
 
               {/* Observações + Resumo financeiro */}
 <Card>
@@ -1896,25 +1877,6 @@ export default function OrdensServico() {
                       )}
                       <Separator />
 
-                      {/* Controle interno: esta seção não integra o PDF nem as mensagens ao cliente. */}
-                      {viewOsTechniciansLoading ? (
-                        <div className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando técnicos...
-                        </div>
-                      ) : (
-                        <OSTechniciansSection
-                          technicians={viewOsTechnicians}
-                          onChange={() => {}}
-                          tecnicos={tecnicos}
-                          disabled={true}
-                          canManage={false}
-                          osValorServicos={viewOsItems.filter(i => i.tipo === "servico").reduce((s, i) => s + i.valor_total, 0)}
-                          osValorProdutos={viewOsItems.filter(i => i.tipo === "produto").reduce((s, i) => s + i.valor_total, 0)}
-                          taxPercentageNfe={empresa?.tax_percentage_nfe || 0}
-                          nfeEmitida={viewingOS.nfe_emitida}
-                        />
-                      )}
-                      <Separator />
                       <div className="grid grid-cols-2 gap-3">
                         <div><p className="text-[10px] text-muted-foreground">Entrada</p><p className="text-sm">{formatDate(viewingOS.data_entrada)}</p></div>
                         <div><p className="text-[10px] text-muted-foreground">Previsão</p><p className="text-sm">{formatDate(viewingOS.data_previsao)}</p></div>

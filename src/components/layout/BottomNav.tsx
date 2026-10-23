@@ -3,6 +3,7 @@ import { useLocation, Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { sectionsForRoles } from "./navConfig";
 import {
   DollarSign, BarChart3, Settings, CreditCard, ClipboardList, UsersRound, Building2
 } from "lucide-react";
@@ -14,22 +15,12 @@ const mainItems = [
   { to: "/estoque", icon: Package, label: "Estoque" },
 ];
 
-const moreItems = [
-  { to: "/financeiro", icon: DollarSign, label: "Financeiro", roles: ["admin", "tecnico"] },
-  { to: "/cobrancas", icon: CreditCard, label: "Cobranças", roles: ["admin", "tecnico"] },
-  { to: "/orcamentos", icon: ClipboardList, label: "Orçamentos", roles: ["admin", "tecnico"] },
-  { to: "/relatorios", icon: BarChart3, label: "Relatórios", roles: ["admin", "tecnico", "consulta"] },
-  { to: "/equipe", icon: UsersRound, label: "Equipe", roles: ["admin"] },
-  { to: "/empresa", icon: Building2, label: "Empresa", roles: ["admin"] },
-  { to: "/configuracoes", icon: Settings, label: "Configurações", roles: ["admin"] },
-];
-
 export function BottomNav() {
   const location = useLocation();
   const { roles } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const filteredMore = moreItems.filter(item => roles.some((assignedRole) => item.roles.includes(assignedRole)));
+  const sections = sectionsForRoles(roles);
 
   return (
     <>
@@ -42,28 +33,34 @@ export function BottomNav() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-12 h-1.5 rounded-full bg-muted mx-auto mb-6" />
-            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4 px-2">Mais Opções</h3>
-            <div className="grid grid-cols-3 gap-4">
-              {filteredMore.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.to;
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    onClick={() => setDrawerOpen(false)}
-                    className={cn(
-                      "flex flex-col items-center gap-2 p-4 rounded-2xl transition-all active:scale-95",
-                      isActive ? "bg-primary/10 text-primary border border-primary/20" : "text-foreground hover:bg-muted border border-transparent"
-                    )}
-                  >
-                    <div className={cn("p-2 rounded-xl", isActive ? "bg-primary/20" : "bg-muted")}>
-                      <Icon className="h-6 w-6" />
-                    </div>
-                    <span className="text-[11px] font-bold leading-none text-center">{item.label}</span>
-                  </Link>
-                );
-              })}
+            <div className="max-h-[65vh] overflow-y-auto space-y-4">
+              {sections.map((section) => (
+                <div key={section.title}>
+                  <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-2 px-1">{section.title}</h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {section.items.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = location.pathname === item.href;
+                      return (
+                        <Link
+                          key={item.href}
+                          to={item.href}
+                          onClick={() => setDrawerOpen(false)}
+                          className={cn(
+                            "flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all active:scale-95",
+                            isActive ? "bg-primary/10 text-primary border border-primary/20" : "text-foreground hover:bg-muted border border-transparent"
+                          )}
+                        >
+                          <div className={cn("p-2 rounded-xl", isActive ? "bg-primary/20" : "bg-muted")}>
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <span className="text-[11px] font-semibold leading-tight text-center">{item.title}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
