@@ -36,6 +36,13 @@
       "when": 1792778459954,
       "tag": "0004_itens_estoque_sem_nota",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792794407335,
+      "tag": "0005_nfse_reforma_campos",
+      "breakpoints": true
     }
   ]
 }
