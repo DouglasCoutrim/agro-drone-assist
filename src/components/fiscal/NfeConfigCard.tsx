@@ -44,6 +44,10 @@ type Cfg = {
   nfse_iss_retido: boolean;
   nfse_natureza_operacao: string;
   nfse_discriminacao_padrao: string;
+  nfse_codigo_nbs: string;
+  nfse_codigo_indop: string;
+  nfse_ibs_cbs_class_trib: string;
+  nfse_ibs_cbs_cst: string;
 };
 
 const EMPTY: Cfg = {
@@ -54,6 +58,7 @@ const EMPTY: Cfg = {
   informacoes_complementares: "",
   nfse_habilitado: false, nfse_item_lista_servico: "", nfse_codigo_tributario_municipio: "", nfse_codigo_cnae: "",
   nfse_aliquota: 0, nfse_iss_retido: false, nfse_natureza_operacao: "1", nfse_discriminacao_padrao: "",
+  nfse_codigo_nbs: "115021000", nfse_codigo_indop: "100301", nfse_ibs_cbs_class_trib: "000001", nfse_ibs_cbs_cst: "000",
 };
 
 function F({ label, k, cfg, set, ...rest }: { label: string; k: keyof Cfg; cfg: Cfg; set: (k: keyof Cfg, v: any) => void } & React.InputHTMLAttributes<HTMLInputElement>) {
@@ -226,6 +231,10 @@ export function NfeConfigCard() {
             <F cfg={cfg} set={set} label="Item da lista de serviço (LC 116) *" k="nfse_item_lista_servico" placeholder="Ex.: 14.01" />
             <F cfg={cfg} set={set} label="Código de tributação do município" k="nfse_codigo_tributario_municipio" />
             <F cfg={cfg} set={set} label="CNAE" k="nfse_codigo_cnae" inputMode="numeric" />
+            <F cfg={cfg} set={set} label="Código NBS" k="nfse_codigo_nbs" inputMode="numeric" placeholder="Ex.: 115021000" />
+            <F cfg={cfg} set={set} label="Indicador da operação (INDOP)" k="nfse_codigo_indop" inputMode="numeric" placeholder="Ex.: 100301" />
+            <F cfg={cfg} set={set} label="Classificação tributária IBS/CBS" k="nfse_ibs_cbs_class_trib" inputMode="numeric" placeholder="Ex.: 000001" />
+            <F cfg={cfg} set={set} label="CST IBS/CBS" k="nfse_ibs_cbs_cst" inputMode="numeric" placeholder="Ex.: 000" />
             <F cfg={cfg} set={set} label="Alíquota ISS (%)" k="nfse_aliquota" type="number" step="0.01" min={0} />
             <div className="space-y-1.5">
               <Label>Natureza da operação (NFS-e)</Label>

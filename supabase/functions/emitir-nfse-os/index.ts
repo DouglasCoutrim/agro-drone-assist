@@ -109,6 +109,10 @@ Deno.serve(async (req) => {
         item_lista_servico: srv.item_lista_servico,
         ...(srv.codigo_tributario_municipio ? { codigo_tributario_municipio: srv.codigo_tributario_municipio } : {}),
         ...(config.nfse_codigo_cnae ? { codigo_cnae: onlyDigits(config.nfse_codigo_cnae) } : {}),
+        codigo_nbs: onlyDigits(config.nfse_codigo_nbs || '115021000'),
+        codigo_indicador_operacao: onlyDigits(config.nfse_codigo_indop || '100301'),
+        ibs_cbs_classificacao_tributaria: onlyDigits(config.nfse_ibs_cbs_class_trib || '000001'),
+        ibs_cbs_situacao_tributaria: onlyDigits(config.nfse_ibs_cbs_cst || '000'),
         valor_servicos: srv.valor_servicos,
       },
     };
