@@ -2849,6 +2849,7 @@ export type Database = {
           nf_emitida_em: string | null
           nf_numero: string | null
           nf_provider: string | null
+          nfe_dados: Json
           numero: string
           obs: string | null
           organization_id: string
@@ -2873,6 +2874,7 @@ export type Database = {
           nf_emitida_em?: string | null
           nf_numero?: string | null
           nf_provider?: string | null
+          nfe_dados?: Json
           numero: string
           obs?: string | null
           organization_id: string
@@ -2897,6 +2899,7 @@ export type Database = {
           nf_emitida_em?: string | null
           nf_numero?: string | null
           nf_provider?: string | null
+          nfe_dados?: Json
           numero?: string
           obs?: string | null
           organization_id?: string
