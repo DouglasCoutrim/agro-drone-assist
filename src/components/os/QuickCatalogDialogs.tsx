@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { NumberInput } from "@/components/ui/number-input";
 import { SearchableInput } from "@/components/ui/searchable-input";
+import { validarProdutoFiscal } from "@/lib/fiscal-validation";
 
 export interface SavedEstoqueItem { id: string; descricao: string; codigo: string; categoria: string; preco_venda: number; quantidade: number }
 export interface SavedServico { id: string; descricao: string; preco: number }
@@ -21,7 +22,7 @@ async function nextEstoqueCode(orgId: string) {
 export function EstoqueItemDialog({ open, onOpenChange, organizationId, initialName, onSaved }: {
   open: boolean; onOpenChange: (o: boolean) => void; organizationId?: string | null; initialName: string; onSaved: (i: SavedEstoqueItem) => void;
 }) {
-  const empty = { codigo: "", descricao: "", categoria: "", quantidade: 0, estoque_minimo: 0, custo_unitario: 0, preco_venda: 0, fornecedor: "", localizacao: "" };
+  const empty = { codigo: "", descricao: "", categoria: "", quantidade: 0, estoque_minimo: 0, custo_unitario: 0, preco_venda: 0, fornecedor: "", localizacao: "", ncm: "", cfop: "5102", csosn: "102", unidade: "UN" };
   const [form, setForm] = useState(empty);
   const [categorias, setCategorias] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -40,6 +41,8 @@ export function EstoqueItemDialog({ open, onOpenChange, organizationId, initialN
     e.preventDefault(); e.stopPropagation();
     if (busy.current || !organizationId) return;
     if (!form.descricao.trim() || !form.categoria.trim()) { toast.error("Preencha descrição e categoria"); return; }
+    const faltando = validarProdutoFiscal(form);
+    if (faltando.length) { toast.error("Preencha os dados fiscais (NF-e)", { description: faltando.join(" • ") }); return; }
     busy.current = true; setSaving(true);
     try {
       const payload = { ...form, descricao: form.descricao.trim(), categoria: form.categoria.trim(), organization_id: organizationId };
@@ -78,6 +81,13 @@ export function EstoqueItemDialog({ open, onOpenChange, organizationId, initialN
             <div className="space-y-1"><Label>Estoque mínimo</Label><NumberInput min="0" value={form.estoque_minimo} onChange={num("estoque_minimo")} /></div>
           </div>
           <div className="space-y-1"><Label>Localização</Label><Input value={form.localizacao} onChange={e => setForm(p => ({ ...p, localizacao: e.target.value }))} /></div>
+          <p className="text-sm font-medium pt-1">Dados fiscais (NF-e)</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1"><Label>NCM *</Label><Input value={form.ncm} onChange={e => setForm(p => ({ ...p, ncm: e.target.value }))} placeholder="8 dígitos" required /></div>
+            <div className="space-y-1"><Label>CFOP *</Label><Input value={form.cfop} onChange={e => setForm(p => ({ ...p, cfop: e.target.value }))} required /></div>
+            <div className="space-y-1"><Label>CSOSN *</Label><Input value={form.csosn} onChange={e => setForm(p => ({ ...p, csosn: e.target.value }))} required /></div>
+            <div className="space-y-1"><Label>Unidade *</Label><Input value={form.unidade} onChange={e => setForm(p => ({ ...p, unidade: e.target.value.toUpperCase() }))} required /></div>
+          </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button type="submit" disabled={saving}>{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Salvar</Button>
