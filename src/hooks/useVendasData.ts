@@ -351,7 +351,7 @@ export function useVendasData() {
     if (!organization?.id || !user) throw new Error("Sem permissão");
 
     const { data, error } = await supabase.functions.invoke("emitir-nfse-os", {
-      body: { os_id: osId, provider },
+      body: { action: "emitir", os_id: osId },
     });
 
     if (error) throw error;

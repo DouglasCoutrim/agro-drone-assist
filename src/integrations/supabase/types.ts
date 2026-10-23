@@ -943,6 +943,14 @@ export type Database = {
           logradouro: string | null
           municipio: string | null
           natureza_operacao: string
+          nfse_aliquota: number
+          nfse_codigo_cnae: string | null
+          nfse_codigo_tributario_municipio: string | null
+          nfse_discriminacao_padrao: string | null
+          nfse_habilitado: boolean
+          nfse_iss_retido: boolean
+          nfse_item_lista_servico: string | null
+          nfse_natureza_operacao: string
           nome_fantasia: string | null
           numero: string | null
           organization_id: string
@@ -972,6 +980,14 @@ export type Database = {
           logradouro?: string | null
           municipio?: string | null
           natureza_operacao?: string
+          nfse_aliquota?: number
+          nfse_codigo_cnae?: string | null
+          nfse_codigo_tributario_municipio?: string | null
+          nfse_discriminacao_padrao?: string | null
+          nfse_habilitado?: boolean
+          nfse_iss_retido?: boolean
+          nfse_item_lista_servico?: string | null
+          nfse_natureza_operacao?: string
           nome_fantasia?: string | null
           numero?: string | null
           organization_id: string
@@ -1001,6 +1017,14 @@ export type Database = {
           logradouro?: string | null
           municipio?: string | null
           natureza_operacao?: string
+          nfse_aliquota?: number
+          nfse_codigo_cnae?: string | null
+          nfse_codigo_tributario_municipio?: string | null
+          nfse_discriminacao_padrao?: string | null
+          nfse_habilitado?: boolean
+          nfse_iss_retido?: boolean
+          nfse_item_lista_servico?: string | null
+          nfse_natureza_operacao?: string
           nome_fantasia?: string | null
           numero?: string | null
           organization_id?: string
@@ -1368,6 +1392,7 @@ export type Database = {
           marca: string | null
           modelo_equipamento: string | null
           nfe_emitida: boolean | null
+          nfse_numero: string | null
           numero: string
           numero_serie: string | null
           observacoes: string | null
@@ -1416,6 +1441,7 @@ export type Database = {
           marca?: string | null
           modelo_equipamento?: string | null
           nfe_emitida?: boolean | null
+          nfse_numero?: string | null
           numero: string
           numero_serie?: string | null
           observacoes?: string | null
@@ -1464,6 +1490,7 @@ export type Database = {
           marca?: string | null
           modelo_equipamento?: string | null
           nfe_emitida?: boolean | null
+          nfse_numero?: string | null
           numero?: string
           numero_serie?: string | null
           observacoes?: string | null

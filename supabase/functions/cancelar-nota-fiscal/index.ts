@@ -46,7 +46,8 @@ Deno.serve(async (req) => {
     if (!config) return json({ error: 'Configuração fiscal não encontrada' }, 400);
     const cfg = { ...config, ambiente: nf.ambiente };
 
-    const r = await focusRequest(cfg, 'DELETE', `/v2/nfe/${encodeURIComponent(nf.referencia)}`, { justificativa: motivo });
+    const rota = nf.tipo === 'nfse' ? 'nfse' : 'nfe';
+    const r = await focusRequest(cfg, 'DELETE', `/v2/${rota}/${encodeURIComponent(nf.referencia)}`, { justificativa: motivo });
     if (!r.ok || (r.data?.status && r.data.status !== 'cancelado')) {
       return json({ error: focusErrorMessage(r.data) }, 422);
     }
@@ -57,6 +58,9 @@ Deno.serve(async (req) => {
     await admin.from('nota_fiscal_eventos').insert({ nf_id, tipo_evento: 'cancelamento', descricao: motivo, dados_evento: r.data });
     if (nf.venda_id) {
       await admin.from('vendas').update({ nf_numero: null, nf_chave: null, nf_emitida_em: null, nf_provider: null }).eq('id', nf.venda_id);
+    }
+    if (nf.tipo === 'nfse' && nf.os_id) {
+      await admin.from('ordens_servico').update({ nfe_emitida: false, nfse_numero: null }).eq('id', nf.os_id);
     }
     return json({ success: true });
   } catch (e: any) {
