@@ -41,7 +41,8 @@ export default function Clientes() {
 
   const [formData, setFormData] = useState({
     nome: "", telefone: "", email: "", cpf_cnpj: "",
-    endereco: "", cidade: "", estado: "", cep: "", observacoes: ""
+    endereco: "", cidade: "", estado: "", cep: "", observacoes: "",
+    numero: "", complemento: "", bairro: "", codigo_municipio: "", indicador_ie: 9, inscricao_estadual: ""
   });
 
   const isFormDirty = useMemo(
@@ -118,7 +119,10 @@ export default function Clientes() {
       nome: cliente.nome, telefone: cliente.telefone, email: cliente.email || "",
       cpf_cnpj: cliente.cpf_cnpj || "", endereco: cliente.endereco || "",
       cidade: cliente.cidade || "", estado: cliente.estado || "",
-      cep: cliente.cep || "", observacoes: cliente.observacoes || ""
+      cep: cliente.cep || "", observacoes: cliente.observacoes || "",
+      numero: (cliente as any).numero || "", complemento: (cliente as any).complemento || "",
+      bairro: (cliente as any).bairro || "", codigo_municipio: (cliente as any).codigo_municipio || "",
+      indicador_ie: (cliente as any).indicador_ie ?? 9, inscricao_estadual: (cliente as any).inscricao_estadual || ""
     });
     setDuplicateWarning(null);
     setDialogOpen(true);
@@ -149,7 +153,7 @@ export default function Clientes() {
   };
 
   const resetForm = () => {
-    setFormData({ nome: "", telefone: "", email: "", cpf_cnpj: "", endereco: "", cidade: "", estado: "", cep: "", observacoes: "" });
+    setFormData({ nome: "", telefone: "", email: "", cpf_cnpj: "", endereco: "", cidade: "", estado: "", cep: "", observacoes: "", numero: "", complemento: "", bairro: "", codigo_municipio: "", indicador_ie: 9, inscricao_estadual: "" });
     setEditingCliente(null);
     setDuplicateWarning(null);
   };
@@ -261,15 +265,20 @@ export default function Clientes() {
                         <Label>CEP</Label>
                         <div className="flex gap-2">
                           <Input value={formData.cep} onChange={(e) => setFormData({ ...formData, cep: e.target.value })} placeholder="00000-000" maxLength={9} />
-                          <Button type="button" variant="outline" onClick={() => fetchCep(formData.cep).then(res => { if (res) { setFormData(f => ({ ...f, endereco: res.logradouro || f.endereco, cidade: res.localidade || f.cidade, estado: res.uf || f.estado })); } })} disabled={cepLoading || !formData.cep}>
+                          <Button type="button" variant="outline" onClick={() => fetchCep(formData.cep).then(res => { if (res) { setFormData(f => ({ ...f, endereco: res.logradouro || f.endereco, cidade: res.localidade || f.cidade, estado: res.uf || f.estado, bairro: res.bairro || f.bairro, codigo_municipio: res.ibge || f.codigo_municipio })); } })} disabled={cepLoading || !formData.cep}>
                             {cepLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
                           </Button>
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label>Endereço</Label>
-                        <Input value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} placeholder="Rua, número, complemento" />
+                        <Label>Logradouro</Label>
+                        <Input value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} placeholder="Rua, avenida..." />
                       </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2"><Label>Número</Label><Input value={formData.numero} onChange={(e) => setFormData({ ...formData, numero: e.target.value })} placeholder="S/N" /></div>
+                        <div className="space-y-2"><Label>Complemento</Label><Input value={formData.complemento} onChange={(e) => setFormData({ ...formData, complemento: e.target.value })} /></div>
+                      </div>
+                      <div className="space-y-2"><Label>Bairro</Label><Input value={formData.bairro} onChange={(e) => setFormData({ ...formData, bairro: e.target.value })} /></div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>Cidade</Label>
@@ -282,6 +291,22 @@ export default function Clientes() {
                             <SelectContent>{UF_LIST.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
+                      </div>
+                      <Separator className="my-2" />
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">Dados para nota fiscal</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Contribuinte de ICMS?</Label>
+                          <Select value={String(formData.indicador_ie)} onValueChange={(v) => setFormData({ ...formData, indicador_ie: Number(v) })}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="9">Não contribuinte</SelectItem>
+                              <SelectItem value="1">Contribuinte (com IE)</SelectItem>
+                              <SelectItem value="2">Contribuinte isento</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2"><Label>Inscrição estadual</Label><Input value={formData.inscricao_estadual} onChange={(e) => setFormData({ ...formData, inscricao_estadual: e.target.value })} disabled={formData.indicador_ie !== 1} /></div>
                       </div>
                       <div className="space-y-2">
                         <Label>Observações</Label>
