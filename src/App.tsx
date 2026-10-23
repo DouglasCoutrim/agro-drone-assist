@@ -28,7 +28,6 @@ const Financeiro = lazy(() => import("./pages/Financeiro"));
 const Clientes = lazy(() => import("./pages/Clientes"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes"));
 const Cobrancas = lazy(() => import("./pages/Cobrancas"));
-const Produtos = lazy(() => import("./pages/Produtos"));
 const Vendas = lazy(() => import("./pages/Vendas"));
 
 const Equipe = lazy(() => import("./pages/Equipe"));
@@ -45,7 +44,6 @@ const Wiki = lazy(() => import("./pages/Wiki"));
 const TechnicianDashboard = lazy(() => import("./pages/TechnicianDashboard"));
 const WorkshopLive = lazy(() => import("./pages/WorkshopLive"));
 const TechnicianFinancialDashboard = lazy(() => import("./pages/TechnicianFinancialDashboard"));
-const AdminTaxRetentions = lazy(() => import("./pages/AdminTaxRetentions"));
 
 const PageFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -108,7 +106,7 @@ const App = () => {
                   <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                   <Route path="/ordens-servico" element={<ProtectedRoute requiredPermission="acesso_os"><OrdensServico /></ProtectedRoute>} />
                   <Route path="/estoque" element={<ProtectedRoute requiredPermission="acesso_estoque"><Estoque /></ProtectedRoute>} />
-                  <Route path="/produtos" element={<ProtectedRoute requiredPermission="acesso_estoque"><Produtos /></ProtectedRoute>} />
+                  <Route path="/produtos" element={<Navigate to="/estoque" replace />} />
                   <Route path="/vendas" element={<ProtectedRoute requiredPermission="acesso_financeiro"><Vendas /></ProtectedRoute>} />
                   <Route path="/servicos" element={<ProtectedRoute><Servicos /></ProtectedRoute>} />
                   <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
@@ -128,7 +126,7 @@ const App = () => {
                   <Route path="/wiki/:slug" element={<ProtectedRoute><Wiki /></ProtectedRoute>} />
                   <Route path="/technician/dashboard" element={<ProtectedRoute><TechnicianDashboard /></ProtectedRoute>} />
                   <Route path="/technician/financeiro" element={<ProtectedRoute requiredRole="tecnico"><TechnicianFinancialDashboard /></ProtectedRoute>} />
-                  <Route path="/admin/retencoes" element={<ProtectedRoute requiredRole="admin"><AdminTaxRetentions /></ProtectedRoute>} />
+                  <Route path="/admin/retencoes" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/workshop/live" element={<ProtectedRoute><WorkshopLive /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
