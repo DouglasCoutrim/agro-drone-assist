@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
-import { useProdutosData } from "@/hooks/useProdutosData";
 
 export interface Venda {
   id: string;
@@ -112,7 +111,6 @@ export interface NotaFiscalItem {
 export function useVendasData() {
   const { organization } = useOrganization();
   const { user } = useAuth();
-  const { produtos } = useProdutosData();
   
   const [vendas, setVendas] = useState<Venda[]>([]);
   const [ganhosTecnico, setGanhosTecnico] = useState<TecnicoGanhoVenda[]>([]);
@@ -154,24 +152,7 @@ export function useVendasData() {
       }));
       setVendas(vendasComItens);
 
-      // Buscar ganhos do técnico logado
-      const { data: ganhosData, error: ganhosErr } = await supabase
-        .from("tecnico_ganhos_venda")
-        .select(`
-          *,
-          profiles!tecnico_ganhos_venda_tecnico_id_fkey (nome)
-        `)
-        .eq("organization_id", organization.id)
-        .eq("tecnico_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (ganhosErr) throw ganhosErr;
-
-      const ganhosComNome = (ganhosData || []).map((g: any) => ({
-        ...g,
-        tecnico_nome: g.profiles?.nome || "Você",
-      }));
-      setGanhosTecnico(ganhosComNome);
+      setGanhosTecnico([]);
 
       // Buscar notas fiscais
       const { data: nfData, error: nfErr } = await supabase
@@ -196,7 +177,7 @@ export function useVendasData() {
     } finally {
       setLoading(false);
     }
-  }, [organization?.id, user, produtos]);
+  }, [organization?.id, user]);
 
   useEffect(() => {
     fetchData();
@@ -258,32 +239,15 @@ export function useVendasData() {
 
     if (itensErr) throw itensErr;
 
-    // Atualizar estoque dos produtos vendidos
     for (const item of itens) {
-      if (item.produto_id) {
-        const produto = produtos.find((p) => p.id === item.produto_id);
-        if (produto) {
-          await supabase
-            .from("produtos")
-            .update({ estoque_atual: produto.estoque_atual - item.quantidade } as any)
-            .eq("id", item.produto_id);
-
-          await supabase
-            .from("estoque_movimentacao")
-            .insert({
-              organization_id: organization.id,
-              produto_id: item.produto_id,
-              tipo: "saida",
-              motivo: "venda",
-              quantidade_anterior: produto.estoque_atual,
-              quantidade_movimento: -item.quantidade,
-              quantidade_final: produto.estoque_atual - item.quantidade,
-              documento_referencia: numero,
-              documento_tipo: "venda",
-              registrado_por: user.id,
-            });
-        }
-      }
+      if (!item.produto_id) continue;
+      const { data: est } = await supabase.from("itens_estoque").select("quantidade").eq("id", item.produto_id).maybeSingle();
+      if (!est) continue;
+      await supabase.from("itens_estoque").update({ quantidade: est.quantidade - Number(item.quantidade) }).eq("id", item.produto_id);
+      await supabase.from("movimentacoes_estoque").insert({
+        organization_id: organization!.id, item_id: item.produto_id, tipo: "saida",
+        quantidade: Number(item.quantidade), motivo: `Venda ${numero}`, usuario_id: user!.id,
+      } as any);
     }
 
     const novaVenda = { ...vendaData, itens: itensData || [] };
@@ -307,32 +271,15 @@ export function useVendasData() {
     const venda = vendas.find((v) => v.id === id);
     if (!venda) throw new Error("Venda não encontrada");
 
-    // Estornar estoque
     for (const item of venda.itens || []) {
-      if (item.produto_id) {
-        const produto = produtos.find((p) => p.id === item.produto_id);
-        if (produto) {
-          await supabase
-            .from("produtos")
-            .update({ estoque_atual: produto.estoque_atual + item.quantidade } as any)
-            .eq("id", item.produto_id);
-
-          await supabase
-            .from("estoque_movimentacao")
-            .insert({
-              organization_id: organization!.id,
-              produto_id: item.produto_id,
-              tipo: "entrada",
-              motivo: "cancelamento_venda",
-              quantidade_anterior: produto.estoque_atual,
-              quantidade_movimento: item.quantidade,
-              quantidade_final: produto.estoque_atual + item.quantidade,
-              documento_referencia: venda.numero,
-              documento_tipo: "cancelamento",
-              registrado_por: user!.id,
-            });
-        }
-      }
+      if (!item.produto_id) continue;
+      const { data: est } = await supabase.from("itens_estoque").select("quantidade").eq("id", item.produto_id).maybeSingle();
+      if (!est) continue;
+      await supabase.from("itens_estoque").update({ quantidade: est.quantidade + Number(item.quantidade) }).eq("id", item.produto_id);
+      await supabase.from("movimentacoes_estoque").insert({
+        organization_id: organization!.id, item_id: item.produto_id, tipo: "entrada",
+        quantidade: Number(item.quantidade), motivo: `Cancelamento da venda ${venda.numero}`, usuario_id: user!.id,
+      } as any);
     }
 
     const { error } = await supabase
@@ -353,37 +300,10 @@ export function useVendasData() {
 
     // Chamar Edge Function
     const { data, error } = await supabase.functions.invoke("emitir-nfe-venda", {
-      body: { venda_id: vendaId, provider },
+      body: { action: "emitir", venda_id: vendaId },
     });
 
     if (error) throw error;
-
-    // Atualizar venda com dados da NF
-    if (data?.nf) {
-      await supabase
-        .from("vendas")
-        .update({
-          nf_numero: data.nf.numero,
-          nf_chave: data.nf.chave_acesso,
-          nf_emitida_em: data.nf.emitida_em,
-          nf_provider: provider,
-        })
-        .eq("id", vendaId);
-
-      setVendas((prev) =>
-        prev.map((v) =>
-          v.id === vendaId
-            ? {
-                ...v,
-                nf_numero: data.nf.numero,
-                nf_chave: data.nf.chave_acesso,
-                nf_emitida_em: data.nf.emitida_em,
-                nf_provider: provider,
-              }
-            : v
-        )
-      );
-    }
 
     // Recarregar notas
     await fetchData();

@@ -41,7 +41,7 @@ import { useNavigate } from "react-router-dom";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 import { useVendasData, Venda, VendaItem, NotaFiscalEmitida } from "@/hooks/useVendasData";
-import { useProdutosData } from "@/hooks/useProdutosData";
+
 
 const FORMAS_PAGAMENTO = [
   { value: "dinheiro", label: "Dinheiro" },
@@ -63,7 +63,13 @@ export default function Vendas() {
   const { user } = useAuth();
   const confirm = useConfirm();
   const navigate = useNavigate();
-  const { produtos } = useProdutosData();
+  const [produtos, setProdutos] = useState<any[]>([]);
+  const [clientesList, setClientesList] = useState<any[]>([]);
+  useEffect(() => {
+    if (!organization?.id) return;
+    supabase.from("itens_estoque").select("id,codigo,descricao,preco_venda,ncm,cfop,quantidade").eq("organization_id", organization.id).order("descricao").then(({ data }) => setProdutos(data || []));
+    supabase.from("clientes").select("id,nome,cpf_cnpj,email").eq("organization_id", organization.id).order("nome").then(({ data }) => setClientesList(data || []));
+  }, [organization?.id]);
   const {
     vendas,
     ganhosTecnico,
@@ -205,10 +211,11 @@ export default function Vendas() {
       }
       
       // Auto-preencher produto selecionado
-      if (field === "produto_id" && value) {
+      if (field === "produto_id" && value === "manual") { item.produto_id = null as any; }
+      if (field === "produto_id" && value && value !== "manual") {
         const prod = produtos.find((p) => p.id === value);
         if (prod) {
-          item.nome_produto = prod.nome;
+          item.nome_produto = prod.descricao;
           item.ncm = prod.ncm || "";
           item.cfop = prod.cfop || "5102";
           item.preco_unitario = prod.preco_venda;
@@ -297,16 +304,22 @@ export default function Vendas() {
     try {
       setFormLoading(true);
       await emitirNFeVenda(vendaId, "focusnfe");
-      toast.success("NFe emitida com sucesso!");
+      toast.success("NF-e enviada! Confira o status em Notas Fiscais.");
     } catch (err: any) {
-      toast.error("Erro ao emitir NFe: " + err.message);
+      let msg = err.message;
+      try {
+        const body = await err.context?.json?.();
+        if (body?.problemas?.length) msg = body.problemas.join("\n");
+        else if (body?.error) msg = body.error;
+      } catch { /* ignore */ }
+      toast.error("NF-e não emitida", { description: msg, duration: 12000 });
     } finally {
       setFormLoading(false);
     }
   };
 
   const handleCancelarNF = async (nfId: string) => {
-    const motivo = prompt("Motivo do cancelamento:");
+    const motivo = prompt("Justificativa do cancelamento (mínimo 15 caracteres):");
     if (!motivo) return;
     try {
       await cancelarNotaFiscal(nfId, motivo);
@@ -510,6 +523,10 @@ export default function Vendas() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="col-span-2">
                         <Label>Nome do Cliente *</Label>
+                        <Select value={vendaFormData.cliente_id || ""} onValueChange={(v) => { const c = clientesList.find((x) => x.id === v); setVendaFormData({ ...vendaFormData, cliente_id: v, cliente_nome: c?.nome || "", cliente_cpf_cnpj: c?.cpf_cnpj || "", cliente_email: c?.email || "" }); }}>
+                          <SelectTrigger><SelectValue placeholder="Selecione o cliente cadastrado" /></SelectTrigger>
+                          <SelectContent>{clientesList.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
+                        </Select>
                         <Input value={vendaFormData.cliente_nome} onChange={(e) => setVendaFormData({...vendaFormData, cliente_nome: e.target.value})} required />
                       </div>
                       <div>
@@ -532,9 +549,9 @@ export default function Vendas() {
                             <Select value={item.produto_id || ""} onValueChange={(v) => handleItemChange(idx, "produto_id", v)}>
                               <SelectTrigger><SelectValue placeholder="Selecione produto" /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">Digite manualmente</SelectItem>
-                                {produtos.filter(p => p.ativo).map((p) => (
-                                  <SelectItem key={p.id} value={p.id}>{p.nome} - {formatCurrency(p.preco_venda)}</SelectItem>
+                                <SelectItem value="manual">Digite manualmente</SelectItem>
+                                {produtos.map((p) => (
+                                  <SelectItem key={p.id} value={p.id}>{p.codigo} · {p.descricao} - {formatCurrency(p.preco_venda)}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
