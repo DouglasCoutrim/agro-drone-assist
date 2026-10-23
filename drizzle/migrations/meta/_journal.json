@@ -29,6 +29,13 @@
       "when": 1792775347006,
       "tag": "0003_nfse_config",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792778459954,
+      "tag": "0004_itens_estoque_sem_nota",
+      "breakpoints": true
     }
   ]
 }
