@@ -948,9 +948,13 @@ export type Database = {
           natureza_operacao: string
           nfse_aliquota: number
           nfse_codigo_cnae: string | null
+          nfse_codigo_indop: string | null
+          nfse_codigo_nbs: string | null
           nfse_codigo_tributario_municipio: string | null
           nfse_discriminacao_padrao: string | null
           nfse_habilitado: boolean
+          nfse_ibs_cbs_class_trib: string | null
+          nfse_ibs_cbs_cst: string | null
           nfse_iss_retido: boolean
           nfse_item_lista_servico: string | null
           nfse_natureza_operacao: string
@@ -985,9 +989,13 @@ export type Database = {
           natureza_operacao?: string
           nfse_aliquota?: number
           nfse_codigo_cnae?: string | null
+          nfse_codigo_indop?: string | null
+          nfse_codigo_nbs?: string | null
           nfse_codigo_tributario_municipio?: string | null
           nfse_discriminacao_padrao?: string | null
           nfse_habilitado?: boolean
+          nfse_ibs_cbs_class_trib?: string | null
+          nfse_ibs_cbs_cst?: string | null
           nfse_iss_retido?: boolean
           nfse_item_lista_servico?: string | null
           nfse_natureza_operacao?: string
@@ -1022,9 +1030,13 @@ export type Database = {
           natureza_operacao?: string
           nfse_aliquota?: number
           nfse_codigo_cnae?: string | null
+          nfse_codigo_indop?: string | null
+          nfse_codigo_nbs?: string | null
           nfse_codigo_tributario_municipio?: string | null
           nfse_discriminacao_padrao?: string | null
           nfse_habilitado?: boolean
+          nfse_ibs_cbs_class_trib?: string | null
+          nfse_ibs_cbs_cst?: string | null
           nfse_iss_retido?: boolean
           nfse_item_lista_servico?: string | null
           nfse_natureza_operacao?: string

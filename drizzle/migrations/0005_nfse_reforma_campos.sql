@@ -1,0 +1,1 @@
+ALTER TABLE public.nfe_config ADD COLUMN IF NOT EXISTS nfse_codigo_nbs text DEFAULT '115021000', ADD COLUMN IF NOT EXISTS nfse_codigo_indop text DEFAULT '100301', ADD COLUMN IF NOT EXISTS nfse_ibs_cbs_class_trib text DEFAULT '000001', ADD COLUMN IF NOT EXISTS nfse_ibs_cbs_cst text DEFAULT '000';
