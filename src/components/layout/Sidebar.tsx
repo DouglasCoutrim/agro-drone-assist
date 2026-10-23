@@ -109,12 +109,12 @@ export function Sidebar({ className }: SidebarProps) {
                     className={cn(
                       "relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-normal transition-all duration-150 border border-transparent",
                       isActive
-                        ? "bg-primary/[0.12] text-emerald-400 font-medium border-emerald-400/15"
+                        ? "bg-primary text-primary-foreground font-semibold"
                         : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     )}
                   >
                     {isActive && (
-                      <span className="absolute left-0 top-[20%] bottom-[20%] w-[3px] bg-emerald-500 rounded-r-sm" />
+                      <span className="absolute left-0 top-[20%] bottom-[20%] w-[3px] bg-primary-foreground/60 rounded-r-sm" />
                     )}
                     <Icon className={cn("h-4 w-4 shrink-0", isActive ? "opacity-100" : "opacity-70")} />
                     {item.title}
