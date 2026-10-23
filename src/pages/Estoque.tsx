@@ -116,6 +116,8 @@ export default function Estoque() {
       toast.error('Sua conta não está vinculada a uma empresa. Contate o administrador.');
       return;
     }
+    const faltando = validarProdutoFiscal(formData as any);
+    if (faltando.length) { toast.error("Preencha os dados fiscais (NF-e)", { description: faltando.join(" • "), duration: 10000 }); return; }
     isSubmittingRef.current = true;
     setFormLoading(true);
     try {
