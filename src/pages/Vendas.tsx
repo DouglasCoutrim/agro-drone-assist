@@ -502,15 +502,13 @@ export default function Vendas() {
                         <div key={item.id} className="border rounded-lg p-3 grid grid-cols-2 md:grid-cols-12 gap-2 items-end">
                           <div className="col-span-2 md:col-span-4">
                             <Label className="text-xs">Produto</Label>
-                            <Select value={item.produto_id || ""} onValueChange={(v) => handleItemChange(idx, "produto_id", v)}>
-                              <SelectTrigger><SelectValue placeholder="Selecione produto" /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="manual">Digite manualmente</SelectItem>
-                                {produtos.map((p) => (
-                                  <SelectItem key={p.id} value={p.id}>{p.codigo} · {p.descricao} - {formatCurrency(p.preco_venda)}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <SmartSelect
+                              placeholder="Digite para buscar produto..."
+                              options={produtos.map((p) => ({ id: p.id, label: `${p.codigo ? p.codigo + " · " : ""}${p.descricao}`, sublabel: formatCurrency(p.preco_venda) }))}
+                              value={item.produto_id || undefined}
+                              onSelect={(o) => handleItemChange(idx, "produto_id", o.id)}
+                              onClear={() => handleItemChange(idx, "produto_id", "manual")}
+                            />
                           </div>
                           <div className="col-span-2 md:col-span-2">
                             <Label className="text-xs">Nome</Label>
