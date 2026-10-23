@@ -150,15 +150,21 @@ export type Database = {
       clientes: {
         Row: {
           asaas_id: string | null
+          bairro: string | null
           cep: string | null
           cidade: string | null
+          codigo_municipio: string | null
+          complemento: string | null
           cpf_cnpj: string | null
           created_at: string
           email: string | null
           endereco: string | null
           estado: string | null
           id: string
+          indicador_ie: number
+          inscricao_estadual: string | null
           nome: string
+          numero: string | null
           observacoes: string | null
           organization_id: string | null
           telefone: string
@@ -166,15 +172,21 @@ export type Database = {
         }
         Insert: {
           asaas_id?: string | null
+          bairro?: string | null
           cep?: string | null
           cidade?: string | null
+          codigo_municipio?: string | null
+          complemento?: string | null
           cpf_cnpj?: string | null
           created_at?: string
           email?: string | null
           endereco?: string | null
           estado?: string | null
           id?: string
+          indicador_ie?: number
+          inscricao_estadual?: string | null
           nome: string
+          numero?: string | null
           observacoes?: string | null
           organization_id?: string | null
           telefone: string
@@ -182,15 +194,21 @@ export type Database = {
         }
         Update: {
           asaas_id?: string | null
+          bairro?: string | null
           cep?: string | null
           cidade?: string | null
+          codigo_municipio?: string | null
+          complemento?: string | null
           cpf_cnpj?: string | null
           created_at?: string
           email?: string | null
           endereco?: string | null
           estado?: string | null
           id?: string
+          indicador_ie?: number
+          inscricao_estadual?: string | null
           nome?: string
+          numero?: string | null
           observacoes?: string | null
           organization_id?: string | null
           telefone?: string
@@ -610,47 +628,71 @@ export type Database = {
       itens_estoque: {
         Row: {
           categoria: string
+          cest: string | null
+          cfop: string
           codigo: string
           created_at: string
+          csosn: string
+          cst_icms: string | null
           custo_unitario: number
           descricao: string
           estoque_minimo: number
           fornecedor: string | null
+          gtin: string | null
           id: string
           localizacao: string | null
+          ncm: string | null
           organization_id: string | null
+          origem: number
           preco_venda: number
           quantidade: number
+          unidade: string
           updated_at: string
         }
         Insert: {
           categoria: string
+          cest?: string | null
+          cfop?: string
           codigo: string
           created_at?: string
+          csosn?: string
+          cst_icms?: string | null
           custo_unitario?: number
           descricao: string
           estoque_minimo?: number
           fornecedor?: string | null
+          gtin?: string | null
           id?: string
           localizacao?: string | null
+          ncm?: string | null
           organization_id?: string | null
+          origem?: number
           preco_venda?: number
           quantidade?: number
+          unidade?: string
           updated_at?: string
         }
         Update: {
           categoria?: string
+          cest?: string | null
+          cfop?: string
           codigo?: string
           created_at?: string
+          csosn?: string
+          cst_icms?: string | null
           custo_unitario?: number
           descricao?: string
           estoque_minimo?: number
           fornecedor?: string | null
+          gtin?: string | null
           id?: string
           localizacao?: string | null
+          ncm?: string | null
           organization_id?: string | null
+          origem?: number
           preco_venda?: number
           quantidade?: number
+          unidade?: string
           updated_at?: string
         }
         Relationships: [
@@ -804,6 +846,306 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nfe_config: {
+        Row: {
+          ambiente: string
+          bairro: string | null
+          cep: string | null
+          cnpj: string | null
+          codigo_municipio: string | null
+          complemento: string | null
+          created_at: string
+          focus_token_homologacao: string | null
+          focus_token_producao: string | null
+          habilitado: boolean
+          id: string
+          informacoes_complementares: string | null
+          inscricao_estadual: string | null
+          inscricao_municipal: string | null
+          logradouro: string | null
+          municipio: string | null
+          natureza_operacao: string
+          nome_fantasia: string | null
+          numero: string | null
+          organization_id: string
+          proximo_numero: number
+          razao_social: string | null
+          regime_tributario: number
+          serie: number
+          telefone: string | null
+          uf: string | null
+          updated_at: string
+        }
+        Insert: {
+          ambiente?: string
+          bairro?: string | null
+          cep?: string | null
+          cnpj?: string | null
+          codigo_municipio?: string | null
+          complemento?: string | null
+          created_at?: string
+          focus_token_homologacao?: string | null
+          focus_token_producao?: string | null
+          habilitado?: boolean
+          id?: string
+          informacoes_complementares?: string | null
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          logradouro?: string | null
+          municipio?: string | null
+          natureza_operacao?: string
+          nome_fantasia?: string | null
+          numero?: string | null
+          organization_id: string
+          proximo_numero?: number
+          razao_social?: string | null
+          regime_tributario?: number
+          serie?: number
+          telefone?: string | null
+          uf?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ambiente?: string
+          bairro?: string | null
+          cep?: string | null
+          cnpj?: string | null
+          codigo_municipio?: string | null
+          complemento?: string | null
+          created_at?: string
+          focus_token_homologacao?: string | null
+          focus_token_producao?: string | null
+          habilitado?: boolean
+          id?: string
+          informacoes_complementares?: string | null
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          logradouro?: string | null
+          municipio?: string | null
+          natureza_operacao?: string
+          nome_fantasia?: string | null
+          numero?: string | null
+          organization_id?: string
+          proximo_numero?: number
+          razao_social?: string | null
+          regime_tributario?: number
+          serie?: number
+          telefone?: string | null
+          uf?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nfe_config_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nota_fiscal_emitida: {
+        Row: {
+          ambiente: string
+          cancelada_em: string | null
+          cancelada_por: string | null
+          chave_acesso: string | null
+          cliente_cpf_cnpj: string | null
+          cliente_email: string | null
+          cliente_id: string | null
+          cliente_nome: string | null
+          created_at: string
+          emitida_em: string
+          emitida_por: string | null
+          id: string
+          motivo_rejeicao: string | null
+          numero: string | null
+          organization_id: string
+          os_id: string | null
+          payload_envio: Json | null
+          payload_retorno: Json | null
+          pdf_url: string | null
+          protocolo: string | null
+          provider: string
+          provider_id: string | null
+          referencia: string
+          serie: string | null
+          status: string
+          tipo: string
+          updated_at: string
+          valor_impostos: number | null
+          valor_liquido: number | null
+          valor_total: number | null
+          venda_id: string | null
+          xml_conteudo: string | null
+          xml_url: string | null
+        }
+        Insert: {
+          ambiente?: string
+          cancelada_em?: string | null
+          cancelada_por?: string | null
+          chave_acesso?: string | null
+          cliente_cpf_cnpj?: string | null
+          cliente_email?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          emitida_em?: string
+          emitida_por?: string | null
+          id?: string
+          motivo_rejeicao?: string | null
+          numero?: string | null
+          organization_id: string
+          os_id?: string | null
+          payload_envio?: Json | null
+          payload_retorno?: Json | null
+          pdf_url?: string | null
+          protocolo?: string | null
+          provider?: string
+          provider_id?: string | null
+          referencia: string
+          serie?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+          valor_impostos?: number | null
+          valor_liquido?: number | null
+          valor_total?: number | null
+          venda_id?: string | null
+          xml_conteudo?: string | null
+          xml_url?: string | null
+        }
+        Update: {
+          ambiente?: string
+          cancelada_em?: string | null
+          cancelada_por?: string | null
+          chave_acesso?: string | null
+          cliente_cpf_cnpj?: string | null
+          cliente_email?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          emitida_em?: string
+          emitida_por?: string | null
+          id?: string
+          motivo_rejeicao?: string | null
+          numero?: string | null
+          organization_id?: string
+          os_id?: string | null
+          payload_envio?: Json | null
+          payload_retorno?: Json | null
+          pdf_url?: string | null
+          protocolo?: string | null
+          provider?: string
+          provider_id?: string | null
+          referencia?: string
+          serie?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+          valor_impostos?: number | null
+          valor_liquido?: number | null
+          valor_total?: number | null
+          venda_id?: string | null
+          xml_conteudo?: string | null
+          xml_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nota_fiscal_emitida_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nota_fiscal_emitida_venda_id_fkey"
+            columns: ["venda_id"]
+            isOneToOne: false
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nota_fiscal_eventos: {
+        Row: {
+          created_at: string
+          dados_evento: Json | null
+          descricao: string | null
+          id: string
+          nf_id: string
+          tipo_evento: string | null
+        }
+        Insert: {
+          created_at?: string
+          dados_evento?: Json | null
+          descricao?: string | null
+          id?: string
+          nf_id: string
+          tipo_evento?: string | null
+        }
+        Update: {
+          created_at?: string
+          dados_evento?: Json | null
+          descricao?: string | null
+          id?: string
+          nf_id?: string
+          tipo_evento?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nota_fiscal_eventos_nf_id_fkey"
+            columns: ["nf_id"]
+            isOneToOne: false
+            referencedRelation: "nota_fiscal_emitida"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nota_fiscal_itens: {
+        Row: {
+          cfop: string | null
+          created_at: string
+          descricao: string
+          id: string
+          ncm: string | null
+          nf_id: string
+          quantidade: number
+          valor_total: number
+          valor_unitario: number
+        }
+        Insert: {
+          cfop?: string | null
+          created_at?: string
+          descricao: string
+          id?: string
+          ncm?: string | null
+          nf_id: string
+          quantidade: number
+          valor_total: number
+          valor_unitario: number
+        }
+        Update: {
+          cfop?: string | null
+          created_at?: string
+          descricao?: string
+          id?: string
+          ncm?: string | null
+          nf_id?: string
+          quantidade?: number
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nota_fiscal_itens_nf_id_fkey"
+            columns: ["nf_id"]
+            isOneToOne: false
+            referencedRelation: "nota_fiscal_emitida"
             referencedColumns: ["id"]
           },
         ]
@@ -2269,6 +2611,168 @@ export type Database = {
         }
         Relationships: []
       }
+      venda_itens: {
+        Row: {
+          cfop: string | null
+          created_at: string
+          desconto_percentual: number
+          desconto_valor: number
+          icms_percentual: number | null
+          icms_valor: number | null
+          id: string
+          ipi_valor: number | null
+          ncm: string | null
+          nome_produto: string
+          pis_cofins_valor: number | null
+          preco_unitario: number
+          produto_id: string | null
+          quantidade: number
+          valor_total: number
+          venda_id: string
+        }
+        Insert: {
+          cfop?: string | null
+          created_at?: string
+          desconto_percentual?: number
+          desconto_valor?: number
+          icms_percentual?: number | null
+          icms_valor?: number | null
+          id?: string
+          ipi_valor?: number | null
+          ncm?: string | null
+          nome_produto: string
+          pis_cofins_valor?: number | null
+          preco_unitario?: number
+          produto_id?: string | null
+          quantidade?: number
+          valor_total?: number
+          venda_id: string
+        }
+        Update: {
+          cfop?: string | null
+          created_at?: string
+          desconto_percentual?: number
+          desconto_valor?: number
+          icms_percentual?: number | null
+          icms_valor?: number | null
+          id?: string
+          ipi_valor?: number | null
+          ncm?: string | null
+          nome_produto?: string
+          pis_cofins_valor?: number | null
+          preco_unitario?: number
+          produto_id?: string | null
+          quantidade?: number
+          valor_total?: number
+          venda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venda_itens_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "itens_estoque"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venda_itens_venda_id_fkey"
+            columns: ["venda_id"]
+            isOneToOne: false
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendas: {
+        Row: {
+          atualizado_em: string
+          cliente_cpf_cnpj: string | null
+          cliente_email: string | null
+          cliente_id: string | null
+          cliente_nome: string
+          criado_em: string
+          data_venda: string
+          forma_pagamento: string | null
+          id: string
+          nf_chave: string | null
+          nf_emitida_em: string | null
+          nf_numero: string | null
+          nf_provider: string | null
+          numero: string
+          obs: string | null
+          organization_id: string
+          status_pagamento: string
+          valor_desconto: number
+          valor_impostos: number
+          valor_produtos: number
+          valor_total: number
+          vendido_por: string | null
+        }
+        Insert: {
+          atualizado_em?: string
+          cliente_cpf_cnpj?: string | null
+          cliente_email?: string | null
+          cliente_id?: string | null
+          cliente_nome: string
+          criado_em?: string
+          data_venda?: string
+          forma_pagamento?: string | null
+          id?: string
+          nf_chave?: string | null
+          nf_emitida_em?: string | null
+          nf_numero?: string | null
+          nf_provider?: string | null
+          numero: string
+          obs?: string | null
+          organization_id: string
+          status_pagamento?: string
+          valor_desconto?: number
+          valor_impostos?: number
+          valor_produtos?: number
+          valor_total?: number
+          vendido_por?: string | null
+        }
+        Update: {
+          atualizado_em?: string
+          cliente_cpf_cnpj?: string | null
+          cliente_email?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string
+          criado_em?: string
+          data_venda?: string
+          forma_pagamento?: string | null
+          id?: string
+          nf_chave?: string | null
+          nf_emitida_em?: string | null
+          nf_numero?: string | null
+          nf_provider?: string | null
+          numero?: string
+          obs?: string | null
+          organization_id?: string
+          status_pagamento?: string
+          valor_desconto?: number
+          valor_impostos?: number
+          valor_produtos?: number
+          valor_total?: number
+          vendido_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendas_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wiki_articles: {
         Row: {
           category_id: string | null
@@ -2502,6 +3006,13 @@ export type Database = {
           _user_id: string
         }
         Returns: undefined
+      }
+      reservar_numero_nfe: {
+        Args: { _org: string }
+        Returns: {
+          numero: number
+          serie: number
+        }[]
       }
       set_user_roles: {
         Args: {
