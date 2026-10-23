@@ -625,6 +625,80 @@ export type Database = {
           },
         ]
       }
+      fornecedores: {
+        Row: {
+          ativo: boolean
+          bairro: string
+          cep: string
+          cidade: string
+          complemento: string
+          contato: string
+          cpf_cnpj: string
+          created_at: string
+          email: string
+          endereco: string
+          estado: string
+          id: string
+          inscricao_estadual: string
+          nome: string
+          nome_fantasia: string
+          numero: string
+          observacoes: string
+          organization_id: string
+          telefone: string
+        }
+        Insert: {
+          ativo?: boolean
+          bairro?: string
+          cep?: string
+          cidade?: string
+          complemento?: string
+          contato?: string
+          cpf_cnpj?: string
+          created_at?: string
+          email?: string
+          endereco?: string
+          estado?: string
+          id?: string
+          inscricao_estadual?: string
+          nome: string
+          nome_fantasia?: string
+          numero?: string
+          observacoes?: string
+          organization_id: string
+          telefone?: string
+        }
+        Update: {
+          ativo?: boolean
+          bairro?: string
+          cep?: string
+          cidade?: string
+          complemento?: string
+          contato?: string
+          cpf_cnpj?: string
+          created_at?: string
+          email?: string
+          endereco?: string
+          estado?: string
+          id?: string
+          inscricao_estadual?: string
+          nome?: string
+          nome_fantasia?: string
+          numero?: string
+          observacoes?: string
+          organization_id?: string
+          telefone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fornecedores_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       itens_estoque: {
         Row: {
           categoria: string
@@ -2505,6 +2579,83 @@ export type Database = {
           },
           {
             foreignKeyName: "transferencias_estoque_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transportadoras: {
+        Row: {
+          ativo: boolean
+          bairro: string
+          cep: string
+          cidade: string
+          complemento: string
+          contato: string
+          cpf_cnpj: string
+          created_at: string
+          email: string
+          endereco: string
+          estado: string
+          id: string
+          inscricao_estadual: string
+          nome: string
+          nome_fantasia: string
+          numero: string
+          observacoes: string
+          organization_id: string
+          rntrc: string
+          telefone: string
+        }
+        Insert: {
+          ativo?: boolean
+          bairro?: string
+          cep?: string
+          cidade?: string
+          complemento?: string
+          contato?: string
+          cpf_cnpj?: string
+          created_at?: string
+          email?: string
+          endereco?: string
+          estado?: string
+          id?: string
+          inscricao_estadual?: string
+          nome: string
+          nome_fantasia?: string
+          numero?: string
+          observacoes?: string
+          organization_id: string
+          rntrc?: string
+          telefone?: string
+        }
+        Update: {
+          ativo?: boolean
+          bairro?: string
+          cep?: string
+          cidade?: string
+          complemento?: string
+          contato?: string
+          cpf_cnpj?: string
+          created_at?: string
+          email?: string
+          endereco?: string
+          estado?: string
+          id?: string
+          inscricao_estadual?: string
+          nome?: string
+          nome_fantasia?: string
+          numero?: string
+          observacoes?: string
+          organization_id?: string
+          rntrc?: string
+          telefone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transportadoras_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"

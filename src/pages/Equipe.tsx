@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { usePagination } from "@/hooks/usePagination";
+import { RecordPagination } from "@/components/RecordPagination";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -88,6 +90,7 @@ export default function Equipe() {
   const { user, role, isAdmin } = useAuth();
   const confirm = useConfirm();
   const [users, setUsers] = useState<UserWithRoleAndPerms[]>([]);
+  const pagination = usePagination(users);
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
@@ -389,7 +392,7 @@ export default function Equipe() {
               <div className="text-center py-8 text-muted-foreground"><Users className="h-12 w-12 mx-auto mb-4 opacity-50" /><p>Nenhum membro encontrado</p></div>
             ) : (
               <div className="space-y-6">
-                {users.map((u) => (
+                {pagination.items.map((u) => (
                   <div key={u.id} className="border rounded-lg p-5 hover:bg-muted/30 transition-colors space-y-4">
                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
@@ -507,6 +510,7 @@ export default function Equipe() {
                     )}
                   </div>
                 ))}
+                <RecordPagination {...pagination} />
               </div>
             )}
           </CardContent>

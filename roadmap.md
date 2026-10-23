@@ -1,5 +1,10 @@
 # Roadmap
 
+- [x] Criar cadastros de Fornecedores e Transportadoras com isolamento por empresa.
+- [x] Organizar navegação em módulos recolhíveis e aproximar o visual das referências.
+- [x] Paginar listas de registros com quantidade menor por página.
+- [x] Validar novos cadastros e navegação no computador e celular.
+
 - [x] Corrigir todos os erros de compilação que bloqueiam a publicação.
 - [x] Confirmar que a prévia voltou a compilar sem erros.
 - [x] Verificar as permissões atuais das funções auxiliares de RLS.
