@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileCheck, Loader2, Save } from "lucide-react";
+import { CheckCircle2, FileCheck, Loader2, Save, Stethoscope, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useViaCep } from "@/hooks/useViaCep";
@@ -90,6 +90,16 @@ export function NfeConfigCard() {
     set("cep", cep);
     const r = await fetchCep(cep);
     if (r) setCfg((c) => ({ ...c, logradouro: r.logradouro || c.logradouro, bairro: r.bairro || c.bairro, municipio: r.localidade, uf: r.uf, codigo_municipio: r.ibge || c.codigo_municipio }));
+  };
+
+  const [diagnosing, setDiagnosing] = useState(false);
+  const [diag, setDiag] = useState<{ ok: boolean; texto: string }[] | null>(null);
+  const diagnosticar = async () => {
+    setDiagnosing(true);
+    const { data, error } = await supabase.functions.invoke("emitir-nfe-venda", { body: { action: "diagnosticar" } });
+    setDiagnosing(false);
+    if (error && !data) { toast.error("Não foi possível testar: " + error.message); return; }
+    setDiag(data?.itens || []);
   };
 
   const save = async () => {
@@ -243,10 +253,26 @@ export function NfeConfigCard() {
           </div>
         </section>
 
-        <Button onClick={save} disabled={saving} className="w-full sm:w-auto">
-          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-          Salvar configuração fiscal
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button onClick={save} disabled={saving} className="w-full sm:w-auto">
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Salvar configuração fiscal
+          </Button>
+          <Button variant="outline" onClick={diagnosticar} disabled={diagnosing} className="w-full sm:w-auto">
+            {diagnosing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Stethoscope className="mr-2 h-4 w-4" />}
+            Testar conexão e diagnosticar
+          </Button>
+        </div>
+        {diag && (
+          <ul className="space-y-1.5 rounded-lg border p-3 text-sm">
+            {diag.map((d, i) => (
+              <li key={i} className="flex items-start gap-2">
+                {d.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />}
+                <span>{d.texto}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </CardContent>
     </Card>
   );
