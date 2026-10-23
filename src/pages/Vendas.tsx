@@ -292,7 +292,9 @@ export default function Vendas() {
         valor_total: valorTotal,
         status_pagamento: vendaFormData.status_pagamento as Venda["status_pagamento"],
         forma_pagamento: vendaFormData.forma_pagamento as Venda["forma_pagamento"],
+        cliente_id: vendaFormData.cliente_id || null,
         vendido_por: user!.id,
+        nf_numero: null, nf_chave: null, nf_emitida_em: null, nf_provider: null,
         nfe_dados: nfeDados,
       };
 
