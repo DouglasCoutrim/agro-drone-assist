@@ -81,9 +81,9 @@ export function Sidebar({ className }: SidebarProps) {
       className
     )} style={{ width: "var(--sidebar-width)" }}>
       {/* Logo */}
-      <div className="flex flex-col items-center gap-1 px-5 py-5 border-b border-white/[0.06] mb-2 bg-white/[0.03]">
+      <div className="flex flex-col items-center gap-1 px-5 py-5 border-b border-sidebar-border mb-2 ">
         <img src={logo} alt="LivreOS" className="h-12 w-auto" />
-        <p className="text-[10px] text-white/45 tracking-wider uppercase">Gestão completa para seu negócio</p>
+        <p className="text-[10px] text-muted-foreground tracking-wider uppercase">Gestão completa para seu negócio</p>
       </div>
 
       {/* Navigation */}
@@ -96,7 +96,7 @@ export function Sidebar({ className }: SidebarProps) {
           if (sectionItems.length === 0) return null;
           return (
             <div key={section.title}>
-              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-white/25 px-2 pt-3 pb-1 mt-2 first:mt-0">
+              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground/70 px-2 pt-3 pb-1 mt-2 first:mt-0">
                 {section.title}
               </p>
               {sectionItems.map((item) => {
@@ -110,7 +110,7 @@ export function Sidebar({ className }: SidebarProps) {
                       "relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-normal transition-all duration-150 border border-transparent",
                       isActive
                         ? "bg-primary/[0.12] text-emerald-400 font-medium border-emerald-400/15"
-                        : "text-white/60 hover:bg-white/[0.07] hover:text-white/90"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     )}
                   >
                     {isActive && (
@@ -127,7 +127,7 @@ export function Sidebar({ className }: SidebarProps) {
       </nav>
 
       {/* User footer */}
-      <div className="border-t border-white/[0.06] px-3 py-3 space-y-2">
+      <div className="border-t border-sidebar-border px-3 py-3 space-y-2">
         {isPlatformAdmin && (
           <Link
             to="/admin/dashboard"
@@ -143,12 +143,12 @@ export function Sidebar({ className }: SidebarProps) {
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium text-white/85 leading-tight truncate">{profile?.nome || user?.email?.split("@")[0]}</p>
-            <p className="text-[11px] text-white/35">{roleLabel}</p>
+            <p className="text-[13px] font-medium text-sidebar-accent-foreground leading-tight truncate">{profile?.nome || user?.email?.split("@")[0]}</p>
+            <p className="text-[11px] text-muted-foreground">{roleLabel}</p>
           </div>
           <button
             onClick={handleSignOut}
-            className="w-7 h-7 rounded flex items-center justify-center text-white/30 hover:text-destructive hover:bg-destructive/10 transition-all duration-150"
+            className="w-7 h-7 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-150"
             aria-label="Sair"
           >
             <LogOut className="h-3.5 w-3.5" />
