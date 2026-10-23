@@ -112,6 +112,16 @@ export default function Vendas() {
     status_pagamento: "pendente",
     obs: "",
   });
+  const NFE_DEFAULT = {
+    natureza_operacao: "Venda de mercadoria", finalidade: "1", tipo: "1", destacar_impostos: false,
+    cfop: "", csosn: "102", consumidor_final: true, pessoa_fisica: false,
+    inscricao_estadual: "", indicador_ie: "9", telefone: "", cep: "", logradouro: "", numero: "", bairro: "", cidade: "", uf: "",
+    modalidade_frete: "9", por_transportadora: false, transportadora_id: "",
+    tipo_pagamento: "0", parcelas: 1, intervalo_dias: 30, obs_complementares: "",
+  };
+  const [nfeDados, setNfeDados] = useState<typeof NFE_DEFAULT>(NFE_DEFAULT);
+  const [formTab, setFormTab] = useState("dados");
+  const nf = (k: keyof typeof NFE_DEFAULT, v: any) => setNfeDados((p) => ({ ...p, [k]: v }));
 
   const [itensForm, setItensForm] = useState<Array<{
     id: string;
@@ -270,15 +280,10 @@ export default function Vendas() {
         valor_desconto: totalDescontos,
         valor_impostos: totalImpostos,
         valor_total: valorTotal,
-        vendedor_id: user!.id,
         status_pagamento: vendaFormData.status_pagamento as Venda["status_pagamento"],
         forma_pagamento: vendaFormData.forma_pagamento as Venda["forma_pagamento"],
-        nf_numero: null,
-        nf_chave: null,
-        nf_emitida_em: null,
-        nf_provider: null,
-        vendido_por: null,
-        status: "ativo"
+        vendido_por: user!.id,
+        nfe_dados: nfeDados,
       };
 
       if (editingVenda) {
