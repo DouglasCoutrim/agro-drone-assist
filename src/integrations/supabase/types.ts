@@ -710,6 +710,7 @@ export type Database = {
           cst_icms: string | null
           custo_unitario: number
           descricao: string
+          emite_nfe: boolean
           estoque_minimo: number
           fornecedor: string | null
           gtin: string | null
@@ -733,6 +734,7 @@ export type Database = {
           cst_icms?: string | null
           custo_unitario?: number
           descricao: string
+          emite_nfe?: boolean
           estoque_minimo?: number
           fornecedor?: string | null
           gtin?: string | null
@@ -756,6 +758,7 @@ export type Database = {
           cst_icms?: string | null
           custo_unitario?: number
           descricao?: string
+          emite_nfe?: boolean
           estoque_minimo?: number
           fornecedor?: string | null
           gtin?: string | null

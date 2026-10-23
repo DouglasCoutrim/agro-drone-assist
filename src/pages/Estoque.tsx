@@ -1,3 +1,4 @@
+import { Switch } from "@/components/ui/switch";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { validarProdutoFiscal } from "@/lib/fiscal-validation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -47,7 +48,7 @@ export default function Estoque() {
     codigo: "", descricao: "", categoria: "", quantidade: 0,
     estoque_minimo: 0, custo_unitario: 0, preco_venda: 0,
     fornecedor: "", localizacao: "",
-    ncm: "", cest: "", cfop: "5102", origem: 0, csosn: "102", unidade: "UN", gtin: ""
+    ncm: "", cest: "", cfop: "5102", origem: 0, csosn: "102", unidade: "UN", gtin: "", emite_nfe: true
   });
 
   useEffect(() => {
@@ -117,7 +118,7 @@ export default function Estoque() {
       toast.error('Sua conta não está vinculada a uma empresa. Contate o administrador.');
       return;
     }
-    const faltando = validarProdutoFiscal(formData as any);
+    const faltando = formData.emite_nfe ? validarProdutoFiscal(formData as any) : [];
     if (faltando.length) { toast.error("Preencha os dados fiscais (NF-e)", { description: faltando.join(" • "), duration: 10000 }); return; }
     isSubmittingRef.current = true;
     setFormLoading(true);
@@ -161,7 +162,7 @@ export default function Estoque() {
       custo_unitario: item.custo_unitario, preco_venda: item.preco_venda,
       fornecedor: item.fornecedor || "", localizacao: item.localizacao || "",
       ncm: (item as any).ncm || "", cest: (item as any).cest || "", cfop: (item as any).cfop || "5102",
-      origem: (item as any).origem ?? 0, csosn: (item as any).csosn || "102", unidade: (item as any).unidade || "UN", gtin: (item as any).gtin || ""
+      origem: (item as any).origem ?? 0, csosn: (item as any).csosn || "102", unidade: (item as any).unidade || "UN", gtin: (item as any).gtin || "", emite_nfe: (item as any).emite_nfe !== false
     });
     setDialogOpen(true);
   };
@@ -176,7 +177,7 @@ export default function Estoque() {
   };
 
   const resetForm = () => {
-    setFormData({ codigo: "", descricao: "", categoria: "", quantidade: 0, estoque_minimo: 0, custo_unitario: 0, preco_venda: 0, fornecedor: "", localizacao: "", ncm: "", cest: "", cfop: "5102", origem: 0, csosn: "102", unidade: "UN", gtin: "" });
+    setFormData({ codigo: "", descricao: "", categoria: "", quantidade: 0, estoque_minimo: 0, custo_unitario: 0, preco_venda: 0, fornecedor: "", localizacao: "", ncm: "", cest: "", cfop: "5102", origem: 0, csosn: "102", unidade: "UN", gtin: "", emite_nfe: true });
     setEditingItem(null);
   };
 
@@ -468,7 +469,11 @@ export default function Estoque() {
                 <div className="space-y-2"><Label htmlFor="localizacao">Localização</Label><Input id="localizacao" value={formData.localizacao} onChange={(e) => setFormData(prev => ({ ...prev, localizacao: e.target.value }))} placeholder="Ex: Prateleira A1" className="h-10" /></div>
               </div>
               <div className="space-y-3 rounded-lg border p-3">
-                <p className="text-xs font-semibold text-muted-foreground uppercase">Dados fiscais (NF-e)</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase">Dados fiscais (NF-e)</p>
+                  <label className="flex items-center gap-2 text-xs"><Switch checked={formData.emite_nfe} onCheckedChange={(v) => setFormData(p => ({ ...p, emite_nfe: v }))} />Emite nota fiscal</label>
+                </div>
+                {!formData.emite_nfe && <p className="text-xs text-muted-foreground">Item vendido sem nota: os dados fiscais ficam opcionais e ele pode ser faturado normalmente, mas não entra em NF-e.</p>}
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <div className="space-y-1.5"><Label htmlFor="ncm">NCM</Label><Input id="ncm" value={formData.ncm} onChange={(e) => setFormData(p => ({ ...p, ncm: e.target.value.replace(/[^\d.]/g, "") }))} placeholder="8 dígitos" inputMode="numeric" maxLength={10} className="h-10 font-mono" /></div>
                   <div className="space-y-1.5"><Label htmlFor="cfop">CFOP</Label><Input id="cfop" value={formData.cfop} onChange={(e) => setFormData(p => ({ ...p, cfop: e.target.value.replace(/\D/g, "") }))} maxLength={4} inputMode="numeric" className="h-10 font-mono" /></div>

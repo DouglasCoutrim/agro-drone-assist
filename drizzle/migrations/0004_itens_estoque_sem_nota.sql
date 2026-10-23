@@ -1,0 +1,2 @@
+ALTER TABLE public.itens_estoque ADD COLUMN IF NOT EXISTS emite_nfe boolean NOT NULL DEFAULT true;
+COMMENT ON COLUMN public.itens_estoque.emite_nfe IS 'false = item vendido sem nota fiscal; dados fiscais opcionais e NF-e bloqueada';

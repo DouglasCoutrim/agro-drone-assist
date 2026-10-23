@@ -180,6 +180,7 @@ function validar(config: any, venda: any, estoque: Map<string, any>): string[] {
   if (!itens.length) p.push('A venda não possui itens.');
   itens.forEach((i: any, idx: number) => {
     const e = estoque.get(i.produto_id);
+    if (e && e.emite_nfe === false) p.push(`Item ${idx + 1} (${i.nome_produto}): produto marcado como "sem nota fiscal" — remova-o da venda para emitir NF-e.`);
     const ncm = onlyDigits(e?.ncm || i.ncm);
     if (ncm.length !== 8) p.push(`Item ${idx + 1} (${i.nome_produto}): NCM com 8 dígitos é obrigatório.`);
     if (Number(i.quantidade) <= 0) p.push(`Item ${idx + 1}: quantidade inválida.`);
