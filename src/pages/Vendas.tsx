@@ -158,6 +158,8 @@ export default function Vendas() {
     });
     setItensForm([]);
     setEditingVenda(null);
+    setNfeDados(NFE_DEFAULT);
+    setFormTab("dados");
   };
 
   const handleOpenNewVenda = () => {
@@ -167,6 +169,8 @@ export default function Vendas() {
 
   const handleEditVenda = (venda: Venda) => {
     setEditingVenda(venda);
+    setNfeDados({ ...NFE_DEFAULT, ...(((venda as any).nfe_dados) || {}) });
+    setFormTab("dados");
     setVendaFormData({
       cliente_id: venda.cliente_id || "",
       cliente_nome: venda.cliente_nome,
