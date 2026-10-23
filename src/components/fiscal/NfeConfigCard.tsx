@@ -46,6 +46,15 @@ const EMPTY: Cfg = {
   informacoes_complementares: "",
 };
 
+function F({ label, k, cfg, set, ...rest }: { label: string; k: keyof Cfg; cfg: Cfg; set: (k: keyof Cfg, v: any) => void } & React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <Input value={String(cfg[k] ?? "")} onChange={(e) => set(k, e.target.value)} {...rest} />
+    </div>
+  );
+}
+
 export function NfeConfigCard() {
   const { organization } = useOrganization();
   const { fetchCep, loading: cepLoading } = useViaCep();
@@ -90,12 +99,6 @@ export function NfeConfigCard() {
 
   if (loading) return null;
 
-  const F = ({ label, k, ...rest }: { label: string; k: keyof Cfg } & React.InputHTMLAttributes<HTMLInputElement>) => (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      <Input value={String(cfg[k] ?? "")} onChange={(e) => set(k, e.target.value as any)} {...rest} />
-    </div>
-  );
 
   return (
     <Card className="max-w-2xl">
@@ -130,8 +133,8 @@ export function NfeConfigCard() {
             </Select>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <F label="Token de homologação" k="focus_token_homologacao" type="password" autoComplete="off" />
-            <F label="Token de produção" k="focus_token_producao" type="password" autoComplete="off" />
+            <F cfg={cfg} set={set} label="Token de homologação" k="focus_token_homologacao" type="password" autoComplete="off" />
+            <F cfg={cfg} set={set} label="Token de produção" k="focus_token_producao" type="password" autoComplete="off" />
           </div>
           <p className="text-xs text-muted-foreground">Os tokens ficam no painel da Focus NFe, no cadastro da sua empresa. O certificado digital A1 deve ser enviado diretamente no painel da Focus.</p>
         </section>
@@ -139,11 +142,11 @@ export function NfeConfigCard() {
         <section className="space-y-3">
           <h3 className="text-sm font-semibold">Emitente</h3>
           <div className="grid gap-3 sm:grid-cols-2">
-            <F label="Razão social" k="razao_social" />
-            <F label="Nome fantasia" k="nome_fantasia" />
-            <F label="CNPJ" k="cnpj" inputMode="numeric" />
-            <F label="Inscrição estadual" k="inscricao_estadual" />
-            <F label="Inscrição municipal" k="inscricao_municipal" />
+            <F cfg={cfg} set={set} label="Razão social" k="razao_social" />
+            <F cfg={cfg} set={set} label="Nome fantasia" k="nome_fantasia" />
+            <F cfg={cfg} set={set} label="CNPJ" k="cnpj" inputMode="numeric" />
+            <F cfg={cfg} set={set} label="Inscrição estadual" k="inscricao_estadual" />
+            <F cfg={cfg} set={set} label="Inscrição municipal" k="inscricao_municipal" />
             <div className="space-y-1.5">
               <Label>Regime tributário</Label>
               <Select value={String(cfg.regime_tributario)} onValueChange={(v) => set("regime_tributario", Number(v))}>
@@ -165,22 +168,22 @@ export function NfeConfigCard() {
               <Label>CEP {cepLoading && <Loader2 className="inline h-3 w-3 animate-spin" />}</Label>
               <Input value={cfg.cep} onChange={(e) => set("cep", e.target.value)} onBlur={(e) => onCep(e.target.value)} inputMode="numeric" />
             </div>
-            <div className="sm:col-span-2"><F label="Logradouro" k="logradouro" /></div>
-            <F label="Número" k="numero" />
-            <F label="Complemento" k="complemento" />
-            <F label="Bairro" k="bairro" />
-            <F label="Município" k="municipio" />
-            <F label="UF" k="uf" maxLength={2} />
-            <F label="Código IBGE" k="codigo_municipio" inputMode="numeric" />
-            <F label="Telefone" k="telefone" />
+            <div className="sm:col-span-2"><F cfg={cfg} set={set} label="Logradouro" k="logradouro" /></div>
+            <F cfg={cfg} set={set} label="Número" k="numero" />
+            <F cfg={cfg} set={set} label="Complemento" k="complemento" />
+            <F cfg={cfg} set={set} label="Bairro" k="bairro" />
+            <F cfg={cfg} set={set} label="Município" k="municipio" />
+            <F cfg={cfg} set={set} label="UF" k="uf" maxLength={2} />
+            <F cfg={cfg} set={set} label="Código IBGE" k="codigo_municipio" inputMode="numeric" />
+            <F cfg={cfg} set={set} label="Telefone" k="telefone" />
           </div>
         </section>
 
         <section className="space-y-3">
           <h3 className="text-sm font-semibold">Padrões da nota</h3>
           <div className="grid gap-3 sm:grid-cols-3">
-            <F label="Série" k="serie" type="number" min={1} />
-            <div className="sm:col-span-2"><F label="Natureza da operação" k="natureza_operacao" /></div>
+            <F cfg={cfg} set={set} label="Série" k="serie" type="number" min={1} />
+            <div className="sm:col-span-2"><F cfg={cfg} set={set} label="Natureza da operação" k="natureza_operacao" /></div>
           </div>
           <div className="space-y-1.5">
             <Label>Informações complementares (saem em todas as notas)</Label>
