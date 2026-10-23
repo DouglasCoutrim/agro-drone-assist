@@ -56,3 +56,9 @@ export function mapStatus(focusStatus?: string): string {
     default: return 'processando';
   }
 }
+
+/** Data de emissão no fuso de Brasília (-03:00), com 2 min de margem para evitar rejeição 703. */
+export function dataEmissaoBrasil(): string {
+  const d = new Date(Date.now() - 2 * 60 * 1000 - 3 * 60 * 60 * 1000);
+  return d.toISOString().slice(0, 19) + '-03:00';
+}

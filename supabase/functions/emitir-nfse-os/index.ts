@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
-import { absoluteUrl, focusErrorMessage, focusRequest, focusToken, mapStatus, onlyDigits } from '../_shared/focus-nfe.ts';
+import { absoluteUrl, focusErrorMessage, focusRequest, focusToken, mapStatus, onlyDigits, dataEmissaoBrasil } from '../_shared/focus-nfe.ts';
 
 const Body = z.object({
   action: z.enum(['validar', 'emitir', 'consultar']).default('emitir'),
