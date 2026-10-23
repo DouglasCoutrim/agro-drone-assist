@@ -45,7 +45,18 @@ export const navSections: NavSection[] = [
   },
   {
     title: "Vendas",
-    items: [{ title: "Vendas e Notas Fiscais", icon: ShoppingCart, href: "/vendas", roles: STAFF }],
+    items: [
+      { title: "Pedidos de Venda", icon: ShoppingCart, href: "/vendas", roles: STAFF },
+      { title: "Nova Venda", icon: ShoppingCart, href: "/vendas?nova=1", roles: STAFF },
+    ],
+  },
+  {
+    title: "Fiscal",
+    items: [
+      { title: "Notas Fiscais", icon: FileText, href: "/vendas?tab=notas", roles: STAFF },
+      { title: "Nova NF-e", icon: FileText, href: "/vendas?nova=1&nfe=1", roles: STAFF },
+      { title: "Configuração NF-e", icon: Settings, href: "/empresa", roles: ADMIN },
+    ],
   },
   {
     title: "Financeiro",

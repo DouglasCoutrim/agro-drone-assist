@@ -37,7 +37,7 @@ import { toast } from "sonner";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 import { useVendasData, Venda, VendaItem, NotaFiscalEmitida } from "@/hooks/useVendasData";
@@ -63,6 +63,13 @@ export default function Vendas() {
   const { user } = useAuth();
   const confirm = useConfirm();
   const navigate = useNavigate();
+  const location = useLocation();
+  useEffect(() => {
+    const q = new URLSearchParams(location.search);
+    if (q.get("tab") === "notas") { setActiveTab("notas"); setDialogOpen(false); }
+    if (q.get("nova") === "1") { setEditingVenda(null); setDialogOpen(true); }
+    window.scrollTo(0, 0);
+  }, [location.search]);
   const [produtos, setProdutos] = useState<any[]>([]);
   const [clientesList, setClientesList] = useState<any[]>([]);
   useEffect(() => {
@@ -85,9 +92,9 @@ export default function Vendas() {
     cancelarNotaFiscal,
   } = useVendasData();
 
-  const [activeTab, setActiveTab] = useState<"vendas" | "ganhos" | "notas">("vendas");
+  const [activeTab, setActiveTab] = useState<"vendas" | "ganhos" | "notas">(() => new URLSearchParams(window.location.search).get("tab") === "notas" ? "notas" : "vendas");
   const [searchTerm, setSearchTerm] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(() => new URLSearchParams(window.location.search).get("nova") === "1");
   const [editingVenda, setEditingVenda] = useState<Venda | null>(null);
   const [viewingVenda, setViewingVenda] = useState<Venda | null>(null);
   const [viewingNF, setViewingNF] = useState<NotaFiscalEmitida | null>(null);
@@ -364,6 +371,138 @@ export default function Vendas() {
   // ==================== RENDER ====================
   if (loading) return <MainLayout><div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div></MainLayout>;
 
+  if (dialogOpen) return (
+    <MainLayout>
+            {/* Create/Edit Dialog */}
+            <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h1 className="text-2xl font-bold">{editingVenda ? "Editar Venda / NF-e" : "Nova Venda / NF-e"}</h1>
+                    <p className="text-sm text-muted-foreground">Vendas › {editingVenda ? "Editar" : "Nova"}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Voltar</Button>
+                    <Button type="submit" form="venda-form" disabled={formLoading}>{formLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}</Button>
+                  </div>
+                </div>
+                <nav className="sticky top-0 z-10 flex gap-1 overflow-x-auto rounded-full border bg-card p-1 w-fit max-w-full">
+                  {[["sec-cliente","Destinatário"],["sec-itens","Produtos"],["sec-pagamento","Pagamento"],["sec-totais","Totais e Observações"]].map(([id,l]) => (
+                    <a key={id} href={"#"+id} className="whitespace-nowrap rounded-full px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">{l}</a>
+                  ))}
+                </nav>
+                <form onSubmit={handleSubmitVenda} id="venda-form" className="pb-24">
+                  <div className="space-y-4">
+                    <section id="sec-cliente" className="scroll-mt-20 rounded-xl border bg-card p-4 md:p-6 space-y-4 shadow-sm"><h4 className="font-semibold flex items-center gap-2"><User className="h-4 w-4 text-primary" />Destinatário</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <Label>Nome do Cliente *</Label>
+                        <Select value={vendaFormData.cliente_id || ""} onValueChange={(v) => { const c = clientesList.find((x) => x.id === v); setVendaFormData({ ...vendaFormData, cliente_id: v, cliente_nome: c?.nome || "", cliente_cpf_cnpj: c?.cpf_cnpj || "", cliente_email: c?.email || "" }); }}>
+                          <SelectTrigger><SelectValue placeholder="Selecione o cliente cadastrado" /></SelectTrigger>
+                          <SelectContent>{clientesList.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
+                        </Select>
+                        <Input value={vendaFormData.cliente_nome} onChange={(e) => setVendaFormData({...vendaFormData, cliente_nome: e.target.value})} required />
+                      </div>
+                      <div>
+                        <Label>CPF/CNPJ</Label>
+                        <Input value={vendaFormData.cliente_cpf_cnpj} onChange={(e) => setVendaFormData({...vendaFormData, cliente_cpf_cnpj: e.target.value})} />
+                      </div>
+                      <div>
+                        <Label>Email</Label>
+                        <Input type="email" value={vendaFormData.cliente_email} onChange={(e) => setVendaFormData({...vendaFormData, cliente_email: e.target.value})} />
+                      </div>
+                    </div>
+                    </section>
+                    <section id="sec-itens" className="scroll-mt-20 rounded-xl border bg-card p-4 md:p-6 space-y-4 shadow-sm"><h4 className="font-semibold flex items-center gap-2"><Package className="h-4 w-4 text-primary" />Produtos</h4>
+                    {itensForm.length === 0 && <p className="text-muted-foreground text-center py-4">Nenhum item adicionado</p>}
+                    <div className="space-y-2">
+                      {itensForm.map((item, idx) => (
+                        <div key={item.id} className="border rounded-lg p-3 grid grid-cols-2 md:grid-cols-12 gap-2 items-end">
+                          <div className="col-span-2 md:col-span-4">
+                            <Label className="text-xs">Produto</Label>
+                            <Select value={item.produto_id || ""} onValueChange={(v) => handleItemChange(idx, "produto_id", v)}>
+                              <SelectTrigger><SelectValue placeholder="Selecione produto" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="manual">Digite manualmente</SelectItem>
+                                {produtos.map((p) => (
+                                  <SelectItem key={p.id} value={p.id}>{p.codigo} · {p.descricao} - {formatCurrency(p.preco_venda)}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="col-span-2 md:col-span-2">
+                            <Label className="text-xs">Nome</Label>
+                            <Input value={item.nome_produto} onChange={(e) => handleItemChange(idx, "nome_produto", e.target.value)} />
+                          </div>
+                          <div className="md:col-span-1">
+                            <Label className="text-xs">Qtd</Label>
+                            <NumberInput value={item.quantidade} onChange={(v) => handleItemChange(idx, "quantidade", v)} step={0.001} min={0.001} />
+                          </div>
+                          <div className="md:col-span-2">
+                            <Label className="text-xs">Preço Unit.</Label>
+                            <NumberInput value={item.preco_unitario} onChange={(v) => handleItemChange(idx, "preco_unitario", v)} />
+                          </div>
+                          <div className="md:col-span-1">
+                            <Label className="text-xs">Desc. %</Label>
+                            <NumberInput value={item.desconto_percentual} onChange={(v) => handleItemChange(idx, "desconto_percentual", v)} step={0.1} />
+                          </div>
+                          <div className="md:col-span-1">
+                            <Label className="text-xs">Desc. R$</Label>
+                            <NumberInput value={item.desconto_valor} onChange={(v) => handleItemChange(idx, "desconto_valor", v)} />
+                          </div>
+                          <div className="md:col-span-1">
+                            <Label className="text-xs">Total</Label>
+                            <Input value={formatCurrency(item.valor_total)} readOnly className="font-bold text-primary text-right" />
+                          </div>
+                          <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => handleRemoveItem(idx)}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      ))}
+                    </div>
+                    <Button type="button" variant="outline" onClick={handleAddItem} className="w-fit"><Plus className="h-4 w-4 mr-2" />Adicionar Item</Button>
+                    </section>
+                    <section id="sec-pagamento" className="scroll-mt-20 rounded-xl border bg-card p-4 md:p-6 space-y-4 shadow-sm"><h4 className="font-semibold flex items-center gap-2"><CreditCard className="h-4 w-4 text-primary" />Pagamento</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <Label>Data da Venda</Label>
+                        <Input type="date" value={vendaFormData.data_venda} onChange={(e) => setVendaFormData({...vendaFormData, data_venda: e.target.value})} />
+                      </div>
+                      <div>
+                        <Label>Forma de Pagamento</Label>
+                        <Select value={vendaFormData.forma_pagamento} onValueChange={(v) => setVendaFormData({...vendaFormData, forma_pagamento: v})}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {FORMAS_PAGAMENTO.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Status Pagamento</Label>
+                        <Select value={vendaFormData.status_pagamento} onValueChange={(v) => setVendaFormData({...vendaFormData, status_pagamento: v})}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {STATUS_PAGAMENTO.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    </section>
+                    <section id="sec-totais" className="scroll-mt-20 rounded-xl border bg-card p-4 md:p-6 space-y-4 shadow-sm"><h4 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4 text-primary" />Totais e Observações</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div><Label>Subtotal</Label><p className="text-xl font-bold">{formatCurrency(itensForm.reduce((s, i) => s + i.quantidade * i.preco_unitario, 0))}</p></div>
+                      <div><Label>Descontos</Label><p className="text-xl font-bold text-destructive">-{formatCurrency(itensForm.reduce((s, i) => s + i.desconto_valor, 0))}</p></div>
+                      <div><Label>Impostos (est.)</Label><p className="text-xl font-bold">{formatCurrency(itensForm.reduce((s, i) => s + (i.icms_valor || 0) + (i.pis_cofins_valor || 0) + (i.ipi_valor || 0), 0))}</p></div>
+                      <div><Label>Total</Label><p className="text-xl font-bold text-primary">{formatCurrency(itensForm.reduce((s, i) => s + i.valor_total, 0))}</p></div>
+                    </div>
+                    <div>
+                      <Label>Observações</Label>
+                      <Input value={vendaFormData.obs} onChange={(e) => setVendaFormData({...vendaFormData, obs: e.target.value})} />
+                    </div>
+                    </section>
+                  </div>
+                </form>
+              </div>
+    </MainLayout>
+  );
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -512,125 +651,6 @@ export default function Vendas() {
               </DialogContent>
             </Dialog>
 
-            {/* Create/Edit Dialog */}
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-                <DialogHeader className="shrink-0">
-                  <DialogTitle>{editingVenda ? "Editar Venda" : "Nova Venda"}</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmitVenda} id="venda-form" className="flex-1 overflow-y-auto p-4 pb-24">
-                  <div className="grid gap-4 py-4">
-                    <h4 className="font-semibold">Dados do Cliente</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="col-span-2">
-                        <Label>Nome do Cliente *</Label>
-                        <Select value={vendaFormData.cliente_id || ""} onValueChange={(v) => { const c = clientesList.find((x) => x.id === v); setVendaFormData({ ...vendaFormData, cliente_id: v, cliente_nome: c?.nome || "", cliente_cpf_cnpj: c?.cpf_cnpj || "", cliente_email: c?.email || "" }); }}>
-                          <SelectTrigger><SelectValue placeholder="Selecione o cliente cadastrado" /></SelectTrigger>
-                          <SelectContent>{clientesList.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
-                        </Select>
-                        <Input value={vendaFormData.cliente_nome} onChange={(e) => setVendaFormData({...vendaFormData, cliente_nome: e.target.value})} required />
-                      </div>
-                      <div>
-                        <Label>CPF/CNPJ</Label>
-                        <Input value={vendaFormData.cliente_cpf_cnpj} onChange={(e) => setVendaFormData({...vendaFormData, cliente_cpf_cnpj: e.target.value})} />
-                      </div>
-                      <div>
-                        <Label>Email</Label>
-                        <Input type="email" value={vendaFormData.cliente_email} onChange={(e) => setVendaFormData({...vendaFormData, cliente_email: e.target.value})} />
-                      </div>
-                    </div>
-                    <Separator />
-                    <h4 className="font-semibold">Itens da Venda</h4>
-                    {itensForm.length === 0 && <p className="text-gray-500 text-center py-4">Nenhum item adicionado</p>}
-                    <div className="space-y-2">
-                      {itensForm.map((item, idx) => (
-                        <div key={item.id} className="border rounded-lg p-3 grid grid-cols-12 gap-2 items-center">
-                          <div className="col-span-4">
-                            <Label className="text-xs">Produto</Label>
-                            <Select value={item.produto_id || ""} onValueChange={(v) => handleItemChange(idx, "produto_id", v)}>
-                              <SelectTrigger><SelectValue placeholder="Selecione produto" /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="manual">Digite manualmente</SelectItem>
-                                {produtos.map((p) => (
-                                  <SelectItem key={p.id} value={p.id}>{p.codigo} · {p.descricao} - {formatCurrency(p.preco_venda)}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="col-span-2">
-                            <Label className="text-xs">Nome</Label>
-                            <Input value={item.nome_produto} onChange={(e) => handleItemChange(idx, "nome_produto", e.target.value)} />
-                          </div>
-                          <div className="col-span-1">
-                            <Label className="text-xs">Qtd</Label>
-                            <NumberInput value={item.quantidade} onChange={(v) => handleItemChange(idx, "quantidade", v)} step={0.001} min={0.001} />
-                          </div>
-                          <div className="col-span-2">
-                            <Label className="text-xs">Preço Unit.</Label>
-                            <NumberInput value={item.preco_unitario} onChange={(v) => handleItemChange(idx, "preco_unitario", v)} />
-                          </div>
-                          <div className="col-span-1">
-                            <Label className="text-xs">Desc. %</Label>
-                            <NumberInput value={item.desconto_percentual} onChange={(v) => handleItemChange(idx, "desconto_percentual", v)} step={0.1} />
-                          </div>
-                          <div className="col-span-1">
-                            <Label className="text-xs">Desc. R$</Label>
-                            <NumberInput value={item.desconto_valor} onChange={(v) => handleItemChange(idx, "desconto_valor", v)} />
-                          </div>
-                          <div className="col-span-1">
-                            <Label className="text-xs">Total</Label>
-                            <Input value={formatCurrency(item.valor_total)} readOnly className="font-bold text-green-700 text-right" />
-                          </div>
-                          <Button type="button" variant="ghost" size="icon" className="text-red-600" onClick={() => handleRemoveItem(idx)}><Trash2 className="h-4 w-4" /></Button>
-                        </div>
-                      ))}
-                    </div>
-                    <Button type="button" variant="outline" onClick={handleAddItem} className="w-fit"><Plus className="h-4 w-4 mr-2" />Adicionar Item</Button>
-                    <Separator />
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Data da Venda</Label>
-                        <Input type="date" value={vendaFormData.data_venda} onChange={(e) => setVendaFormData({...vendaFormData, data_venda: e.target.value})} />
-                      </div>
-                      <div>
-                        <Label>Forma de Pagamento</Label>
-                        <Select value={vendaFormData.forma_pagamento} onValueChange={(v) => setVendaFormData({...vendaFormData, forma_pagamento: v})}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {FORMAS_PAGAMENTO.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label>Status Pagamento</Label>
-                        <Select value={vendaFormData.status_pagamento} onValueChange={(v) => setVendaFormData({...vendaFormData, status_pagamento: v})}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {STATUS_PAGAMENTO.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <Separator />
-                    <h4 className="font-semibold">Totais</h4>
-                    <div className="grid grid-cols-4 gap-4">
-                      <div><Label>Subtotal</Label><p className="text-xl font-bold">{formatCurrency(itensForm.reduce((s, i) => s + i.quantidade * i.preco_unitario, 0))}</p></div>
-                      <div><Label>Descontos</Label><p className="text-xl font-bold text-red-700">-{formatCurrency(itensForm.reduce((s, i) => s + i.desconto_valor, 0))}</p></div>
-                      <div><Label>Impostos (est.)</Label><p className="text-xl font-bold">{formatCurrency(itensForm.reduce((s, i) => s + (i.icms_valor || 0) + (i.pis_cofins_valor || 0) + (i.ipi_valor || 0), 0))}</p></div>
-                      <div><Label>Total</Label><p className="text-xl font-bold text-green-700">{formatCurrency(itensForm.reduce((s, i) => s + i.valor_total, 0))}</p></div>
-                    </div>
-                    <div>
-                      <Label>Observações</Label>
-                      <Input value={vendaFormData.obs} onChange={(e) => setVendaFormData({...vendaFormData, obs: e.target.value})} />
-                    </div>
-                  </div>
-                </form>
-                <DialogFooter className="shrink-0">
-                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                  <Button type="submit" form="venda-form" disabled={formLoading}>{formLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4 mr-2" />Salvar</>}</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
           </TabsContent>
 
           {/* GANHOS TAB */}
