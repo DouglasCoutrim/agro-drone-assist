@@ -267,7 +267,7 @@ export default function Clientes() {
                       <div className="space-y-2">
                         <Label>CEP</Label>
                         <div className="flex gap-2">
-                          <Input value={formData.cep} onChange={(e) => setFormData({ ...formData, cep: e.target.value })} placeholder="00000-000" maxLength={9} />
+                          <Input value={formData.cep} onChange={(e) => { const v = e.target.value; setFormData(f => ({ ...f, cep: v })); if (v.replace(/\D/g, "").length === 8) fetchCep(v).then(res => { if (res) setFormData(f => ({ ...f, endereco: res.logradouro || f.endereco, cidade: res.localidade || f.cidade, estado: res.uf || f.estado, bairro: res.bairro || f.bairro, codigo_municipio: res.ibge || f.codigo_municipio })); }); }} placeholder="00000-000" maxLength={9} />
                           <Button type="button" variant="outline" onClick={() => fetchCep(formData.cep).then(res => { if (res) { setFormData(f => ({ ...f, endereco: res.logradouro || f.endereco, cidade: res.localidade || f.cidade, estado: res.uf || f.estado, bairro: res.bairro || f.bairro, codigo_municipio: res.ibge || f.codigo_municipio })); } })} disabled={cepLoading || !formData.cep}>
                             {cepLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
                           </Button>
@@ -293,7 +293,11 @@ export default function Clientes() {
                             <SelectTrigger><SelectValue placeholder="UF" /></SelectTrigger>
                             <SelectContent>{UF_LIST.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}</SelectContent>
                           </Select>
-                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Código IBGE do município</Label>
+                        <Input value={formData.codigo_municipio} onChange={(e) => setFormData({ ...formData, codigo_municipio: e.target.value.replace(/\D/g, "").slice(0, 7) })} placeholder="Preenchido pelo CEP (7 dígitos)" inputMode="numeric" maxLength={7} />
+                      </div>
                       </div>
                       <Separator className="my-2" />
                       <p className="text-xs font-semibold text-muted-foreground uppercase">Dados para nota fiscal</p>
