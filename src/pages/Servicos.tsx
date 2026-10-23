@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
+import { usePagination } from "@/hooks/usePagination";
+import { RecordPagination } from "@/components/RecordPagination";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -134,6 +136,8 @@ export default function Servicos() {
     const term = searchTerm.toLowerCase();
     return servicos.filter((s) => s.descricao.toLowerCase().includes(term));
   }, [servicos, searchTerm]);
+
+  const pagination = usePagination(filtered, searchTerm);
 
   return (
     <MainLayout>
@@ -298,7 +302,7 @@ export default function Servicos() {
               />
             ) : (
               <div className="divide-y divide-border">
-                {filtered.map((s) => (
+                {pagination.items.map((s) => (
                   <div
                     key={s.id}
                     className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors"
@@ -342,6 +346,7 @@ export default function Servicos() {
               </div>
             )}
           </CardContent>
+          {!loading && <RecordPagination {...pagination} />}
         </Card>
       </div>
     </MainLayout>

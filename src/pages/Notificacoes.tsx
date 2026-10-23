@@ -1,3 +1,5 @@
+import { usePagination } from "@/hooks/usePagination";
+import { RecordPagination } from "@/components/RecordPagination";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Button } from "@/components/ui/button";
@@ -31,6 +33,8 @@ export default function Notificacoes() {
     if (filter === "unread" && n.read_at) return false;
     return true;
   });
+
+  const pagination = usePagination(filtered, `${tab}-${filter}`);
 
   return (
     <MainLayout>
@@ -69,7 +73,7 @@ export default function Notificacoes() {
               </Card>
             ) : (
               <ul className="space-y-2">
-                {filtered.map((n) => (
+                {pagination.items.map((n) => (
                   <li
                     key={n.id}
                     className={cn(
@@ -101,6 +105,7 @@ export default function Notificacoes() {
                 ))}
               </ul>
             )}
+            {!loading && <RecordPagination {...pagination} />}
           </TabsContent>
         </Tabs>
       </div>

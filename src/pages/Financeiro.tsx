@@ -351,7 +351,7 @@ export default function Financeiro() {
                   { key: 'valor', label: 'Valor', align: 'right' },
                   { key: 'actions', label: '', align: 'right' },
                 ]}
-                data={filteredTransacoes.slice(0, 30)}
+                data={filteredTransacoes}
                 rowKey={(row) => row.id}
                 loading={loading}
                 emptyMessage={searchTerm ? 'Nenhuma transação encontrada' : 'Nenhuma transação cadastrada'}

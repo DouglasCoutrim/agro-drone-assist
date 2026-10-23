@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { usePagination } from "@/hooks/usePagination";
+import { RecordPagination } from "@/components/RecordPagination";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -109,6 +111,8 @@ export default function Cobrancas() {
     p.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (p.customerName || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const pagination = usePagination(filteredPayments, searchTerm);
 
   const totalPendente = payments.filter(p => p.status === 'PENDING' || p.status === 'OVERDUE').reduce((a, p) => a + p.value, 0);
   const totalRecebido = payments.filter(p => ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(p.status)).reduce((a, p) => a + p.value, 0);
@@ -224,7 +228,7 @@ export default function Cobrancas() {
                   <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
                 ) : (
                   <div className="divide-y divide-border">
-                    {filteredPayments.map((p) => {
+                    {pagination.items.map((p) => {
                       const sc = getStatusConfig(p.status);
                       const StatusIcon = sc.icon;
                       return (
@@ -249,6 +253,7 @@ export default function Cobrancas() {
                   </div>
                 )}
               </CardContent>
+              {!loading && <RecordPagination {...pagination} />}
             </Card>
           </>
         )}
@@ -273,7 +278,7 @@ export default function Cobrancas() {
                       <p className="text-xs font-medium mb-1.5">Link de Pagamento</p>
                       <div className="flex items-center gap-2">
                         <Input value={detailDialog.invoiceUrl} readOnly className="text-[10px] h-8" />
-                        <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => { navigator.clipboard.writeText(detailDialog.invoiceUrl!); toast.success('Copiado!'); }}>
+                        <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => { if (detailDialog.invoiceUrl) navigator.clipboard.writeText(detailDialog.invoiceUrl); toast.success('Copiado!'); }}>
                           <Copy className="h-3.5 w-3.5" />
                         </Button>
                       </div>

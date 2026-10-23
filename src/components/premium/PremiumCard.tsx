@@ -35,11 +35,11 @@ export function PremiumCard({
   return (
     <div
       className={cn(
-        "bg-white rounded-lg",
-        bordered && "border border-gray-200",
+        "bg-card text-card-foreground rounded-lg",
+        bordered && "border border-border",
         "shadow-sm",
         hover &&
-          "hover:shadow-md hover:border-primary-300 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer",
+          "hover:shadow-md hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer",
         paddingClass,
         className,
         visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
@@ -64,8 +64,8 @@ export function PremiumCardHeader({
   return (
     <div className="flex items-start justify-between mb-4">
       <div>
-        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-        {subtitle && <p className="text-sm text-gray-600 mt-1">{subtitle}</p>}
+        <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+        {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
       </div>
       {action && <div>{action}</div>}
     </div>
@@ -80,7 +80,7 @@ export function PremiumCardContent({ children }: { children: ReactNode }) {
 // Footer variant for PremiumCard
 export function PremiumCardFooter({ children }: { children: ReactNode }) {
   return (
-    <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-end gap-2">
+    <div className="mt-4 pt-4 border-t border-border flex items-center justify-end gap-2">
       {children}
     </div>
   );

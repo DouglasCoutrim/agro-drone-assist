@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, FileText, BarChart3, DollarSign, Settings, Users, CreditCard, UsersRound,
-  Building2, ClipboardList, LifeBuoy, BookOpen, Bell, Wrench, Monitor, Calculator, ShoppingCart, Package,
+  Building2, ClipboardList, LifeBuoy, BookOpen, Bell, Wrench, Monitor, Calculator, ShoppingCart, Package, Truck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -26,17 +26,26 @@ export const navSections: NavSection[] = [
     title: "Cadastros",
     items: [
       { title: "Clientes", icon: Users, href: "/clientes", roles: ALL },
+      { title: "Fornecedores", icon: Building2, href: "/fornecedores", roles: ALL },
+      { title: "Transportadoras", icon: Truck, href: "/transportadoras", roles: ALL },
       { title: "Serviços", icon: Wrench, href: "/servicos", roles: ALL },
-      { title: "Estoque (Produtos e Peças)", icon: Package, href: "/estoque", roles: ALL },
     ],
+  },
+  {
+    title: "Estoque",
+    items: [{ title: "Produtos e Peças", icon: Package, href: "/estoque", roles: ALL }],
   },
   {
     title: "Atendimento",
     items: [
       { title: "Ordens de Serviço", icon: FileText, href: "/ordens-servico", roles: ALL },
       { title: "Orçamentos", icon: ClipboardList, href: "/orcamentos", roles: STAFF },
-      { title: "Vendas", icon: ShoppingCart, href: "/vendas", roles: STAFF },
+
     ],
+  },
+  {
+    title: "Vendas",
+    items: [{ title: "Vendas e Notas Fiscais", icon: ShoppingCart, href: "/vendas", roles: STAFF }],
   },
   {
     title: "Financeiro",
