@@ -33,7 +33,10 @@ export const navSections: NavSection[] = [
   },
   {
     title: "Estoque",
-    items: [{ title: "Produtos e Peças", icon: Package, href: "/estoque", roles: ALL }],
+    items: [
+      { title: "Produtos e Peças", icon: Package, href: "/estoque", roles: ALL },
+      { title: "Importar XML (NF-e)", icon: FileText, href: "/estoque/importar-xml", roles: STAFF },
+    ],
   },
   {
     title: "Atendimento",

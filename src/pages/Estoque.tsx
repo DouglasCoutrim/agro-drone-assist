@@ -278,9 +278,14 @@ export default function Estoque() {
             </h1>
             <p className="text-gray-600 mt-1">Gerencie peças, componentes e materiais</p>
           </div>
-          <Button className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold" onClick={handleOpenNewDialog}>
-            <Plus className="mr-2 h-4 w-4" />Novo Item
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => { window.location.href = "/estoque/importar-xml"; }}>
+              Importar XML (NF-e)
+            </Button>
+            <Button className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold" onClick={handleOpenNewDialog}>
+              <Plus className="mr-2 h-4 w-4" />Novo Item
+            </Button>
+          </div>
         </div>
 
         {/* CSV Import/Export */}

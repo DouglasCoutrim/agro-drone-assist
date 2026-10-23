@@ -22,6 +22,7 @@ import NotFound from "./pages/NotFound";
 const Index = lazy(() => import("./pages/Index"));
 const OrdensServico = lazy(() => import("./pages/OrdensServico"));
 const Estoque = lazy(() => import("./pages/Estoque"));
+const ImportarXmlNfe = lazy(() => import("./pages/ImportarXmlNfe"));
 const Servicos = lazy(() => import("./pages/Servicos"));
 const Relatorios = lazy(() => import("./pages/Relatorios"));
 const Financeiro = lazy(() => import("./pages/Financeiro"));
@@ -110,6 +111,7 @@ const App = () => {
                   <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                   <Route path="/ordens-servico" element={<ProtectedRoute requiredPermission="acesso_os"><OrdensServico /></ProtectedRoute>} />
                   <Route path="/estoque" element={<ProtectedRoute requiredPermission="acesso_estoque"><Estoque /></ProtectedRoute>} />
+                  <Route path="/estoque/importar-xml" element={<ProtectedRoute requiredPermission="acesso_estoque"><ImportarXmlNfe /></ProtectedRoute>} />
                   <Route path="/produtos" element={<Navigate to="/estoque" replace />} />
                   <Route path="/vendas" element={<ProtectedRoute requiredPermission="acesso_financeiro"><Vendas /></ProtectedRoute>} />
                   <Route path="/servicos" element={<ProtectedRoute><Servicos /></ProtectedRoute>} />
