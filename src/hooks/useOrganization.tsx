@@ -17,14 +17,19 @@ export interface Organization {
   max_os_per_month: number;
 }
 
+const orgCache = new Map<string, { organization: Organization | null; isPlatformAdmin: boolean }>();
+const orgInflight = new Map<string, Promise<{ organization: Organization | null; isPlatformAdmin: boolean }>>();
+
 export function useOrganization() {
   const { user } = useAuth();
-  const [organization, setOrganization] = useState<Organization | null>(null);
-  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const cached = user ? orgCache.get(user.id) : undefined;
+  const [organization, setOrganization] = useState<Organization | null>(cached?.organization ?? null);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(cached?.isPlatformAdmin ?? false);
+  const [loading, setLoading] = useState(!cached);
 
   useEffect(() => {
     if (!user) {
+      orgCache.clear();
       setOrganization(null);
       setIsPlatformAdmin(false);
       setLoading(false);
@@ -32,8 +37,16 @@ export function useOrganization() {
     }
 
     let cancelled = false;
-    (async () => {
-      setLoading(true);
+    const hit = orgCache.get(user.id);
+    if (hit) {
+      setOrganization(hit.organization);
+      setIsPlatformAdmin(hit.isPlatformAdmin);
+      setLoading(false);
+      return;
+    }
+    let p = orgInflight.get(user.id);
+    if (!p) {
+      p = (async () => {
       let org: Organization | null = null;
       let isPA = false;
       try {
@@ -65,14 +78,21 @@ export function useOrganization() {
         }
       } catch (e) {
         console.error("useOrganization error:", e);
-      } finally {
-        if (!cancelled) {
-          setIsPlatformAdmin(isPA);
-          setOrganization(org);
-          setLoading(false);
-        }
+        return { organization: org, isPlatformAdmin: isPA, failed: true } as any;
       }
-    })();
+      return { organization: org, isPlatformAdmin: isPA };
+      })();
+      orgInflight.set(user.id, p);
+    }
+    p.then((r: any) => {
+      orgInflight.delete(user.id);
+      if (!r.failed) orgCache.set(user.id, { organization: r.organization, isPlatformAdmin: r.isPlatformAdmin });
+      if (!cancelled) {
+        setIsPlatformAdmin(r.isPlatformAdmin);
+        setOrganization(r.organization);
+        setLoading(false);
+      }
+    });
 
     return () => { cancelled = true; };
   }, [user]);
