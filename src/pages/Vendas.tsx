@@ -34,7 +34,7 @@ import {
 import {
   Plus, Package, DollarSign, CreditCard, FileText, Search,
   Edit, Trash2, Loader2, Eye, ChevronDown, Truck, User,
-  FileCheck, XCircle, AlertTriangle, Download
+  FileCheck, XCircle, AlertTriangle, Download, RefreshCw, MessageCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -351,7 +351,7 @@ export default function Vendas() {
     if (error && !data) { toast.error("Erro ao consultar: " + error.message); return; }
     const st = data?.nf?.status;
     toast[st === "autorizado" ? "success" : "info"](st === "autorizado" ? "Nota autorizada!" : st === "processando" ? "A nota ainda está em processamento." : `Situação: ${st}${data?.nf?.motivo_rejeicao ? " — " + data.nf.motivo_rejeicao : ""}`);
-    if (typeof fetchNotasFiscais === "function") fetchNotasFiscais();
+    fetchData();
   };
 
   const handleCancelarNF = async (nfId: string) => {
