@@ -300,15 +300,17 @@ export default function Vendas() {
       };
 
       if (editingVenda) {
-        await updateVenda(editingVenda.id, completeVendaData);
+        const { numero: _n, ...updates } = completeVendaData;
+        await updateVenda(editingVenda.id, updates, itensForm);
+        toast.success("Venda atualizada!");
       } else {
         await createVenda(completeVendaData, itensForm);
+        toast.success("Venda criada com sucesso!");
       }
-      toast.success("Venda criada com sucesso!");
       setDialogOpen(false);
       resetVendaForm();
     } catch (err: any) {
-      toast.error("Erro ao criar venda: " + err.message);
+      toast.error("Erro ao salvar venda: " + err.message);
     } finally {
       isSubmittingRef.current = false;
       setFormLoading(false);

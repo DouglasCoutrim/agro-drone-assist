@@ -255,7 +255,21 @@ export function useVendasData() {
     return novaVenda;
   };
 
-  const updateVenda = async (id: string, updates: Partial<Venda>) => {
+  const ajustarEstoque = async (produtoId: string, delta: number, motivo: string) => {
+    const { data: est } = await supabase.from("itens_estoque").select("quantidade").eq("id", produtoId).maybeSingle();
+    if (!est) return;
+    await supabase.from("itens_estoque").update({ quantidade: Number(est.quantidade) + delta }).eq("id", produtoId);
+    await supabase.from("movimentacoes_estoque").insert({
+      organization_id: organization!.id, item_id: produtoId, tipo: delta > 0 ? "entrada" : "saida",
+      quantidade: Math.abs(delta), motivo, usuario_id: user!.id,
+    } as any);
+  };
+
+  const updateVenda = async (
+    id: string,
+    updates: Partial<Venda> & Record<string, any>,
+    itens?: (Omit<VendaItem, "id" | "venda_id" | "created_at"> & { id?: string })[],
+  ) => {
     const { data, error } = await supabase
       .from("vendas")
       .update(updates)
@@ -263,7 +277,30 @@ export function useVendasData() {
       .select()
       .single();
     if (error) throw error;
-    setVendas((prev) => prev.map((v) => (v.id === id ? { ...v, ...data } : v)));
+
+    let novosItens = vendas.find((v) => v.id === id)?.itens || [];
+    if (itens) {
+      const { data: antigos, error: oldErr } = await supabase.from("venda_itens").select("*").eq("venda_id", id);
+      if (oldErr) throw oldErr;
+      const { error: delErr } = await supabase.from("venda_itens").delete().eq("venda_id", id);
+      if (delErr) throw delErr;
+      const payload = itens.map(({ id: _i, ...rest }: any) => {
+        const { produto_nome, created_at, venda_id, ...clean } = rest;
+        return { ...clean, venda_id: id };
+      });
+      if (payload.length) {
+        const { data: ins, error: insErr } = await supabase.from("venda_itens").insert(payload).select();
+        if (insErr) throw insErr;
+        novosItens = ins || [];
+      } else novosItens = [];
+      // Reconciliar estoque: diferença por produto
+      const delta = new Map<string, number>();
+      for (const a of antigos || []) if (a.produto_id) delta.set(a.produto_id, (delta.get(a.produto_id) || 0) + Number(a.quantidade));
+      for (const n of payload) if (n.produto_id) delta.set(n.produto_id, (delta.get(n.produto_id) || 0) - Number(n.quantidade));
+      for (const [pid, d] of delta) if (d !== 0) await ajustarEstoque(pid, d, `Edição da venda ${data.numero}`);
+    }
+
+    setVendas((prev) => prev.map((v) => (v.id === id ? { ...v, ...data, itens: novosItens } : v)));
     return data;
   };
 
