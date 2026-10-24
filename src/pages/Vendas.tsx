@@ -69,12 +69,6 @@ export default function Vendas() {
   const confirm = useConfirm();
   const navigate = useNavigate();
   const location = useLocation();
-  useEffect(() => {
-    const q = new URLSearchParams(location.search);
-    if (q.get("tab") === "notas") { setActiveTab("notas"); setDialogOpen(false); }
-    if (q.get("nova") === "1") { setEditingVenda(null); setDialogOpen(true); }
-    window.scrollTo(0, 0);
-  }, [location.search]);
   const [produtos, setProdutos] = useState<any[]>([]);
   const [clientesList, setClientesList] = useState<any[]>([]);
   const [transportadorasList, setTransportadorasList] = useState<any[]>([]);
@@ -164,8 +158,21 @@ export default function Vendas() {
   };
 
   const handleOpenNewVenda = () => {
+    navigate("/vendas?nova=1");
+  };
+
+  useEffect(() => {
+    const q = new URLSearchParams(location.search);
+    setActiveTab(q.get("tab") === "notas" ? "notas" : "vendas");
     resetVendaForm();
-    setDialogOpen(true);
+    setDialogOpen(q.get("nova") === "1");
+    window.scrollTo(0, 0);
+  }, [location.key, location.search]);
+
+  const closeVendaForm = () => {
+    setDialogOpen(false);
+    resetVendaForm();
+    navigate("/vendas", { replace: true });
   };
 
   const handleEditVenda = (venda: Venda) => {
@@ -308,8 +315,7 @@ export default function Vendas() {
         await createVenda(completeVendaData, itensForm);
         toast.success("Venda criada com sucesso!");
       }
-      setDialogOpen(false);
-      resetVendaForm();
+      closeVendaForm();
     } catch (err: any) {
       toast.error("Erro ao salvar venda: " + err.message);
     } finally {
@@ -411,7 +417,7 @@ export default function Vendas() {
                     <p className="text-sm text-muted-foreground">Vendas › {editingVenda ? "Editar" : "Nova"}</p>
                   </div>
                   <div className="flex gap-2">
-                    <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Voltar</Button>
+                    <Button type="button" variant="outline" onClick={closeVendaForm}>Voltar</Button>
                     <Button type="submit" form="venda-form" disabled={formLoading}>{formLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}</Button>
                   </div>
                 </div>
