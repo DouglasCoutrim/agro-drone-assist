@@ -1,0 +1,2 @@
+ALTER TABLE public.nfe_config ADD COLUMN IF NOT EXISTS mei boolean NOT NULL DEFAULT false;
+ALTER TABLE public.nfe_config ADD COLUMN IF NOT EXISTS nfse_padrao text NOT NULL DEFAULT 'municipal' CHECK (nfse_padrao IN ('municipal','nacional'));

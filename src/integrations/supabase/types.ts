@@ -944,6 +944,7 @@ export type Database = {
           inscricao_estadual: string | null
           inscricao_municipal: string | null
           logradouro: string | null
+          mei: boolean
           municipio: string | null
           natureza_operacao: string
           nfse_aliquota: number
@@ -958,6 +959,7 @@ export type Database = {
           nfse_iss_retido: boolean
           nfse_item_lista_servico: string | null
           nfse_natureza_operacao: string
+          nfse_padrao: string
           nome_fantasia: string | null
           numero: string | null
           organization_id: string
@@ -985,6 +987,7 @@ export type Database = {
           inscricao_estadual?: string | null
           inscricao_municipal?: string | null
           logradouro?: string | null
+          mei?: boolean
           municipio?: string | null
           natureza_operacao?: string
           nfse_aliquota?: number
@@ -999,6 +1002,7 @@ export type Database = {
           nfse_iss_retido?: boolean
           nfse_item_lista_servico?: string | null
           nfse_natureza_operacao?: string
+          nfse_padrao?: string
           nome_fantasia?: string | null
           numero?: string | null
           organization_id: string
@@ -1026,6 +1030,7 @@ export type Database = {
           inscricao_estadual?: string | null
           inscricao_municipal?: string | null
           logradouro?: string | null
+          mei?: boolean
           municipio?: string | null
           natureza_operacao?: string
           nfse_aliquota?: number
@@ -1040,6 +1045,7 @@ export type Database = {
           nfse_iss_retido?: boolean
           nfse_item_lista_servico?: string | null
           nfse_natureza_operacao?: string
+          nfse_padrao?: string
           nome_fantasia?: string | null
           numero?: string | null
           organization_id?: string
