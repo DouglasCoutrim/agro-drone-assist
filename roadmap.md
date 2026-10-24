@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Verificar os oito achados atuais de monitoramento e corrigir somente problemas confirmados.
+- [ ] Validar vendas, orçamentos agrupados e janelas no celular; encerrar os achados verificados.
+
 - [x] Criar cadastros de Fornecedores e Transportadoras com isolamento por empresa.
 - [x] Organizar navegação em módulos recolhíveis e aproximar o visual das referências.
 - [x] Paginar listas de registros com quantidade menor por página.
