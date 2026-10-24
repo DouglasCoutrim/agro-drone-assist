@@ -861,6 +861,10 @@ export default function OrdensServico() {
   const handleStatusChange = async (osId: string, newStatus: string): Promise<boolean> => {
     const os = ordens.find(o => o.id === osId);
     const isReview = (os as any)?.tipo_os === "revisao";
+    if (newStatus === "finalizada" && os && os.tecnico_id !== user?.id) {
+      toast.error("Somente o técnico responsável pode finalizar esta OS.");
+      return false;
+    }
 
     // Bloqueio para Revisão: não permitir "entregue" ou "finalizada" sem checklist completo
     if (isReview && (newStatus === "entregue" || newStatus === "finalizada")) {
@@ -1617,7 +1621,7 @@ export default function OrdensServico() {
                     <Select value={formData.tecnico_id || ""} onValueChange={(v) => setFormData({ ...formData, tecnico_id: v } as any)}>
                       <SelectTrigger className="h-9"><SelectValue placeholder="Selecionar técnico..." /></SelectTrigger>
                       <SelectContent>
-                        {tecnicos.map(t => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
+                        {tecnicos.map(t => <SelectItem key={t.id} value={t.id}>{t.nome}{(t as any).nivel_tecnico ? ` · Nível ${(t as any).nivel_tecnico}` : ""}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1767,6 +1771,22 @@ export default function OrdensServico() {
 
               {viewingOS && (
               <div className="space-y-4">
+                {(viewingOS as any).tecnico_id && !(viewingOS as any).recebida_em && !LOCK_CLOSED_STATUSES.has(viewingOS.status) && (
+                  <div className="rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm flex flex-wrap items-center justify-between gap-2">
+                    <span>
+                      Aguardando recebimento do técnico
+                      {(viewingOS as any).atribuida_em && <> · prazo até {new Date(new Date((viewingOS as any).atribuida_em).getTime() + 3600000).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} (depois é repassada a um técnico nível 2 ou 3)</>}
+                    </span>
+                    {(viewingOS as any).tecnico_id === user?.id && (
+                      <Button size="sm" onClick={async () => {
+                        const { error } = await supabase.rpc("confirmar_recebimento_os" as any, { _os_id: viewingOS.id });
+                        if (error) { toast.error(error.message); return; }
+                        toast.success("Recebimento confirmado");
+                        setViewingOS({ ...viewingOS, recebida_em: new Date().toISOString() } as any);
+                      }}>Confirmar recebimento</Button>
+                    )}
+                  </div>
+                )}
                 {/* Status Pipeline */}
                 <StatusPipeline
                   currentStatus={viewingOS.status}
