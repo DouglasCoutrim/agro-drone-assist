@@ -39,6 +39,7 @@ export default function Servicos() {
     descricao: "",
     preco: 0,
     tempo_estimado: "",
+    nivel_minimo: 1,
   });
 
   useEffect(() => {
@@ -63,7 +64,7 @@ export default function Servicos() {
   };
 
   const resetForm = () => {
-    setFormData({ descricao: "", preco: 0, tempo_estimado: "" });
+    setFormData({ descricao: "", preco: 0, tempo_estimado: "", nivel_minimo: 1 });
     setEditing(null);
   };
 
@@ -79,6 +80,7 @@ export default function Servicos() {
         descricao: formData.descricao.trim(),
         preco: Number(formData.preco) || 0,
         tempo_estimado: formData.tempo_estimado.trim() || null,
+        nivel_minimo: Number(formData.nivel_minimo) || 1,
       };
       if (editing) {
         const { error } = await supabase
@@ -110,6 +112,7 @@ export default function Servicos() {
       descricao: s.descricao,
       preco: s.preco,
       tempo_estimado: s.tempo_estimado || "",
+      nivel_minimo: (s as any).nivel_minimo || 1,
     });
     setDialogOpen(true);
   };
@@ -235,6 +238,18 @@ export default function Servicos() {
                           }
                           className="h-9"
                         />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Nível técnico exigido</Label>
+                        <select
+                          className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                          value={formData.nivel_minimo}
+                          onChange={(e) => setFormData({ ...formData, nivel_minimo: Number(e.target.value) })}
+                        >
+                          <option value={1}>Nível 1 – Ajudante Técnico</option>
+                          <option value={2}>Nível 2 – Técnico</option>
+                          <option value={3}>Nível 3 – Técnico Especialista</option>
+                        </select>
                       </div>
                     </div>
                   </form>

@@ -1374,6 +1374,7 @@ export type Database = {
       }
       ordens_servico: {
         Row: {
+          atribuida_em: string | null
           checklist_bateria: boolean | null
           checklist_cabos: boolean | null
           checklist_carregador: boolean | null
@@ -1413,6 +1414,8 @@ export type Database = {
           observacoes: string | null
           organization_id: string | null
           prioridade: string
+          recebida_em: string | null
+          repasses_automaticos: number
           solucao: string | null
           status: Database["public"]["Enums"]["status_os"]
           tecnico_id: string | null
@@ -1423,6 +1426,7 @@ export type Database = {
           valor_orcamento: number | null
         }
         Insert: {
+          atribuida_em?: string | null
           checklist_bateria?: boolean | null
           checklist_cabos?: boolean | null
           checklist_carregador?: boolean | null
@@ -1462,6 +1466,8 @@ export type Database = {
           observacoes?: string | null
           organization_id?: string | null
           prioridade?: string
+          recebida_em?: string | null
+          repasses_automaticos?: number
           solucao?: string | null
           status?: Database["public"]["Enums"]["status_os"]
           tecnico_id?: string | null
@@ -1472,6 +1478,7 @@ export type Database = {
           valor_orcamento?: number | null
         }
         Update: {
+          atribuida_em?: string | null
           checklist_bateria?: boolean | null
           checklist_cabos?: boolean | null
           checklist_carregador?: boolean | null
@@ -1511,6 +1518,8 @@ export type Database = {
           observacoes?: string | null
           organization_id?: string | null
           prioridade?: string
+          recebida_em?: string | null
+          repasses_automaticos?: number
           solucao?: string | null
           status?: Database["public"]["Enums"]["status_os"]
           tecnico_id?: string | null
@@ -2081,6 +2090,7 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          nivel_tecnico: number | null
           nome: string
           organization_id: string | null
           product_commission_type: string
@@ -2099,6 +2109,7 @@ export type Database = {
           created_at?: string
           email: string
           id: string
+          nivel_tecnico?: number | null
           nome: string
           organization_id?: string | null
           product_commission_type?: string
@@ -2117,6 +2128,7 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          nivel_tecnico?: number | null
           nome?: string
           organization_id?: string | null
           product_commission_type?: string
@@ -2199,6 +2211,7 @@ export type Database = {
           fracionamento: string
           hora_minima: number | null
           id: string
+          nivel_minimo: number
           organization_id: string | null
           preco: number
           tempo_estimado: string | null
@@ -2213,6 +2226,7 @@ export type Database = {
           fracionamento?: string
           hora_minima?: number | null
           id?: string
+          nivel_minimo?: number
           organization_id?: string | null
           preco?: number
           tempo_estimado?: string | null
@@ -2227,6 +2241,7 @@ export type Database = {
           fracionamento?: string
           hora_minima?: number | null
           id?: string
+          nivel_minimo?: number
           organization_id?: string | null
           preco?: number
           tempo_estimado?: string | null
@@ -3110,6 +3125,7 @@ export type Database = {
         Args: { _os_id: string }
         Returns: Json
       }
+      confirmar_recebimento_os: { Args: { _os_id: string }; Returns: undefined }
       count_active_users: { Args: { _org: string }; Returns: number }
       count_os_current_month: { Args: { _org: string }; Returns: number }
       get_dre_simplificada: {
@@ -3203,6 +3219,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      repassar_os_sem_recebimento: { Args: never; Returns: number }
       reservar_numero_nfe: {
         Args: { _org: string }
         Returns: {

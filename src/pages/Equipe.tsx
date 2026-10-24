@@ -534,7 +534,24 @@ export default function Equipe() {
                     </div>
 
                     {isAdmin && u.roles.includes('tecnico') && (
-                      <div className="">
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium">Nível técnico</label>
+                          <select
+                            className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                            value={(u as any).nivel_tecnico ?? ""}
+                            onChange={async (e) => {
+                              const v = e.target.value ? Number(e.target.value) : null;
+                              const { error } = await supabase.from('profiles').update({ nivel_tecnico: v } as any).eq('id', u.id);
+                              if (error) toast.error(error.message); else { toast.success("Nível atualizado"); fetchUsers(); }
+                            }}
+                          >
+                            <option value="">Sem nível</option>
+                            <option value={1}>Nível 1 – Ajudante Técnico (serviços nível 1)</option>
+                            <option value={2}>Nível 2 – Técnico (serviços nível 1 e 2)</option>
+                            <option value={3}>Nível 3 – Técnico Especialista (todos os serviços)</option>
+                          </select>
+                        </div>
                         <CommissionEditor profile={u as any} onSaved={fetchUsers} />
                       </div>
                     )}
