@@ -1,7 +1,7 @@
 # Roadmap
 
-- [ ] Verificar os oito achados atuais de monitoramento e corrigir somente problemas confirmados.
-- [ ] Validar vendas, orçamentos agrupados e janelas no celular; encerrar os achados verificados.
+- [x] Verificar os oito achados atuais de monitoramento e corrigir somente problemas confirmados.
+- [x] Validar abertura de vendas e janelas no celular, testar bloqueio de conversão agrupada e encerrar os oito achados. Não gravar vendas reais durante a revisão.
 
 - [x] Criar cadastros de Fornecedores e Transportadoras com isolamento por empresa.
 - [x] Organizar navegação em módulos recolhíveis e aproximar o visual das referências.
