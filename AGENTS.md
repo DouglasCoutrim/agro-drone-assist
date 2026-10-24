@@ -4,6 +4,9 @@
 - PremiumTable paginates record lists by default; external pagination supplies server totals and nested item editors may disable it, so records remain reachable without rendering every row.
 - Desktop and mobile navigation share NavModules and navConfig, so module grouping and destination availability stay synchronized.
 - Load external fonts through a document-head link rather than CSS imports, so CSS compilation never resolves remote font URLs as local files.
+- Sale creation follows router navigation and resets the form on every navigation entry; closing returns to the sale list so repeated menu clicks cannot reuse an edited sale.
+- Guard quote-to-OS conversion with the shared canConvertOrcamento predicate in both the action and UI, because combined quotes already represent existing service orders.
+- Shared dialogs provide mobile padding and vertical scrolling by default; callers with dedicated scroll bodies may override these defaults explicitly.
 
 - Logos das empresas ficam no bucket público `logos`, em pastas identificadas pela organização; leitura pública serve telas e PDFs, enquanto gravação é restrita ao administrador da própria organização.
 - No estoque, `custo_unitario` e `preco_venda` são entradas independentes; importações não devem calcular margem automaticamente para preservar o preço escolhido pelo usuário.

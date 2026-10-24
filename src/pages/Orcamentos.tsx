@@ -30,6 +30,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { PremiumCard, PremiumCardHeader, PremiumCardContent } from "@/components/premium/PremiumCard";
 import { KpiCard } from "@/components/premium/KpiCard";
 import { PremiumTable } from "@/components/premium/PremiumTable";
+import { canConvertOrcamento } from "@/lib/orcamento-conversion";
 
 type Cliente = Tables<"clientes">;
 
@@ -151,6 +152,10 @@ export default function Orcamentos() {
 
   const handleConvertToOS = async (orc: Orcamento) => {
     if (!user) return;
+    if (!canConvertOrcamento(orc)) {
+      toast.error("Este orçamento já está vinculado a ordens de serviço e não pode criar uma nova OS.");
+      return;
+    }
     setFormLoading(true);
     try {
       const { data: osData, error: osErr } = await supabase.from("ordens_servico").insert({
@@ -539,7 +544,7 @@ export default function Orcamentos() {
                       descricao={`Orçamento ${viewingOrc.equipamento || ''}`.trim()}
                       orcamento_id={viewingOrc.id}
                     />
-                    {viewingOrc.status === "pendente" && (
+                    {canConvertOrcamento(viewingOrc) && (
                       <AlertDialog open={convertId === viewingOrc.id} onOpenChange={(open) => setConvertId(open ? viewingOrc.id : null)}>
                         <Button variant="default" className="gradient-primary gap-2" onClick={() => setConvertId(viewingOrc.id)}>
                           <ArrowRight className="h-4 w-4" />Converter em OS
