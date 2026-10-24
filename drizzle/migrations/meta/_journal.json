@@ -43,6 +43,13 @@
       "when": 1792794407335,
       "tag": "0005_nfse_reforma_campos",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792855200621,
+      "tag": "0006_os_sla_niveis_tecnicos",
+      "breakpoints": true
     }
   ]
 }
