@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
       const { data: nf } = await admin.from('nota_fiscal_emitida').select('*').eq('id', nf_id).eq('organization_id', orgId).maybeSingle();
       if (!nf) return json({ error: 'Nota não encontrada' }, 404);
       const cfg = { ...config, ambiente: nf.ambiente };
-      const r = await focusRequest(cfg, 'GET', `/v2/nfse/${encodeURIComponent(nf.referencia)}`);
+      const r = await focusRequest(cfg, 'GET', `/v2/${(config.nfse_padrao === 'nacional' ? 'nfsen' : 'nfse')}/${encodeURIComponent(nf.referencia)}`);
       return json({ success: true, nf: await applyResult(admin, cfg, nf, r.data) });
     }
 
@@ -85,6 +85,7 @@ Deno.serve(async (req) => {
       data_emissao: dataEmissaoBrasil(),
       natureza_operacao: config.nfse_natureza_operacao || '1',
       optante_simples_nacional: config.regime_tributario === 1 || config.regime_tributario === 2,
+      ...(config.mei ? { regime_especial_tributacao: 5 } : {}),
       prestador: {
         cnpj: onlyDigits(config.cnpj),
         inscricao_municipal: onlyDigits(config.inscricao_municipal),
@@ -127,7 +128,7 @@ Deno.serve(async (req) => {
     if (nfErr) throw nfErr;
     await admin.from('nota_fiscal_itens').insert({ nf_id: nf.id, descricao: srv.discriminacao.slice(0, 500), quantidade: 1, valor_unitario: srv.valor_servicos, valor_total: srv.valor_servicos });
 
-    const envio = await focusRequest(config, 'POST', `/v2/nfse?ref=${encodeURIComponent(referencia)}`, payload);
+    const envio = await focusRequest(config, 'POST', `/v2/${config.nfse_padrao === 'nacional' ? 'nfsen' : 'nfse'}?ref=${encodeURIComponent(referencia)}`, payload);
     if (!envio.ok) {
       const motivo = focusErrorMessage(envio.data);
       await admin.from('nota_fiscal_emitida').update({ status: 'rejeitado', motivo_rejeicao: motivo, payload_retorno: envio.data }).eq('id', nf.id);
@@ -138,7 +139,7 @@ Deno.serve(async (req) => {
     let atual = nf;
     for (let i = 0; i < 6; i++) {
       await new Promise((r) => setTimeout(r, 2500));
-      const c = await focusRequest(config, 'GET', `/v2/nfse/${encodeURIComponent(referencia)}`);
+      const c = await focusRequest(config, 'GET', `/v2/${(config.nfse_padrao === 'nacional' ? 'nfsen' : 'nfse')}/${encodeURIComponent(referencia)}`);
       atual = await applyResult(admin, config, atual, c.data);
       if (atual.status !== 'processando') break;
     }
@@ -156,7 +157,7 @@ function validar(config: any, os: any, srv: any): string[] {
   if (!config.nfse_habilitado) p.push('A emissão de NFS-e está desativada nas configurações fiscais.');
   if (!focusToken(config)) p.push('Token da Focus NFe não informado para o ambiente selecionado.');
   if (onlyDigits(config.cnpj).length !== 14) p.push('CNPJ do prestador inválido.');
-  if (!onlyDigits(config.inscricao_municipal)) p.push('Inscrição municipal do prestador não informada.');
+  if (!config.mei && !onlyDigits(config.inscricao_municipal)) p.push('Inscrição municipal do prestador não informada.');
   if (onlyDigits(config.codigo_municipio).length !== 7) p.push('Código IBGE do município do prestador não informado.');
   if (!srv.item_lista_servico) p.push('Item da lista de serviço (LC 116) não informado.');
   if (srv.valor_servicos <= 0) p.push('Valor dos serviços deve ser maior que zero.');
