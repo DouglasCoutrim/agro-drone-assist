@@ -48,6 +48,8 @@ type Cfg = {
   nfse_codigo_indop: string;
   nfse_ibs_cbs_class_trib: string;
   nfse_ibs_cbs_cst: string;
+  mei: boolean;
+  nfse_padrao: string;
 };
 
 const EMPTY: Cfg = {
@@ -59,6 +61,7 @@ const EMPTY: Cfg = {
   nfse_habilitado: false, nfse_item_lista_servico: "", nfse_codigo_tributario_municipio: "", nfse_codigo_cnae: "",
   nfse_aliquota: 0, nfse_iss_retido: false, nfse_natureza_operacao: "1", nfse_discriminacao_padrao: "",
   nfse_codigo_nbs: "115021000", nfse_codigo_indop: "100301", nfse_ibs_cbs_class_trib: "000001", nfse_ibs_cbs_cst: "000",
+  mei: false, nfse_padrao: "municipal",
 };
 
 function F({ label, k, cfg, set, ...rest }: { label: string; k: keyof Cfg; cfg: Cfg; set: (k: keyof Cfg, v: any) => void } & React.InputHTMLAttributes<HTMLInputElement>) {
@@ -184,7 +187,14 @@ export function NfeConfigCard() {
                   <SelectItem value="3">3 — Regime Normal</SelectItem>
                 </SelectContent>
               </Select>
+            <div className="flex items-center justify-between rounded-lg border p-3 sm:col-span-2">
+              <div>
+                <p className="font-medium text-sm">Empresa é MEI</p>
+                <p className="text-xs text-muted-foreground">Microempreendedor Individual: ISS fica 0% (pago no DAS) e a NFS-e passa a ser emitida pelo Gov.br.</p>
+              </div>
+              <Switch checked={cfg.mei} onCheckedChange={(v) => setCfg((c) => ({ ...c, mei: v, ...(v ? { nfse_padrao: "nacional", nfse_aliquota: 0, regime_tributario: 1 } : {}) }))} />
             </div>
+          </div>
           </div>
         </section>
 
@@ -226,6 +236,19 @@ export function NfeConfigCard() {
               <p className="text-xs text-muted-foreground">Libera a emissão de nota de serviço a partir das ordens de serviço. Usa o mesmo token e certificado da Focus.</p>
             </div>
             <Switch checked={cfg.nfse_habilitado} onCheckedChange={(v) => set("nfse_habilitado", v)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Onde emitir a NFS-e</Label>
+            <Select value={cfg.nfse_padrao} onValueChange={(v) => set("nfse_padrao", v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="municipal">Prefeitura (padrão municipal)</SelectItem>
+                <SelectItem value="nacional">Gov.br (Emissor Nacional / DPS)</SelectItem>
+              </SelectContent>
+            </Select>
+            {cfg.mei && cfg.nfse_padrao !== "nacional" && (
+              <p className="text-xs text-muted-foreground">MEI deve emitir pelo Emissor Nacional (Gov.br).</p>
+            )}
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <F cfg={cfg} set={set} label="Item da lista de serviço (LC 116) *" k="nfse_item_lista_servico" placeholder="Ex.: 14.01" />
