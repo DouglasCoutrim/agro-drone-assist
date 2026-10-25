@@ -21,3 +21,4 @@
 - Keep redirects for retired product and retention pages so existing bookmarks resolve to supported screens.
 
 - Technician financial summary and statement read principal commission_total from ordens_servico, not retired os_technicians/retention ledgers, so new OS commissions remain visible without assistant assignments.
+- Tailwind configuration must use global CSS theme tokens and native scales, never import the retired design-system module, so stylesheet compilation remains independent of removed application files.
