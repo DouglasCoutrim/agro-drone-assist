@@ -22,9 +22,6 @@ export interface TechnicianFinancialData {
   os_count: number;
   despesas_periodo: number;
   despesas_count: number;
-  retencoes_pendentes: number;
-  retencoes_count: number;
-  retencoes_liberadas_periodo: number;
 }
 
 export interface OSStatementItem {
@@ -119,7 +116,6 @@ export function useTechnicianFinancials() {
       ganhos_servicos: data?.comissoes_realizadas_periodo || 0,
       despesas_pessoais: data?.despesas_periodo || 0,
       saldo_liquido: saldoLiquido,
-      fundo_retencao_acumulado: data?.retencoes_pendentes || 0,
     },
   };
 }

@@ -12,7 +12,6 @@ import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
 import { useOrganization } from "@/hooks/useOrganization";
 import { IntegracoesFinanceiras } from "@/components/IntegracoesFinanceiras";
 import { NfeConfigCard } from "@/components/fiscal/NfeConfigCard";
-import { HelpTooltip } from "@/components/ui/help-tooltip";
 
 const emptyForm = {
   nome_empresa: "",
@@ -25,7 +24,6 @@ const emptyForm = {
   taxa_bancada: "",
   prazo_diagnostico: "",
   garantia: "",
-  tax_percentage_nfe: "",
 };
 
 function Field({ label, value }: { label: string; value?: string }) {
@@ -117,7 +115,6 @@ export default function EmpresaConfig() {
       taxa_bancada: "",
       prazo_diagnostico: "",
       garantia: "",
-      tax_percentage_nfe: config.tax_percentage_nfe?.toString() || "",
     });
     setLogoPreview(config.logo_url || null);
   }, [config]);
@@ -165,7 +162,6 @@ export default function EmpresaConfig() {
       taxa_bancada: "",
       prazo_diagnostico: "",
       garantia: "",
-      tax_percentage_nfe: config.tax_percentage_nfe?.toString() || "",
     });
     setLogoPreview(config.logo_url || null);
     setIsEditing(false);
@@ -208,7 +204,6 @@ export default function EmpresaConfig() {
                   <Field label="Nome da Empresa" value={config.nome_empresa} />
                   <Field label="Responsável" value={config.responsavel} />
                   <Field label="CPF/CNPJ" value={config.cnpj} />
-                  <Field label="% Imposto NFS-e" value={config.tax_percentage_nfe ? `${config.tax_percentage_nfe}%` : undefined} />
                   <Field label="Telefone" value={config.telefone} />
                   <div className="md:col-span-2">
                     <Field label="Endereço" value={config.endereco} />
@@ -253,23 +248,6 @@ export default function EmpresaConfig() {
                       onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
                       placeholder="00.000.000/0000-00"
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Label>% Imposto NFS-e</Label>
-                      <HelpTooltip content="Percentual de imposto retido na emissão de NFS-e (ex: 5% para ISS). Será aplicado automaticamente no cálculo de comissões e retenções." />
-                    </div>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      value={form.tax_percentage_nfe}
-                      onChange={(e) => setForm({ ...form, tax_percentage_nfe: e.target.value })}
-                      placeholder="5.00"
-                      inputMode="decimal"
-                    />
-                    <p className="text-xs text-muted-foreground">Ex: 5.00 para 5% de ISS</p>
                   </div>
                   <div className="space-y-2">
                     <Label>Telefone</Label>
