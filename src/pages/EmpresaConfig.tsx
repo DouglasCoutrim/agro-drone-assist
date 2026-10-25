@@ -12,6 +12,7 @@ import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
 import { useOrganization } from "@/hooks/useOrganization";
 import { IntegracoesFinanceiras } from "@/components/IntegracoesFinanceiras";
 import { NfeConfigCard } from "@/components/fiscal/NfeConfigCard";
+import { HelpTooltip } from "@/components/ui/help-tooltip";
 
 const emptyForm = {
   nome_empresa: "",
