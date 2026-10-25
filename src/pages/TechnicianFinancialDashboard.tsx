@@ -8,9 +8,6 @@ import { toast } from "sonner";
 import {
   Wallet,
   CreditCard,
-  ArrowUpRight,
-  ArrowDownRight,
-  Clock,
   FileText,
   Plus,
   Loader2,
@@ -22,7 +19,6 @@ import {
   Save,
   Edit,
   Trash2,
-  Shield,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,17 +46,6 @@ const EXPENSE_CATEGORIES = [
   { value: "outros", label: "Outros" },
 ];
 
-type Retention = {
-  id: string;
-  os_id: string;
-  os_numero: string;
-  amount: number;
-  status: "RETAINED" | "RELEASED_TO_TECH" | "PAID_TO_GOV";
-  retained_at: string;
-  release_date: string;
-  released_at: string | null;
-};
-
 export default function TechnicianFinancialDashboard() {
   const { user } = useAuth();
   
@@ -82,10 +67,8 @@ export default function TechnicianFinancialDashboard() {
   } = useTechnicianOSStatement(period);
 
   // Estados locais
-  const [retentions, setRetentions] = useState<Retention[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [expensesLoading, setExpensesLoading] = useState(false);
-  const [retentionsLoading, setRetentionsLoading] = useState(false);
 
   // Modal states
   const [showExpenseDialog, setShowExpenseDialog] = useState(false);
@@ -97,37 +80,6 @@ export default function TechnicianFinancialDashboard() {
     category: "ferramenta",
   });
   const [savingExpense, setSavingExpense] = useState(false);
-
-  // Buscar retenções (não filtradas por período - são históricas)
-  const fetchRetentions = useCallback(async () => {
-    if (!user?.id) return;
-    setRetentionsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("tax_retention_ledger")
-        .select(`
-          id,
-          os_id,
-          amount,
-          status,
-          retained_at,
-          release_date,
-          released_at,
-          ordens_servico!inner(numero)
-        `)
-        .eq("technician_id", user.id)
-        .order("retained_at", { ascending: false });
-      if (error) throw error;
-      setRetentions((data || []).map(r => ({
-        ...r,
-        os_numero: (r.ordens_servico as any)?.numero || "",
-      })));
-    } catch (err: any) {
-      console.error("Erro ao buscar retenções:", err);
-    } finally {
-      setRetentionsLoading(false);
-    }
-  }, [user?.id]);
 
   // Buscar despesas (não filtradas por período - são históricas)
   const fetchExpenses = useCallback(async () => {
@@ -150,15 +102,8 @@ export default function TechnicianFinancialDashboard() {
 
   // Efeito inicial
   useEffect(() => {
-    fetchRetentions();
     fetchExpenses();
-  }, [fetchRetentions, fetchExpenses]);
-
-  // Refetch quando período muda
-  useEffect(() => {
-    refetchFinancials();
-    refetchStatement();
-  }, [refetchFinancials, refetchStatement]);
+  }, [fetchExpenses]);
 
   const handleSaveExpense = async () => {
     if (!user?.id) return;
@@ -247,29 +192,6 @@ export default function TechnicianFinancialDashboard() {
     setShowExpenseDialog(true);
   };
 
-  const getStatusBadge = (status: Retention["status"]) => {
-    switch (status) {
-      case "RETAINED":
-        return (
-          <Badge variant="default" className="bg-amber-100 text-amber-800 border-amber-200 gap-1">
-            <Clock className="h-3 w-3" /> Retido
-          </Badge>
-        );
-      case "RELEASED_TO_TECH":
-        return (
-          <Badge variant="default" className="bg-green-100 text-green-800 border-green-200 gap-1">
-            <ArrowUpRight className="h-3 w-3" /> Liberado
-          </Badge>
-        );
-      case "PAID_TO_GOV":
-        return (
-          <Badge variant="default" className="bg-blue-100 text-blue-800 border-blue-200 gap-1">
-            <Shield className="h-3 w-3" /> Pago ao Gov
-          </Badge>
-        );
-    }
-  };
-
   if (financialLoading) {
     return (
       <MainLayout>
@@ -291,14 +213,14 @@ export default function TechnicianFinancialDashboard() {
               Painel Financeiro
             </h1>
             <p className="text-muted-foreground">
-              Comissões, retenções de impostos e despesas pessoais
+              Comissões e despesas pessoais
             </p>
           </div>
           <PeriodFilterBar period={period} onChange={(range) => changePeriod(range.preset, range.start, range.end)} />
         </div>
 
         {/* KPIs Principais - Atualizados conforme spec Phase 3 */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <KpiCard
             label="Ganhos com Serviços"
             value={kpis.ganhos_servicos}
@@ -326,122 +248,10 @@ export default function TechnicianFinancialDashboard() {
             }}
             delay={200}
           />
-          <KpiCard
-            label="Fundo de Retenção Acumulado"
-            value={kpis.fundo_retencao_acumulado}
-            icon={Clock}
-            color="blue"
-            trend={{ value: financialData?.retencoes_count || 0, label: `${financialData?.retencoes_count || 0} item(ns) aguardando liberação` }}
-            delay={300}
-          />
-        </div>
-
-        {/* Cards de Detalhamento */}
-        <div className="grid gap-4 lg:grid-cols-2">
-          {/* Comissões por papel */}
-          <PremiumCard delay={0}>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-primary" />
-                Resumo do Período
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 rounded-lg bg-green-50 border border-green-100">
-                  <p className="text-xs text-green-700 font-medium">Comissões Líquidas</p>
-                  <p className="text-xl font-bold text-green-900">{formatCurrency(kpis.ganhos_servicos)}</p>
-                  <p className="text-[10px] text-green-600">{financialData?.os_count || 0} OS(s) concluída(s)</p>
-                </div>
-                <div className="p-3 rounded-lg bg-amber-50 border border-amber-100">
-                  <p className="text-xs text-amber-700 font-medium">Impostos Retidos</p>
-                  <p className="text-xl font-bold text-amber-900">{formatCurrency(financialData?.impostos_retidos_periodo || 0)}</p>
-                  <p className="text-[10px] text-amber-600">Vão para o Fundo de Retenção</p>
-                </div>
-              </div>
-              <div className="p-3 rounded-lg bg-blue-50 border border-blue-100">
-                <p className="text-xs text-blue-700 font-medium flex items-center gap-1">
-                  <Shield className="h-3 w-3" /> Retenções Liberadas no Período
-                </p>
-                <p className="text-lg font-bold text-blue-900">{formatCurrency(financialData?.retencoes_liberadas_periodo || 0)}</p>
-                <p className="text-[10px] text-blue-600">Recebidas como complemento salarial</p>
-              </div>
-            </CardContent>
-          </PremiumCard>
-
-          {/* Resumo de Retenções */}
-          <PremiumCard delay={100}>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-blue-500" />
-                Fundo de Retenção de Impostos
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="p-3 rounded-lg bg-amber-50 border border-amber-100">
-                  <p className="text-2xl font-bold text-amber-700">{formatCurrency(kpis.fundo_retencao_acumulado)}</p>
-                  <p className="text-[10px] text-amber-600">Pendentes ({financialData?.retencoes_count || 0})</p>
-                </div>
-                <div className="p-3 rounded-lg bg-green-50 border border-green-100">
-                  <p className="text-2xl font-bold text-green-700">{formatCurrency(financialData?.retencoes_liberadas_periodo || 0)}</p>
-                  <p className="text-[10px] text-green-600">Liberadas no período</p>
-                </div>
-                <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
-                  <p className="text-2xl font-bold text-gray-700">
-                    {formatCurrency(kpis.fundo_retencao_acumulado + (financialData?.retencoes_liberadas_periodo || 0))}
-                  </p>
-                  <p className="text-[10px] text-gray-600">Total movimentado</p>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground text-center">
-                Liberação automática 6 meses após a data de conclusão da OS.
-                Admin pode liberar antecipadamente se NFS-e for emitida.
-              </p>
-            </CardContent>
-          </PremiumCard>
         </div>
 
         {/* Extrato de Serviços - NOVO conforme spec Phase 3 */}
         <OSStatementTable data={osStatement} loading={statementLoading} />
-
-        {/* Tabela de Retenções Históricas */}
-        <PremiumCard delay={200}>
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-blue-500" />
-              Histórico Completo de Retenções
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <PremiumTable
-              data={retentions}
-              columns={[
-                { key: "os_numero", label: "OS" },
-                { key: "retained_at", label: "Retido em" },
-                { key: "release_date", label: "Liberação prevista" },
-                { key: "amount", label: "Valor", align: "right" },
-                { key: "status", label: "Status" },
-              ]}
-              renderCell={(item: Retention, key) => {
-                switch (key) {
-                  case "os_numero": return <span className="font-mono text-sm">{item.os_numero}</span>;
-                  case "retained_at": return formatDate(item.retained_at);
-                  case "release_date": return formatDate(item.release_date);
-                  case "amount": return formatCurrency(item.amount);
-                  case "status": return getStatusBadge(item.status);
-                  default: return null;
-                }
-              }}
-              loading={retentionsLoading}
-              emptyMessage="Nenhuma retenção encontrada"
-              emptyAction={{
-                label: "Ver como emitir NFS-e",
-                onClick: () => toast.info("Funcionalidade de emissão NFS-e em desenvolvimento"),
-              }}
-            />
-          </CardContent>
-        </PremiumCard>
 
         {/* Despesas do Técnico */}
         <PremiumCard delay={300}>

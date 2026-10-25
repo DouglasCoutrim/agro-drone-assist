@@ -64,6 +64,13 @@
       "when": 1792867294465,
       "tag": "0008_nfe_config_mei_nfse_padrao",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792888884225,
+      "tag": "0009_retire_retention_dashboard_dependencies",
+      "breakpoints": true
     }
   ]
 }

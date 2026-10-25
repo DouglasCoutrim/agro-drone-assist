@@ -11,7 +11,6 @@ export interface EmpresaConfig {
   responsavel: string;
   logo_url: string;
   termos_servico: string;
-  tax_percentage_nfe: number;
 }
 
 const emptyConfig: EmpresaConfig = {
@@ -23,7 +22,6 @@ const emptyConfig: EmpresaConfig = {
   responsavel: "",
   logo_url: "",
   termos_servico: "",
-  tax_percentage_nfe: 0,
 };
 
 const EmpresaConfigContext = createContext<{
@@ -62,7 +60,6 @@ export function EmpresaConfigProvider({ children }: { children: ReactNode }) {
           responsavel: d.responsavel ?? "",
           logo_url: d.logo_url ?? "",
           termos_servico: d.termos_servico ?? "",
-          tax_percentage_nfe: Number(d.tax_percentage_nfe ?? 0),
         });
       } else {
         setConfig(emptyConfig);

@@ -32,3 +32,13 @@
 - [x] Corrigir a edição de OS com orçamento legado, preservar lançamentos existentes e confirmar remoções antes de salvar.
 - [x] Remover cadastros rápidos de peças e serviços nas OS e orçamentos, preservando seleção de itens existentes.
 - [x] Permitir salvar comissões de técnicos por administradores da mesma empresa, inclusive usuários com os dois papéis.
+
+## Limpeza aprovada de funções órfãs
+- [x] Remover consultas e gravações de ajudantes descontinuados da OS sem apagar históricos.
+- [x] Retirar telas e indicadores legados de retenções, preservando comissões e emissão fiscal.
+- [x] Excluir catálogo antigo e componentes comprovadamente sem uso.
+- [x] Simplificar Configurações e eliminar controles fictícios/duplicados.
+- [x] Revisar funções antigas do Mercado Livre e preservar integrações ainda usadas.
+- [x] Validar testes, compilação automática e abertura das telas afetadas.
+
+Observações da limpeza: redirecionamentos legados preservados; funções do Mercado Livre mantidas porque sua retirada do serviço não fazia parte das cinco etapas aprovadas e integrações externas não podem ser descartadas pela ausência de chamadas na interface. Históricos e funções de cálculo anteriores preservados; painel financeiro atual deixou de consultar retenções e passou a ler a comissão da OS.

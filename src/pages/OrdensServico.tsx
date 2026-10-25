@@ -25,8 +25,6 @@ import { LegalTermsFooter, getLegalTermsHTML } from "@/components/os/LegalTermsF
 import { SmartSelect, SmartSelectOption } from "@/components/ui/smart-select";
 import { StatusPipeline, getNextStatus, getStatusLabel } from "@/components/os/StatusPipeline";
 import { OSItemsSection, OSItem } from "@/components/os/OSItemsSection";
-import { OSAssistantsSection, OSAssistant } from "@/components/os/OSAssistantsSection";
-import { OSTechniciansSection, OSTechnician } from "@/components/os/OSTechniciansSection";
 import { formatCurrency, formatDate, getErrorMessage } from "@/lib/formatters";
 import { whatsappTemplates, openWhatsApp, WhatsAppOS } from "@/lib/whatsapp-templates";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
@@ -149,13 +147,6 @@ export default function OrdensServico() {
   const [itemsLoaded, setItemsLoaded] = useState(false);
   const [viewOsItems, setViewOsItems] = useState<OSItem[]>([]);
   const [viewOsItemsLoading, setViewOsItemsLoading] = useState(false);
-  const [osAssistants, setOsAssistants] = useState<OSAssistant[]>([]);
-  const [viewOsAssistants, setViewOsAssistants] = useState<OSAssistant[]>([]);
-  const [viewOsAssistantsLoading, setViewOsAssistantsLoading] = useState(false);
-  // Novo: técnicos da OS (principal + auxiliares) - formato unificado
-  const [osTechnicians, setOsTechnicians] = useState<OSTechnician[]>([]);
-  const [viewOsTechnicians, setViewOsTechnicians] = useState<OSTechnician[]>([]);
-  const [viewOsTechniciansLoading, setViewOsTechniciansLoading] = useState(false);
   const [paymentDialog, setPaymentDialog] = useState<{
     open: boolean;
     osId: string | null;
@@ -320,58 +311,9 @@ export default function OrdensServico() {
       throw new Error("Não foi possível carregar os itens/serviços desta OS: " + error.message);
     }
 
-    console.log("[fetchOSItems] Raw data from DB:", data);
     const mapped = mapDbItemsToOSItems(data as ItemOSRow[]);
-    console.log("[fetchOSItems] Mapped items:", mapped);
     return mapped;
   }, [organization?.id, isPlatformAdmin]);
-
-  const fetchOSAssistants = useCallback(async (osId: string): Promise<OSAssistant[]> => {
-    const { data, error } = await supabase
-      .from("os_tecnicos_ajudantes")
-      .select("*, tecnico:profiles!os_tecnicos_ajudantes_tecnico_id_fkey(nome)")
-      .eq("ordem_servico_id", osId)
-      .order("created_at", { ascending: true });
-    if (error) {
-      console.error("Erro ao carregar ajudantes da OS:", error);
-      return [];
-    }
-
-    return (data || []).filter((a) => a.tipo_comissao === "fixo" || a.tipo_comissao === "porcentagem").map((a) => ({
-      id: a.id,
-      tecnico_id: a.tecnico_id,
-      tecnico_nome: a.tecnico?.nome,
-      tipo_comissao: a.tipo_comissao as OSAssistant["tipo_comissao"],
-      valor_comissao: Number(a.valor_comissao) || 0,
-      porcentagem_comissao: Number(a.porcentagem_comissao) || 0,
-    }));
-  }, []);
-
-  // Nova função: buscar técnicos da OS da nova tabela unificada
-  const fetchOSTechnicians = useCallback(async (osId: string): Promise<OSTechnician[]> => {
-    const { data, error } = await supabase
-      .from("os_technicians")
-      .select("*, technician:profiles!os_technicians_technician_id_fkey(nome)")
-      .eq("ordem_servico_id", osId)
-      .order("created_at", { ascending: true });
-    if (error) {
-      console.error("Erro ao carregar técnicos da OS:", error);
-      return [];
-    }
-
-    return (data || []).map((t) => ({
-      id: t.id,
-      ordem_servico_id: t.ordem_servico_id,
-      technician_id: t.technician_id,
-      technician_nome: t.technician?.nome,
-      role: t.role as "PRINCIPAL" | "AUXILIARY",
-      commission_type: t.commission_type as "percentage" | "fixed",
-      commission_value: Number(t.commission_value) || 0,
-      payer_type: t.payer_type as "COMPANY" | "PRINCIPAL" | "SHARED",
-      net_value_received: Number(t.net_value_received) || 0,
-      tax_retained_amount: Number(t.tax_retained_amount) || 0,
-    }));
-  }, []);
 
   const getPendingRequiredChecklist = useCallback(async (osId: string, osOrgId?: string | null): Promise<string[]> => {
     const checklistClient = supabase as any;
@@ -585,79 +527,6 @@ export default function OrdensServico() {
           if (insChecklistErr) throw insChecklistErr;
         }
 
-        // Save OS technicians (new unified table: principal + auxiliaries)
-        const { error: delTechniciansErr } = await supabase
-          .from("os_technicians")
-          .delete()
-          .eq("ordem_servico_id", osId);
-        if (delTechniciansErr) throw new Error(`A OS foi salva, mas os técnicos não: ${delTechniciansErr.message}`);
-
-        // Build technicians array: principal + auxiliaries
-        const techniciansToInsert: any[] = [];
-
-        // Add principal technician (from formData.tecnico_id)
-        if (formData.tecnico_id) {
-          const principalTech = osTechnicians.find(t => t.role === "PRINCIPAL" && t.technician_id === formData.tecnico_id);
-          techniciansToInsert.push({
-            ordem_servico_id: osId,
-            technician_id: formData.tecnico_id,
-            role: "PRINCIPAL",
-            commission_type: principalTech?.commission_type || "percentage",
-            commission_value: principalTech?.commission_value || 0,
-            payer_type: "COMPANY",
-            net_value_received: 0,
-            tax_retained_amount: 0,
-          });
-        }
-
-        // Add auxiliaries from osTechnicians state
-        osTechnicians.forEach(t => {
-          if (t.role === "AUXILIARY") {
-            techniciansToInsert.push({
-              ordem_servico_id: osId,
-              technician_id: t.technician_id,
-              role: "AUXILIARY",
-              commission_type: t.commission_type,
-              commission_value: t.commission_value,
-              payer_type: t.payer_type,
-              net_value_received: 0,
-              tax_retained_amount: 0,
-            });
-          }
-        });
-
-        if (techniciansToInsert.length > 0) {
-          const { error: techniciansError } = await supabase
-            .from("os_technicians")
-            .insert(techniciansToInsert);
-          if (techniciansError) {
-            console.error("Erro ao salvar técnicos:", techniciansError);
-            throw new Error(`A OS foi salva, mas os técnicos não: ${techniciansError.message}`);
-          }
-        }
-
-        // Also save to legacy os_tecnicos_ajudantes for backward compatibility (auxiliaries only)
-        const { error: delAssistantsErr } = await supabase
-          .from("os_tecnicos_ajudantes")
-          .delete()
-          .eq("ordem_servico_id", osId);
-        if (delAssistantsErr) throw new Error(`A OS foi salva, mas os ajudantes não: ${delAssistantsErr.message}`);
-        const assistantsToInsert = osAssistants.map(a => ({
-          ordem_servico_id: osId,
-          tecnico_id: a.tecnico_id,
-          tipo_comissao: a.tipo_comissao,
-          valor_comissao: a.tipo_comissao === "fixo" ? a.valor_comissao : 0,
-          porcentagem_comissao: a.tipo_comissao === "porcentagem" ? a.porcentagem_comissao : 0,
-        }));
-        if (assistantsToInsert.length > 0) {
-          const { error: assistantsError } = await supabase
-            .from("os_tecnicos_ajudantes")
-            .insert(assistantsToInsert);
-          if (assistantsError) {
-            console.error("Erro ao salvar ajudantes:", assistantsError);
-            throw new Error(`A OS foi salva, mas os ajudantes não: ${assistantsError.message}`);
-          }
-        }
 
       }
       // Calcula a comissão do técnico vinculado (config vigente no perfil)
@@ -747,15 +616,12 @@ export default function OrdensServico() {
         nfe_emitida: (os as any).nfe_emitida || false,
       });
     try {
-      const [fetchedItems, fetchedAssistants, fetchedTechnicians] = await Promise.all([
+      const [fetchedItems, checklistResponses] = await Promise.all([
         fetchOSItems(os.id, os.organization_id),
-        fetchOSAssistants(os.id),
-        fetchOSTechnicians(os.id),
+        loadChecklistResponses(os.id, os.organization_id),
       ]);
       setOsItems(fetchedItems);
-      setConfigCheckbox(await loadChecklistResponses(os.id, os.organization_id));
-      setOsAssistants(fetchedAssistants);
-      setOsTechnicians(fetchedTechnicians);
+      setConfigCheckbox(checklistResponses);
       setItemsLoaded(true);
       setWizardStep(0);
       setDialogOpen(true);
@@ -769,21 +635,10 @@ export default function OrdensServico() {
     setViewingOS(os);
     setViewOsItems([]);
     setViewOsItemsLoading(true);
-    setViewOsAssistants([]);
-    setViewOsAssistantsLoading(true);
-    setViewOsTechnicians([]);
-    setViewOsTechniciansLoading(true);
     setViewConfigChecklist([]);
     setViewDialogOpen(true);
     try {
-      const [items, assistants, technicians] = await Promise.all([
-        fetchOSItems(os.id, os.organization_id),
-        fetchOSAssistants(os.id),
-        fetchOSTechnicians(os.id),
-      ]);
-      setViewOsItems(items);
-      setViewOsAssistants(assistants);
-      setViewOsTechnicians(technicians);
+      setViewOsItems(await fetchOSItems(os.id, os.organization_id));
       const checklistClient = supabase as any;
       let checklistQuery = checklistClient
         .from("os_checklist_itens")
@@ -804,8 +659,6 @@ export default function OrdensServico() {
       setViewDialogOpen(false);
     } finally {
       setViewOsItemsLoading(false);
-      setViewOsAssistantsLoading(false);
-      setViewOsTechniciansLoading(false);
     }
   };
 
@@ -1179,7 +1032,6 @@ export default function OrdensServico() {
     setItemsLoaded(false);
     setWizardStep(0);
     setOsItems([]);
-    setOsAssistants([]);
   };
 
   const requestCloseOSForm = async () => {

@@ -15,3 +15,9 @@
 - Keep assistant assignments, commissions, and internal OS notes in staff-only views; customer-facing PDF and messages must use explicit customer-facing fields, because internal compensation must not leak to clients.
 - Ao editar uma OS, preservar o orçamento sem lançamentos detalhados e atualizar os itens por identidade, confirmando exclusões antes de salvar; substituir toda a lista apaga lançamentos quando uma leitura falha.
 - Autorizar edição de comissões pelo papel `admin` somente para perfis com papel `tecnico` da mesma organização, mesmo quando um usuário acumula os dois papéis; a verificação deve ficar no banco para impedir contorno pela interface.- Peças lançadas em OS/orçamento vêm de `itens_estoque` (gravadas em `itens_os.item_estoque_id`); `produto_id` fica só para lançamentos legados, porque o catálogo `produtos` não reflete o estoque.
+
+- Retired assistant and tax-retention screens must not perform background reads or replace historical assignments during OS edits; retain stored historical tables and commission RPCs until a separate data-aware retirement is approved.
+- Team management belongs to Equipe; Configuracoes keeps personal profile, password and organization segments without duplicate member queries or non-persistent notification controls.
+- Keep redirects for retired product and retention pages so existing bookmarks resolve to supported screens.
+
+- Technician financial summary and statement read principal commission_total from ordens_servico, not retired os_technicians/retention ledgers, so new OS commissions remain visible without assistant assignments.
