@@ -34,9 +34,11 @@
 - [x] Permitir salvar comissões de técnicos por administradores da mesma empresa, inclusive usuários com os dois papéis.
 
 ## Limpeza aprovada de funções órfãs
-- [ ] Remover consultas e gravações de ajudantes descontinuados da OS sem apagar históricos.
-- [ ] Retirar telas e indicadores legados de retenções, preservando comissões e emissão fiscal.
-- [ ] Excluir catálogo antigo e componentes comprovadamente sem uso.
-- [ ] Simplificar Configurações e eliminar controles fictícios/duplicados.
-- [ ] Revisar funções antigas do Mercado Livre e preservar integrações ainda usadas.
-- [ ] Validar testes, compilação automática e abertura das telas afetadas.
+- [x] Remover consultas e gravações de ajudantes descontinuados da OS sem apagar históricos.
+- [x] Retirar telas e indicadores legados de retenções, preservando comissões e emissão fiscal.
+- [x] Excluir catálogo antigo e componentes comprovadamente sem uso.
+- [x] Simplificar Configurações e eliminar controles fictícios/duplicados.
+- [x] Revisar funções antigas do Mercado Livre e preservar integrações ainda usadas.
+- [x] Validar testes, compilação automática e abertura das telas afetadas.
+
+Observações da limpeza: redirecionamentos legados preservados; funções do Mercado Livre mantidas porque sua retirada do serviço não fazia parte das cinco etapas aprovadas e integrações externas não podem ser descartadas pela ausência de chamadas na interface. Históricos e funções de cálculo anteriores preservados; painel financeiro atual deixou de consultar retenções e passou a ler a comissão da OS.
