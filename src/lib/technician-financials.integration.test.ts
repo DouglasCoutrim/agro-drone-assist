@@ -30,7 +30,7 @@ test('principal commissions remain readable without retired assignment records',
   assert.equal(error, null);
   assert.equal(data.os_count, orders.length);
   assert.equal(Number(data.comissoes_realizadas_periodo), orders.reduce((sum, os) => sum + Number(os.commission_total || 0), 0));
-  assert.equal(Object.hasOwn(data, 'retencoes_pendentes'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(data, 'retencoes_pendentes'), false);
 });
 
 test('financial summary denies a target outside the caller organization', { skip: !available }, async () => {
