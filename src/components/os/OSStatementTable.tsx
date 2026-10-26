@@ -5,6 +5,8 @@ import { Shield, FileText, BadgePercent } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { OSStatementItem } from "@/hooks/useTechnicianFinancials";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { OSSummaryDialog } from "./OSSummaryDialog";
 
 interface OSStatementTableProps {
   data: OSStatementItem[];
@@ -12,6 +14,7 @@ interface OSStatementTableProps {
 }
 
 export function OSStatementTable({ data, loading = false }: OSStatementTableProps) {
+  const [openId, setOpenId] = useState<string | null>(null);
   if (loading) {
     return (
       <div className="rounded-lg border border-border/50 overflow-hidden">
@@ -94,7 +97,7 @@ export function OSStatementTable({ data, loading = false }: OSStatementTableProp
           </thead>
           <tbody className="divide-y divide-border/30">
             {data.map((item) => (
-              <tr key={item.os_id} className="hover:bg-muted/30 transition-colors">
+              <tr key={item.os_id} onClick={() => item.role !== "VENDA" && setOpenId(item.os_id)} className={cn("hover:bg-accent/50 transition-colors", item.role !== "VENDA" && "cursor-pointer")}>
                 <td className="px-4 py-2.5 font-mono text-foreground">
                   #{item.os_numero}
                 </td>
@@ -126,6 +129,7 @@ export function OSStatementTable({ data, loading = false }: OSStatementTableProp
           </tbody>
         </table>
       </div>
+      <OSSummaryDialog osId={openId} onOpenChange={(o) => !o && setOpenId(null)} />
     </div>
   );
 }

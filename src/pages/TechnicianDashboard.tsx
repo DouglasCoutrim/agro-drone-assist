@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/formatters";
 import { parseISO, isPast } from "date-fns";
+import { TechnicianAnalytics } from "@/components/os/TechnicianAnalytics";
+import { OSSummaryDialog } from "@/components/os/OSSummaryDialog";
 
 interface OSKanban {
   id: string;
@@ -84,6 +86,7 @@ export default function TechnicianDashboard() {
   const { user } = useAuth();
   const [data, setData] = useState<DashboardPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -240,7 +243,7 @@ export default function TechnicianDashboard() {
                         <p className="text-xs text-muted-foreground text-center py-6">Sem OS</p>
                       )}
                       {list.map(os => (
-                        <div key={os.id} className="bg-card border border-border rounded-xl p-3 space-y-1.5 shadow-sm">
+                        <div key={os.id} onClick={() => setOpenId(os.id)} className="bg-card border border-border rounded-xl p-3 space-y-1.5 shadow-sm cursor-pointer hover:bg-accent/50">
                           <div className="flex items-center justify-between">
                             <span className="font-mono text-xs font-semibold">{os.numero}</span>
                             <Badge variant={prioridadeVariant(os.prioridade)} className="capitalize">{os.prioridade}</Badge>
@@ -260,6 +263,8 @@ export default function TechnicianDashboard() {
             </div>
           </>
         )}
+        {user && <TechnicianAnalytics userId={user.id} />}
+        <OSSummaryDialog osId={openId} onOpenChange={(o) => !o && setOpenId(null)} />
       </div>
     </MainLayout>
   );
