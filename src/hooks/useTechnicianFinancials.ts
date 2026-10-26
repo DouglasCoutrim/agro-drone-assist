@@ -27,7 +27,9 @@ export interface TechnicianFinancialData {
 export interface OSStatementItem {
   os_numero: string;
   os_id: string;
-  role: "PRINCIPAL" | "AUXILIARY";
+  role: "PRINCIPAL" | "AUXILIARY" | "VENDA";
+  comissao_servicos?: number;
+  comissao_pecas?: number;
   data_conclusao: string;
   valor_bruto: number;
   imposto_descontado: number;
