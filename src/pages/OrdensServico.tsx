@@ -130,6 +130,7 @@ export default function OrdensServico() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todas");
+  const [tecFilter, setTecFilter] = useState("todos");
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const { canCreateOS, osUsed, osLimit, plan } = useUsageLimits();
@@ -1068,7 +1069,8 @@ export default function OrdensServico() {
       os.clientes?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       os.descricao_problema?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchStatus = statusFilter === "todas" || os.status === statusFilter;
-    return matchSearch && matchStatus;
+    const matchTec = tecFilter === "todos" || (tecFilter === "meus" ? os.tecnico_id === user?.id : os.tecnico_id === tecFilter);
+    return matchSearch && matchStatus && matchTec;
   });
 
   const stats = {
@@ -1141,9 +1143,17 @@ export default function OrdensServico() {
         {/* OS List */}
         <PremiumCard delay={200}>
           <div className="p-4 border-b border-border">
-            <div className="relative max-w-xs">
+            <div className="flex flex-wrap gap-2 items-center">
+            <div className="relative max-w-xs flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Buscar por número, cliente ou defeito..." className="pl-9 h-9 text-xs bg-muted/30 border-border/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            </div>
+            <Button size="sm" variant={tecFilter === "meus" ? "default" : "outline"} className="h-9" onClick={() => setTecFilter(tecFilter === "meus" ? "todos" : "meus")}>Minhas OS</Button>
+            <select aria-label="Filtrar por técnico" className="h-9 rounded-md border border-border bg-background px-2 text-xs" value={tecFilter} onChange={(e) => setTecFilter(e.target.value)}>
+              <option value="todos">Todos os técnicos</option>
+              <option value="meus">Minhas OS</option>
+              {tecnicos.map((t: any) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+            </select>
             </div>
           </div>
           <PremiumTable
