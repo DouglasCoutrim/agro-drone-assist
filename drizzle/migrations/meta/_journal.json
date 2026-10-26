@@ -78,6 +78,13 @@
       "when": 1793039617018,
       "tag": "0010_web_push_subscriptions",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793042741057,
+      "tag": "0011_tech_finance_realtime_commission",
+      "breakpoints": true
     }
   ]
 }

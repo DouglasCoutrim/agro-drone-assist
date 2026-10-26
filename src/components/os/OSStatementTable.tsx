@@ -58,10 +58,10 @@ export function OSStatementTable({ data, loading = false }: OSStatementTableProp
     { valor_bruto: 0, imposto_descontado: 0, comissao_liquida: 0 }
   );
 
-  const getRoleBadge = (role: "PRINCIPAL" | "AUXILIARY") => (
+  const getRoleBadge = (role: "PRINCIPAL" | "AUXILIARY" | "VENDA") => (
     <Badge variant={role === "PRINCIPAL" ? "default" : "secondary"} className="gap-1">
       {role === "PRINCIPAL" ? <BadgePercent className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
-      {role === "PRINCIPAL" ? "Principal" : "Auxiliar"}
+      {role === "PRINCIPAL" ? "OS" : role === "VENDA" ? "Venda" : "Auxiliar"}
     </Badge>
   );
 
