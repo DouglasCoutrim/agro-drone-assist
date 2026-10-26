@@ -22,3 +22,5 @@
 
 - Technician financial summary and statement read principal commission_total from ordens_servico, not retired os_technicians/retention ledgers, so new OS commissions remain visible without assistant assignments.
 - Tailwind configuration must use global CSS theme tokens and native scales, never import the retired design-system module, so stylesheet compilation remains independent of removed application files.
+
+- Web push uses a dedicated /push-sw.js worker scoped to /push/ (no caching) and a notifications INSERT trigger that calls send-web-push, which re-reads the notification server-side and only sends recent ones, so the public trigger call cannot be abused to spoof messages.
