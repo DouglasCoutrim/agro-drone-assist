@@ -71,6 +71,13 @@
       "when": 1792888884225,
       "tag": "0009_retire_retention_dashboard_dependencies",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793039617018,
+      "tag": "0010_web_push_subscriptions",
+      "breakpoints": true
     }
   ]
 }
