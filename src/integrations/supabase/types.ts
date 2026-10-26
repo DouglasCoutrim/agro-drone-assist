@@ -3255,6 +3255,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      recalc_os_commission_internal: {
+        Args: { _os_id: string }
+        Returns: undefined
+      }
       repassar_os_sem_recebimento: { Args: never; Returns: number }
       reservar_numero_nfe: {
         Args: { _org: string }
@@ -3269,6 +3273,10 @@ export type Database = {
           _user_id: string
         }
         Returns: undefined
+      }
+      tech_sale_commission: {
+        Args: { _qtd_itens: number; _tec: string; _valor: number }
+        Returns: number
       }
     }
     Enums: {
