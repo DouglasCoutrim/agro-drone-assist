@@ -3,6 +3,7 @@ import { MobileHeader } from "./MobileHeader";
 import { BottomNav } from "./BottomNav";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { useInactivityLogout } from "@/hooks/useInactivityLogout";
+import { useSoundNotifications } from "@/hooks/useSoundNotifications";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -10,6 +11,7 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
   useInactivityLogout();
+  useSoundNotifications();
   return (
     <div className="flex h-[100dvh] w-full max-w-[100vw] overflow-hidden bg-background">
       {/* Desktop Sidebar */}
