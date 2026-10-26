@@ -15,6 +15,7 @@ import { Tables } from "@/integrations/supabase/types";
 import { SEGMENTOS } from "@/lib/equipment-segments";
 import { useOrgSegments } from "@/hooks/useOrgSegments";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PushNotificationsCard } from "@/components/PushNotificationsCard";
 
 type Profile = Tables<"profiles">;
 export default function Configuracoes() {
@@ -133,6 +134,7 @@ export default function Configuracoes() {
           </Card>
 
           <div className="space-y-6">
+            <PushNotificationsCard />
             <Card className="shadow-soft">
               <CardHeader><CardTitle className="flex items-center gap-2"><Shield className="h-5 w-5 text-primary" />Segurança</CardTitle></CardHeader>
               <CardContent className="space-y-4">
