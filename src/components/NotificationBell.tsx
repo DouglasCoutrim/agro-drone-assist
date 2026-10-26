@@ -1,4 +1,4 @@
-import { Bell, CheckCheck, Inbox } from "lucide-react";
+import { Bell, CheckCheck, Inbox, Volume2, VolumeX } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,8 @@ import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { useEffect, useRef } from "react";
-
-const NOTIFICATION_SOUND_URL = "https://iynljexyjhbkfxsurddn.supabase.co/storage/v1/object/public/som/nova_os.mp3";
+import { useState } from "react";
+import { isSoundMuted, setSoundMuted, playNotificationSound } from "@/hooks/useSoundNotifications";
 
 const typeColor: Record<string, string> = {
   os: "bg-blue-500/15 text-blue-400",
@@ -24,24 +23,7 @@ const typeColor: Record<string, string> = {
 export function NotificationBell({ compact = false }: { compact?: boolean }) {
   const { items, unread, markAsRead, markAllAsRead } = useNotifications(10);
   const navigate = useNavigate();
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const previousUnreadRef = useRef(unread);
-
-  // Initialize audio element
-  useEffect(() => {
-    audioRef.current = new Audio(NOTIFICATION_SOUND_URL);
-    audioRef.current.volume = 0.5;
-  }, []);
-
-  // Play sound when new unread notifications arrive
-  useEffect(() => {
-    if (previousUnreadRef.current < unread && audioRef.current) {
-      audioRef.current.play().catch(() => {
-        // Ignore autoplay policy errors
-      });
-    }
-    previousUnreadRef.current = unread;
-  }, [unread]);
+  const [muted, setMuted] = useState(isSoundMuted());
 
   const handleClick = async (id: string, link: string | null) => {
     await markAsRead(id);
@@ -72,11 +54,17 @@ export function NotificationBell({ compact = false }: { compact?: boolean }) {
             <p className="text-sm font-semibold">Notificações</p>
             <p className="text-[11px] text-muted-foreground">{unread} não lidas</p>
           </div>
-          {unread > 0 && (
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={markAllAsRead}>
-              <CheckCheck className="h-3.5 w-3.5 mr-1" />Marcar todas
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={muted ? "Ativar som" : "Silenciar som"} title={muted ? "Ativar som" : "Silenciar som"}
+              onClick={() => { setSoundMuted(!muted); setMuted(!muted); if (muted) setTimeout(playNotificationSound, 0); }}>
+              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
             </Button>
-          )}
+            {unread > 0 && (
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={markAllAsRead}>
+                <CheckCheck className="h-3.5 w-3.5 mr-1" />Marcar todas
+              </Button>
+            )}
+          </div>
         </div>
         <ScrollArea className="max-h-[420px]">
           {items.length === 0 ? (
