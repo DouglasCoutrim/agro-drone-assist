@@ -1946,37 +1946,58 @@ export type Database = {
       }
       patrimonio_ferramentas: {
         Row: {
+          categoria: string | null
           created_at: string
+          data_aquisicao: string
+          data_entrega: string | null
           id: string
+          marca_modelo: string | null
           nome: string
           numero_serie: string | null
+          observacao: string | null
           organization_id: string
           status: string
           tecnico_atual_id: string | null
           updated_at: string
           valor_referencia: number | null
+          valor_residual_pct: number
+          vida_util_meses: number
         }
         Insert: {
+          categoria?: string | null
           created_at?: string
+          data_aquisicao?: string
+          data_entrega?: string | null
           id?: string
+          marca_modelo?: string | null
           nome: string
           numero_serie?: string | null
+          observacao?: string | null
           organization_id: string
           status?: string
           tecnico_atual_id?: string | null
           updated_at?: string
           valor_referencia?: number | null
+          valor_residual_pct?: number
+          vida_util_meses?: number
         }
         Update: {
+          categoria?: string | null
           created_at?: string
+          data_aquisicao?: string
+          data_entrega?: string | null
           id?: string
+          marca_modelo?: string | null
           nome?: string
           numero_serie?: string | null
+          observacao?: string | null
           organization_id?: string
           status?: string
           tecnico_atual_id?: string | null
           updated_at?: string
           valor_referencia?: number | null
+          valor_residual_pct?: number
+          vida_util_meses?: number
         }
         Relationships: [
           {

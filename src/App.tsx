@@ -49,6 +49,7 @@ const Wiki = lazy(() => import("./pages/Wiki"));
 const TechnicianDashboard = lazy(() => import("./pages/TechnicianDashboard"));
 const WorkshopLive = lazy(() => import("./pages/WorkshopLive"));
 const TechnicianFinancialDashboard = lazy(() => import("./pages/TechnicianFinancialDashboard"));
+const Patrimonio = lazy(() => import("./pages/Patrimonio"));
 
 const PageFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -130,6 +131,8 @@ const App = () => {
                   <Route path="/configuracoes" element={<ProtectedRoute requiredRole="admin"><Configuracoes /></ProtectedRoute>} />
                   <Route path="/admin/configuracao-os" element={<ProtectedRoute requiredRole="admin"><ConfiguracaoOS /></ProtectedRoute>} />
                   <Route path="/equipe" element={<ProtectedRoute requiredRole="admin"><Equipe /></ProtectedRoute>} />
+                  <Route path="/patrimonio" element={<ProtectedRoute requiredRole="admin"><Patrimonio /></ProtectedRoute>} />
+                  <Route path="/meu-estoque" element={<ProtectedRoute><Patrimonio meu /></ProtectedRoute>} />
                   <Route path="/empresa" element={<ProtectedRoute requiredRole="admin"><EmpresaConfig /></ProtectedRoute>} />
                   <Route path="/assinatura" element={<ProtectedRoute allowBlocked requiredRole="admin"><Assinatura /></ProtectedRoute>} />
                   <Route path="/suporte" element={<ProtectedRoute><Suporte /></ProtectedRoute>} />

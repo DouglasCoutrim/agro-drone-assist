@@ -74,6 +74,8 @@ export const navSections: NavSection[] = [
     title: "Configurações",
     items: [
       { title: "Equipe", icon: UsersRound, href: "/equipe", roles: ADMIN },
+      { title: "Ferramentas e Equipamentos", icon: Wrench, href: "/patrimonio", roles: ADMIN },
+      { title: "Meu Estoque", icon: Package, href: "/meu-estoque", roles: ALL },
       { title: "Empresa", icon: Building2, href: "/empresa", roles: ADMIN },
       { title: "Configurações", icon: Settings, href: "/configuracoes", roles: ADMIN },
       { title: "Checklist de OS", icon: ClipboardList, href: "/admin/configuracao-os", roles: ADMIN },
