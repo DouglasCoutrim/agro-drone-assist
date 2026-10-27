@@ -85,6 +85,13 @@
       "when": 1793042741057,
       "tag": "0011_tech_finance_realtime_commission",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793086005120,
+      "tag": "0012_patrimonio_depreciacao",
+      "breakpoints": true
     }
   ]
 }
