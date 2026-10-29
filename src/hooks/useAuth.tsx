@@ -81,6 +81,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!error) {
+      try { localStorage.setItem("livreos:lastActivityAt", String(Date.now())); } catch {}
+    }
     return { error };
   }, []);
 
