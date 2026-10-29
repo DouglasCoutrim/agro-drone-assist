@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
-const INACTIVITY_MS = 60 * 60 * 1000; // 60 minutos (aumentado de 10)
+const INACTIVITY_MS = 15 * 60 * 1000; // 15 minutos
 const WARNING_MS = 60 * 1000; // aviso 1 min antes
 const STORAGE_KEY = "livreos:lastActivityAt";
 
@@ -27,22 +27,32 @@ export function useInactivityLogout() {
       if (logoutTimer.current) window.clearTimeout(logoutTimer.current);
     };
 
+    const expire = async () => {
+      clearTimers();
+      try { await signOutRef.current(); } catch {}
+      try { localStorage.removeItem(STORAGE_KEY); } catch {}
+      toast.info("Sua sessão expirou por inatividade. Faça login novamente.");
+      navigateRef.current("/auth?expired=1", { replace: true });
+    };
+
+    const readStored = () => {
+      try {
+        const v = localStorage.getItem(STORAGE_KEY);
+        return v ? parseInt(v, 10) : NaN;
+      } catch {
+        return NaN;
+      }
+    };
+
     const scheduleFrom = (lastActivity: number) => {
       clearTimers();
-      const now = Date.now();
-      const elapsed = now - lastActivity;
-      
-      // Se o tempo decorrido já é maior que o limite, não desloga imediatamente no login
-      // Apenas se a atividade foi gravada há muito tempo atrás e o usuário acabou de carregar a página
-      const untilWarn = Math.max(INACTIVITY_MS - WARNING_MS - elapsed, 0);
-      const untilLogout = Math.max(INACTIVITY_MS - elapsed, 0);
-
+      const elapsed = Date.now() - lastActivity;
       if (elapsed >= INACTIVITY_MS) {
-        // Se já passou do tempo, vamos resetar o timer em vez de deslogar imediatamente
-        // para evitar loops de logout logo após o login se o localStorage estiver sujo
-        reset();
+        void expire();
         return;
       }
+      const untilWarn = Math.max(INACTIVITY_MS - WARNING_MS - elapsed, 0);
+      const untilLogout = INACTIVITY_MS - elapsed;
 
       warnTimer.current = window.setTimeout(() => {
         if (!warnedRef.current) {
@@ -51,18 +61,18 @@ export function useInactivityLogout() {
         }
       }, untilWarn);
 
-      logoutTimer.current = window.setTimeout(async () => {
-        try { await signOutRef.current(); } catch {}
-        try { localStorage.removeItem(STORAGE_KEY); } catch {}
-        navigateRef.current("/auth?expired=1", { replace: true });
-      }, untilLogout);
+      logoutTimer.current = window.setTimeout(() => { void expire(); }, untilLogout);
     };
 
     const reset = () => {
       const now = Date.now();
-      // throttle: só persiste a cada 5s para evitar flood
+      // Ao voltar ao app (celular/aba em segundo plano), verifica expiração antes de renovar
+      const last = readStored();
+      if (!Number.isNaN(last) && now - last >= INACTIVITY_MS) {
+        void expire();
+        return;
+      }
       if (now - throttleRef.current < 5000) {
-        // Mesmo no throttle, se houver atividade real, limpamos o aviso
         warnedRef.current = false;
         return;
       }
@@ -94,22 +104,13 @@ export function useInactivityLogout() {
     document.addEventListener("visibilitychange", reset);
     window.addEventListener("storage", onStorage);
 
-    // inicializa a partir do último timestamp (cross-tab) ou agora
-    const stored = (() => {
-      try {
-        const v = localStorage.getItem(STORAGE_KEY);
-        return v ? parseInt(v, 10) : NaN;
-      } catch {
-        return NaN;
-      }
-    })();
-    const start = !Number.isNaN(stored) ? stored : Date.now();
+    // Sem registro de atividade = sessão antiga sem controle: encerra por segurança
+    const stored = readStored();
     if (Number.isNaN(stored)) {
-      try {
-        localStorage.setItem(STORAGE_KEY, String(start));
-      } catch {}
+      void expire();
+    } else {
+      scheduleFrom(stored);
     }
-    scheduleFrom(start);
 
     return () => {
       clearTimers();

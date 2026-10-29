@@ -46,6 +46,7 @@ export default function CadastroEmpresa() {
         email: form.email, password: form.password,
       });
       if (signErr) throw signErr;
+      try { localStorage.setItem("livreos:lastActivityAt", String(Date.now())); } catch {}
 
       toast.success('Empresa cadastrada! Configure os dados da sua empresa para começar.');
       navigate('/empresa');
