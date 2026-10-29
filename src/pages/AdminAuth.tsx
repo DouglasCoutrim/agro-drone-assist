@@ -51,6 +51,7 @@ export default function AdminAuth() {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (!error) { try { localStorage.setItem("livreos:lastActivityAt", String(Date.now())); } catch {} }
       if (error || !data.user) throw error || new Error("Credenciais inválidas");
 
       const { data: pa } = await supabase
