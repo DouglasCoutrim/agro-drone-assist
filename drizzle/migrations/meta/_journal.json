@@ -92,6 +92,13 @@
       "when": 1793086005120,
       "tag": "0012_patrimonio_depreciacao",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793298847951,
+      "tag": "0013_vendas_ambiente",
+      "breakpoints": true
     }
   ]
 }
