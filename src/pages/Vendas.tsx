@@ -94,6 +94,8 @@ export default function Vendas() {
   } = useVendasData();
 
   const [activeTab, setActiveTab] = useState<"vendas" | "ganhos" | "notas">(() => new URLSearchParams(window.location.search).get("tab") === "notas" ? "notas" : "vendas");
+  const [nfAmbiente, setNfAmbiente] = useState<"producao" | "homologacao">("producao");
+  const notasAmbiente = notasFiscais.filter((n) => (((n as any).ambiente || "producao") === nfAmbiente));
   const [searchTerm, setSearchTerm] = useState("");
   const [dialogOpen, setDialogOpen] = useState(() => new URLSearchParams(window.location.search).get("nova") === "1");
   const [editingVenda, setEditingVenda] = useState<Venda | null>(null);
@@ -657,7 +659,7 @@ export default function Vendas() {
           <KpiCard label="Vendas do Mês" value={formatCurrency(valorTotalMes)} icon={DollarSign} color="green" />
           <KpiCard label="Pendentes" value={vendasPendentes} icon={AlertTriangle} color="orange" />
           <KpiCard label="Total de Vendas" value={vendas.length} icon={Package} color="blue" />
-          <KpiCard label="NFs Emitidas" value={notasFiscais.filter((n) => n.status === "autorizado").length} icon={FileCheck} color="purple" />
+          <KpiCard label="NFs Emitidas" value={notasFiscais.filter((n) => n.status === "autorizado" && (n as any).ambiente !== "homologacao").length} icon={FileCheck} color="purple" />
         </div>
 
         {/* Tabs */}
@@ -826,11 +828,15 @@ export default function Vendas() {
 
           {/* NOTAS FISCAIS TAB */}
           <TabsContent value="notas" className="mt-4">
-            {notasFiscais.length === 0 ? (
-              <AlertBox type="info" title="Nenhuma nota fiscal" items={[{ label: "", value: "Notas emitidas para vendas e OS aparecerão aqui" }]} />
+            <div className="mb-3 flex gap-2">
+              <Button size="sm" variant={nfAmbiente === "producao" ? "default" : "outline"} onClick={() => setNfAmbiente("producao")}>Produção</Button>
+              <Button size="sm" variant={nfAmbiente === "homologacao" ? "default" : "outline"} onClick={() => setNfAmbiente("homologacao")}>Homologação (testes)</Button>
+            </div>
+            {notasAmbiente.length === 0 ? (
+              <AlertBox type="info" title="Nenhuma nota fiscal" items={[{ label: "", value: nfAmbiente === "producao" ? "Notas de produção emitidas para vendas e OS aparecerão aqui" : "Nenhuma nota de teste" }]} />
             ) : (
               <PremiumTable
-                data={notasFiscais}
+                data={notasAmbiente}
                 columns={[
                   { key: "tipo", label: "Tipo", width: "w-[80px]", align: "center" as const },
                   { key: "numero", label: "Número", width: "w-[100px]" },
