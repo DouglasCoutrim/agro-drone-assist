@@ -197,6 +197,7 @@ async function applyFocusResult(admin: any, config: any, nf: any, data: any) {
     if (status === 'autorizado' && nf.venda_id) {
       await admin.from('vendas').update({
         nf_numero: patch.numero, nf_chave: patch.chave_acesso, nf_emitida_em: patch.emitida_em, nf_provider: 'focusnfe',
+        ambiente: nf.ambiente === 'homologacao' ? 'homologacao' : 'producao',
       }).eq('id', nf.venda_id);
     }
   }

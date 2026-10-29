@@ -2950,6 +2950,7 @@ export type Database = {
       }
       vendas: {
         Row: {
+          ambiente: string
           atualizado_em: string
           cliente_cpf_cnpj: string | null
           cliente_email: string | null
@@ -2975,6 +2976,7 @@ export type Database = {
           vendido_por: string | null
         }
         Insert: {
+          ambiente?: string
           atualizado_em?: string
           cliente_cpf_cnpj?: string | null
           cliente_email?: string | null
@@ -3000,6 +3002,7 @@ export type Database = {
           vendido_por?: string | null
         }
         Update: {
+          ambiente?: string
           atualizado_em?: string
           cliente_cpf_cnpj?: string | null
           cliente_email?: string | null
