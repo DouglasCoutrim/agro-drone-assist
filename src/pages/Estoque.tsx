@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import {
   Plus, AlertTriangle, Package, TrendingDown, TrendingUp,
-  Edit, Trash2, Loader2, Eye, Search
+  Edit, Trash2, Loader2, Eye, Search, ImageIcon
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,6 +23,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { useNavigate } from "react-router-dom";
 import { CsvImportExport, parseNumberBR, emptyToNull } from "@/components/CsvImportExport";
 import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
+import { ProductImageHover, ProductPhotoPanel, buscarFotos } from "@/components/estoque/ProductImage";
 
 const ESTOQUE_CSV_COLUMNS = [
   "codigo", "descricao", "categoria", "quantidade", "estoque_minimo",
@@ -208,6 +209,23 @@ export default function Estoque() {
   const valorTotal = useMemo(() => itens.reduce((acc, item) => acc + (item.quantidade * item.custo_unitario), 0), [itens]);
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
+  const [loteLoading, setLoteLoading] = useState(false);
+  const buscarFotosLote = async () => {
+    const semFoto = itens.filter(i => !(i as any).imagem_url).slice(0, 20);
+    if (!semFoto.length) return toast.info("Todos os produtos já têm foto.");
+    setLoteLoading(true);
+    let ok = 0;
+    for (const it of semFoto) {
+      try {
+        const [u] = await buscarFotos(it.descricao);
+        if (u && !(await supabase.from("itens_estoque").update({ imagem_url: u }).eq("id", it.id)).error) {
+          ok++; setItens(prev => prev.map(p => p.id === it.id ? { ...p, imagem_url: u } as any : p));
+        }
+      } catch (e: any) { toast.error(e.message); break; }
+    }
+    setLoteLoading(false);
+    toast.success(`${ok} de ${semFoto.length} produtos receberam foto. Confira e troque as que vierem erradas.`);
+  };
   const categorias = useMemo(() => [...new Set(itens.map(i => i.categoria).filter(Boolean))], [itens]);
   const fornecedores = useMemo(() => [...new Set(itens.map(i => i.fornecedor).filter(Boolean) as string[])], [itens]);
 
@@ -268,6 +286,9 @@ export default function Estoque() {
         </div>
       );
     }
+    if (key === "descricao") {
+      return <ProductImageHover url={item.imagem_url}><span>{item.descricao}</span></ProductImageHover>;
+    }
     return item[key];
   };
 
@@ -282,7 +303,10 @@ export default function Estoque() {
             </h1>
             <p className="text-gray-600 mt-1">Gerencie peças, componentes e materiais</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={buscarFotosLote} disabled={loteLoading}>
+              {loteLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImageIcon className="mr-2 h-4 w-4" />}Buscar fotos
+            </Button>
             <Button variant="outline" onClick={() => { window.location.href = "/estoque/importar-xml"; }}>
               Importar XML (NF-e)
             </Button>
@@ -535,6 +559,8 @@ export default function Estoque() {
               <>
                 <div className="flex-1 overflow-y-auto p-4 pb-24">
                   <div className="space-y-4 py-4">
+                    <ProductPhotoPanel itemId={viewingItem.id} descricao={viewingItem.descricao} url={(viewingItem as any).imagem_url}
+                      onChange={(u) => { setViewingItem({ ...viewingItem, imagem_url: u } as any); setItens(prev => prev.map(i => i.id === viewingItem.id ? { ...i, imagem_url: u } as any : i)); }} />
                     <div className="grid grid-cols-2 gap-4">
                       <div><p className="text-xs text-gray-500">Código</p><p className="font-medium">{viewingItem.codigo}</p></div>
                       <div><p className="text-xs text-gray-500">Categoria</p><Badge variant="outline">{viewingItem.categoria}</Badge></div>
