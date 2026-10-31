@@ -50,6 +50,7 @@ const TechnicianDashboard = lazy(() => import("./pages/TechnicianDashboard"));
 const WorkshopLive = lazy(() => import("./pages/WorkshopLive"));
 const TechnicianFinancialDashboard = lazy(() => import("./pages/TechnicianFinancialDashboard"));
 const Patrimonio = lazy(() => import("./pages/Patrimonio"));
+const PedidosCompra = lazy(() => import("./pages/PedidosCompra"));
 
 const PageFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
