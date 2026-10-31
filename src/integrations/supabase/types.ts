@@ -3000,6 +3000,7 @@ export type Database = {
           acesso_wiki: boolean
           created_at: string
           id: string
+          rotas_bloqueadas: string[]
           updated_at: string
           user_id: string
         }
@@ -3025,6 +3026,7 @@ export type Database = {
           acesso_wiki?: boolean
           created_at?: string
           id?: string
+          rotas_bloqueadas?: string[]
           updated_at?: string
           user_id: string
         }
@@ -3050,6 +3052,7 @@ export type Database = {
           acesso_wiki?: boolean
           created_at?: string
           id?: string
+          rotas_bloqueadas?: string[]
           updated_at?: string
           user_id?: string
         }
