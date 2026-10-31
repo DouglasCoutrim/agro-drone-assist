@@ -3393,7 +3393,12 @@ export type Database = {
       count_active_users: { Args: { _org: string }; Returns: number }
       count_os_current_month: { Args: { _org: string }; Returns: number }
       criar_saida_demonstracao: {
-        Args: { _item: string; _obs?: string; _qtd: number }
+        Args: {
+          _funcionario: string
+          _item: string
+          _obs: string
+          _qtd: number
+        }
         Returns: string
       }
       get_dre_simplificada: {
