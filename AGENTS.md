@@ -24,5 +24,7 @@
 - Tailwind configuration must use global CSS theme tokens and native scales, never import the retired design-system module, so stylesheet compilation remains independent of removed application files.
 
 - Web push uses a dedicated /push-sw.js worker scoped to /push/ (no caching) and a notifications INSERT trigger that calls send-web-push, which re-reads the notification server-side and only sends recent ones, so the public trigger call cannot be abused to spoof messages.
+- Purchase orders (pedidos_compra) group solicitacoes_compra items by sector; items remain the unit for supplier quotations, so only pending items are editable.
+- Stock product photos store only an external URL (itens_estoque.imagem_url) found via the buscar-imagem-produto function (Firecrawl image search), so images are not kept in Storage.
 - Tool depreciation is computed client-side from purchase value, purchase date, useful life and residual percentage (src/lib/depreciacao.ts), so the reimbursement value is always current without scheduled jobs; non-admins only read tools assigned to themselves via RLS.
 - User access is a list of blocked menu hrefs (user_permissions.rotas_bloqueadas) checked against navConfig by menu and ProtectedRoute, so new menu items are allowed by default and the permission screen always mirrors the menu; acesso_* columns are legacy.

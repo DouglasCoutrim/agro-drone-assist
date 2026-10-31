@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, FileDown, Send, Trash2, ShoppingBag } from "lucide-react";
+import { Plus, FileDown, Send, Trash2, ShoppingBag, Pencil, ClipboardList } from "lucide-react";
+import { PedidoCompraDialog, SETORES, setorLabel } from "@/components/compras/PedidoCompraDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,7 +30,12 @@ export default function PedidosCompra() {
   const qc = useQueryClient();
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ item_estoque_id: "", descricao: "", quantidade: 1, fornecedor_id: SEM, observacoes: "" });
+  const [editPedido, setEditPedido] = useState<any>(null);
+  const [setorFiltro, setSetorFiltro] = useState("todos");
+  const { data: pedidos = [] } = useQuery({
+    queryKey: ["pedidos_compra", orgId], enabled: !!orgId,
+    queryFn: async () => (await supabase.from("pedidos_compra").select("*").eq("organization_id", orgId!).order("created_at", { ascending: false })).data || [],
+  });
 
   const { data: solic = [] } = useQuery({
     queryKey: ["solicitacoes_compra", orgId], enabled: !!orgId,
@@ -47,25 +53,11 @@ export default function PedidosCompra() {
     queryKey: ["itens-estoque-compra", orgId], enabled: !!orgId,
     queryFn: async () => (await supabase.from("itens_estoque").select("id, codigo, descricao, fornecedor").eq("organization_id", orgId!).order("descricao")).data || [],
   });
-  const refresh = () => { qc.invalidateQueries({ queryKey: ["solicitacoes_compra"] }); qc.invalidateQueries({ queryKey: ["cotacoes_compra"] }); };
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["pedidos_compra"] }); qc.invalidateQueries({ queryKey: ["solicitacoes_compra"] }); qc.invalidateQueries({ queryKey: ["cotacoes_compra"] }); };
 
-  const pendentes = solic.filter((s: any) => s.status === "pendente");
+  const pendentes = solic.filter((s: any) => s.status === "pendente" && (setorFiltro === "todos" || (s.setor || "estoque") === setorFiltro));
+  const pedNum = (s: any) => pedidos.find((p: any) => p.id === s.pedido_id)?.numero;
   const fornNome = (s: any) => fornecedores.find((f: any) => f.id === s.fornecedor_id)?.nome || s.fornecedor_nome || "";
-
-  const salvar = async () => {
-    const item = itens.find((i: any) => i.id === form.item_estoque_id);
-    const descricao = item?.descricao || form.descricao.trim();
-    if (!descricao) return toast.error("Escolha um item do estoque ou descreva o item.");
-    const forn = fornecedores.find((f: any) => f.id === form.fornecedor_id);
-    const { error } = await supabase.from("solicitacoes_compra").insert({
-      organization_id: orgId!, item_estoque_id: item?.id || null, descricao, quantidade: form.quantidade || 1,
-      fornecedor_id: forn?.id || null, fornecedor_nome: forn?.nome || item?.fornecedor || "", observacoes: form.observacoes,
-      origem: "tecnico", solicitado_por: user?.id,
-    });
-    if (error) return toast.error(getErrorMessage(error));
-    toast.success("Solicitação enviada para compras");
-    setOpen(false); setForm({ item_estoque_id: "", descricao: "", quantidade: 1, fornecedor_id: SEM, observacoes: "" }); refresh();
-  };
 
   const definirFornecedor = async (id: string, fid: string) => {
     const f = fornecedores.find((x: any) => x.id === fid);
@@ -121,15 +113,38 @@ export default function PedidosCompra() {
     <MainLayout>
       <div className="space-y-4 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div><h1 className="text-2xl font-bold">Pedidos de Compra</h1><p className="text-sm text-muted-foreground">Solicitações dos técnicos e itens com estoque baixo</p></div>
-          <Button onClick={() => setOpen(true)}><Plus className="mr-1 h-4 w-4" />Solicitar item</Button>
+          <div><h1 className="text-2xl font-bold">Pedidos de Compra</h1><p className="text-sm text-muted-foreground">Pedidos por setor: estoque, ferramentas, limpeza, mantimentos, uniformes e mais</p></div>
+          <Button onClick={() => { setEditPedido(null); setOpen(true); }}><Plus className="mr-1 h-4 w-4" />Novo pedido</Button>
         </div>
-        <Tabs defaultValue="pendentes">
-          <TabsList><TabsTrigger value="pendentes">Pendentes ({pendentes.length})</TabsTrigger><TabsTrigger value="cotacoes">Cotações ({cotacoes.length})</TabsTrigger><TabsTrigger value="historico">Histórico</TabsTrigger></TabsList>
+        <Tabs defaultValue="pedidos">
+          <TabsList className="flex-wrap h-auto"><TabsTrigger value="pedidos">Pedidos ({pedidos.length})</TabsTrigger><TabsTrigger value="pendentes">Pendentes ({pendentes.length})</TabsTrigger><TabsTrigger value="cotacoes">Cotações ({cotacoes.length})</TabsTrigger><TabsTrigger value="historico">Histórico</TabsTrigger></TabsList>
+          <TabsContent value="pedidos" className="space-y-2">
+            {!pedidos.length && <p className="py-6 text-center text-sm text-muted-foreground">Nenhum pedido criado.</p>}
+            {pedidos.map((p: any) => {
+              const its = solic.filter((s: any) => s.pedido_id === p.id);
+              const pend = its.filter((s: any) => s.status === "pendente").length;
+              const pode = isAdmin || p.solicitado_por === user?.id;
+              return (
+                <Card key={p.id} className={pode ? "cursor-pointer hover:border-primary" : ""} onClick={() => { if (pode) { setEditPedido(p); setOpen(true); } }}>
+                  <CardContent className="flex flex-wrap items-center gap-3 p-4">
+                    <ClipboardList className="h-5 w-5 text-primary" />
+                    <div className="min-w-[180px] flex-1">
+                      <p className="font-medium">Pedido nº {p.numero}{p.titulo ? ` — ${p.titulo}` : ""}</p>
+                      <p className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleDateString("pt-BR")} · {its.length} item(ns){pend !== its.length ? ` · ${pend} pendente(s)` : ""}</p>
+                    </div>
+                    <Badge variant="secondary">{setorLabel(p.setor)}</Badge>
+                    {pode && <Button size="icon" variant="ghost" title="Editar pedido"><Pencil className="h-4 w-4" /></Button>}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </TabsContent>
           <TabsContent value="pendentes">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
-                <CardTitle className="text-base">Itens aguardando cotação</CardTitle>
+                <div className="flex flex-wrap items-center gap-2"><CardTitle className="text-base">Itens aguardando cotação</CardTitle>
+                  <Select value={setorFiltro} onValueChange={setSetorFiltro}><SelectTrigger className="h-8 w-44"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="todos">Todos os setores</SelectItem>{SETORES.map(x => <SelectItem key={x.value} value={x.value}>{x.label}</SelectItem>)}</SelectContent></Select></div>
                 {isAdmin && <Button size="sm" onClick={gerarCotacoes} disabled={!sel.size}><Send className="mr-1 h-4 w-4" />Enviar {sel.size || ""} para cotação</Button>}
               </CardHeader>
               <CardContent className="space-y-2">
@@ -141,6 +156,8 @@ export default function PedidosCompra() {
                       <p className="font-medium">{s.descricao} <span className="text-muted-foreground">× {Number(s.quantidade)}</span></p>
                       <div className="flex flex-wrap gap-1 pt-1">
                         <Badge variant={s.origem === "estoque_baixo" ? "destructive" : "secondary"}>{s.origem === "estoque_baixo" ? "Estoque baixo" : "Solicitação técnico"}</Badge>
+                        <Badge variant="outline">{setorLabel(s.setor)}</Badge>
+                        {pedNum(s) && <Badge variant="outline">Pedido nº {pedNum(s)}</Badge>}
                         {s.itens_estoque && <Badge variant="outline">Saldo {s.itens_estoque.quantidade} / mín {s.itens_estoque.estoque_minimo}</Badge>}
                       </div>
                     </div>
@@ -176,29 +193,7 @@ export default function PedidosCompra() {
           </TabsContent>
         </Tabs>
       </div>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Solicitar item para compra</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1"><Label>Item do estoque</Label>
-              <Select value={form.item_estoque_id || SEM} onValueChange={v => setForm(f => ({ ...f, item_estoque_id: v === SEM ? "" : v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value={SEM}>Item novo (não cadastrado)</SelectItem>{itens.map((i: any) => <SelectItem key={i.id} value={i.id}>{i.codigo} — {i.descricao}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            {!form.item_estoque_id && <div className="space-y-1"><Label>Descrição do item</Label><Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder="Ex.: Hélice 30 pol. DJI T40" /></div>}
-            <div className="space-y-1"><Label>Quantidade</Label><Input type="number" min={1} value={form.quantidade} onChange={e => setForm(f => ({ ...f, quantidade: Number(e.target.value) }))} /></div>
-            <div className="space-y-1"><Label>Fornecedor sugerido (opcional)</Label>
-              <Select value={form.fornecedor_id} onValueChange={v => setForm(f => ({ ...f, fornecedor_id: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value={SEM}>Não sei</SelectItem>{fornecedores.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1"><Label>Observação</Label><Input value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} placeholder="Ex.: urgente, OS 045" /></div>
-          </div>
-          <DialogFooter><Button onClick={salvar}>Enviar solicitação</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PedidoCompraDialog open={open} onOpenChange={setOpen} pedido={editPedido} itensPedido={editPedido ? solic.filter((x: any) => x.pedido_id === editPedido.id) : []} estoque={itens} onSaved={refresh} />
     </MainLayout>
   );
 }

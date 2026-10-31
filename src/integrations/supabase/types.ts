@@ -766,6 +766,7 @@ export type Database = {
           fornecedor: string | null
           gtin: string | null
           id: string
+          imagem_url: string | null
           localizacao: string | null
           ncm: string | null
           organization_id: string | null
@@ -790,6 +791,7 @@ export type Database = {
           fornecedor?: string | null
           gtin?: string | null
           id?: string
+          imagem_url?: string | null
           localizacao?: string | null
           ncm?: string | null
           organization_id?: string | null
@@ -814,6 +816,7 @@ export type Database = {
           fornecedor?: string | null
           gtin?: string | null
           id?: string
+          imagem_url?: string | null
           localizacao?: string | null
           ncm?: string | null
           organization_id?: string | null
@@ -2101,6 +2104,50 @@ export type Database = {
           },
         ]
       }
+      pedidos_compra: {
+        Row: {
+          created_at: string
+          id: string
+          numero: number
+          observacoes: string
+          organization_id: string
+          setor: string
+          solicitado_por: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          numero?: number
+          observacoes?: string
+          organization_id: string
+          setor?: string
+          solicitado_por?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          numero?: number
+          observacoes?: string
+          organization_id?: string
+          setor?: string
+          solicitado_por?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_compra_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_admins: {
         Row: {
           created_at: string
@@ -2473,7 +2520,9 @@ export type Database = {
           observacoes: string
           organization_id: string
           origem: string
+          pedido_id: string | null
           quantidade: number
+          setor: string
           solicitado_por: string | null
           status: string
         }
@@ -2488,7 +2537,9 @@ export type Database = {
           observacoes?: string
           organization_id: string
           origem?: string
+          pedido_id?: string | null
           quantidade?: number
+          setor?: string
           solicitado_por?: string | null
           status?: string
         }
@@ -2503,7 +2554,9 @@ export type Database = {
           observacoes?: string
           organization_id?: string
           origem?: string
+          pedido_id?: string | null
           quantidade?: number
+          setor?: string
           solicitado_por?: string | null
           status?: string
         }
@@ -2534,6 +2587,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_compra_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_compra"
             referencedColumns: ["id"]
           },
         ]

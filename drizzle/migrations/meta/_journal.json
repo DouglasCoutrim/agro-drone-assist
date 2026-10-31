@@ -127,6 +127,13 @@
       "when": 1793457344048,
       "tag": "0017_user_permissions_rotas_bloqueadas",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793462019060,
+      "tag": "0018_pedidos_compra_setor_e_fotos",
+      "breakpoints": true
     }
   ]
 }
