@@ -25,3 +25,4 @@
 
 - Web push uses a dedicated /push-sw.js worker scoped to /push/ (no caching) and a notifications INSERT trigger that calls send-web-push, which re-reads the notification server-side and only sends recent ones, so the public trigger call cannot be abused to spoof messages.
 - Tool depreciation is computed client-side from purchase value, purchase date, useful life and residual percentage (src/lib/depreciacao.ts), so the reimbursement value is always current without scheduled jobs; non-admins only read tools assigned to themselves via RLS.
+- User access is a list of blocked menu hrefs (user_permissions.rotas_bloqueadas) checked against navConfig by menu and ProtectedRoute, so new menu items are allowed by default and the permission screen always mirrors the menu; acesso_* columns are legacy.
