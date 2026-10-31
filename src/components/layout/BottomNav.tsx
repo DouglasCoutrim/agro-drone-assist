@@ -1,3 +1,4 @@
+import { usePermissions } from "@/hooks/usePermissions";
 import { LayoutDashboard, FileText, Users, Package, MoreHorizontal } from "lucide-react";
 import { useLocation, Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -23,7 +24,8 @@ export function BottomNav() {
   const { roles } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const sections = sectionsForRoles(roles);
+  const { blocked } = usePermissions();
+  const sections = sectionsForRoles(roles, blocked);
 
   return (
     <>

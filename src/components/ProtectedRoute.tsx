@@ -1,4 +1,6 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
+import { toast } from 'sonner';
+import { canAccessHref, matchNavHref } from '@/components/layout/navConfig';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useOrganization } from '@/hooks/useOrganization';
@@ -15,8 +17,9 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, requiredRole, requiredPermission, allowBlocked, requiredPlatformAdmin }: ProtectedRouteProps) {
-  const { user, role, loading } = useAuth();
-  const { permissions, loading: permsLoading } = usePermissions();
+  const { user, role, roles, loading } = useAuth();
+  const location = useLocation();
+  const { permissions, blocked, loading: permsLoading } = usePermissions();
   const { organization, isPlatformAdmin, loading: orgLoading } = useOrganization();
 
   if (loading || permsLoading || orgLoading) {
@@ -41,6 +44,13 @@ export default function ProtectedRoute({ children, requiredRole, requiredPermiss
   // Org blocked? (platform admin bypasses)
   if (!allowBlocked && !isPlatformAdmin && organization && organization.status === 'blocked') {
     return <Navigate to="/mensalidade-em-atraso" replace />;
+  }
+
+  // Menu-item permission check (admins always pass)
+  const navHref = matchNavHref(location.pathname, location.search);
+  if (navHref && navHref !== '/dashboard' && !canAccessHref(navHref, roles ?? [], blocked)) {
+    toast.error('Sem acesso a esta tela');
+    return <Navigate to="/dashboard" replace />;
   }
 
   // Role hierarchy check
