@@ -58,7 +58,7 @@ const ROLE_OPTIONS: Array<{ value: AppRole; label: string }> = [
   { value: 'tecnico', label: 'Técnico' },
   { value: 'consulta', label: 'Atendimento' },
 ];
-const PERMISSION_LABELS: Record<keyof UserPermissions, string> = {
+const PERMISSION_LABELS: Record<Exclude<keyof UserPermissions, 'rotas_bloqueadas'>, string> = {
   acesso_dashboard: 'Dashboard', acesso_os: 'Ordens de Serviço', acesso_meu_painel: 'Meu Painel',
   acesso_oficina_vivo: 'Oficina ao Vivo', acesso_clientes: 'Clientes', acesso_estoque: 'Estoque',
   acesso_servicos: 'Serviços', acesso_financeiro: 'Financeiro', acesso_cobrancas: 'Cobranças',
