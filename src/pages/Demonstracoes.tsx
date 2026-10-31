@@ -57,7 +57,7 @@ export default function Demonstracoes() {
     },
   });
 
-  const nome = (id: string) => members?.find((m: any) => (m.user_id ?? m.id) === id)?.full_name ?? (id === user?.id ? "Você" : "Funcionário");
+  const nome = (id: string) => members?.find((m) => m.id === id)?.nome ?? (id === user?.id ? "Você" : "Funcionário");
   const filtrados = useMemo(() => lista.filter((s: any) =>
     filtro === "todos" ? true : filtro === "ativos" ? s.status === "em_posse" : filtro === "cobrados" ? ["cobrado", "quitado"].includes(s.status) : ["vendido", "devolvido"].includes(s.status)), [lista, filtro]);
   const emPosse = lista.filter((s: any) => s.status === "em_posse");
