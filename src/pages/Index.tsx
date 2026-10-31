@@ -238,7 +238,7 @@ const Index = () => {
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
             <KpiCard label="OS Abertas" value={stats.osAbertas} icon={ClipboardList} color="blue" onClick={() => navigate("/ordens-servico")} delay={0} />
             <KpiCard label="Concluídas" value={stats.osConcluidas} icon={CheckCircle} color="green" onClick={() => navigate("/ordens-servico")} delay={100} />
-            <KpiCard label="Estoque Baixo" value={stats.itensEstoqueBaixo} icon={Package} color="yellow" onClick={() => navigate("/estoque")} delay={200} />
+            <KpiCard label="Estoque Baixo" value={stats.itensEstoqueBaixo} icon={Package} color="yellow" onClick={() => navigate("/compras")} delay={200} />
             <KpiCard label="Faturamento" value={formatCurrency(stats.faturamentoMes)} icon={DollarSign} color="green" onClick={() => navigate("/financeiro")} delay={300} />
             <KpiCard label="A Receber" value={formatCurrency(stats.aReceber)} icon={Wrench} color="red" onClick={() => navigate("/financeiro")} delay={400} />
           </div>
@@ -314,8 +314,8 @@ const Index = () => {
                 ]}
                 type="warning"
                 icon={Package}
-                onAction={() => navigate("/estoque")}
-                actionLabel="Ver Estoque"
+                onAction={() => navigate("/compras")}
+                actionLabel="Pedido de compra"
                 delay={200}
               />
             )}

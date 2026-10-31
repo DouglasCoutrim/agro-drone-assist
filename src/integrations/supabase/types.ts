@@ -280,6 +280,57 @@ export type Database = {
           },
         ]
       }
+      cotacoes_compra: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          fornecedor_id: string | null
+          fornecedor_nome: string
+          id: string
+          numero: number
+          observacoes: string
+          organization_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          fornecedor_id?: string | null
+          fornecedor_nome?: string
+          id?: string
+          numero?: number
+          observacoes?: string
+          organization_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          fornecedor_id?: string | null
+          fornecedor_nome?: string
+          id?: string
+          numero?: number
+          observacoes?: string
+          organization_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cotacoes_compra_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cotacoes_compra_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       empresa_config: {
         Row: {
           cnpj: string | null
@@ -2337,6 +2388,83 @@ export type Database = {
           value?: Json
         }
         Relationships: []
+      }
+      solicitacoes_compra: {
+        Row: {
+          cotacao_id: string | null
+          created_at: string
+          descricao: string
+          fornecedor_id: string | null
+          fornecedor_nome: string
+          id: string
+          item_estoque_id: string | null
+          observacoes: string
+          organization_id: string
+          origem: string
+          quantidade: number
+          solicitado_por: string | null
+          status: string
+        }
+        Insert: {
+          cotacao_id?: string | null
+          created_at?: string
+          descricao: string
+          fornecedor_id?: string | null
+          fornecedor_nome?: string
+          id?: string
+          item_estoque_id?: string | null
+          observacoes?: string
+          organization_id: string
+          origem?: string
+          quantidade?: number
+          solicitado_por?: string | null
+          status?: string
+        }
+        Update: {
+          cotacao_id?: string | null
+          created_at?: string
+          descricao?: string
+          fornecedor_id?: string | null
+          fornecedor_nome?: string
+          id?: string
+          item_estoque_id?: string | null
+          observacoes?: string
+          organization_id?: string
+          origem?: string
+          quantidade?: number
+          solicitado_por?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitacoes_compra_cotacao_id_fkey"
+            columns: ["cotacao_id"]
+            isOneToOne: false
+            referencedRelation: "cotacoes_compra"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_compra_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_compra_item_estoque_id_fkey"
+            columns: ["item_estoque_id"]
+            isOneToOne: false
+            referencedRelation: "itens_estoque"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_compra_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscription_plans: {
         Row: {
