@@ -120,6 +120,13 @@
       "when": 1793456978936,
       "tag": "0016_demo_select_funcionario",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793457344048,
+      "tag": "0017_user_permissions_rotas_bloqueadas",
+      "breakpoints": true
     }
   ]
 }

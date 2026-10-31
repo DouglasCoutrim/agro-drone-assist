@@ -1,3 +1,4 @@
+import { PermissionTree } from "@/components/team/PermissionTree";
 import { useState, useEffect } from "react";
 import { usePagination } from "@/hooks/usePagination";
 import { RecordPagination } from "@/components/RecordPagination";
@@ -57,7 +58,7 @@ const ROLE_OPTIONS: Array<{ value: AppRole; label: string }> = [
   { value: 'tecnico', label: 'Técnico' },
   { value: 'consulta', label: 'Atendimento' },
 ];
-const PERMISSION_LABELS: Record<keyof UserPermissions, string> = {
+const PERMISSION_LABELS: Record<Exclude<keyof UserPermissions, 'rotas_bloqueadas'>, string> = {
   acesso_dashboard: 'Dashboard', acesso_os: 'Ordens de Serviço', acesso_meu_painel: 'Meu Painel',
   acesso_oficina_vivo: 'Oficina ao Vivo', acesso_clientes: 'Clientes', acesso_estoque: 'Estoque',
   acesso_servicos: 'Serviços', acesso_financeiro: 'Financeiro', acesso_cobrancas: 'Cobranças',
@@ -172,6 +173,7 @@ export default function Equipe() {
             acesso_notificacoes: permData.acesso_notificacoes ?? true,
             acesso_wiki: permData.acesso_wiki ?? true,
             acesso_suporte: permData.acesso_suporte ?? true,
+            rotas_bloqueadas: permData.rotas_bloqueadas ?? [],
           } : { acesso_dashboard: true, acesso_os: true, acesso_meu_painel: true, acesso_oficina_vivo: true, acesso_clientes: true, acesso_estoque: true, acesso_servicos: true, acesso_financeiro: false, acesso_cobrancas: false, acesso_orcamentos: true, acesso_rotas: true, acesso_relatorios: true, acesso_equipe: true, acesso_empresa: true, acesso_configuracoes: true, acesso_checklist: true, acesso_notificacoes: true, acesso_wiki: true, acesso_suporte: true }
         };
       });
@@ -194,7 +196,7 @@ export default function Equipe() {
     setNewMember((current) => ({ ...current, roles: checked ? [...new Set([...current.roles, changedRole])] : current.roles.filter((assignedRole) => assignedRole !== changedRole) }));
   };
 
-  const handleTogglePermission = async (userId: string, field: string, value: boolean) => {
+  const handleTogglePermission = async (userId: string, field: string, value: boolean | string[]) => {
     try {
       const current = users.find(u => u.id === userId)?.permissions;
       const allPerms = { ...current, [field]: value };
@@ -461,77 +463,8 @@ export default function Equipe() {
                   ))}
                 </div>
               </div>
-              <div className="space-y-4 ">
-                      {/* PRINCIPAL */}
-                      <div>
-                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Principal</p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                          {[
-                            { key: 'acesso_dashboard', label: 'Dashboard', icon: LayoutDashboard },
-                            { key: 'acesso_os', label: 'Ordens de Serviço', icon: FileText },
-                            { key: 'acesso_meu_painel', label: 'Meu Painel', icon: Wrench },
-                            { key: 'acesso_oficina_vivo', label: 'Oficina ao Vivo', icon: Monitor },
-                            { key: 'acesso_clientes', label: 'Clientes', icon: Users },
-                          ].map(item => (
-                            <div key={item.key} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50">
-                              <div className="flex items-center gap-2">
-                                <item.icon className="h-3.5 w-3.5 text-primary" />
-                                <span className="text-xs font-medium">{item.label}</span>
-                              </div>
-                              <Switch checked={u.permissions?.[item.key as keyof typeof u.permissions] ?? true} onCheckedChange={(v) => handleTogglePermission(u.id, item.key, v)} />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* GESTÃO */}
-                      <div>
-                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Gestão</p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                          {[
-                            { key: 'acesso_estoque', label: 'Estoque', icon: Package },
-                            { key: 'acesso_servicos', label: 'Serviços', icon: Wrench },
-                            { key: 'acesso_financeiro', label: 'Financeiro', icon: DollarSign },
-                            { key: 'acesso_cobrancas', label: 'Cobranças', icon: CreditCard },
-                            { key: 'acesso_orcamentos', label: 'Orçamentos', icon: ClipboardList },
-                            { key: 'acesso_rotas', label: 'Rotas', icon: Navigation },
-                            { key: 'acesso_relatorios', label: 'Relatórios', icon: BarChart3 },
-                          ].map(item => (
-                            <div key={item.key} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50">
-                              <div className="flex items-center gap-2">
-                                <item.icon className="h-3.5 w-3.5 text-primary" />
-                                <span className="text-xs font-medium">{item.label}</span>
-                              </div>
-                              <Switch checked={u.permissions?.[item.key as keyof typeof u.permissions] ?? true} onCheckedChange={(v) => handleTogglePermission(u.id, item.key, v)} />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* SISTEMA */}
-                      <div>
-                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Sistema</p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                          {[
-                            { key: 'acesso_equipe', label: 'Equipe', icon: UserRound },
-                            { key: 'acesso_empresa', label: 'Empresa', icon: Building2 },
-                            { key: 'acesso_configuracoes', label: 'Configurações', icon: Settings },
-                            { key: 'acesso_checklist', label: 'Checklist de OS', icon: ClipboardList },
-                            { key: 'acesso_notificacoes', label: 'Notificações', icon: Bell },
-                            { key: 'acesso_wiki', label: 'Central de Ajuda', icon: BookOpen },
-                            { key: 'acesso_suporte', label: 'Suporte', icon: LifeBuoy },
-                          ].map(item => (
-                            <div key={item.key} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50">
-                              <div className="flex items-center gap-2">
-                                <item.icon className="h-3.5 w-3.5 text-primary" />
-                                <span className="text-xs font-medium">{item.label}</span>
-                              </div>
-                              <Switch checked={u.permissions?.[item.key as keyof typeof u.permissions] ?? true} onCheckedChange={(v) => handleTogglePermission(u.id, item.key, v)} />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
+              <PermissionTree roles={u.roles} blocked={(u.permissions as any)?.rotas_bloqueadas ?? []}
+                onChange={(next) => handleTogglePermission(u.id, 'rotas_bloqueadas', next as any)} />
 
                     {isAdmin && u.roles.includes('tecnico') && (
                       <div className="space-y-3">

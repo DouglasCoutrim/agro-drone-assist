@@ -22,6 +22,7 @@ export interface UserPermissions {
   acesso_notificacoes: boolean;
   acesso_wiki: boolean;
   acesso_suporte: boolean;
+  rotas_bloqueadas: string[];
 }
 
 const permCache = new Map<string, UserPermissions>();
@@ -45,7 +46,7 @@ export function usePermissions() {
       try {
         const { data, error } = await supabase
           .from('user_permissions')
-          .select('acesso_dashboard, acesso_os, acesso_meu_painel, acesso_oficina_vivo, acesso_clientes, acesso_estoque, acesso_servicos, acesso_financeiro, acesso_cobrancas, acesso_orcamentos, acesso_rotas, acesso_relatorios, acesso_equipe, acesso_empresa, acesso_configuracoes, acesso_checklist, acesso_notificacoes, acesso_wiki, acesso_suporte')
+          .select('acesso_dashboard, acesso_os, acesso_meu_painel, acesso_oficina_vivo, acesso_clientes, acesso_estoque, acesso_servicos, acesso_financeiro, acesso_cobrancas, acesso_orcamentos, acesso_rotas, acesso_relatorios, acesso_equipe, acesso_empresa, acesso_configuracoes, acesso_checklist, acesso_notificacoes, acesso_wiki, acesso_suporte, rotas_bloqueadas')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -56,7 +57,7 @@ export function usePermissions() {
           acesso_clientes: true, acesso_estoque: true, acesso_servicos: true, acesso_financeiro: false,
           acesso_cobrancas: false, acesso_orcamentos: true, acesso_rotas: true, acesso_relatorios: true,
           acesso_equipe: true, acesso_empresa: true, acesso_configuracoes: true, acesso_checklist: true,
-          acesso_notificacoes: true, acesso_wiki: true, acesso_suporte: true,
+          acesso_notificacoes: true, acesso_wiki: true, acesso_suporte: true, rotas_bloqueadas: [],
         };
 
         const merged = data ? { ...defaultPerms, ...data } : defaultPerms;
@@ -69,7 +70,7 @@ export function usePermissions() {
           acesso_clientes: false, acesso_estoque: false, acesso_servicos: false, acesso_financeiro: false,
           acesso_cobrancas: false, acesso_orcamentos: false, acesso_rotas: false, acesso_relatorios: false,
           acesso_equipe: false, acesso_empresa: false, acesso_configuracoes: false, acesso_checklist: false,
-          acesso_notificacoes: false, acesso_wiki: false, acesso_suporte: false,
+          acesso_notificacoes: false, acesso_wiki: false, acesso_suporte: false, rotas_bloqueadas: [],
         });
       } finally {
         setLoading(false);
@@ -79,5 +80,8 @@ export function usePermissions() {
     fetchPermissions();
   }, [user]);
 
-  return { permissions, loading };
+  return { permissions, loading, blocked: permissions?.rotas_bloqueadas ?? [] };
 }
+
+/** Clears cached permissions so the next read reflects admin changes. */
+export function clearPermissionsCache(userId?: string) { userId ? permCache.delete(userId) : permCache.clear(); }

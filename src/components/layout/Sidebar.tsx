@@ -1,3 +1,4 @@
+import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, FileText, Package, BarChart3, DollarSign, Settings,
@@ -20,6 +21,7 @@ export function Sidebar({ className }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { roles, user, signOut } = useAuth();
+  const { blocked } = usePermissions();
   const [profile, setProfile] = useState<{ nome: string; avatar_url: string | null } | null>(null);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
 
@@ -51,7 +53,7 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-1 space-y-1 overflow-y-auto scrollbar-thin">
-        <NavModules sections={sectionsForRoles(roles)} />
+        <NavModules sections={sectionsForRoles(roles, blocked)} />
       </nav>
 
       {/* User footer */}
