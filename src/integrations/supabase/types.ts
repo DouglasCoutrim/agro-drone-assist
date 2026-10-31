@@ -2312,6 +2312,78 @@ export type Database = {
           },
         ]
       }
+      saidas_demonstracao: {
+        Row: {
+          concluido_em: string | null
+          concluido_por: string | null
+          created_at: string
+          descricao: string
+          funcionario_id: string
+          id: string
+          item_id: string
+          numero: number
+          observacao: string | null
+          observacao_conclusao: string | null
+          organization_id: string
+          prazo_ate: string
+          quantidade: number
+          status: string
+          valor_cobrado: number | null
+          valor_unitario: number
+        }
+        Insert: {
+          concluido_em?: string | null
+          concluido_por?: string | null
+          created_at?: string
+          descricao: string
+          funcionario_id: string
+          id?: string
+          item_id: string
+          numero?: number
+          observacao?: string | null
+          observacao_conclusao?: string | null
+          organization_id: string
+          prazo_ate?: string
+          quantidade: number
+          status?: string
+          valor_cobrado?: number | null
+          valor_unitario?: number
+        }
+        Update: {
+          concluido_em?: string | null
+          concluido_por?: string | null
+          created_at?: string
+          descricao?: string
+          funcionario_id?: string
+          id?: string
+          item_id?: string
+          numero?: number
+          observacao?: string | null
+          observacao_conclusao?: string | null
+          organization_id?: string
+          prazo_ate?: string
+          quantidade?: number
+          status?: string
+          valor_cobrado?: number | null
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saidas_demonstracao_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "itens_estoque"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saidas_demonstracao_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       servicos: {
         Row: {
           created_at: string
@@ -3313,9 +3385,17 @@ export type Database = {
         Args: { _os_id: string }
         Returns: Json
       }
+      concluir_saida_demonstracao: {
+        Args: { _acao: string; _id: string; _obs?: string }
+        Returns: undefined
+      }
       confirmar_recebimento_os: { Args: { _os_id: string }; Returns: undefined }
       count_active_users: { Args: { _org: string }; Returns: number }
       count_os_current_month: { Args: { _org: string }; Returns: number }
+      criar_saida_demonstracao: {
+        Args: { _item: string; _obs?: string; _qtd: number }
+        Returns: string
+      }
       get_dre_simplificada: {
         Args: { _org: string; _periodo: string }
         Returns: Json
@@ -3407,6 +3487,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      processar_demonstracoes_vencidas: { Args: never; Returns: number }
       recalc_os_commission_internal: {
         Args: { _os_id: string }
         Returns: undefined

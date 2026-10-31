@@ -50,6 +50,7 @@ const TechnicianDashboard = lazy(() => import("./pages/TechnicianDashboard"));
 const WorkshopLive = lazy(() => import("./pages/WorkshopLive"));
 const TechnicianFinancialDashboard = lazy(() => import("./pages/TechnicianFinancialDashboard"));
 const Patrimonio = lazy(() => import("./pages/Patrimonio"));
+const Demonstracoes = lazy(() => import("./pages/Demonstracoes"));
 const PedidosCompra = lazy(() => import("./pages/PedidosCompra"));
 
 const PageFallback = () => (
@@ -135,6 +136,7 @@ const App = () => {
                   <Route path="/compras" element={<ProtectedRoute><PedidosCompra /></ProtectedRoute>} />
                   <Route path="/patrimonio" element={<ProtectedRoute requiredRole="admin"><Patrimonio /></ProtectedRoute>} />
                   <Route path="/meu-estoque" element={<ProtectedRoute><Patrimonio meu /></ProtectedRoute>} />
+                  <Route path="/demonstracoes" element={<ProtectedRoute><Demonstracoes /></ProtectedRoute>} />
                   <Route path="/empresa" element={<ProtectedRoute requiredRole="admin"><EmpresaConfig /></ProtectedRoute>} />
                   <Route path="/assinatura" element={<ProtectedRoute allowBlocked requiredRole="admin"><Assinatura /></ProtectedRoute>} />
                   <Route path="/suporte" element={<ProtectedRoute><Suporte /></ProtectedRoute>} />
