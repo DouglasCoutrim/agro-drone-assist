@@ -93,8 +93,21 @@ export const navSections: NavSection[] = [
   },
 ];
 
-export function sectionsForRoles(roles: string[]): NavSection[] {
+/** Admins always pass; other users are blocked only for hrefs listed in `blocked`. */
+export function canAccessHref(href: string, roles: string[], blocked: string[]): boolean {
+  if (roles.includes("admin")) return true;
+  return !blocked.includes(href);
+}
+
+/** Finds the menu href matching the current URL (exact path+query first, then path). */
+export function matchNavHref(pathname: string, search = ""): string | null {
+  const all = navSections.flatMap((s) => s.items.map((i) => i.href));
+  const full = pathname + search;
+  return all.find((h) => h === full) ?? all.find((h) => h === pathname) ?? null;
+}
+
+export function sectionsForRoles(roles: string[], blocked: string[] = []): NavSection[] {
   return navSections
-    .map((s) => ({ ...s, items: s.items.filter((i) => roles.some((r) => i.roles.includes(r))) }))
+    .map((s) => ({ ...s, items: s.items.filter((i) => roles.some((r) => i.roles.includes(r)) && canAccessHref(i.href, roles, blocked)) }))
     .filter((s) => s.items.length > 0);
 }
