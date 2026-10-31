@@ -163,16 +163,45 @@ export default function Demonstracoes() {
         <DialogContent>
           <DialogHeader><DialogTitle>Nova retirada para demonstração</DialogTitle></DialogHeader>
           {novo && <div className="space-y-3">
-            <div><Label>Buscar item</Label><Input value={novo.busca} placeholder="Código ou descrição" onChange={(e) => setNovo({ ...novo, busca: e.target.value })} /></div>
-            <div><Label>Item do estoque</Label>
-              <Select value={novo.item} onValueChange={(v) => setNovo({ ...novo, item: v })}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>{itensFiltrados.map((i: any) => <SelectItem key={i.id} value={i.id}>{i.codigo} · {i.descricao} (disp. {i.quantidade}) · {formatCurrency(i.preco_venda)}</SelectItem>)}</SelectContent>
+            <div><Label>Funcionário responsável *</Label>
+              <Select value={novo.func} onValueChange={(v) => setNovo({ ...novo, func: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione o funcionário" /></SelectTrigger>
+                <SelectContent>{(members ?? []).map((m: any) => <SelectItem key={m.id} value={m.id}>{m.nome}{m.id === user?.id ? " (você)" : ""}</SelectItem>)}</SelectContent>
               </Select>
+            </div>
+            <div><Label>Item do estoque *</Label>
+              {selecionado ? (
+                <div className="flex items-center gap-2 rounded-md border p-2">
+                  <Package className="h-4 w-4 shrink-0 text-primary" />
+                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{selecionado.descricao}</p>
+                    <p className="text-xs text-muted-foreground">{selecionado.codigo} · Estoque: {selecionado.quantidade} · {formatCurrency(selecionado.preco_venda)}</p></div>
+                  <Button size="icon" variant="ghost" title="Trocar item" onClick={() => { setSelecionado(null); setNovo({ ...novo, item: "" }); }}><X className="h-4 w-4" /></Button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input className="pl-8" value={novo.busca} placeholder="Buscar peça ou produto do estoque..." onChange={(e) => setNovo({ ...novo, busca: e.target.value })} />
+                  {buscando && <Loader2 className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />}
+                  {novo.busca.trim() && (
+                    <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-md border border-border bg-popover shadow-lg">
+                      {resultados.length === 0 && !buscando && <div className="px-3 py-2 text-center text-sm text-muted-foreground">Nenhum resultado com estoque disponível.</div>}
+                      {resultados.map((i: any) => (
+                        <button key={i.id} type="button" onClick={() => { setSelecionado(i); setNovo({ ...novo, item: i.id, busca: "" }); }}
+                          className="flex w-full items-center gap-2 border-b border-border/30 px-3 py-2.5 text-left last:border-b-0 hover:bg-muted/50">
+                          <Package className="h-4 w-4 shrink-0 text-primary" />
+                          <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{i.descricao}</p>
+                            <p className="text-xs text-muted-foreground">{[i.codigo, `Estoque: ${i.quantidade}`].filter(Boolean).join(" · ")}</p></div>
+                          <span className="shrink-0 text-sm font-semibold text-primary">{formatCurrency(i.preco_venda)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div><Label>Quantidade</Label><Input type="number" min="1" value={novo.qtd} onChange={(e) => setNovo({ ...novo, qtd: e.target.value })} /></div>
             <div><Label>Observação (cliente, motivo...)</Label><Input value={novo.obs} onChange={(e) => setNovo({ ...novo, obs: e.target.value })} /></div>
-            <p className="text-xs text-muted-foreground">Ao confirmar, o item sai do estoque da loja e fica sob sua responsabilidade por 7 dias. Se não for vendido nem devolvido nesse prazo, o valor de venda é cobrado de você.</p>
+            <p className="text-xs text-muted-foreground">Ao confirmar, o item sai do estoque da loja e fica sob responsabilidade do funcionário por 7 dias. Se não for vendido nem devolvido nesse prazo, o valor de venda é cobrado dele.</p>
           </div>}
           <DialogFooter><Button onClick={criar} disabled={salvando}>{salvando ? "Gerando..." : "Gerar nota interna"}</Button></DialogFooter>
         </DialogContent>
