@@ -101,8 +101,6 @@ export default function Demonstracoes() {
     qc.invalidateQueries({ queryKey: key }); qc.invalidateQueries({ queryKey: ["estoque"] });
   }
 
-  const itensFiltrados = itens.filter((i: any) => !novo?.busca || `${i.codigo} ${i.descricao}`.toLowerCase().includes(novo.busca.toLowerCase())).slice(0, 50);
-
   return (
     <MainLayout>
       <div className="space-y-4 p-4 md:p-6">
@@ -111,7 +109,7 @@ export default function Demonstracoes() {
             <h1 className="text-2xl font-bold">Itens para Demonstração</h1>
             <p className="text-sm text-muted-foreground">Retire itens do estoque para mostrar a clientes. Prazo de 7 dias para vender ou devolver; depois disso o valor é cobrado do funcionário.</p>
           </div>
-          <Button onClick={() => setNovo({ item: "", qtd: "1", obs: "", busca: "" })}><Plus className="mr-1 h-4 w-4" />Nova retirada</Button>
+          {isAdmin && <Button onClick={() => { setSelecionado(null); setNovo({ item: "", qtd: "1", obs: "", busca: "", func: "" }); }}><Plus className="mr-1 h-4 w-4" />Nova retirada</Button>}
         </div>
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
