@@ -33,7 +33,10 @@ export default function Demonstracoes() {
   const { members } = useTeamMembers();
   const qc = useQueryClient();
   const [filtro, setFiltro] = useState("ativos");
-  const [novo, setNovo] = useState<{ item: string; qtd: string; obs: string; busca: string } | null>(null);
+  const [novo, setNovo] = useState<{ item: string; qtd: string; obs: string; busca: string; func: string } | null>(null);
+  const [selecionado, setSelecionado] = useState<any>(null);
+  const [resultados, setResultados] = useState<any[]>([]);
+  const [buscando, setBuscando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const key = ["demonstracoes", organization?.id];
 
@@ -49,13 +52,19 @@ export default function Demonstracoes() {
       if (error) throw error; return data;
     },
   });
-  const { data: itens = [] } = useQuery({
-    queryKey: ["demo-itens", organization?.id], enabled: !!novo && !!organization?.id,
-    queryFn: async () => {
-      const { data } = await supabase.from("itens_estoque").select("id,codigo,descricao,quantidade,preco_venda").eq("organization_id", organization!.id).gt("quantidade", 0).order("descricao");
-      return data ?? [];
-    },
-  });
+
+  const termo = novo?.busca ?? "";
+  useEffect(() => {
+    if (!termo.trim() || !organization?.id) { setResultados([]); return; }
+    const t = setTimeout(async () => {
+      setBuscando(true);
+      const like = `%${termo.trim().replace(/[,()%]/g, " ")}%`;
+      const { data } = await supabase.from("itens_estoque").select("id,codigo,descricao,quantidade,preco_venda")
+        .eq("organization_id", organization.id).gt("quantidade", 0).or(`descricao.ilike.${like},codigo.ilike.${like}`).order("descricao").limit(20);
+      setResultados(data ?? []); setBuscando(false);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [termo, organization?.id]);
 
   const nome = (id: string) => members?.find((m) => m.id === id)?.nome ?? (id === user?.id ? "Você" : "Funcionário");
   const filtrados = useMemo(() => lista.filter((s: any) =>
