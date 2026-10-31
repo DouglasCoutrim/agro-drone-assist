@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { jsPDF } from "jspdf";
-import { Plus, FileDown, CheckCircle2, Undo2, Banknote } from "lucide-react";
+import { Plus, FileDown, CheckCircle2, Undo2, Banknote, Search, Loader2, Package, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
@@ -90,12 +90,13 @@ export default function Demonstracoes() {
   }
 
   async function criar() {
-    if (!novo?.item || !(Number(novo.qtd) > 0)) return toast.error("Escolha o item e a quantidade");
+    if (!novo?.func) return toast.error("Selecione o funcionário");
+    if (!novo.item || !(Number(novo.qtd) > 0)) return toast.error("Escolha o item e a quantidade");
     setSalvando(true);
-    const { data, error } = await supabase.rpc("criar_saida_demonstracao", { _item: novo.item, _qtd: Number(novo.qtd), _obs: novo.obs || null });
+    const { data, error } = await supabase.rpc("criar_saida_demonstracao", { _item: novo.item, _qtd: Number(novo.qtd), _obs: novo.obs || null, _funcionario: novo.func });
     setSalvando(false);
     if (error) return toast.error(getErrorMessage(error));
-    toast.success("Nota interna gerada. O item saiu do estoque da loja e está com você por 7 dias.");
+    toast.success("Nota interna gerada. O item saiu do estoque da loja por 7 dias.");
     setNovo(null);
     await qc.invalidateQueries({ queryKey: key });
     const { data: s } = await supabase.from("saidas_demonstracao").select("*").eq("id", data as string).single();
