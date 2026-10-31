@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { jsPDF } from "jspdf";
-import { Plus, FileDown, CheckCircle2, Undo2, Banknote, Search, Loader2, Package, X } from "lucide-react";
+import { Plus, FileDown, CheckCircle2, Undo2, Banknote, Search, Loader2, Package, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,6 +26,8 @@ const STATUS: Record<string, { label: string; variant: "default" | "secondary" |
 };
 const fmtData = (d: string) => new Date(d).toLocaleDateString("pt-BR");
 
+type ItemRetirada = { id: string; codigo: string; descricao: string; estoque: number; preco_venda: number; qtd: number };
+
 export default function Demonstracoes() {
   const { organization } = useOrganization();
   const { user, roles } = useAuth();
@@ -33,8 +35,8 @@ export default function Demonstracoes() {
   const { members } = useTeamMembers();
   const qc = useQueryClient();
   const [filtro, setFiltro] = useState("ativos");
-  const [novo, setNovo] = useState<{ item: string; qtd: string; obs: string; busca: string; func: string } | null>(null);
-  const [selecionado, setSelecionado] = useState<any>(null);
+  const [novo, setNovo] = useState<{ obs: string; busca: string; func: string } | null>(null);
+  const [itens, setItens] = useState<ItemRetirada[]>([]);
   const [resultados, setResultados] = useState<any[]>([]);
   const [buscando, setBuscando] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -71,6 +73,7 @@ export default function Demonstracoes() {
     filtro === "todos" ? true : filtro === "ativos" ? s.status === "em_posse" : filtro === "cobrados" ? ["cobrado", "quitado"].includes(s.status) : ["vendido", "devolvido"].includes(s.status)), [lista, filtro]);
   const emPosse = lista.filter((s: any) => s.status === "em_posse");
   const cobrado = lista.filter((s: any) => s.status === "cobrado").reduce((t: number, s: any) => t + Number(s.valor_cobrado || 0), 0);
+  const totalRetirada = itens.reduce((t, i) => t + i.qtd * i.preco_venda, 0);
 
   function notaPDF(s: any) {
     const doc = new jsPDF();
@@ -89,18 +92,61 @@ export default function Demonstracoes() {
     doc.save(`nota-interna-${s.numero}.pdf`);
   }
 
+  function notaPDFMultipla(registros: any[]) {
+    if (registros.length === 1) return notaPDF(registros[0]);
+    const doc = new jsPDF();
+    let y = 18;
+    doc.setFont("helvetica", "bold").setFontSize(14).text(organization?.name || "Empresa", 14, y);
+    doc.setFontSize(12).text("NOTA INTERNA DE SAÍDA PARA DEMONSTRAÇÃO", 14, (y += 10));
+    doc.setFont("helvetica", "normal").setFontSize(10);
+    const total = registros.reduce((t, s) => t + s.quantidade * s.valor_unitario, 0);
+    [`Funcionário responsável: ${nome(registros[0].funcionario_id)}`, `Data de saída: ${fmtData(registros[0].created_at)}`, `Prazo para venda ou devolução: ${fmtData(registros[0].prazo_ate)}`, ""].forEach((l) => doc.text(l, 14, (y += 7)));
+    registros.forEach((s, idx) => {
+      doc.text(doc.splitTextToSize(`${idx + 1}. ${s.descricao} — ${s.quantidade} × ${formatCurrency(s.valor_unitario)} = ${formatCurrency(s.quantidade * s.valor_unitario)} (nota nº ${s.numero})`, 180), 14, (y += 7));
+    });
+    doc.setFont("helvetica", "bold").text(`Valor total: ${formatCurrency(total)}`, 14, (y += 9));
+    doc.setFont("helvetica", "normal");
+    if (registros[0].observacao) doc.text(doc.splitTextToSize(`Observação: ${registros[0].observacao}`, 180), 14, (y += 7));
+    y += 10;
+    doc.text(doc.splitTextToSize("Declaro que recebi o(s) item(ns) acima para apresentação a clientes e me comprometo a concluir a venda ou devolvê-lo(s) em perfeito estado até a data indicada. Caso contrário, o valor total será cobrado de mim.", 180), 14, y);
+    y += 40;
+    doc.line(14, y, 100, y); doc.text("Assinatura do funcionário", 14, y + 5);
+    doc.line(115, y, 196, y); doc.text("Responsável pelo estoque", 115, y + 5);
+    doc.save(`nota-interna-demonstracao.pdf`);
+  }
+
+  function adicionarItem(i: any) {
+    setItens((prev) => {
+      const existente = prev.find((p) => p.id === i.id);
+      if (existente) return prev.map((p) => p.id === i.id ? { ...p, qtd: Math.min(p.qtd + 1, Number(i.quantidade)) } : p);
+      return [...prev, { id: i.id, codigo: i.codigo, descricao: i.descricao, estoque: Number(i.quantidade), preco_venda: Number(i.preco_venda), qtd: 1 }];
+    });
+    if (novo) setNovo({ ...novo, busca: "" });
+  }
+
   async function criar() {
     if (!novo?.func) return toast.error("Selecione o funcionário");
-    if (!novo.item || !(Number(novo.qtd) > 0)) return toast.error("Escolha o item e a quantidade");
+    const validos = itens.filter((i) => i.qtd > 0);
+    if (validos.length === 0) return toast.error("Adicione pelo menos um item");
+    const semEstoque = validos.find((i) => i.qtd > i.estoque);
+    if (semEstoque) return toast.error(`Quantidade de "${semEstoque.descricao}" maior que o estoque disponível`);
     setSalvando(true);
-    const { data, error } = await supabase.rpc("criar_saida_demonstracao", { _item: novo.item, _qtd: Number(novo.qtd), _obs: novo.obs || null, _funcionario: novo.func });
+    const ids: string[] = [];
+    for (const i of validos) {
+      const { data, error } = await supabase.rpc("criar_saida_demonstracao", { _item: i.id, _qtd: i.qtd, _obs: novo.obs || null, _funcionario: novo.func });
+      if (error) {
+        setSalvando(false);
+        if (ids.length > 0) toast.warning(`${ids.length} item(ns) já foram retirados antes do erro.`);
+        return toast.error(getErrorMessage(error));
+      }
+      ids.push(data as string);
+    }
     setSalvando(false);
-    if (error) return toast.error(getErrorMessage(error));
-    toast.success("Nota interna gerada. O item saiu do estoque da loja por 7 dias.");
-    setNovo(null);
+    toast.success(validos.length > 1 ? `Nota interna gerada com ${validos.length} itens.` : "Nota interna gerada. O item saiu do estoque da loja por 7 dias.");
+    setNovo(null); setItens([]);
     await qc.invalidateQueries({ queryKey: key });
-    const { data: s } = await supabase.from("saidas_demonstracao").select("*").eq("id", data as string).single();
-    if (s) notaPDF(s);
+    const { data: registros } = await supabase.from("saidas_demonstracao").select("*").in("id", ids);
+    if (registros?.length) notaPDFMultipla(registros);
   }
 
   async function concluir(id: string, acao: string, msg: string) {
@@ -119,7 +165,7 @@ export default function Demonstracoes() {
             <h1 className="text-2xl font-bold">Itens para Demonstração</h1>
             <p className="text-sm text-muted-foreground">Retire itens do estoque para mostrar a clientes. Prazo de 7 dias para vender ou devolver; depois disso o valor é cobrado do funcionário.</p>
           </div>
-          {isAdmin && <Button onClick={() => { setSelecionado(null); setNovo({ item: "", qtd: "1", obs: "", busca: "", func: "" }); }}><Plus className="mr-1 h-4 w-4" />Nova retirada</Button>}
+          {isAdmin && <Button onClick={() => { setItens([]); setNovo({ obs: "", busca: "", func: "" }); }}><Plus className="mr-1 h-4 w-4" />Nova retirada</Button>}
         </div>
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
@@ -177,39 +223,48 @@ export default function Demonstracoes() {
                 <SelectContent>{(members ?? []).map((m: any) => <SelectItem key={m.id} value={m.id}>{m.nome}{m.id === user?.id ? " (você)" : ""}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>Item do estoque *</Label>
-              {selecionado ? (
-                <div className="flex items-center gap-2 rounded-md border p-2">
-                  <Package className="h-4 w-4 shrink-0 text-primary" />
-                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{selecionado.descricao}</p>
-                    <p className="text-xs text-muted-foreground">{selecionado.codigo} · Estoque: {selecionado.quantidade} · {formatCurrency(selecionado.preco_venda)}</p></div>
-                  <Button size="icon" variant="ghost" title="Trocar item" onClick={() => { setSelecionado(null); setNovo({ ...novo, item: "" }); }}><X className="h-4 w-4" /></Button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                  <Input className="pl-8" value={novo.busca} placeholder="Buscar peça ou produto do estoque..." onChange={(e) => setNovo({ ...novo, busca: e.target.value })} />
-                  {buscando && <Loader2 className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />}
-                  {novo.busca.trim() && (
-                    <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-md border border-border bg-popover shadow-lg">
-                      {resultados.length === 0 && !buscando && <div className="px-3 py-2 text-center text-sm text-muted-foreground">Nenhum resultado com estoque disponível.</div>}
-                      {resultados.map((i: any) => (
-                        <button key={i.id} type="button" onClick={() => { setSelecionado(i); setNovo({ ...novo, item: i.id, busca: "" }); }}
-                          className="flex w-full items-center gap-2 border-b border-border/30 px-3 py-2.5 text-left last:border-b-0 hover:bg-muted/50">
-                          <Package className="h-4 w-4 shrink-0 text-primary" />
-                          <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{i.descricao}</p>
-                            <p className="text-xs text-muted-foreground">{[i.codigo, `Estoque: ${i.quantidade}`].filter(Boolean).join(" · ")}</p></div>
-                          <span className="shrink-0 text-sm font-semibold text-primary">{formatCurrency(i.preco_venda)}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+            <div><Label>Itens do estoque *</Label>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input className="pl-8" value={novo.busca} placeholder="Buscar peça ou produto para adicionar..." onChange={(e) => setNovo({ ...novo, busca: e.target.value })} />
+                {buscando && <Loader2 className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />}
+                {novo.busca.trim() && (
+                  <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-md border border-border bg-popover shadow-lg">
+                    {resultados.length === 0 && !buscando && <div className="px-3 py-2 text-center text-sm text-muted-foreground">Nenhum resultado com estoque disponível.</div>}
+                    {resultados.map((i: any) => (
+                      <button key={i.id} type="button" onClick={() => adicionarItem(i)}
+                        className="flex w-full items-center gap-2 border-b border-border/30 px-3 py-2.5 text-left last:border-b-0 hover:bg-muted/50">
+                        <Package className="h-4 w-4 shrink-0 text-primary" />
+                        <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{i.descricao}</p>
+                          <p className="text-xs text-muted-foreground">{[i.codigo, `Estoque: ${i.quantidade}`].filter(Boolean).join(" · ")}</p></div>
+                        <span className="shrink-0 text-sm font-semibold text-primary">{formatCurrency(i.preco_venda)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-            <div><Label>Quantidade</Label><Input type="number" min="1" value={novo.qtd} onChange={(e) => setNovo({ ...novo, qtd: e.target.value })} /></div>
+            {itens.length > 0 && (
+              <div className="space-y-2 rounded-md border p-2">
+                {itens.map((i, idx) => (
+                  <div key={i.id} className="rounded-md bg-muted/40 p-2">
+                    <div className="flex items-center gap-2">
+                      <p className="min-w-0 flex-1 truncate text-sm font-medium">{idx + 1}. {i.descricao}</p>
+                      <Button size="icon" variant="ghost" title="Remover item" onClick={() => setItens(itens.filter((p) => p.id !== i.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <Input type="number" min="1" max={i.estoque} className="w-20" value={i.qtd}
+                        onChange={(e) => setItens(itens.map((p) => p.id === i.id ? { ...p, qtd: Math.max(1, Number(e.target.value) || 1) } : p))} />
+                      <span className="text-xs text-muted-foreground">× {formatCurrency(i.preco_venda)}</span>
+                      <span className="ml-auto text-sm font-semibold text-primary">{formatCurrency(i.qtd * i.preco_venda)}</span>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex justify-end border-t pt-2 text-sm font-bold">Total: {formatCurrency(totalRetirada)}</div>
+              </div>
+            )}
             <div><Label>Observação (cliente, motivo...)</Label><Input value={novo.obs} onChange={(e) => setNovo({ ...novo, obs: e.target.value })} /></div>
-            <p className="text-xs text-muted-foreground">Ao confirmar, o item sai do estoque da loja e fica sob responsabilidade do funcionário por 7 dias. Se não for vendido nem devolvido nesse prazo, o valor de venda é cobrado dele.</p>
+            <p className="text-xs text-muted-foreground">Ao confirmar, os itens saem do estoque da loja e ficam sob responsabilidade do funcionário por 7 dias. Se não forem vendidos nem devolvidos nesse prazo, o valor de venda é cobrado dele.</p>
           </div>}
           <DialogFooter><Button onClick={criar} disabled={salvando}>{salvando ? "Gerando..." : "Gerar nota interna"}</Button></DialogFooter>
         </DialogContent>
