@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileUp, Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { FileUp, Loader2, ArrowLeft, CheckCircle2, Search, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,11 +33,37 @@ export default function ImportarXmlNfe() {
     return !!data?.length;
   };
 
-  const onFile = async (file?: File) => {
-    if (!file || !org) return;
+  const onFile = async (file?: File) => { if (file) await processXml(await file.text()); };
+
+  const hoje = new Date().toISOString().slice(0, 10);
+  const [inicio, setInicio] = useState(new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10));
+  const [fim, setFim] = useState(hoje);
+  const [recebidas, setRecebidas] = useState<any[] | null>(null);
+  const [buscando, setBuscando] = useState(false);
+  const [baixando, setBaixando] = useState<string | null>(null);
+
+  const buscarNotas = async () => {
+    setBuscando(true);
+    const { data, error } = await supabase.functions.invoke("nfes-recebidas", { body: { action: "listar", inicio, fim } });
+    setBuscando(false);
+    if (error || data?.error) return toast.error(data?.error || "Não foi possível buscar as notas.");
+    setRecebidas(data.notas || []);
+  };
+
+  const importarChave = async (chave: string) => {
+    setBaixando(chave);
+    const { data, error } = await supabase.functions.invoke("nfes-recebidas", { body: { action: "xml", chave } });
+    setBaixando(null);
+    if (error || !data?.xml) return toast[data?.pendente ? "info" : "error"](data?.error || "Não foi possível baixar o XML.");
+    await processXml(data.xml);
+    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+  };
+
+  const processXml = async (text: string) => {
+    if (!org) return;
     setDone(null);
     try {
-      const n = parseNfeXml(await file.text());
+      const n = parseNfeXml(text);
       setBusy(true);
       const { data: itens } = await supabase.from("itens_estoque").select("id,codigo,gtin,descricao,quantidade").eq("organization_id", org);
       const all = itens || [];
@@ -130,6 +156,28 @@ export default function ImportarXmlNfe() {
             <input type="file" accept=".xml,text/xml" className="hidden" disabled={busy} onChange={(e) => { onFile(e.target.files?.[0]); e.target.value = ""; }} />
           </label>
         </CardContent></Card>
+
+        <Card><CardHeader className="pb-2"><CardTitle className="text-base">Buscar notas emitidas para a empresa</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap items-end gap-3">
+              <div><label className="text-xs text-muted-foreground">De</label><Input type="date" value={inicio} max={fim} onChange={(e) => setInicio(e.target.value)} /></div>
+              <div><label className="text-xs text-muted-foreground">Até</label><Input type="date" value={fim} min={inicio} max={hoje} onChange={(e) => setFim(e.target.value)} /></div>
+              <Button onClick={buscarNotas} disabled={buscando}>{buscando ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}Buscar notas</Button>
+            </div>
+            {recebidas && (recebidas.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma nota encontrada no período.</p> : (
+              <div className="space-y-2">{recebidas.map((n) => (
+                <div key={n.chave} className="flex flex-col md:flex-row md:items-center gap-2 border rounded-md p-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{n.emitente || "Emitente"}</p>
+                    <p className="text-xs text-muted-foreground font-mono">NF {n.numero} · {n.documento_emitente} · {n.data_emissao ? new Date(n.data_emissao).toLocaleDateString("pt-BR") : "—"}</p>
+                  </div>
+                  <span className="font-semibold">{brl(n.valor_total)}</span>
+                  {n.situacao === "cancelada" ? <Badge variant="destructive">Cancelada</Badge> : (
+                    <Button size="sm" variant="outline" disabled={!!baixando || busy} onClick={() => importarChave(n.chave)}>
+                      {baixando === n.chave ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}Importar
+                    </Button>)}
+                </div>))}</div>))}
+          </CardContent></Card>
 
         {done && (
           <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-primary" />Resultado</CardTitle></CardHeader>
