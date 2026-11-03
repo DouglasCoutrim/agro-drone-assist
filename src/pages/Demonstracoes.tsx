@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { jsPDF } from "jspdf";
+import { gerarDocumentoPadrao, loadImageAsDataUrl } from "@/lib/pdf-padrao";
 import { Plus, FileDown, CheckCircle2, Undo2, Banknote, Search, Loader2, Package, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
@@ -75,45 +75,30 @@ export default function Demonstracoes() {
   const cobrado = lista.filter((s: any) => s.status === "cobrado").reduce((t: number, s: any) => t + Number(s.valor_cobrado || 0), 0);
   const totalRetirada = itens.reduce((t, i) => t + i.qtd * i.preco_venda, 0);
 
-  function notaPDF(s: any) {
-    const doc = new jsPDF();
-    let y = 18;
-    doc.setFont("helvetica", "bold").setFontSize(14).text(organization?.name || "Empresa", 14, y);
-    doc.setFontSize(12).text(`NOTA INTERNA DE SAÍDA PARA DEMONSTRAÇÃO Nº ${s.numero}`, 14, (y += 10));
-    doc.setFont("helvetica", "normal").setFontSize(10);
-    [`Funcionário responsável: ${nome(s.funcionario_id)}`, `Data de saída: ${fmtData(s.created_at)}`, `Prazo para venda ou devolução: ${fmtData(s.prazo_ate)}`,
-      "", `Item: ${s.descricao}`, `Quantidade: ${s.quantidade}`, `Valor unitário: ${formatCurrency(s.valor_unitario)}`, `Valor total: ${formatCurrency(s.quantidade * s.valor_unitario)}`,
-      s.observacao ? `Observação: ${s.observacao}` : ""].forEach((l) => doc.text(l, 14, (y += 7)));
-    y += 10;
-    doc.text(doc.splitTextToSize("Declaro que recebi o(s) item(ns) acima para apresentação a clientes e me comprometo a concluir a venda ou devolvê-lo(s) em perfeito estado até a data indicada. Caso contrário, o valor total será cobrado de mim.", 180), 14, y);
-    y += 40;
-    doc.line(14, y, 100, y); doc.text("Assinatura do funcionário", 14, y + 5);
-    doc.line(115, y, 196, y); doc.text("Responsável pelo estoque", 115, y + 5);
-    doc.save(`nota-interna-${s.numero}.pdf`);
-  }
-
-  function notaPDFMultipla(registros: any[]) {
-    if (registros.length === 1) return notaPDF(registros[0]);
-    const doc = new jsPDF();
-    let y = 18;
-    doc.setFont("helvetica", "bold").setFontSize(14).text(organization?.name || "Empresa", 14, y);
-    doc.setFontSize(12).text("NOTA INTERNA DE SAÍDA PARA DEMONSTRAÇÃO", 14, (y += 10));
-    doc.setFont("helvetica", "normal").setFontSize(10);
+  async function notaPDFMultipla(registros: any[]) {
+    if (!registros.length) return;
+    const { data: e } = await supabase.from("empresa_config").select("nome_empresa, cnpj, telefone, endereco, logo_url").eq("organization_id", organization!.id).maybeSingle();
+    const r0 = registros[0];
     const total = registros.reduce((t, s) => t + s.quantidade * s.valor_unitario, 0);
-    [`Funcionário responsável: ${nome(registros[0].funcionario_id)}`, `Data de saída: ${fmtData(registros[0].created_at)}`, `Prazo para venda ou devolução: ${fmtData(registros[0].prazo_ate)}`, ""].forEach((l) => doc.text(l, 14, (y += 7)));
-    registros.forEach((s, idx) => {
-      doc.text(doc.splitTextToSize(`${idx + 1}. ${s.descricao} — ${s.quantidade} × ${formatCurrency(s.valor_unitario)} = ${formatCurrency(s.quantidade * s.valor_unitario)} (nota nº ${s.numero})`, 180), 14, (y += 7));
+    const doc = gerarDocumentoPadrao({
+      titulo: "Nota interna de demonstração",
+      numero: registros.length === 1 ? r0.numero : undefined,
+      linhasCabecalho: [`Saída: ${fmtData(r0.created_at)}`, `Prazo: ${fmtData(r0.prazo_ate)}`],
+      empresa: { nome: e?.nome_empresa || organization?.name || "Empresa", cnpj: e?.cnpj, telefone: e?.telefone, endereco: e?.endereco, logoDataUrl: await loadImageAsDataUrl(e?.logo_url) },
+      parte: { rotulo: "Funcionário responsável", nome: nome(r0.funcionario_id) },
+      tabela: {
+        titulo: "Itens retirados",
+        colunas: [{ titulo: "Nota", largura: 16 }, { titulo: "Descrição" }, { titulo: "Qtd", largura: 14, alinhar: "right" }, { titulo: "Unit.", largura: 28, alinhar: "right" }, { titulo: "Total", largura: 28, alinhar: "right" }],
+        linhas: registros.map((s) => [String(s.numero), s.descricao, String(s.quantidade), formatCurrency(s.valor_unitario), formatCurrency(s.quantidade * s.valor_unitario)]),
+      },
+      totais: [{ rotulo: "TOTAL", valor: total, destaque: true }],
+      observacao: r0.observacao || undefined,
+      termos: "Declaro que recebi o(s) item(ns) acima para apresentação a clientes e me comprometo a concluir a venda ou devolvê-lo(s) em perfeito estado até a data indicada. Caso contrário, o valor total será cobrado de mim.",
+      assinaturas: ["Assinatura do funcionário", "Responsável pelo estoque"],
     });
-    doc.setFont("helvetica", "bold").text(`Valor total: ${formatCurrency(total)}`, 14, (y += 9));
-    doc.setFont("helvetica", "normal");
-    if (registros[0].observacao) doc.text(doc.splitTextToSize(`Observação: ${registros[0].observacao}`, 180), 14, (y += 7));
-    y += 10;
-    doc.text(doc.splitTextToSize("Declaro que recebi o(s) item(ns) acima para apresentação a clientes e me comprometo a concluir a venda ou devolvê-lo(s) em perfeito estado até a data indicada. Caso contrário, o valor total será cobrado de mim.", 180), 14, y);
-    y += 40;
-    doc.line(14, y, 100, y); doc.text("Assinatura do funcionário", 14, y + 5);
-    doc.line(115, y, 196, y); doc.text("Responsável pelo estoque", 115, y + 5);
-    doc.save(`nota-interna-demonstracao.pdf`);
+    doc.save(registros.length === 1 ? `nota-interna-${r0.numero}.pdf` : "nota-interna-demonstracao.pdf");
   }
+  const notaPDF = (s: any) => notaPDFMultipla([s]);
 
   function adicionarItem(i: any) {
     setItens((prev) => {

@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, FileDown, Send, Trash2, ShoppingBag, Pencil, ClipboardList } from "lucide-react";
+import { Plus, FileDown, Send, Trash2, ShoppingBag, Pencil, ClipboardList, Eye, Ban, X } from "lucide-react";
+import { loadImageAsDataUrl } from "@/lib/pdf-padrao";
+import { useConfirm } from "@/hooks/useConfirm";
 import { PedidoCompraDialog, SETORES, setorLabel } from "@/components/compras/PedidoCompraDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
@@ -32,6 +34,14 @@ export default function PedidosCompra() {
   const [open, setOpen] = useState(false);
   const [editPedido, setEditPedido] = useState<any>(null);
   const [setorFiltro, setSetorFiltro] = useState("todos");
+  const [cotStatus, setCotStatus] = useState("aberta");
+  const [cotForn, setCotForn] = useState("todos");
+  const [cotDe, setCotDe] = useState("");
+  const [cotAte, setCotAte] = useState("");
+  const [cotAberta, setCotAberta] = useState<any>(null);
+  const [cotFornEdit, setCotFornEdit] = useState(SEM);
+  const [cotObs, setCotObs] = useState("");
+  const [cotAdd, setCotAdd] = useState(SEM);
   const { data: pedidos = [] } = useQuery({
     queryKey: ["pedidos_compra", orgId], enabled: !!orgId,
     queryFn: async () => (await supabase.from("pedidos_compra").select("*").eq("organization_id", orgId!).order("created_at", { ascending: false })).data || [],
@@ -69,7 +79,7 @@ export default function PedidosCompra() {
     if (error) toast.error(getErrorMessage(error)); else refresh();
   };
 
-  const empresa = async () => (await supabase.from("empresa_config").select("nome_empresa, cnpj, telefone, endereco").eq("organization_id", orgId!).maybeSingle()).data;
+  const empresa = async () => (await supabase.from("empresa_config").select("nome_empresa, cnpj, telefone, endereco, logo_url").eq("organization_id", orgId!).maybeSingle()).data;
 
   const pdfCotacao = async (cot: any, linhas?: any[]) => {
     const e = await empresa();
@@ -77,7 +87,8 @@ export default function PedidosCompra() {
     const f: any = fornecedores.find((x: any) => x.id === cot.fornecedor_id) || {};
     gerarCotacaoPDF({
       numero: cot.numero, data: new Date(cot.created_at).toLocaleDateString("pt-BR"),
-      empresa: { nome: e?.nome_empresa || organization?.name || "", cnpj: e?.cnpj, telefone: e?.telefone, endereco: e?.endereco },
+      empresa: { nome: e?.nome_empresa || organization?.name || "", cnpj: e?.cnpj, telefone: e?.telefone, endereco: e?.endereco, logoDataUrl: await loadImageAsDataUrl(e?.logo_url) },
+      observacoes: cot.observacoes,
       fornecedor: { nome: cot.fornecedor_nome || "Fornecedor não definido", cnpj: f.cpf_cnpj, telefone: f.telefone, email: f.email },
       itens: its.map((s: any) => ({ codigo: s.itens_estoque?.codigo, descricao: s.descricao, quantidade: Number(s.quantidade) })),
     });
@@ -105,6 +116,54 @@ export default function PedidosCompra() {
     await supabase.from("solicitacoes_compra").update({ status: status === "comprada" ? "comprado" : "cancelado" }).eq("cotacao_id", cot.id);
     refresh();
   };
+
+  const confirm = useConfirm() as any;
+  const perguntar = async (title: string, description: string) => {
+    if (typeof confirm === "function") return await confirm({ title, description });
+    if (confirm?.confirm) return await confirm.confirm({ title, description });
+    return window.confirm(`${title}\n\n${description}`);
+  };
+  const itensCot = (c: any) => solic.filter((s: any) => s.cotacao_id === c?.id);
+  const cotacoesFiltradas = cotacoes.filter((c: any) => {
+    if (cotStatus !== "todas" && c.status !== cotStatus) return false;
+    if (cotForn !== "todos" && (c.fornecedor_id || `nome:${c.fornecedor_nome}`) !== cotForn) return false;
+    const d = String(c.created_at).slice(0, 10);
+    if (cotDe && d < cotDe) return false;
+    if (cotAte && d > cotAte) return false;
+    return true;
+  });
+  const abrirCotacao = (c: any) => { setCotAberta(c); setCotFornEdit(c.fornecedor_id || SEM); setCotObs(c.observacoes || ""); setCotAdd(SEM); };
+  const salvarCotacao = async () => {
+    const f = fornecedores.find((x: any) => x.id === cotFornEdit);
+    const upd = { fornecedor_id: f?.id || null, fornecedor_nome: f?.nome || (cotFornEdit === SEM ? cotAberta.fornecedor_nome : ""), observacoes: cotObs.trim() };
+    const { error } = await supabase.from("cotacoes_compra").update(upd).eq("id", cotAberta.id);
+    if (error) return toast.error(getErrorMessage(error));
+    if (f) await supabase.from("solicitacoes_compra").update({ fornecedor_id: f.id, fornecedor_nome: f.nome }).eq("cotacao_id", cotAberta.id);
+    toast.success("Cotação atualizada"); setCotAberta(null); refresh();
+  };
+  const tirarItemCotacao = async (id: string) => {
+    const { error } = await supabase.from("solicitacoes_compra").update({ status: "pendente", cotacao_id: null }).eq("id", id);
+    if (error) toast.error(getErrorMessage(error)); else { toast.success("Item voltou para Pendentes"); refresh(); }
+  };
+  const incluirItemCotacao = async () => {
+    if (cotAdd === SEM) return;
+    const { error } = await supabase.from("solicitacoes_compra").update({ status: "em_cotacao", cotacao_id: cotAberta.id }).eq("id", cotAdd);
+    if (error) toast.error(getErrorMessage(error)); else { setCotAdd(SEM); refresh(); }
+  };
+  const cancelarCotacao = async (c: any) => {
+    if (!(await perguntar(`Cancelar cotação nº ${c.numero}?`, "Os itens voltam para Pendentes para serem cotados novamente."))) return;
+    await supabase.from("cotacoes_compra").update({ status: "cancelada" }).eq("id", c.id);
+    await supabase.from("solicitacoes_compra").update({ status: "pendente", cotacao_id: null }).eq("cotacao_id", c.id).eq("status", "em_cotacao");
+    toast.success("Cotação cancelada"); setCotAberta(null); refresh();
+  };
+  const excluirCotacao = async (c: any) => {
+    if (!(await perguntar(`Excluir cotação nº ${c.numero}?`, "A cotação será apagada definitivamente. Itens ainda não comprados voltam para Pendentes."))) return;
+    await supabase.from("solicitacoes_compra").update({ status: "pendente", cotacao_id: null }).eq("cotacao_id", c.id).eq("status", "em_cotacao");
+    const { error } = await supabase.from("cotacoes_compra").delete().eq("id", c.id);
+    if (error) return toast.error(getErrorMessage(error));
+    toast.success("Cotação excluída"); setCotAberta(null); refresh();
+  };
+  const fornOpcoes = useMemo(() => { const m = new Map<string, string>(); cotacoes.forEach((c: any) => m.set(c.fornecedor_id || `nome:${c.fornecedor_nome}`, c.fornecedor_nome || "Sem fornecedor")); return [...m.entries()]; }, [cotacoes]);
 
   const toggle = (id: string) => setSel(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const historico = useMemo(() => solic.filter((s: any) => s.status !== "pendente"), [solic]);
@@ -174,16 +233,31 @@ export default function PedidosCompra() {
             </Card>
           </TabsContent>
           <TabsContent value="cotacoes" className="space-y-2">
-            {!cotacoes.length && <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma cotação gerada.</p>}
-            {cotacoes.map((c: any) => {
-              const n = solic.filter((s: any) => s.cotacao_id === c.id).length;
+            <Card><CardContent className="grid gap-2 p-3 sm:grid-cols-4">
+              <div className="space-y-1"><Label className="text-xs">Situação</Label>
+                <Select value={cotStatus} onValueChange={setCotStatus}><SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="aberta">Abertas</SelectItem><SelectItem value="comprada">Compradas</SelectItem><SelectItem value="cancelada">Canceladas</SelectItem><SelectItem value="todas">Todas</SelectItem></SelectContent></Select></div>
+              <div className="space-y-1"><Label className="text-xs">Fornecedor</Label>
+                <Select value={cotForn} onValueChange={setCotForn}><SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="todos">Todos</SelectItem>{fornOpcoes.map(([k, n]) => <SelectItem key={k} value={k}>{n}</SelectItem>)}</SelectContent></Select></div>
+              <div className="space-y-1"><Label className="text-xs">De</Label><Input type="date" className="h-9" value={cotDe} onChange={(e) => setCotDe(e.target.value)} /></div>
+              <div className="space-y-1"><Label className="text-xs">Até</Label><Input type="date" className="h-9" value={cotAte} onChange={(e) => setCotAte(e.target.value)} /></div>
+            </CardContent></Card>
+            {!cotacoesFiltradas.length && <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma cotação encontrada.</p>}
+            {cotacoesFiltradas.map((c: any) => {
+              const n = itensCot(c).length;
               return (
-                <Card key={c.id}><CardContent className="flex flex-wrap items-center gap-3 p-4">
+                <Card key={c.id} className="cursor-pointer hover:border-primary" onClick={() => abrirCotacao(c)}><CardContent className="flex flex-wrap items-center gap-3 p-4">
                   <ShoppingBag className="h-5 w-5 text-primary" />
                   <div className="flex-1"><p className="font-medium">Cotação nº {c.numero} — {c.fornecedor_nome || "Sem fornecedor"}</p><p className="text-xs text-muted-foreground">{new Date(c.created_at).toLocaleDateString("pt-BR")} · {n} item(ns)</p></div>
-                  <Badge variant="outline">{c.status === "aberta" ? "Aberta" : c.status === "comprada" ? "Comprada" : "Cancelada"}</Badge>
-                  <Button size="sm" variant="outline" onClick={() => pdfCotacao(c)}><FileDown className="mr-1 h-4 w-4" />PDF</Button>
-                  {isAdmin && c.status === "aberta" && <><Button size="sm" onClick={() => mudarCotacao(c, "comprada")}>Marcar comprada</Button><Button size="sm" variant="ghost" onClick={() => mudarCotacao(c, "cancelada")}>Cancelar</Button></>}
+                  <Badge variant={c.status === "cancelada" ? "destructive" : "outline"}>{c.status === "aberta" ? "Aberta" : c.status === "comprada" ? "Comprada" : "Cancelada"}</Badge>
+                  <div className="flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button size="icon" variant="ghost" title="Ver / editar" onClick={() => abrirCotacao(c)}><Eye className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" title="Baixar PDF" onClick={() => pdfCotacao(c)}><FileDown className="h-4 w-4" /></Button>
+                    {isAdmin && c.status === "aberta" && <Button size="sm" onClick={() => mudarCotacao(c, "comprada")}>Marcar comprada</Button>}
+                    {isAdmin && c.status === "aberta" && <Button size="icon" variant="ghost" title="Cancelar cotação" onClick={() => cancelarCotacao(c)}><Ban className="h-4 w-4" /></Button>}
+                    {isAdmin && <Button size="icon" variant="ghost" title="Excluir cotação" onClick={() => excluirCotacao(c)}><Trash2 className="h-4 w-4" /></Button>}
+                  </div>
                 </CardContent></Card>
               );
             })}
@@ -193,6 +267,49 @@ export default function PedidosCompra() {
           </TabsContent>
         </Tabs>
       </div>
+      <Dialog open={!!cotAberta} onOpenChange={(o) => !o && setCotAberta(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Cotação nº {cotAberta?.numero}</DialogTitle></DialogHeader>
+          {cotAberta && (() => {
+            const editavel = isAdmin && cotAberta.status === "aberta";
+            const its = itensCot(cotAberta);
+            return (
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-2 text-sm text-muted-foreground"><span>Criada em {new Date(cotAberta.created_at).toLocaleDateString("pt-BR")}</span>
+                  <Badge variant="outline">{cotAberta.status === "aberta" ? "Aberta" : cotAberta.status === "comprada" ? "Comprada" : "Cancelada"}</Badge></div>
+                <div className="space-y-1"><Label>Fornecedor</Label>
+                  <Select value={cotFornEdit} onValueChange={setCotFornEdit} disabled={!editavel}><SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value={SEM}>{cotAberta.fornecedor_nome || "Sem fornecedor"}{cotAberta.fornecedor_id ? "" : " (não cadastrado)"}</SelectItem>{fornecedores.filter((f: any) => f.id !== cotAberta.fornecedor_id).map((f: any) => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}</SelectContent></Select></div>
+                <div className="rounded-md border">
+                  {!its.length && <p className="py-4 text-center text-sm text-muted-foreground">Sem itens.</p>}
+                  {its.map((s: any, i: number) => (
+                    <div key={s.id} className="flex items-center gap-2 border-b p-2 text-sm last:border-b-0">
+                      <span className="w-6 text-center text-xs text-muted-foreground">{i + 1}</span>
+                      <span className="flex-1">{s.itens_estoque?.codigo && <span className="mr-1 font-mono text-xs text-muted-foreground">{s.itens_estoque.codigo}</span>}{s.descricao}</span>
+                      <span className="text-muted-foreground">× {Number(s.quantidade)}</span>
+                      {editavel && <Button size="icon" variant="ghost" className="h-8 w-8" title="Tirar da cotação" onClick={() => tirarItemCotacao(s.id)}><X className="h-4 w-4" /></Button>}
+                    </div>
+                  ))}
+                </div>
+                {editavel && (
+                  <div className="flex gap-2">
+                    <Select value={cotAdd} onValueChange={setCotAdd}><SelectTrigger className="flex-1"><SelectValue placeholder="Adicionar item pendente" /></SelectTrigger>
+                      <SelectContent><SelectItem value={SEM}>Adicionar item pendente…</SelectItem>{solic.filter((s: any) => s.status === "pendente").map((s: any) => <SelectItem key={s.id} value={s.id}>{s.descricao} × {Number(s.quantidade)}</SelectItem>)}</SelectContent></Select>
+                    <Button variant="outline" onClick={incluirItemCotacao} disabled={cotAdd === SEM}><Plus className="mr-1 h-4 w-4" />Adicionar</Button>
+                  </div>
+                )}
+                <div className="space-y-1"><Label>Observações</Label><Input value={cotObs} disabled={!editavel} onChange={(e) => setCotObs(e.target.value)} placeholder="Ex.: entrega até sexta" /></div>
+              </div>
+            );
+          })()}
+          <DialogFooter className="flex-wrap gap-2">
+            {cotAberta && <Button variant="outline" onClick={() => pdfCotacao(cotAberta)}><FileDown className="mr-1 h-4 w-4" />PDF</Button>}
+            {isAdmin && cotAberta?.status === "aberta" && <Button variant="ghost" onClick={() => cancelarCotacao(cotAberta)}><Ban className="mr-1 h-4 w-4" />Cancelar cotação</Button>}
+            {isAdmin && cotAberta && <Button variant="ghost" onClick={() => excluirCotacao(cotAberta)}><Trash2 className="mr-1 h-4 w-4" />Excluir</Button>}
+            {isAdmin && cotAberta?.status === "aberta" && <Button onClick={salvarCotacao}>Salvar alterações</Button>}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <PedidoCompraDialog open={open} onOpenChange={setOpen} pedido={editPedido} itensPedido={editPedido ? solic.filter((x: any) => x.pedido_id === editPedido.id) : []} estoque={itens} onSaved={refresh} />
     </MainLayout>
   );
