@@ -37,12 +37,44 @@ export function PedidoCompraDialog({ open, onOpenChange, pedido, itensPedido, es
   const [busca, setBusca] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    setSetor(pedido?.setor || "estoque"); setTitulo(pedido?.titulo || ""); setObs(pedido?.observacoes || ""); setBusca("");
+  const draftKey = `livreos:pedido-compra:${organization?.id}:${user?.id}:${pedido?.id || "novo"}`;
+  const [temRascunho, setTemRascunho] = useState(false);
+  const [pronto, setPronto] = useState(false);
+
+  const carregarOriginal = () => {
+    setSetor(pedido?.setor || "estoque"); setTitulo(pedido?.titulo || ""); setObs(pedido?.observacoes || "");
     setLinhas(itensPedido.map((s) => ({ key: s.id, id: s.id, item_estoque_id: s.item_estoque_id, descricao: s.descricao, quantidade: Number(s.quantidade), status: s.status, codigo: s.itens_estoque?.codigo })));
+  };
+
+  useEffect(() => {
+    if (!open) { setPronto(false); return; }
+    setBusca("");
+    let draft: any = null;
+    try { draft = JSON.parse(localStorage.getItem(draftKey) || "null"); } catch { draft = null; }
+    if (draft) {
+      setSetor(draft.setor); setTitulo(draft.titulo); setObs(draft.obs); setLinhas(draft.linhas || []);
+      setTemRascunho(true);
+      toast.info("Rascunho recuperado automaticamente.");
+    } else { carregarOriginal(); setTemRascunho(false); }
+    setPronto(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, pedido?.id]);
+
+  // Salvamento automático do rascunho no aparelho
+  useEffect(() => {
+    if (!open || !pronto) return;
+    const t = setTimeout(() => {
+      const vazio = !linhas.length && !titulo.trim() && !obs.trim();
+      if (vazio && !pedido) localStorage.removeItem(draftKey);
+      else { localStorage.setItem(draftKey, JSON.stringify({ setor, titulo, obs, linhas })); setTemRascunho(true); }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [open, pronto, setor, titulo, obs, linhas, draftKey, pedido]);
+
+  const descartarRascunho = () => {
+    localStorage.removeItem(draftKey); setTemRascunho(false); carregarOriginal();
+    toast.success("Rascunho descartado");
+  };
 
   const sugestoes = useMemo(() => {
     const t = busca.trim().toLowerCase();
@@ -93,6 +125,7 @@ export function PedidoCompraDialog({ open, onOpenChange, pedido, itensPedido, es
         const { error } = await supabase.from("solicitacoes_compra").insert(novos);
         if (error) throw error;
       }
+      localStorage.removeItem(draftKey); setTemRascunho(false);
       toast.success(pedido ? "Pedido atualizado" : "Pedido enviado para compras");
       onSaved(); onOpenChange(false);
     } catch (e) {
@@ -106,15 +139,17 @@ export function PedidoCompraDialog({ open, onOpenChange, pedido, itensPedido, es
     if (!pedido || itensPedido.some((s) => s.status !== "pendente")) return toast.error("Só é possível excluir pedidos sem itens em cotação.");
     const { error } = await supabase.from("pedidos_compra").delete().eq("id", pedido.id);
     if (error) return toast.error(getErrorMessage(error));
+    localStorage.removeItem(draftKey);
     toast.success("Pedido excluído"); onSaved(); onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto"
+        onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>{pedido ? `Pedido nº ${pedido.numero}` : "Novo pedido de compra"}</DialogTitle>
-          <DialogDescription>Adicione ou remova itens à vontade. Itens já em cotação ficam travados.</DialogDescription>
+          <DialogDescription>Tudo o que você digita é salvo automaticamente como rascunho. Itens já em cotação ficam travados.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -170,6 +205,8 @@ export function PedidoCompraDialog({ open, onOpenChange, pedido, itensPedido, es
           <div className="space-y-1"><Label>Observação</Label><Input value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Ex.: urgente, OS 045" /></div>
         </div>
         <DialogFooter className="gap-2">
+          {temRascunho && <Button variant="ghost" onClick={descartarRascunho}>Descartar rascunho</Button>}
+          <Button variant="outline" onClick={() => { if (temRascunho) toast.info("Rascunho guardado. Ao abrir de novo, ele volta."); onOpenChange(false); }}>Fechar</Button>
           {pedido && <Button variant="ghost" onClick={excluirPedido}><Trash2 className="mr-1 h-4 w-4" />Excluir pedido</Button>}
           <Button onClick={salvar} disabled={saving}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{pedido ? "Salvar pedido" : "Enviar pedido"}</Button>
         </DialogFooter>
