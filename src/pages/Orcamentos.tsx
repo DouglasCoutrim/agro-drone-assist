@@ -195,7 +195,7 @@ export default function Orcamentos() {
     } catch (err: any) { toast.error("Erro ao converter: " + err.message); } finally { setFormLoading(false); }
   };
 
-  const buildPdfData = (orc: Orcamento) => {
+  const buildPdfData = async (orc: Orcamento) => {
     const orcItems: OSItem[] = Array.isArray(orc.itens) ? (orc.itens as any) : [];
     const sub = orcItems.reduce((s, i) => s + i.valor_total, 0);
     const desc = Number(orc.desconto || 0);
@@ -215,6 +215,7 @@ export default function Orcamentos() {
       empresa: {
         nome: empresa.nome_empresa, telefone: empresa.telefone,
         cnpj: empresa.cnpj, endereco: empresa.endereco,
+        logoDataUrl: await loadImageAsDataUrl(empresa.logo_url),
       },
       termos: empresa.termos_servico,
     };
@@ -234,7 +235,7 @@ export default function Orcamentos() {
 
   const handleDownloadPdf = async (orc: Orcamento) => {
     if (isGroupedOrcamento(orc.itens)) { (await buildGroupedDoc(orc)).save(groupedName(orc)); return; }
-    const doc = generateOrcamentoPDF(buildPdfData(orc));
+    const doc = generateOrcamentoPDF(await buildPdfData(orc));
     doc.save(`orcamento-${(orc.clientes?.nome || "cliente").replace(/\s+/g, "-").toLowerCase()}.pdf`);
   };
 
@@ -247,7 +248,7 @@ export default function Orcamentos() {
         toast.success("Compartilhamento iniciado!");
         return;
       }
-      await shareOrcamentoViaWhatsApp(buildPdfData(orc), phone);
+      await shareOrcamentoViaWhatsApp(await buildPdfData(orc), phone);
       toast.success("Compartilhamento iniciado!");
     } catch (err: any) {
       toast.error("Erro ao compartilhar: " + (err?.message || ""));
