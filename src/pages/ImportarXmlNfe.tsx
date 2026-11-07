@@ -11,6 +11,7 @@ import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { parseNfeXml, type NfeImport, type NfeParte } from "@/lib/nfe-xml";
+import { functionErrorMessage } from "@/lib/function-error";
 
 type Linha = { idx: number; existenteId: string | null; qtdAtual: number; preco_venda: number };
 const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -46,7 +47,7 @@ export default function ImportarXmlNfe() {
     setBuscando(true);
     const { data, error } = await supabase.functions.invoke("nfes-recebidas", { body: { action: "listar", inicio, fim } });
     setBuscando(false);
-    if (error || data?.error) return toast.error(data?.error || "Não foi possível buscar as notas.");
+    if (error || data?.error) return toast.error(data?.error || await functionErrorMessage(error, "Não foi possível buscar as notas."));
     setRecebidas(data.notas || []);
   };
 
@@ -54,7 +55,7 @@ export default function ImportarXmlNfe() {
     setBaixando(chave);
     const { data, error } = await supabase.functions.invoke("nfes-recebidas", { body: { action: "xml", chave } });
     setBaixando(null);
-    if (error || !data?.xml) return toast[data?.pendente ? "info" : "error"](data?.error || "Não foi possível baixar o XML.");
+    if (error || !data?.xml) return toast[data?.pendente ? "info" : "error"](data?.error || await functionErrorMessage(error, "Não foi possível baixar o XML."));
     await processXml(data.xml);
     window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
   };

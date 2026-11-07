@@ -11,15 +11,16 @@ import { MainLayout } from '@/components/layout/MainLayout';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: 'admin' | 'tecnico' | 'consulta';
+  /** @deprecated Menu access is controlled exclusively by rotas_bloqueadas. */
   requiredPermission?: 'acesso_os' | 'acesso_estoque' | 'acesso_financeiro';
   allowBlocked?: boolean;
   requiredPlatformAdmin?: boolean;
 }
 
-export default function ProtectedRoute({ children, requiredRole, requiredPermission, allowBlocked, requiredPlatformAdmin }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, requiredRole, allowBlocked, requiredPlatformAdmin }: ProtectedRouteProps) {
   const { user, role, roles, loading } = useAuth();
   const location = useLocation();
-  const { permissions, blocked, loading: permsLoading } = usePermissions();
+  const { blocked, loading: permsLoading } = usePermissions();
   const { organization, isPlatformAdmin, loading: orgLoading } = useOrganization();
 
   if (loading || permsLoading || orgLoading) {
@@ -70,28 +71,6 @@ export default function ProtectedRoute({ children, requiredRole, requiredPermiss
               <h2 className="text-2xl font-bold">Acesso Restrito</h2>
               <p className="text-muted-foreground max-w-md">
                 Você não tem permissão para acessar esta página. Entre em contato com o administrador para solicitar acesso.
-              </p>
-            </div>
-            <Button variant="outline" onClick={() => window.history.back()}>Voltar</Button>
-          </div>
-        </MainLayout>
-      );
-    }
-  }
-
-  // Module-level permission check (admins always pass)
-  if (requiredPermission && role !== 'admin') {
-    if (permissions && !permissions[requiredPermission]) {
-      return (
-        <MainLayout>
-          <div className="flex flex-col items-center justify-center py-20 space-y-6">
-            <div className="h-20 w-20 rounded-full bg-destructive/10 flex items-center justify-center">
-              <ShieldX className="h-10 w-10 text-destructive" />
-            </div>
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold">Acesso Restrito</h2>
-              <p className="text-muted-foreground max-w-md">
-                Seu perfil não possui acesso a este módulo. Peça ao administrador para habilitar esta permissão.
               </p>
             </div>
             <Button variant="outline" onClick={() => window.history.back()}>Voltar</Button>

@@ -1,5 +1,10 @@
 # Roadmap
 
+## Monitoramento: acessos, pedidos, notas recebidas e patrimônio
+- [x] Corrigir acessos por árvore, rascunhos desatualizados e mensagens das notas recebidas; 19 testes passaram e compilação sem erros.
+- [ ] Corrigir patrimônio com atualização e histórico atômicos: aguarda aprovação do plano/SQL e disponibilidade do banco para conferir restrições atuais.
+- [ ] Validar fluxos autenticados: banco indisponível impede obter sessão de teste; prévia pública abriu sem erros.
+
 - [x] Verificar os oito achados atuais de monitoramento e corrigir somente problemas confirmados.
 - [x] Validar abertura de vendas e janelas no celular, testar bloqueio de conversão agrupada e encerrar os oito achados. Não gravar vendas reais durante a revisão.
 
