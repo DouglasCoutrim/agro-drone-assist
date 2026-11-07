@@ -534,7 +534,7 @@ export default function Vendas() {
                     <div className="space-y-2">
                       {itensForm.map((item, idx) => (
                         <div key={item.id} className="border rounded-lg p-3 grid grid-cols-2 md:grid-cols-12 gap-2 items-end">
-                          <div className="col-span-2 md:col-span-4">
+                          <div className="col-span-2 md:col-span-3">
                             <Label className="text-xs">Produto</Label>
                             <SmartSelect
                               placeholder="Digite para buscar produto..."
@@ -573,6 +573,13 @@ export default function Vendas() {
                       ))}
                     </div>
                     <Button type="button" variant="outline" onClick={handleAddItem} className="w-fit"><Plus className="h-4 w-4 mr-2" />Adicionar Item</Button>
+                    {itensForm.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 rounded-lg bg-muted/50 p-3 text-sm">
+                        <div><p className="text-muted-foreground text-xs">Subtotal</p><p className="font-semibold">{formatCurrency(itensForm.reduce((s, i) => s + i.quantidade * i.preco_unitario, 0))}</p></div>
+                        <div><p className="text-muted-foreground text-xs">Descontos</p><p className="font-semibold text-destructive">-{formatCurrency(itensForm.reduce((s, i) => s + i.desconto_valor, 0))}</p></div>
+                        <div className="text-right"><p className="text-muted-foreground text-xs">Total</p><p className="text-lg font-bold text-primary">{formatCurrency(itensForm.reduce((s, i) => s + i.valor_total, 0))}</p></div>
+                      </div>
+                    )}
                     </section>
                     </TabsContent>
                     <TabsContent value="transporte" className="mt-0">

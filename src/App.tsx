@@ -34,6 +34,7 @@ const Transportadoras = lazy(() => import("./pages/Transportadoras"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes"));
 const Cobrancas = lazy(() => import("./pages/Cobrancas"));
 const Vendas = lazy(() => import("./pages/Vendas"));
+const PDV = lazy(() => import("./pages/PDV"));
 
 const Equipe = lazy(() => import("./pages/Equipe"));
 const ConfiguracaoOS = lazy(() => import("./pages/ConfiguracaoOS"));
@@ -120,6 +121,7 @@ const App = () => {
                   <Route path="/estoque/importar-xml" element={<ProtectedRoute requiredPermission="acesso_estoque"><ImportarXmlNfe /></ProtectedRoute>} />
                   <Route path="/fiscal/nfse" element={<ProtectedRoute><NovaNfse /></ProtectedRoute>} />
                   <Route path="/produtos" element={<Navigate to="/estoque" replace />} />
+                  <Route path="/pdv" element={<ProtectedRoute><PDV /></ProtectedRoute>} />
                   <Route path="/vendas" element={<ProtectedRoute requiredPermission="acesso_financeiro"><Vendas /></ProtectedRoute>} />
                   <Route path="/servicos" element={<ProtectedRoute><Servicos /></ProtectedRoute>} />
                   <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
