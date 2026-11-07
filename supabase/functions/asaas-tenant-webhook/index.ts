@@ -20,8 +20,8 @@ Deno.serve(async (req) => {
   }
 
   const secret = Deno.env.get('WEBHOOK_SECRET');
-  const provided = req.headers.get('x-webhook-secret') || '';
-  if (secret && provided !== secret) {
+  const provided = req.headers.get('x-webhook-secret') || req.headers.get('asaas-access-token') || '';
+  if (!secret || provided !== secret) {
     return json({ error: 'Unauthorized' }, 401);
   }
 
