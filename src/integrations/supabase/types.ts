@@ -760,8 +760,8 @@ export type Database = {
           csosn: string
           cst_icms: string | null
           custo_unitario: number
-          descricao: string
           desconto_maximo_percentual: number
+          descricao: string
           emite_nfe: boolean
           estoque_minimo: number
           fornecedor: string | null
@@ -786,8 +786,8 @@ export type Database = {
           csosn?: string
           cst_icms?: string | null
           custo_unitario?: number
-          descricao: string
           desconto_maximo_percentual?: number
+          descricao: string
           emite_nfe?: boolean
           estoque_minimo?: number
           fornecedor?: string | null
@@ -812,8 +812,8 @@ export type Database = {
           csosn?: string
           cst_icms?: string | null
           custo_unitario?: number
-          descricao?: string
           desconto_maximo_percentual?: number
+          descricao?: string
           emite_nfe?: boolean
           estoque_minimo?: number
           fornecedor?: string | null
@@ -2446,8 +2446,8 @@ export type Database = {
       servicos: {
         Row: {
           created_at: string
-          descricao: string
           desconto_maximo_percentual: number
+          descricao: string
           fracionamento: string
           hora_minima: number | null
           id: string
@@ -2462,8 +2462,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          descricao: string
           desconto_maximo_percentual?: number
+          descricao: string
           fracionamento?: string
           hora_minima?: number | null
           id?: string
@@ -2478,8 +2478,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          descricao?: string
           desconto_maximo_percentual?: number
+          descricao?: string
           fracionamento?: string
           hora_minima?: number | null
           id?: string
