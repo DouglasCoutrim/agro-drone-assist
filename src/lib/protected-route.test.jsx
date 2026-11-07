@@ -3,7 +3,7 @@ import { describe, it, expect, mock } from "bun:test";
 import { renderToString } from "react-dom/server";
 
 let path = "/vendas";
-let blocked: string[] = [];
+let blocked = [];
 mock.module("react-router-dom", () => ({ useLocation: () => ({ pathname: path, search: "" }), Navigate: () => null }));
 mock.module("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "technician" }, role: "tecnico", roles: ["tecnico"], loading: false }) }));
 mock.module("@/hooks/useOrganization", () => ({ useOrganization: () => ({ organization: { status: "active" }, isPlatformAdmin: false, loading: false }) }));
