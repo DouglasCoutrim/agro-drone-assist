@@ -760,6 +760,7 @@ export type Database = {
           csosn: string
           cst_icms: string | null
           custo_unitario: number
+          desconto_maximo_percentual: number
           descricao: string
           emite_nfe: boolean
           estoque_minimo: number
@@ -785,6 +786,7 @@ export type Database = {
           csosn?: string
           cst_icms?: string | null
           custo_unitario?: number
+          desconto_maximo_percentual?: number
           descricao: string
           emite_nfe?: boolean
           estoque_minimo?: number
@@ -810,6 +812,7 @@ export type Database = {
           csosn?: string
           cst_icms?: string | null
           custo_unitario?: number
+          desconto_maximo_percentual?: number
           descricao?: string
           emite_nfe?: boolean
           estoque_minimo?: number
@@ -839,6 +842,9 @@ export type Database = {
       itens_os: {
         Row: {
           created_at: string
+          desconto_maximo_percentual: number
+          desconto_percentual: number
+          desconto_valor: number
           descricao: string
           id: string
           item_estoque_id: string | null
@@ -855,6 +861,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          desconto_maximo_percentual?: number
+          desconto_percentual?: number
+          desconto_valor?: number
           descricao: string
           id?: string
           item_estoque_id?: string | null
@@ -871,6 +880,9 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          desconto_maximo_percentual?: number
+          desconto_percentual?: number
+          desconto_valor?: number
           descricao?: string
           id?: string
           item_estoque_id?: string | null
@@ -2434,6 +2446,7 @@ export type Database = {
       servicos: {
         Row: {
           created_at: string
+          desconto_maximo_percentual: number
           descricao: string
           fracionamento: string
           hora_minima: number | null
@@ -2449,6 +2462,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          desconto_maximo_percentual?: number
           descricao: string
           fracionamento?: string
           hora_minima?: number | null
@@ -2464,6 +2478,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          desconto_maximo_percentual?: number
           descricao?: string
           fracionamento?: string
           hora_minima?: number | null
