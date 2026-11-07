@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -129,6 +130,8 @@ export default function OrdensServico() {
   const [agruparOpen, setAgruparOpen] = useState(false);
   const { tecnicos } = useTeamMembers();
   const confirm = useConfirm();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const osDeepLinkRef = useRef<string | null>(null);
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -669,6 +672,43 @@ export default function OrdensServico() {
       setViewOsItemsLoading(false);
     }
   };
+
+  // Deep link: /ordens-servico?os=<id> abre a OS correspondente e limpa o parâmetro da URL.
+  useEffect(() => {
+    const osId = searchParams.get("os");
+    if (!osId) {
+      osDeepLinkRef.current = null;
+      return;
+    }
+    if (loading) return;
+    if (osDeepLinkRef.current === osId) return;
+    osDeepLinkRef.current = osId;
+
+    const abrirOS = async () => {
+      const naLista = ordens.find(o => o.id === osId);
+      if (naLista) return handleView(naLista);
+
+      let query = supabase
+        .from("ordens_servico")
+        .select("*, clientes(nome, telefone)")
+        .eq("id", osId);
+      if (organization?.id && !isPlatformAdmin) {
+        query = query.eq("organization_id", organization.id);
+      }
+
+      const { data, error } = await query.maybeSingle();
+      if (error) console.error("Erro ao buscar OS pelo link:", error);
+      if (data) return handleView(data as OrdemServico);
+      toast.error("OS não encontrada");
+    };
+
+    abrirOS().finally(() => {
+      const restantes = new URLSearchParams(searchParams);
+      restantes.delete("os");
+      setSearchParams(restantes, { replace: true });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, loading, ordens, organization?.id, isPlatformAdmin]);
 
   const computeSuggestedValue = async (os: OrdemServico): Promise<number> => {
     if (os.valor_final && os.valor_final > 0) return Number(os.valor_final);
