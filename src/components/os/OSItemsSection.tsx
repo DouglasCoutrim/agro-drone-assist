@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { NumberInput } from "@/components/ui/number-input";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/formatters";
+import { ItensAccordion } from "@/components/itens/ItensAccordion";
 
 export interface OSItem {
   id?: string;
@@ -300,22 +301,136 @@ export function OSItemsSection({ items, onChange, organizationId, disabled }: OS
     );
   };
 
+  const renderMobileSection = (sectionItems: OSItem[], tipo: "produto" | "servico") => {
+    const isProduct = tipo === "produto";
+    const mobileItems = sectionItems.map((it, localIdx): OSItem & { id: string } => ({
+      ...it,
+      id: it.id ?? `${tipo}-${getGlobalIndex(tipo, localIdx)}`,
+    }));
+    const subtotal = isProduct ? totalProdutos : totalServicos;
+
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          {isProduct ? <Package className="h-4 w-4 text-blue-500" /> : <Wrench className="h-4 w-4 text-amber-500" />}
+          <h4 className="text-sm font-bold">{isProduct ? "Itens / Peças" : "Serviços executados"}</h4>
+          {sectionItems.length > 0 && (
+            <span className="ml-auto text-xs font-semibold text-primary">{formatCurrency(subtotal)}</span>
+          )}
+        </div>
+        <div className="border-t-2 border-primary" />
+
+        <ItensAccordion
+          itens={mobileItems}
+          renderResumo={(item) => (
+            <div className="flex items-center justify-between gap-2">
+              <span className="min-w-0 truncate font-medium">{item.descricao || "Item sem descrição"}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">
+                {item.quantidade} × {formatCurrency(item.valor_unitario)}
+              </span>
+              <span className="shrink-0 font-semibold text-primary">{formatCurrency(item.valor_total)}</span>
+            </div>
+          )}
+          renderCampos={(item, idx) => {
+            const globalIdx = getGlobalIndex(tipo, idx);
+            return (
+              <div className="space-y-2">
+                <NumberInput
+                  min="1"
+                  value={item.quantidade}
+                  onChange={(v) => updateItem(globalIdx, "quantidade", Math.max(1, v))}
+                  className="h-11 w-full text-sm text-center"
+                  disabled={disabled}
+                  placeholder="Qtd"
+                />
+                <NumberInput
+                  step="0.01"
+                  min="0"
+                  value={item.valor_unitario}
+                  onChange={(v) => updateItem(globalIdx, "valor_unitario", v)}
+                  className="h-11 w-full text-sm"
+                  disabled={disabled}
+                  placeholder="Unit."
+                />
+                <div className="flex h-11 items-center justify-end text-sm font-semibold text-primary">
+                  {formatCurrency(item.valor_total)}
+                </div>
+              </div>
+            );
+          }}
+          isVazio={(item) => !item.item_estoque_id && !item.produto_id && !item.servico_id && !item.descricao?.trim()}
+          onAdd={() => {
+            if (disabled) return;
+            addItem({
+              tipo,
+              produto_id: null,
+              item_estoque_id: null,
+              servico_id: null,
+              descricao: "",
+              quantidade: 1,
+              unidade: isProduct ? "UN" : "HR",
+              valor_unitario: 0,
+              valor_total: 0,
+            });
+          }}
+          onRemove={(idx) => {
+            if (disabled) return;
+            removeItem(getGlobalIndex(tipo, idx));
+          }}
+          total={formatCurrency(subtotal)}
+          totalLabel={isProduct ? "Total de peças" : "Total de serviços"}
+        />
+
+        {!disabled && (
+          <ItemSearchRow
+            tipo={tipo}
+            onAdd={addItem}
+            organizationId={organizationId}
+            existingIds={existingIds}
+            disabled={disabled}
+          />
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
-      {renderSection(produtos, "produto")}
-      <Separator />
-      {renderSection(servicos, "servico")}
+      {/* Desktop: layout atual (inalterado) */}
+      <div className="hidden md:block space-y-6">
+        {renderSection(produtos, "produto")}
+        <Separator />
+        {renderSection(servicos, "servico")}
 
-      {items.length > 0 && (
-        <>
-          <Separator />
-          <div className="flex flex-col items-end gap-1 text-sm">
-            {produtos.length > 0 && <p>Peças: <span className="font-semibold">{formatCurrency(totalProdutos)}</span></p>}
-            {servicos.length > 0 && <p>Serviços: <span className="font-semibold">{formatCurrency(totalServicos)}</span></p>}
-            <p className="text-base font-bold">Total: <span className="text-primary">{formatCurrency(totalGeral)}</span></p>
-          </div>
-        </>
-      )}
+        {items.length > 0 && (
+          <>
+            <Separator />
+            <div className="flex flex-col items-end gap-1 text-sm">
+              {produtos.length > 0 && <p>Peças: <span className="font-semibold">{formatCurrency(totalProdutos)}</span></p>}
+              {servicos.length > 0 && <p>Serviços: <span className="font-semibold">{formatCurrency(totalServicos)}</span></p>}
+              <p className="text-base font-bold">Total: <span className="text-primary">{formatCurrency(totalGeral)}</span></p>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Mobile: lista de itens em accordion (mesmos totais do desktop) */}
+      <div className="md:hidden space-y-6">
+        {renderMobileSection(produtos, "produto")}
+        <Separator />
+        {renderMobileSection(servicos, "servico")}
+
+        {items.length > 0 && (
+          <>
+            <Separator />
+            <div className="flex flex-col items-end gap-1 text-sm">
+              {produtos.length > 0 && <p>Peças: <span className="font-semibold">{formatCurrency(totalProdutos)}</span></p>}
+              {servicos.length > 0 && <p>Serviços: <span className="font-semibold">{formatCurrency(totalServicos)}</span></p>}
+              <p className="text-base font-bold">Total: <span className="text-primary">{formatCurrency(totalGeral)}</span></p>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
