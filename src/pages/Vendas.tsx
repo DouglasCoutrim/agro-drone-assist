@@ -44,7 +44,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useNavigate, useLocation } from "react-router-dom";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import { limitarPercentualDesconto, calcularValorDesconto, calcularTotalComDesconto } from "@/lib/desconto";
+import { limitarPercentualDesconto, calcularValorDesconto, calcularTotalComDesconto, tetoDesconto } from "@/lib/desconto";
 import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 import { useVendasData, Venda, VendaItem, NotaFiscalEmitida } from "@/hooks/useVendasData";
 
@@ -259,7 +259,7 @@ export default function Vendas() {
       // O usuário informa o percentual; o valor em R$ é derivado e limitado ao teto do item.
       if (field === "desconto_percentual") {
         const { percentual, limitado } = limitarPercentualDesconto(Number(value) || 0, item.desconto_maximo_percentual);
-        if (limitado) toast.warning(`Desconto máximo deste item: ${item.desconto_maximo_percentual || 0}%`);
+        if (limitado) toast.warning(`Desconto máximo deste item: ${tetoDesconto(item.desconto_maximo_percentual)}%`);
         item.desconto_percentual = percentual;
       }
 
@@ -542,8 +542,8 @@ export default function Vendas() {
                             <NumberInput value={item.preco_unitario} onChange={(v) => handleItemChange(idx, "preco_unitario", v)} />
                           </div>
                           <div className="md:col-span-1">
-                            <Label className="text-xs" title={`Desconto máximo: ${item.desconto_maximo_percentual || 0}%`}>Desc. %</Label>
-                            <NumberInput value={item.desconto_percentual} onChange={(v) => handleItemChange(idx, "desconto_percentual", v)} step={0.1} min={0} max={item.desconto_maximo_percentual || 0} />
+                            <Label className="text-xs" title={`Desconto máximo: ${tetoDesconto(item.desconto_maximo_percentual)}%`}>Desc. %</Label>
+                            <NumberInput value={item.desconto_percentual} onChange={(v) => handleItemChange(idx, "desconto_percentual", v)} step={0.1} min={0} max={tetoDesconto(item.desconto_maximo_percentual)} />
                           </div>
                           <div className="md:col-span-1">
                             <Label className="text-xs">Desc. R$</Label>

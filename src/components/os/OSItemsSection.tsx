@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/formatters";
 import { ItensAccordion } from "@/components/itens/ItensAccordion";
 import { toast } from "sonner";
-import { limitarPercentualDesconto, calcularValorDesconto, calcularTotalComDesconto } from "@/lib/desconto";
+import { limitarPercentualDesconto, calcularValorDesconto, calcularTotalComDesconto, tetoDesconto } from "@/lib/desconto";
 
 export interface OSItem {
   id?: string;
@@ -225,12 +225,12 @@ function ItemCard({
           placeholder="Unit."
         />
         <NumberInput
-          step="0.1" min="0" max={item.desconto_maximo_percentual ?? 0}
+          step="0.1" min="0" max={tetoDesconto(item.desconto_maximo_percentual)}
           value={item.desconto_percentual ?? 0}
           onChange={(v) => onUpdate("desconto_percentual", v)}
           className="h-7 text-[11px] px-1.5 w-full min-w-0 text-center" disabled={disabled}
           placeholder="Desc %"
-          title={`Desconto máximo: ${item.desconto_maximo_percentual ?? 0}%`}
+          title={`Desconto máximo: ${tetoDesconto(item.desconto_maximo_percentual)}%`}
         />
         <div className="h-7 flex items-center justify-end text-[11px] font-semibold text-primary px-1 truncate">
           {formatCurrency(item.valor_total)}
@@ -257,7 +257,7 @@ export function OSItemsSection({ items, onChange, organizationId, disabled }: OS
     // O usuário informa o percentual; o valor em R$ é derivado e limitado ao teto do item.
     if (field === "desconto_percentual") {
       const { percentual, limitado } = limitarPercentualDesconto(Number(value) || 0, item.desconto_maximo_percentual);
-      if (limitado) toast.warning(`Desconto máximo deste item: ${item.desconto_maximo_percentual ?? 0}%`);
+      if (limitado) toast.warning(`Desconto máximo deste item: ${tetoDesconto(item.desconto_maximo_percentual)}%`);
       item.desconto_percentual = percentual;
     }
 
@@ -393,12 +393,12 @@ export function OSItemsSection({ items, onChange, organizationId, disabled }: OS
                 <NumberInput
                   step="0.1"
                   min="0"
-                  max={item.desconto_maximo_percentual ?? 0}
+                  max={tetoDesconto(item.desconto_maximo_percentual)}
                   value={item.desconto_percentual ?? 0}
                   onChange={(v) => updateItem(globalIdx, "desconto_percentual", v)}
                   className="h-11 w-full text-sm text-center"
                   disabled={disabled}
-                  placeholder={`Desconto % (máx ${item.desconto_maximo_percentual ?? 0}%)`}
+                  placeholder={`Desconto % (máx ${tetoDesconto(item.desconto_maximo_percentual)}%)`}
                 />
                 <div className="flex h-11 items-center justify-end text-sm font-semibold text-primary">
                   {formatCurrency(item.valor_total)}

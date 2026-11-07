@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   normalizarPercentual,
+  tetoDesconto,
   limitarPercentualDesconto,
   calcularValorDesconto,
   calcularTotalComDesconto,
@@ -28,8 +29,25 @@ describe("limitarPercentualDesconto", () => {
     expect(limitarPercentualDesconto(7.5, 10)).toEqual({ percentual: 7.5, limitado: false });
   });
 
-  it("sem máximo definido não permite desconto", () => {
-    expect(limitarPercentualDesconto(5, 0)).toEqual({ percentual: 0, limitado: true });
+  it("sem máximo definido libera o desconto informado", () => {
+    expect(limitarPercentualDesconto(5, 0)).toEqual({ percentual: 5, limitado: false });
+    expect(limitarPercentualDesconto(5, undefined)).toEqual({ percentual: 5, limitado: false });
+  });
+
+  it("sem máximo definido ainda respeita o teto absoluto", () => {
+    expect(limitarPercentualDesconto(150, 0)).toEqual({ percentual: 100, limitado: false });
+  });
+});
+
+describe("tetoDesconto", () => {
+  it("usa o teto do item quando definido", () => {
+    expect(tetoDesconto(15)).toBe(15);
+  });
+
+  it("libera até 100 quando o teto não foi definido", () => {
+    expect(tetoDesconto(0)).toBe(100);
+    expect(tetoDesconto(undefined)).toBe(100);
+    expect(tetoDesconto(null)).toBe(100);
   });
 });
 

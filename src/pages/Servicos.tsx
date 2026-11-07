@@ -271,7 +271,7 @@ export default function Servicos() {
                       />
                       <p className="text-xs text-muted-foreground">
                         {isAdmin
-                          ? "Teto de desconto que pode ser aplicado a este serviço em orçamentos e OS."
+                          ? "Teto de desconto que pode ser aplicado a este serviço em orçamentos e OS. Deixe 0 para liberar o desconto até 100%."
                           : "Somente administradores podem alterar o desconto máximo."}
                       </p>
                     </div>

@@ -2,8 +2,9 @@
  * Regras de desconto por item.
  *
  * O usuário informa um percentual e o sistema converte em R$. O percentual é
- * sempre limitado ao teto definido pelo administrador para o item
- * (`desconto_maximo_percentual`).
+ * limitado ao teto definido pelo administrador para o item
+ * (`desconto_maximo_percentual`); quando o teto não é definido (0), o item
+ * fica liberado até o teto absoluto.
  */
 
 /** Teto absoluto aceito, independente da configuração do item. */
@@ -17,14 +18,25 @@ export function normalizarPercentual(valor: number | null | undefined): number {
 }
 
 /**
- * Limita o percentual pedido ao máximo permitido pelo item.
+ * Teto de desconto efetivo do item.
+ * Quando o administrador não define um teto (0 ou vazio), o item fica liberado
+ * até o teto absoluto — assim o desconto informado é aplicado normalmente.
+ */
+export function tetoDesconto(maximo: number | null | undefined): number {
+  const max = Number(maximo);
+  if (!Number.isFinite(max) || max <= 0) return PERCENTUAL_DESCONTO_MAXIMO;
+  return Math.min(max, PERCENTUAL_DESCONTO_MAXIMO);
+}
+
+/**
+ * Limita o percentual pedido ao teto permitido pelo item.
  * `limitado` indica que o valor foi cortado e o usuário deve ser avisado.
  */
 export function limitarPercentualDesconto(
   percentual: number | null | undefined,
   maximo: number | null | undefined,
 ): { percentual: number; limitado: boolean } {
-  const max = Math.max(0, Number(maximo) || 0);
+  const max = tetoDesconto(maximo);
   const pedido = normalizarPercentual(percentual);
   if (pedido > max) return { percentual: max, limitado: true };
   return { percentual: pedido, limitado: false };

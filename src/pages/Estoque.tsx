@@ -497,7 +497,7 @@ export default function Estoque() {
                   />
                   <p className="text-xs text-muted-foreground">
                     {isAdmin
-                      ? "Teto de desconto que pode ser aplicado a este item em orçamentos, OS e vendas."
+                      ? "Teto de desconto que pode ser aplicado a este item em orçamentos, OS e vendas. Deixe 0 para liberar o desconto até 100%."
                       : "Somente administradores podem alterar o desconto máximo."}
                   </p>
                 </div>

@@ -206,9 +206,9 @@ export function useVendasData() {
     }
     const numero = `VND-${String(nextNum).padStart(5, "0")}`;
 
-    // Calcular totais
-    const valor_produtos = itens.reduce((sum, i) => sum + i.valor_total, 0);
-    const valor_desconto = itens.reduce((sum, i) => sum + i.desconto_valor, 0);
+    // Calcular totais (valor_produtos é o bruto, antes dos descontos por item)
+    const valor_produtos = itens.reduce((sum, i) => sum + Number(i.quantidade) * Number(i.preco_unitario), 0);
+    const valor_desconto = itens.reduce((sum, i) => sum + Number(i.desconto_valor || 0), 0);
     const valor_impostos = itens.reduce((sum, i) => sum + (i.icms_valor || 0) + (i.pis_cofins_valor || 0) + (i.ipi_valor || 0), 0);
     const valor_total = valor_produtos - valor_desconto + valor_impostos;
 
