@@ -126,6 +126,32 @@ serve(async (req) => {
   }
 });
 
+const CLIENTE_FIELDS = ['bairro','cep','cidade','codigo_municipio','complemento','cpf_cnpj','email','endereco','estado','indicador_ie','inscricao_estadual','nome','numero','observacoes','telefone'];
+const OS_FIELDS = ['checklist_bateria','checklist_cabos','checklist_carregador','checklist_controle','checklist_equipamento_tipo_id','checklist_helices','checklist_outros','ciclos_carga_entrada','ciclos_carga_saida','cliente_id','condicao_visual','data_entrada','data_previsao','descricao_problema','diagnostico','marca','modelo_equipamento','numero_serie','observacoes','prioridade','solucao','status','tecnico_id','tipo_equipamento','tipo_os'];
+const ESTOQUE_FIELDS = ['categoria','cest','cfop','codigo','csosn','cst_icms','custo_unitario','desconto_maximo_percentual','descricao','emite_nfe','estoque_minimo','fornecedor','gtin','imagem_url','localizacao','ncm','origem','preco_venda','quantidade','unidade'];
+const FINANCEIRO_FIELDS = ['categoria', 'data_transacao', 'descricao', 'observacoes', 'ordem_servico_id', 'tipo', 'usuario_id', 'valor'];
+
+function pickFields(body: unknown, allowed: string[]): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return out;
+  for (const k of allowed) {
+    if (Object.prototype.hasOwnProperty.call(body, k)) out[k] = (body as Record<string, unknown>)[k];
+  }
+  return out;
+}
+
+async function refsInOrg(supabase: any, orgId: string | null, body: Record<string, unknown>) {
+  if (body.cliente_id) {
+    const { data } = await supabase.from('clientes').select('id').eq('id', body.cliente_id).eq('organization_id', orgId).maybeSingle();
+    if (!data) return false;
+  }
+  if (body.tecnico_id) {
+    const { data } = await supabase.from('profiles').select('id').eq('id', body.tecnico_id).eq('organization_id', orgId).maybeSingle();
+    if (!data) return false;
+  }
+  return true;
+}
+
 async function handleClientes(req: Request, supabase: any, role: AppRole | null, orgId: string | null, id?: string) {
   const method = req.method;
 
@@ -163,7 +189,7 @@ async function handleClientes(req: Request, supabase: any, role: AppRole | null,
 
   if (method === 'POST') {
     if (!role || !['admin', 'tecnico'].includes(role)) return forbidden();
-    const body = await req.json();
+    const body: Record<string, unknown> = pickFields(await req.json(), CLIENTE_FIELDS);
     body.organization_id = orgId;
     const { data, error } = await supabase.from('clientes').insert(body).select().single();
     if (error) throw error;
@@ -172,7 +198,7 @@ async function handleClientes(req: Request, supabase: any, role: AppRole | null,
 
   if (method === 'PUT' && id) {
     if (!role || !['admin', 'tecnico'].includes(role)) return forbidden();
-    const body = await req.json();
+    const body: Record<string, unknown> = pickFields(await req.json(), CLIENTE_FIELDS);
     body.organization_id = orgId;
     const { data, error } = await supabase.from('clientes').update(body).eq('id', id).eq('organization_id', orgId).select().single();
     if (error) throw error;
@@ -231,7 +257,8 @@ async function handleOrdensServico(req: Request, supabase: any, role: AppRole | 
 
   if (method === 'POST') {
     if (!role || !['admin', 'tecnico'].includes(role)) return forbidden();
-    const body = await req.json();
+    const body: Record<string, unknown> = pickFields(await req.json(), OS_FIELDS);
+    if (!(await refsInOrg(supabase, orgId, body))) return forbidden();
     body.organization_id = orgId;
     const { data, error } = await supabase.from('ordens_servico').insert(body).select().single();
     if (error) throw error;
@@ -240,7 +267,8 @@ async function handleOrdensServico(req: Request, supabase: any, role: AppRole | 
 
   if (method === 'PUT' && id) {
     if (!role || !['admin', 'tecnico'].includes(role)) return forbidden();
-    const body = await req.json();
+    const body: Record<string, unknown> = pickFields(await req.json(), OS_FIELDS);
+    if (!(await refsInOrg(supabase, orgId, body))) return forbidden();
     const { data, error } = await supabase.from('ordens_servico').update(body).eq('id', id).eq('organization_id', orgId).select().single();
     if (error) throw error;
     return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -294,7 +322,7 @@ async function handleEstoque(req: Request, supabase: any, role: AppRole | null, 
 
   if (method === 'POST') {
     if (!role || !['admin', 'tecnico'].includes(role)) return forbidden();
-    const body = await req.json();
+    const body: Record<string, unknown> = pickFields(await req.json(), ESTOQUE_FIELDS);
     body.organization_id = orgId;
     const { data, error } = await supabase.from('itens_estoque').insert(body).select().single();
     if (error) throw error;
@@ -303,7 +331,7 @@ async function handleEstoque(req: Request, supabase: any, role: AppRole | null, 
 
   if (method === 'PUT' && id) {
     if (!role || !['admin', 'tecnico'].includes(role)) return forbidden();
-    const body = await req.json();
+    const body: Record<string, unknown> = pickFields(await req.json(), ESTOQUE_FIELDS);
     const { data, error } = await supabase.from('itens_estoque').update(body).eq('id', id).eq('organization_id', orgId).select().single();
     if (error) throw error;
     return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -346,7 +374,7 @@ async function handleFinanceiro(req: Request, supabase: any, role: AppRole | nul
 
   if (method === 'POST') {
     if (role !== 'admin') return forbidden();
-    const body = await req.json();
+    const body: Record<string, unknown> = pickFields(await req.json(), FINANCEIRO_FIELDS);
     body.organization_id = orgId;
     const { data, error } = await supabase.from('financeiro').insert(body).select().single();
     if (error) throw error;

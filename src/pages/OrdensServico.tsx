@@ -1727,7 +1727,7 @@ export default function OrdensServico() {
                 {/* Terms banner */}
                 <div className="rounded-md bg-muted/30 border border-border/50 px-3 py-2 text-xs text-muted-foreground flex items-start gap-2">
                   <FileText className="h-3 w-3 mt-0.5 shrink-0 text-primary" />
-                  <span>Ao deixar seu equipamento, você concorda com nossos <button className="underline text-primary font-medium" onClick={() => { const t = empresa.termos_servico; if (t) { const w = window.open("", "_blank"); if (w) { w.document.write(`<pre style="font-family:sans-serif;padding:40px;white-space:pre-wrap;max-width:700px;margin:0 auto">${t}</pre>`); w.document.close(); } } else { toast.info("Termos não configurados."); } }}>termos de serviço</button>.</span>
+                  <span>Ao deixar seu equipamento, você concorda com nossos <button className="underline text-primary font-medium" onClick={() => { const t = empresa.termos_servico; if (t) { const w = window.open("", "_blank"); if (w) { const pre = w.document.createElement("pre"); pre.setAttribute("style", "font-family:sans-serif;padding:40px;white-space:pre-wrap;max-width:700px;margin:0 auto"); pre.textContent = String(t); w.document.body.appendChild(pre); } } else { toast.info("Termos não configurados."); } }}>termos de serviço</button>.</span>
                 </div>
 
                 {(() => {

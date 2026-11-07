@@ -10,9 +10,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   const secret = Deno.env.get('WEBHOOK_SECRET');
-  if (secret) {
-    const provided = req.headers.get('x-webhook-secret') || '';
-    if (provided !== secret) {
+  {
+    const provided = req.headers.get('x-webhook-secret') || req.headers.get('asaas-access-token') || '';
+    if (!secret || provided !== secret) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401,
       });

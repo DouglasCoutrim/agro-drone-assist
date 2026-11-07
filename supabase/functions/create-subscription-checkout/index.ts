@@ -37,6 +37,10 @@ Deno.serve(async (req) => {
     const { data: profile } = await admin.from('profiles').select('organization_id, email, nome').eq('id', userId).maybeSingle();
     if (!profile?.organization_id) return json({ error: 'Sem organização' }, 400);
 
+    const { data: adminRole } = await admin.from('user_roles').select('role')
+      .eq('user_id', userId).eq('role', 'admin').maybeSingle();
+    if (!adminRole) return json({ error: 'Apenas administradores podem alterar a assinatura' }, 403);
+
     const { data: plan } = await admin.from('subscription_plans').select('*').eq('slug', plan_slug).maybeSingle();
     if (!plan) return json({ error: 'Plano não encontrado' }, 404);
 

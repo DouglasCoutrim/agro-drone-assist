@@ -45,6 +45,15 @@ Deno.serve(async (req) => {
     const { data: profile } = await admin.from('profiles').select('organization_id').eq('id', userId).maybeSingle();
     if (!profile?.organization_id) return json({ error: 'Sem organização' }, 400);
 
+    // Verificação de plano no servidor: o módulo de cobranças precisa estar no plano da organização.
+    const { data: orgRow } = await admin.from('organizations').select('plan').eq('id', profile.organization_id).maybeSingle();
+    const planSlug = ['bronze', 'prata', 'ouro'].includes(orgRow?.plan) ? orgRow!.plan : 'bronze';
+    const { data: planRow } = await admin.from('subscription_plans').select('features').eq('slug', planSlug).maybeSingle();
+    const planFeatures: string[] = Array.isArray(planRow?.features) ? (planRow!.features as string[]) : [];
+    if (!planFeatures.includes('cobrancas_asaas')) {
+      return json({ error: 'Seu plano não inclui cobranças. Faça upgrade para usar este recurso.' }, 403);
+    }
+
     // A3: Validar que o cliente_id pertence à organização do usuário
     if (cliente_id) {
       const { data: cliente } = await admin.from('clientes').select('organization_id').eq('id', cliente_id).maybeSingle();

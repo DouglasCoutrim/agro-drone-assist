@@ -70,6 +70,20 @@ Deno.serve(async (req) => {
     let res = await fetchXml();
     let xml = res.ok ? await res.text() : '';
     if (!res.ok || !xml.includes('<det')) {
+      // Só manifesta notas que constem na lista de NF-e recebidas pelo CNPJ desta empresa.
+      let encontrada = false;
+      let versao = 0;
+      for (let page = 0; page < 20 && !encontrada; page++) {
+        const r = await focusRequest(config, 'GET', `/v2/nfes_recebidas?cnpj=${cnpj}&versao=${versao}`);
+        if (!r.ok) return json({ error: focusErrorMessage(r.data) }, 400);
+        const lista = Array.isArray(r.data) ? r.data : [];
+        if (!lista.length) break;
+        encontrada = lista.some((n: any) => n.chave_nfe === chave);
+        const maior = Math.max(...lista.map((n: any) => Number(n.versao) || 0));
+        if (maior <= versao || lista.length < 100) break;
+        versao = maior;
+      }
+      if (!encontrada) return json({ error: 'Esta nota não consta entre as NF-e recebidas pela sua empresa.' }, 403);
       const m = await focusRequest(config, 'POST', `/v2/nfes_recebidas/${chave}/manifesto`, { tipo: 'ciencia' });
       if (!m.ok && m.status !== 422) return json({ error: `Não foi possível registrar a ciência: ${focusErrorMessage(m.data)}` }, 400);
       res = await fetchXml();
