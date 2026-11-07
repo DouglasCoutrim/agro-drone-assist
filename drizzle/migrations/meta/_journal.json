@@ -148,6 +148,13 @@
       "when": 1794020685999,
       "tag": "0020_desconto_maximo_itens",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794062011586,
+      "tag": "0021_enforce_itens_os_catalog_price",
+      "breakpoints": true
     }
   ]
 }
