@@ -129,6 +129,7 @@ serve(async (req) => {
 const CLIENTE_FIELDS = ['bairro','cep','cidade','codigo_municipio','complemento','cpf_cnpj','email','endereco','estado','indicador_ie','inscricao_estadual','nome','numero','observacoes','telefone'];
 const OS_FIELDS = ['checklist_bateria','checklist_cabos','checklist_carregador','checklist_controle','checklist_equipamento_tipo_id','checklist_helices','checklist_outros','ciclos_carga_entrada','ciclos_carga_saida','cliente_id','condicao_visual','data_entrada','data_previsao','descricao_problema','diagnostico','marca','modelo_equipamento','numero_serie','observacoes','prioridade','solucao','status','tecnico_id','tipo_equipamento','tipo_os'];
 const ESTOQUE_FIELDS = ['categoria','cest','cfop','codigo','csosn','cst_icms','custo_unitario','desconto_maximo_percentual','descricao','emite_nfe','estoque_minimo','fornecedor','gtin','imagem_url','localizacao','ncm','origem','preco_venda','quantidade','unidade'];
+const FINANCEIRO_FIELDS = ['categoria', 'data_transacao', 'descricao', 'observacoes', 'ordem_servico_id', 'tipo', 'usuario_id', 'valor'];
 
 function pickFields(body: unknown, allowed: string[]): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -373,7 +374,7 @@ async function handleFinanceiro(req: Request, supabase: any, role: AppRole | nul
 
   if (method === 'POST') {
     if (role !== 'admin') return forbidden();
-    const body: Record<string, unknown> = pickFields(await req.json(), ESTOQUE_FIELDS);
+    const body: Record<string, unknown> = pickFields(await req.json(), FINANCEIRO_FIELDS);
     body.organization_id = orgId;
     const { data, error } = await supabase.from('financeiro').insert(body).select().single();
     if (error) throw error;

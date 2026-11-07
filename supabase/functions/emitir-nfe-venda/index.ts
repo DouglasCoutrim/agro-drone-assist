@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
 
     const produtoIds = (venda.venda_itens || []).map((i: any) => i.produto_id).filter(Boolean);
     const { data: estoque } = produtoIds.length
-      ? await admin.from('itens_estoque').select('*').in('id', produtoIds)
+      ? await admin.from('itens_estoque').select('*').eq('organization_id', orgId).in('id', produtoIds)
       : { data: [] as any[] };
     const estoqueMap = new Map((estoque || []).map((e: any) => [e.id, e]));
 
