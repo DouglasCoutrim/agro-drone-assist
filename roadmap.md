@@ -1,5 +1,9 @@
 # Roadmap
 
+## Monitoramento: acessos, pedidos, notas recebidas e patrimônio
+- [ ] Corrigir somente os quatro achados confirmados, com testes direcionados.
+- [ ] Validar as telas e registrar os resultados; alterações de banco dependem de aprovação do SQL.
+
 - [x] Verificar os oito achados atuais de monitoramento e corrigir somente problemas confirmados.
 - [x] Validar abertura de vendas e janelas no celular, testar bloqueio de conversão agrupada e encerrar os oito achados. Não gravar vendas reais durante a revisão.
 
