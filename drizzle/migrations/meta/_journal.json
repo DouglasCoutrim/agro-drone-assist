@@ -134,6 +134,13 @@
       "when": 1793462019060,
       "tag": "0018_pedidos_compra_setor_e_fotos",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794020647808,
+      "tag": "0019_enable_rls_legacy_fiscal_tables",
+      "breakpoints": true
     }
   ]
 }
