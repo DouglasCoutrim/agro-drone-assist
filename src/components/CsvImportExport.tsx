@@ -67,7 +67,8 @@ export function CsvImportExport({
       const cleaned = (data || []).map((r: any) => {
         const o: Record<string, any> = {};
         exportColumns.forEach((c) => {
-          o[c] = r[c] ?? "";
+          const v = r[c] ?? "";
+          o[c] = typeof v === "string" && /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
         });
         return o;
       });

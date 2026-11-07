@@ -108,6 +108,8 @@ export default function Relatorios() {
 
   const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
+  const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch] as string));
+
   const handleExport = () => {
     const printContent = document.getElementById('report-content');
     if (!printContent) return;
@@ -130,13 +132,13 @@ export default function Relatorios() {
         <div class="stat"><div class="stat-value">${stats.totalClientes}</div><div class="stat-label">Clientes</div></div>
       </div>
       <h2>OS por Status</h2><table><tr><th>Status</th><th>Quantidade</th></tr>
-        ${osByStatus.map(s => `<tr><td>${s.name}</td><td>${s.value}</td></tr>`).join('')}
+        ${osByStatus.map(s => `<tr><td>${esc(s.name)}</td><td>${esc(s.value)}</td></tr>`).join('')}
       </table>
       <h2>Itens com Estoque Baixo</h2><table><tr><th>Item</th><th>Qtd Atual</th><th>Mínimo</th></tr>
-        ${lowStock.map(i => `<tr><td>${i.descricao}</td><td>${i.quantidade}</td><td>${i.estoque_minimo}</td></tr>`).join('')}
+        ${lowStock.map(i => `<tr><td>${esc(i.descricao)}</td><td>${esc(i.quantidade)}</td><td>${esc(i.estoque_minimo)}</td></tr>`).join('')}
       </table>
       <h2>Top 5 Clientes por OS</h2><table><tr><th>Cliente</th><th>Total OS</th></tr>
-        ${topClientes.map(c => `<tr><td>${c.nome}</td><td>${c.total}</td></tr>`).join('')}
+        ${topClientes.map(c => `<tr><td>${esc(c.nome)}</td><td>${esc(c.total)}</td></tr>`).join('')}
       </table>
     </body></html>`);
     w.document.close();
