@@ -17,6 +17,13 @@ function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 
+async function focusWebhookKey(): Promise<string> {
+  const base = Deno.env.get('FOCUS_WEBHOOK_SECRET') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(base), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode('focus-webhook-v1'));
+  return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
@@ -54,7 +61,7 @@ Deno.serve(async (req) => {
         const tokenOk = t.status === 404 || t.ok;
         itens.push({ ok: tokenOk, texto: tokenOk ? 'Conexão com a Focus NFe funcionando e token aceito.' : `A Focus recusou o token (${focusErrorMessage(t.data)}).` });
         if (tokenOk) {
-          const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/focus-webhook`;
+          const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/focus-webhook?k=${await focusWebhookKey()}`;
           const hooks = await focusRequest(config, 'GET', '/v2/hooks');
           const lista = Array.isArray(hooks.data) ? hooks.data : [];
           for (const event of ['nfe', 'nfse']) {
