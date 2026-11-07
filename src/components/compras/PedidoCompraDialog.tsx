@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Plus, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { getErrorMessage } from "@/lib/formatters";
 import { toast } from "sonner";
+import { pedidoRevision, restorePedidoDraft, type PedidoLinha, type PedidoSnapshot } from "@/lib/pedido-compra-draft";
 
 export const SETORES = [
   { value: "estoque", label: "Estoque (peças e produtos)" },
@@ -23,7 +24,7 @@ export const SETORES = [
 ];
 export const setorLabel = (v?: string | null) => SETORES.find((s) => s.value === (v || "estoque"))?.label.split(" (")[0] || "Outros";
 
-type Linha = { key: string; id?: string; item_estoque_id: string | null; descricao: string; quantidade: number; status?: string; codigo?: string };
+type Linha = PedidoLinha;
 
 export function PedidoCompraDialog({ open, onOpenChange, pedido, itensPedido, estoque, onSaved }: {
   open: boolean; onOpenChange: (o: boolean) => void; pedido: any | null; itensPedido: any[]; estoque: any[]; onSaved: () => void;
@@ -40,33 +41,63 @@ export function PedidoCompraDialog({ open, onOpenChange, pedido, itensPedido, es
   const draftKey = `livreos:pedido-compra:${organization?.id}:${user?.id}:${pedido?.id || "novo"}`;
   const [temRascunho, setTemRascunho] = useState(false);
   const [pronto, setPronto] = useState(false);
+  const original = useRef<PedidoSnapshot>({ setor: "estoque", titulo: "", obs: "", linhas: [] });
+
+  const snapshot = (head: any, items: any[]): PedidoSnapshot => ({
+    setor: head?.setor || "estoque", titulo: head?.titulo || "", obs: head?.observacoes || "",
+    linhas: items.map((s) => ({ key: s.id, id: s.id, item_estoque_id: s.item_estoque_id, descricao: s.descricao, quantidade: Number(s.quantidade), status: s.status, codigo: s.itens_estoque?.codigo })),
+  });
+  const aplicar = (value: PedidoSnapshot) => {
+    setSetor(value.setor); setTitulo(value.titulo); setObs(value.obs); setLinhas(value.linhas);
+  };
+  const lerPedido = async () => {
+    if (!organization || !pedido) throw new Error("Empresa ou pedido indisponível.");
+    const [head, items] = await Promise.all([
+      supabase.from("pedidos_compra").select("*").eq("organization_id", organization.id).eq("id", pedido.id).single(),
+      supabase.from("solicitacoes_compra").select("*, itens_estoque(codigo)").eq("organization_id", organization.id).eq("pedido_id", pedido.id),
+    ]);
+    if (head.error) throw head.error;
+    if (items.error) throw items.error;
+    return snapshot(head.data, items.data || []);
+  };
 
   const carregarOriginal = () => {
-    setSetor(pedido?.setor || "estoque"); setTitulo(pedido?.titulo || ""); setObs(pedido?.observacoes || "");
-    setLinhas(itensPedido.map((s) => ({ key: s.id, id: s.id, item_estoque_id: s.item_estoque_id, descricao: s.descricao, quantidade: Number(s.quantidade), status: s.status, codigo: s.itens_estoque?.codigo })));
+    aplicar(original.current);
   };
 
   useEffect(() => {
     if (!open) { setPronto(false); return; }
-    setBusca("");
-    let draft: any = null;
-    try { draft = JSON.parse(localStorage.getItem(draftKey) || "null"); } catch { draft = null; }
-    if (draft) {
-      setSetor(draft.setor); setTitulo(draft.titulo); setObs(draft.obs); setLinhas(draft.linhas || []);
-      setTemRascunho(true);
-      toast.info("Rascunho recuperado automaticamente.");
-    } else { carregarOriginal(); setTemRascunho(false); }
-    setPronto(true);
+    setBusca(""); setPronto(false); setTemRascunho(false);
+    let cancelled = false;
+    const carregar = async () => {
+      try {
+        const base = pedido ? await lerPedido() : snapshot(null, []);
+        if (cancelled) return;
+        original.current = base;
+        const raw = localStorage.getItem(draftKey);
+        const draft = restorePedidoDraft(raw, base);
+        if (raw && !draft) {
+          localStorage.removeItem(draftKey);
+          toast.info("Rascunho desatualizado descartado. O pedido atual foi carregado.");
+        }
+        aplicar(draft || base); setTemRascunho(!!draft);
+        if (draft) toast.info("Rascunho recuperado automaticamente.");
+        setPronto(true);
+      } catch (e) { if (!cancelled) toast.error(getErrorMessage(e)); }
+    };
+    void carregar();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, pedido?.id]);
+  }, [open, pedido?.id, draftKey]);
 
   // Salvamento automático do rascunho no aparelho
   useEffect(() => {
     if (!open || !pronto) return;
     const t = setTimeout(() => {
-      const vazio = !linhas.length && !titulo.trim() && !obs.trim();
-      if (vazio && !pedido) localStorage.removeItem(draftKey);
-      else { localStorage.setItem(draftKey, JSON.stringify({ setor, titulo, obs, linhas })); setTemRascunho(true); }
+      const current = { setor, titulo, obs, linhas };
+      const base = pedidoRevision(original.current);
+      if (pedidoRevision(current) === base) { localStorage.removeItem(draftKey); setTemRascunho(false); }
+      else { localStorage.setItem(draftKey, JSON.stringify({ version: 2, base, snapshot: current })); setTemRascunho(true); }
     }, 400);
     return () => clearTimeout(t);
   }, [open, pronto, setor, titulo, obs, linhas, draftKey, pedido]);
@@ -84,7 +115,7 @@ export function PedidoCompraDialog({ open, onOpenChange, pedido, itensPedido, es
 
   const add = (l: Omit<Linha, "key">) => {
     setLinhas((p) => {
-      const ex = l.item_estoque_id && p.find((x) => x.item_estoque_id === l.item_estoque_id && x.status !== "em_cotacao");
+      const ex = l.item_estoque_id && p.find((x) => x.item_estoque_id === l.item_estoque_id && editavel(x));
       if (ex) return p.map((x) => (x === ex ? { ...x, quantidade: x.quantidade + 1 } : x));
       return [...p, { ...l, key: crypto.randomUUID() }];
     });
@@ -93,33 +124,38 @@ export function PedidoCompraDialog({ open, onOpenChange, pedido, itensPedido, es
   const editavel = (l: Linha) => !l.status || l.status === "pendente";
 
   const salvar = async () => {
+    if (!pronto || !organization || !user) return;
     const validas = linhas.filter((l) => l.descricao.trim() && l.quantidade > 0);
     if (!validas.length) return toast.error("Adicione pelo menos um item ao pedido.");
     setSaving(true);
     try {
       let pid = pedido?.id;
+      if (pid && pedidoRevision(await lerPedido()) !== pedidoRevision(original.current)) {
+        throw new Error("Este pedido foi alterado. Feche e abra novamente para conferir os dados atuais antes de salvar.");
+      }
       const head = { setor, titulo: titulo.trim(), observacoes: obs.trim(), updated_at: new Date().toISOString() };
       if (pid) {
         const { error } = await supabase.from("pedidos_compra").update(head).eq("id", pid);
         if (error) throw error;
       } else {
-        const { data, error } = await supabase.from("pedidos_compra").insert({ ...head, organization_id: organization!.id, solicitado_por: user?.id }).select("id").single();
+        const { data, error } = await supabase.from("pedidos_compra").insert({ ...head, organization_id: organization.id, solicitado_por: user.id }).select("id").single();
         if (error) throw error;
         pid = data.id;
       }
       const atuais = new Set(validas.filter((l) => l.id).map((l) => l.id));
-      const removidos = itensPedido.filter((s) => s.status === "pendente" && !atuais.has(s.id)).map((s) => s.id);
+      const removidos = original.current.linhas.filter((s) => s.id && s.status === "pendente" && !atuais.has(s.id)).map((s) => s.key);
       if (removidos.length) {
-        const { error } = await supabase.from("solicitacoes_compra").delete().in("id", removidos);
+        const { error } = await supabase.from("solicitacoes_compra").delete().in("id", removidos).eq("organization_id", organization.id).eq("pedido_id", pid).eq("status", "pendente");
         if (error) throw error;
       }
       for (const l of validas.filter((x) => x.id && editavel(x))) {
-        const { error } = await supabase.from("solicitacoes_compra").update({ descricao: l.descricao.trim(), quantidade: l.quantidade, setor }).eq("id", l.id!);
+        if (!l.id) continue;
+        const { error } = await supabase.from("solicitacoes_compra").update({ descricao: l.descricao.trim(), quantidade: l.quantidade, setor }).eq("id", l.id).eq("organization_id", organization.id).eq("pedido_id", pid).eq("status", "pendente");
         if (error) throw error;
       }
       const novos = validas.filter((l) => !l.id).map((l) => {
         const it = estoque.find((i) => i.id === l.item_estoque_id);
-        return { organization_id: organization!.id, pedido_id: pid, setor, item_estoque_id: l.item_estoque_id, descricao: l.descricao.trim(), quantidade: l.quantidade, fornecedor_nome: it?.fornecedor || "", observacoes: obs.trim(), origem: "tecnico", solicitado_por: user?.id };
+        return { organization_id: organization.id, pedido_id: pid, setor, item_estoque_id: l.item_estoque_id, descricao: l.descricao.trim(), quantidade: l.quantidade, fornecedor_nome: it?.fornecedor || "", observacoes: obs.trim(), origem: "tecnico", solicitado_por: user.id };
       });
       if (novos.length) {
         const { error } = await supabase.from("solicitacoes_compra").insert(novos);
@@ -208,7 +244,7 @@ export function PedidoCompraDialog({ open, onOpenChange, pedido, itensPedido, es
           {temRascunho && <Button variant="ghost" onClick={descartarRascunho}>Descartar rascunho</Button>}
           <Button variant="outline" onClick={() => { if (temRascunho) toast.info("Rascunho guardado. Ao abrir de novo, ele volta."); onOpenChange(false); }}>Fechar</Button>
           {pedido && <Button variant="ghost" onClick={excluirPedido}><Trash2 className="mr-1 h-4 w-4" />Excluir pedido</Button>}
-          <Button onClick={salvar} disabled={saving}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{pedido ? "Salvar pedido" : "Enviar pedido"}</Button>
+          <Button onClick={salvar} disabled={saving || !pronto}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{pedido ? "Salvar pedido" : "Enviar pedido"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
