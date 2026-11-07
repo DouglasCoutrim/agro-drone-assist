@@ -29,6 +29,7 @@ import { formatCurrency, formatDate, getErrorMessage } from "@/lib/formatters";
 import { whatsappTemplates, openWhatsApp, WhatsAppOS } from "@/lib/whatsapp-templates";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { generateOSPDF } from "@/components/ordens-servico/OSPDFGenerator";
+import { imprimirEtiquetaOS } from "@/components/ordens-servico/EtiquetaOS58";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useOrgSegments } from "@/hooks/useOrgSegments";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -912,6 +913,22 @@ export default function OrdensServico() {
 
 
 
+  const handlePrintEtiqueta = (os: OrdemServico) => {
+    const tecnicoNome = tecnicos.find(t => t.id === os.tecnico_id)?.nome ?? "";
+    void imprimirEtiquetaOS(
+      {
+        id: os.id,
+        numero: os.numero,
+        tipo_equipamento: os.tipo_equipamento,
+        modelo_equipamento: os.modelo_equipamento,
+        numero_serie: os.numero_serie,
+        data_entrada: os.data_entrada,
+        data_previsao: os.data_previsao,
+      },
+      tecnicoNome,
+    );
+  };
+
   const handleWhatsAppTemplate = (template: keyof typeof whatsappTemplates) => {
     if (!viewingOS) return;
     const cliente = clientes.find(c => c.id === viewingOS.cliente_id);
@@ -1256,6 +1273,9 @@ export default function OrdensServico() {
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setViewingOS(os); setTimeout(handlePrintOS, 100); }}>
                             <Printer className="mr-2 h-3.5 w-3.5" />Imprimir OS
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePrintEtiqueta(os); }}>
+                            <Printer className="mr-2 h-3.5 w-3.5" />Imprimir etiqueta
                           </DropdownMenuItem>
                           {canEdit && canUserManageOS(os, user?.id, isAdmin) && (
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRegisterPaymentForExisting(os); }}>
