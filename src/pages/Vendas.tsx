@@ -117,6 +117,7 @@ export default function Vendas() {
     obs: "",
   });
   const NFE_DEFAULT = {
+    emitir_nota: false,
     natureza_operacao: "Venda de mercadoria", finalidade: "1", tipo: "1", destacar_impostos: false,
     cfop: "", csosn: "102", consumidor_final: true, pessoa_fisica: false,
     inscricao_estadual: "", indicador_ie: "9", telefone: "", cep: "", logradouro: "", numero: "", bairro: "", cidade: "", uf: "",
@@ -441,6 +442,12 @@ export default function Vendas() {
                   <div className="space-y-4">
                     <TabsContent value="dados" className="mt-0">
                     <section className="rounded-xl border bg-card p-4 md:p-6 space-y-4 shadow-sm"><h4 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4 text-primary" />Dados da nota</h4>
+                      <div className="flex items-center gap-3 rounded-lg border p-3">
+                        <Switch checked={nfeDados.emitir_nota} onCheckedChange={(v) => nf("emitir_nota", v)} />
+                        <Label>Emitir nota fiscal para esta venda</Label>
+                      </div>
+                      {nfeDados.emitir_nota && (
+                      <>
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="md:col-span-3"><Label>Natureza da Operação</Label><Input value={nfeDados.natureza_operacao} onChange={(e) => nf("natureza_operacao", e.target.value)} /></div>
                         <div><Label>Finalidade</Label>
@@ -470,6 +477,8 @@ export default function Vendas() {
                         <div className="flex items-center gap-3 md:col-span-2"><Switch checked={nfeDados.destacar_impostos} onCheckedChange={(v) => nf("destacar_impostos", v)} /><Label>Precisa destacar impostos?</Label></div>
                       </div>
                       <p className="text-xs text-muted-foreground">Número e série são reservados automaticamente na emissão.</p>
+                      </>
+                      )}
                     </section>
                     </TabsContent>
                     <TabsContent value="destinatario" className="mt-0">
@@ -491,6 +500,10 @@ export default function Vendas() {
                         <Label>Email</Label>
                         <Input type="email" value={vendaFormData.cliente_email} onChange={(e) => setVendaFormData({...vendaFormData, cliente_email: e.target.value})} />
                       </div>
+                    </div>
+                      {nfeDados.emitir_nota && (
+                      <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div><Label>Inscr. Estadual</Label><Input value={nfeDados.inscricao_estadual} onChange={(e) => nf("inscricao_estadual", e.target.value)} /></div>
                       <div><Label>Indicador IE</Label>
                         <Select value={nfeDados.indicador_ie} onValueChange={(v) => nf("indicador_ie", v)}>
@@ -511,6 +524,8 @@ export default function Vendas() {
                       <div className="flex items-center gap-3"><Switch checked={nfeDados.consumidor_final} onCheckedChange={(v) => nf("consumidor_final", v)} /><Label>Consumidor final?</Label></div>
                       <div className="flex items-center gap-3"><Switch checked={nfeDados.pessoa_fisica} onCheckedChange={(v) => nf("pessoa_fisica", v)} /><Label>Pessoa física?</Label></div>
                     </div>
+                      </>
+                      )}
                     </section>
                     </TabsContent>
                     <TabsContent value="produtos" className="mt-0">
@@ -732,7 +747,7 @@ export default function Vendas() {
                     <div className="flex gap-1 justify-end" onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewingVenda(item)}><Eye className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditVenda(item)}><Edit className="h-4 w-4" /></Button>
-                      {!item.nf_numero && item.status_pagamento !== "cancelado" && (
+                      {!item.nf_numero && item.status_pagamento !== "cancelado" && (item as any).nfe_dados?.emitir_nota === true && (
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={() => handleEmitirNFe(item.id)} title="Emitir NFe"><FileText className="h-4 w-4" /></Button>
                       )}
                       {item.nf_numero && item.status_pagamento !== "cancelado" && (
