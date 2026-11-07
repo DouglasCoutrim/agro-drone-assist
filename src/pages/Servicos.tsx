@@ -16,6 +16,7 @@ import { Tables } from "@/integrations/supabase/types";
 import { EmptyState } from "@/components/os/EmptyState";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useAuth } from "@/hooks/useAuth";
 import { CsvImportExport, parseNumberBR, emptyToNull } from "@/components/CsvImportExport";
 
 type Servico = Tables<"servicos">;
@@ -27,6 +28,7 @@ const formatCurrency = (v: number) =>
 
 export default function Servicos() {
   const { organization } = useOrganization();
+  const { isAdmin } = useAuth();
   const confirm = useConfirm();
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +42,7 @@ export default function Servicos() {
     preco: 0,
     tempo_estimado: "",
     nivel_minimo: 1,
+    desconto_maximo_percentual: 0,
   });
 
   useEffect(() => {
@@ -64,7 +67,7 @@ export default function Servicos() {
   };
 
   const resetForm = () => {
-    setFormData({ descricao: "", preco: 0, tempo_estimado: "", nivel_minimo: 1 });
+    setFormData({ descricao: "", preco: 0, tempo_estimado: "", nivel_minimo: 1, desconto_maximo_percentual: 0 });
     setEditing(null);
   };
 
@@ -81,6 +84,7 @@ export default function Servicos() {
         preco: Number(formData.preco) || 0,
         tempo_estimado: formData.tempo_estimado.trim() || null,
         nivel_minimo: Number(formData.nivel_minimo) || 1,
+        desconto_maximo_percentual: Math.min(Math.max(Number(formData.desconto_maximo_percentual) || 0, 0), 100),
       };
       if (editing) {
         const { error } = await supabase
@@ -113,6 +117,7 @@ export default function Servicos() {
       preco: s.preco,
       tempo_estimado: s.tempo_estimado || "",
       nivel_minimo: (s as any).nivel_minimo || 1,
+      desconto_maximo_percentual: Number((s as any).desconto_maximo_percentual) || 0,
     });
     setDialogOpen(true);
   };
@@ -251,6 +256,24 @@ export default function Servicos() {
                           <option value={3}>Nível 3 – Técnico Especialista</option>
                         </select>
                       </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Desconto máximo (%)</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min={0}
+                        max={100}
+                        value={formData.desconto_maximo_percentual}
+                        onChange={(e) => setFormData({ ...formData, desconto_maximo_percentual: Math.min(Math.max(Number(e.target.value) || 0, 0), 100) })}
+                        className="h-9"
+                        disabled={!isAdmin}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {isAdmin
+                          ? "Teto de desconto que pode ser aplicado a este serviço em orçamentos e OS."
+                          : "Somente administradores podem alterar o desconto máximo."}
+                      </p>
                     </div>
                   </form>
                 </div>

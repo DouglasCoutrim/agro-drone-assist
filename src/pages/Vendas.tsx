@@ -44,6 +44,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useNavigate, useLocation } from "react-router-dom";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { limitarPercentualDesconto, calcularValorDesconto, calcularTotalComDesconto } from "@/lib/desconto";
 import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 import { useVendasData, Venda, VendaItem, NotaFiscalEmitida } from "@/hooks/useVendasData";
 
@@ -74,7 +75,7 @@ export default function Vendas() {
   const [transportadorasList, setTransportadorasList] = useState<any[]>([]);
   useEffect(() => {
     if (!organization?.id) return;
-    supabase.from("itens_estoque").select("id,codigo,descricao,preco_venda,ncm,cfop,quantidade").eq("organization_id", organization.id).order("descricao").then(({ data }) => setProdutos(data || []));
+    supabase.from("itens_estoque").select("id,codigo,descricao,preco_venda,ncm,cfop,quantidade,desconto_maximo_percentual").eq("organization_id", organization.id).order("descricao").then(({ data }) => setProdutos(data || []));
     supabase.from("transportadoras").select("id,nome").eq("organization_id", organization.id).eq("ativo", true).order("nome").then(({ data }) => setTransportadorasList(data || []));
     supabase.from("clientes").select("*").eq("organization_id", organization.id).order("nome").then(({ data }) => setClientesList(data || []));
   }, [organization?.id]);
@@ -137,6 +138,7 @@ export default function Vendas() {
     valor_total: number;
     desconto_percentual: number;
     desconto_valor: number;
+    desconto_maximo_percentual: number;
     icms_percentual: number | null;
     icms_valor: number | null;
     pis_cofins_valor: number | null;
@@ -202,6 +204,7 @@ export default function Vendas() {
       valor_total: item.valor_total,
       desconto_percentual: item.desconto_percentual,
       desconto_valor: item.desconto_valor,
+      desconto_maximo_percentual: Number(produtos.find((p) => p.id === item.produto_id)?.desconto_maximo_percentual) || 0,
       icms_percentual: item.icms_percentual,
       icms_valor: item.icms_valor,
       pis_cofins_valor: item.pis_cofins_valor,
@@ -222,6 +225,7 @@ export default function Vendas() {
       valor_total: 0,
       desconto_percentual: 0,
       desconto_valor: 0,
+      desconto_maximo_percentual: 0,
       icms_percentual: null,
       icms_valor: null,
       pis_cofins_valor: null,
@@ -238,17 +242,9 @@ export default function Vendas() {
     setItensForm((prev) => {
       const updated = [...prev];
       const item = { ...updated[index], [field]: value };
-      
-      // Auto-calcular valor_total
-      if (field === "quantidade" || field === "preco_unitario" || field === "desconto_valor") {
-        const qtd = field === "quantidade" ? value : item.quantidade;
-        const preco = field === "preco_unitario" ? value : item.preco_unitario;
-        const desc = field === "desconto_valor" ? value : item.desconto_valor;
-        item.valor_total = Math.max(0, qtd * preco - desc);
-      }
-      
-      // Auto-preencher produto selecionado
-      if (field === "produto_id" && value === "manual") { item.produto_id = null as any; }
+
+      // Auto-preencher produto selecionado (inclui o teto de desconto definido pelo administrador)
+      if (field === "produto_id" && value === "manual") { item.produto_id = null as any; item.desconto_maximo_percentual = 0; }
       if (field === "produto_id" && value && value !== "manual") {
         const prod = produtos.find((p) => p.id === value);
         if (prod) {
@@ -256,10 +252,24 @@ export default function Vendas() {
           item.ncm = prod.ncm || "";
           item.cfop = prod.cfop || "5102";
           item.preco_unitario = prod.preco_venda;
-          item.valor_total = prod.preco_venda * item.quantidade;
+          item.desconto_maximo_percentual = Number(prod.desconto_maximo_percentual) || 0;
         }
       }
-      
+
+      // O usuário informa o percentual; o valor em R$ é derivado e limitado ao teto do item.
+      if (field === "desconto_percentual") {
+        const { percentual, limitado } = limitarPercentualDesconto(Number(value) || 0, item.desconto_maximo_percentual);
+        if (limitado) toast.warning(`Desconto máximo deste item: ${item.desconto_maximo_percentual || 0}%`);
+        item.desconto_percentual = percentual;
+      }
+
+      if (["quantidade", "preco_unitario", "desconto_percentual", "produto_id"].includes(field)) {
+        const percentual = limitarPercentualDesconto(item.desconto_percentual, item.desconto_maximo_percentual).percentual;
+        item.desconto_percentual = percentual;
+        item.desconto_valor = calcularValorDesconto(item.quantidade, item.preco_unitario, percentual);
+        item.valor_total = calcularTotalComDesconto(item.quantidade, item.preco_unitario, percentual);
+      }
+
       updated[index] = item;
       return updated;
     });
@@ -532,12 +542,12 @@ export default function Vendas() {
                             <NumberInput value={item.preco_unitario} onChange={(v) => handleItemChange(idx, "preco_unitario", v)} />
                           </div>
                           <div className="md:col-span-1">
-                            <Label className="text-xs">Desc. %</Label>
-                            <NumberInput value={item.desconto_percentual} onChange={(v) => handleItemChange(idx, "desconto_percentual", v)} step={0.1} />
+                            <Label className="text-xs" title={`Desconto máximo: ${item.desconto_maximo_percentual || 0}%`}>Desc. %</Label>
+                            <NumberInput value={item.desconto_percentual} onChange={(v) => handleItemChange(idx, "desconto_percentual", v)} step={0.1} min={0} max={item.desconto_maximo_percentual || 0} />
                           </div>
                           <div className="md:col-span-1">
                             <Label className="text-xs">Desc. R$</Label>
-                            <NumberInput value={item.desconto_valor} onChange={(v) => handleItemChange(idx, "desconto_valor", v)} />
+                            <Input value={formatCurrency(item.desconto_valor)} readOnly className="text-right" />
                           </div>
                           <div className="md:col-span-1">
                             <Label className="text-xs">Total</Label>

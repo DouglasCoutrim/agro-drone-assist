@@ -56,6 +56,9 @@ const mapDbItemsToOSItems = (data: ItemOSRow[] | null | undefined): OSItem[] =>
     quantidade: Number(d.quantidade) || 0,
     valor_unitario: Number(d.valor_unitario) || 0,
     valor_total: Number(d.valor_total) || 0,
+    desconto_percentual: Number((d as any).desconto_percentual) || 0,
+    desconto_valor: Number((d as any).desconto_valor) || 0,
+    desconto_maximo_percentual: Number((d as any).desconto_maximo_percentual) || 0,
   }));
 
 const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
@@ -495,6 +498,9 @@ export default function OrdensServico() {
             quantidade: Math.max(1, Math.round(Number(item.quantidade) || 1)),
             valor_unitario: Number(item.valor_unitario) || 0,
             valor_total: Number(item.valor_total) || 0,
+            desconto_percentual: Number(item.desconto_percentual) || 0,
+            desconto_valor: Number(item.desconto_valor) || 0,
+            desconto_maximo_percentual: Number(item.desconto_maximo_percentual) || 0,
             organization_id: editingOS?.organization_id || organizationId,
           });
         for (const item of changedItems.filter(item => item.id)) {

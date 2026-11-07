@@ -20,6 +20,7 @@ import { Tables } from "@/integrations/supabase/types";
 import { SearchableInput } from "@/components/ui/searchable-input";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { CsvImportExport, parseNumberBR, emptyToNull } from "@/components/CsvImportExport";
 import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
@@ -34,6 +35,7 @@ type ItemEstoque = Tables<"itens_estoque">;
 
 export default function Estoque() {
   const { organization } = useOrganization();
+  const { isAdmin } = useAuth();
   const confirm = useConfirm();
   const navigate = useNavigate();
   const [itens, setItens] = useState<ItemEstoque[]>([]);
@@ -49,7 +51,8 @@ export default function Estoque() {
     codigo: "", descricao: "", categoria: "", quantidade: 0,
     estoque_minimo: 0, custo_unitario: 0, preco_venda: 0,
     fornecedor: "", localizacao: "",
-    ncm: "", cest: "", cfop: "5102", origem: 0, csosn: "102", unidade: "UN", gtin: "", emite_nfe: true
+    ncm: "", cest: "", cfop: "5102", origem: 0, csosn: "102", unidade: "UN", gtin: "", emite_nfe: true,
+    desconto_maximo_percentual: 0
   });
 
   useEffect(() => {
@@ -163,7 +166,8 @@ export default function Estoque() {
       custo_unitario: item.custo_unitario, preco_venda: item.preco_venda,
       fornecedor: item.fornecedor || "", localizacao: item.localizacao || "",
       ncm: (item as any).ncm || "", cest: (item as any).cest || "", cfop: (item as any).cfop || "5102",
-      origem: (item as any).origem ?? 0, csosn: (item as any).csosn || "102", unidade: (item as any).unidade || "UN", gtin: (item as any).gtin || "", emite_nfe: (item as any).emite_nfe !== false
+      origem: (item as any).origem ?? 0, csosn: (item as any).csosn || "102", unidade: (item as any).unidade || "UN", gtin: (item as any).gtin || "", emite_nfe: (item as any).emite_nfe !== false,
+      desconto_maximo_percentual: Number((item as any).desconto_maximo_percentual) || 0
     });
     setDialogOpen(true);
   };
@@ -178,7 +182,7 @@ export default function Estoque() {
   };
 
   const resetForm = () => {
-    setFormData({ codigo: "", descricao: "", categoria: "", quantidade: 0, estoque_minimo: 0, custo_unitario: 0, preco_venda: 0, fornecedor: "", localizacao: "", ncm: "", cest: "", cfop: "5102", origem: 0, csosn: "102", unidade: "UN", gtin: "", emite_nfe: true });
+    setFormData({ codigo: "", descricao: "", categoria: "", quantidade: 0, estoque_minimo: 0, custo_unitario: 0, preco_venda: 0, fornecedor: "", localizacao: "", ncm: "", cest: "", cfop: "5102", origem: 0, csosn: "102", unidade: "UN", gtin: "", emite_nfe: true, desconto_maximo_percentual: 0 });
     setEditingItem(null);
   };
 
@@ -477,6 +481,25 @@ export default function Estoque() {
                     <Label htmlFor="preco_venda">Preço de Venda (R$)</Label>
                     <NumberInput id="preco_venda" step="0.01" value={formData.preco_venda} onChange={(v) => setFormData(prev => ({ ...prev, preco_venda: v }))} placeholder="0,00" min={0} className="h-10" />
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="desconto_maximo_percentual">Desconto máximo (%)</Label>
+                  <NumberInput
+                    id="desconto_maximo_percentual"
+                    step="0.1"
+                    min={0}
+                    max={100}
+                    value={formData.desconto_maximo_percentual}
+                    onChange={(v) => setFormData(prev => ({ ...prev, desconto_maximo_percentual: Math.min(Math.max(Number(v) || 0, 0), 100) }))}
+                    placeholder="0"
+                    className="h-10"
+                    disabled={!isAdmin}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {isAdmin
+                      ? "Teto de desconto que pode ser aplicado a este item em orçamentos, OS e vendas."
+                      : "Somente administradores podem alterar o desconto máximo."}
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="fornecedor">Fornecedor</Label>

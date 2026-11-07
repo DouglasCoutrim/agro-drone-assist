@@ -8,6 +8,8 @@ import { NumberInput } from "@/components/ui/number-input";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/formatters";
 import { ItensAccordion } from "@/components/itens/ItensAccordion";
+import { toast } from "sonner";
+import { limitarPercentualDesconto, calcularValorDesconto, calcularTotalComDesconto } from "@/lib/desconto";
 
 export interface OSItem {
   id?: string;
@@ -21,6 +23,9 @@ export interface OSItem {
   unidade?: string;
   valor_unitario: number;
   valor_total: number;
+  desconto_percentual?: number;
+  desconto_valor?: number;
+  desconto_maximo_percentual?: number;
 }
 
 interface CatalogItem {
@@ -31,6 +36,7 @@ interface CatalogItem {
   codigo?: string;
   categoria?: string;
   quantidade?: number;
+  desconto_maximo_percentual?: number;
 }
 
 interface OSItemsSectionProps {
@@ -79,15 +85,15 @@ function ItemSearchRow({
         const safe = search.trim().replace(/[,()%]/g, " ");
         const term = `%${safe}%`;
         if (tipo === "produto") {
-          let query = supabase.from("itens_estoque").select("id, descricao, preco_venda, codigo, categoria, quantidade").or(`descricao.ilike.${term},codigo.ilike.${term}`).order("descricao").limit(20);
+          let query = supabase.from("itens_estoque").select("id, descricao, preco_venda, codigo, categoria, quantidade, desconto_maximo_percentual").or(`descricao.ilike.${term},codigo.ilike.${term}`).order("descricao").limit(20);
           if (organizationId) query = query.eq("organization_id", organizationId);
           const { data } = await query;
-          setResults((data || []).map(p => ({ id: p.id, descricao: p.descricao, preco: Number(p.preco_venda) || 0, tipo: "produto" as const, codigo: p.codigo || undefined, categoria: p.categoria || undefined, quantidade: p.quantidade })));
+          setResults((data || []).map(p => ({ id: p.id, descricao: p.descricao, preco: Number(p.preco_venda) || 0, tipo: "produto" as const, codigo: p.codigo || undefined, categoria: p.categoria || undefined, quantidade: p.quantidade, desconto_maximo_percentual: Number(p.desconto_maximo_percentual) || 0 })));
         } else {
-          let query = supabase.from("servicos").select("id, descricao, preco").ilike("descricao", term).order("descricao").limit(20);
+          let query = supabase.from("servicos").select("id, descricao, preco, desconto_maximo_percentual").ilike("descricao", term).order("descricao").limit(20);
           if (organizationId) query = query.eq("organization_id", organizationId);
           const { data } = await query;
-          setResults((data || []).map(s => ({ id: s.id, descricao: s.descricao, preco: Number(s.preco) || 0, tipo: "servico" as const })));
+          setResults((data || []).map(s => ({ id: s.id, descricao: s.descricao, preco: Number(s.preco) || 0, tipo: "servico" as const, desconto_maximo_percentual: Number(s.desconto_maximo_percentual) || 0 })));
         }
       } catch (err) { console.error(err); }
       finally { setLoading(false); }
@@ -107,6 +113,9 @@ function ItemSearchRow({
       unidade: cat.tipo === "produto" ? "UN" : "HR",
       valor_unitario: cat.preco,
       valor_total: cat.preco,
+      desconto_percentual: 0,
+      desconto_valor: 0,
+      desconto_maximo_percentual: Number(cat.desconto_maximo_percentual) || 0,
     });
     setSearch("");
     setIsOpen(false);
@@ -200,7 +209,7 @@ function ItemCard({
           </Button>
         )}
       </div>
-      <div className="grid grid-cols-[22%_40%_1fr] gap-1 items-center">
+      <div className="grid grid-cols-[20%_34%_22%_1fr] gap-1 items-center">
         <NumberInput
           min="1"
           value={item.quantidade}
@@ -215,10 +224,23 @@ function ItemCard({
           className="h-7 text-[11px] px-1.5 w-full min-w-0" disabled={disabled}
           placeholder="Unit."
         />
+        <NumberInput
+          step="0.1" min="0" max={item.desconto_maximo_percentual ?? 0}
+          value={item.desconto_percentual ?? 0}
+          onChange={(v) => onUpdate("desconto_percentual", v)}
+          className="h-7 text-[11px] px-1.5 w-full min-w-0 text-center" disabled={disabled}
+          placeholder="Desc %"
+          title={`Desconto máximo: ${item.desconto_maximo_percentual ?? 0}%`}
+        />
         <div className="h-7 flex items-center justify-end text-[11px] font-semibold text-primary px-1 truncate">
           {formatCurrency(item.valor_total)}
         </div>
       </div>
+      {(item.desconto_valor ?? 0) > 0 && (
+        <p className="text-[10px] text-muted-foreground text-right">
+          Desconto: - {formatCurrency(item.desconto_valor ?? 0)} ({item.desconto_percentual ?? 0}%)
+        </p>
+      )}
     </div>
   );
 }
@@ -230,10 +252,23 @@ export function OSItemsSection({ items, onChange, organizationId, disabled }: OS
 
   const updateItem = (index: number, field: keyof OSItem, value: any) => {
     const updated = [...items];
-    (updated[index] as any)[field] = value;
-    if (field === "quantidade" || field === "valor_unitario") {
-      updated[index].valor_total = updated[index].quantidade * updated[index].valor_unitario;
+    const item = { ...updated[index], [field]: value } as OSItem;
+
+    // O usuário informa o percentual; o valor em R$ é derivado e limitado ao teto do item.
+    if (field === "desconto_percentual") {
+      const { percentual, limitado } = limitarPercentualDesconto(Number(value) || 0, item.desconto_maximo_percentual);
+      if (limitado) toast.warning(`Desconto máximo deste item: ${item.desconto_maximo_percentual ?? 0}%`);
+      item.desconto_percentual = percentual;
     }
+
+    if (field === "quantidade" || field === "valor_unitario" || field === "desconto_percentual") {
+      const percentual = limitarPercentualDesconto(item.desconto_percentual, item.desconto_maximo_percentual).percentual;
+      item.desconto_percentual = percentual;
+      item.desconto_valor = calcularValorDesconto(item.quantidade, item.valor_unitario, percentual);
+      item.valor_total = calcularTotalComDesconto(item.quantidade, item.valor_unitario, percentual);
+    }
+
+    updated[index] = item;
     onChange(updated);
   };
 
@@ -328,6 +363,9 @@ export function OSItemsSection({ items, onChange, organizationId, disabled }: OS
               <span className="shrink-0 text-xs text-muted-foreground">
                 {item.quantidade} × {formatCurrency(item.valor_unitario)}
               </span>
+              {(item.desconto_percentual ?? 0) > 0 && (
+                <span className="shrink-0 text-xs font-medium text-destructive">-{item.desconto_percentual}%</span>
+              )}
               <span className="shrink-0 font-semibold text-primary">{formatCurrency(item.valor_total)}</span>
             </div>
           )}
@@ -351,6 +389,16 @@ export function OSItemsSection({ items, onChange, organizationId, disabled }: OS
                   className="h-11 w-full text-sm"
                   disabled={disabled}
                   placeholder="Unit."
+                />
+                <NumberInput
+                  step="0.1"
+                  min="0"
+                  max={item.desconto_maximo_percentual ?? 0}
+                  value={item.desconto_percentual ?? 0}
+                  onChange={(v) => updateItem(globalIdx, "desconto_percentual", v)}
+                  className="h-11 w-full text-sm text-center"
+                  disabled={disabled}
+                  placeholder={`Desconto % (máx ${item.desconto_maximo_percentual ?? 0}%)`}
                 />
                 <div className="flex h-11 items-center justify-end text-sm font-semibold text-primary">
                   {formatCurrency(item.valor_total)}

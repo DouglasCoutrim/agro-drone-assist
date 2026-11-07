@@ -761,6 +761,7 @@ export type Database = {
           cst_icms: string | null
           custo_unitario: number
           descricao: string
+          desconto_maximo_percentual: number
           emite_nfe: boolean
           estoque_minimo: number
           fornecedor: string | null
@@ -786,6 +787,7 @@ export type Database = {
           cst_icms?: string | null
           custo_unitario?: number
           descricao: string
+          desconto_maximo_percentual?: number
           emite_nfe?: boolean
           estoque_minimo?: number
           fornecedor?: string | null
@@ -811,6 +813,7 @@ export type Database = {
           cst_icms?: string | null
           custo_unitario?: number
           descricao?: string
+          desconto_maximo_percentual?: number
           emite_nfe?: boolean
           estoque_minimo?: number
           fornecedor?: string | null
@@ -839,6 +842,9 @@ export type Database = {
       itens_os: {
         Row: {
           created_at: string
+          desconto_maximo_percentual: number
+          desconto_percentual: number
+          desconto_valor: number
           descricao: string
           id: string
           item_estoque_id: string | null
@@ -855,6 +861,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          desconto_maximo_percentual?: number
+          desconto_percentual?: number
+          desconto_valor?: number
           descricao: string
           id?: string
           item_estoque_id?: string | null
@@ -871,6 +880,9 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          desconto_maximo_percentual?: number
+          desconto_percentual?: number
+          desconto_valor?: number
           descricao?: string
           id?: string
           item_estoque_id?: string | null
@@ -2435,6 +2447,7 @@ export type Database = {
         Row: {
           created_at: string
           descricao: string
+          desconto_maximo_percentual: number
           fracionamento: string
           hora_minima: number | null
           id: string
@@ -2450,6 +2463,7 @@ export type Database = {
         Insert: {
           created_at?: string
           descricao: string
+          desconto_maximo_percentual?: number
           fracionamento?: string
           hora_minima?: number | null
           id?: string
@@ -2465,6 +2479,7 @@ export type Database = {
         Update: {
           created_at?: string
           descricao?: string
+          desconto_maximo_percentual?: number
           fracionamento?: string
           hora_minima?: number | null
           id?: string
