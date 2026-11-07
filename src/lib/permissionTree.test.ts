@@ -8,7 +8,7 @@ describe("permissões em árvore", () => {
     let blocked = toggleHrefs([], estoque, true);
     blocked = toggleHrefs(blocked, ["/compras"], false);
     expect(blocked).toEqual(["/compras"]);
-    const items = sectionsForRoles(["tecnico"], blocked).find((s) => s.title === "Estoque")!.items.map((i) => i.href);
+    const items = sectionsForRoles(["tecnico"], blocked).find((s) => s.title === "Estoque")?.items.map((i) => i.href);
     expect(items).toContain("/estoque");
     expect(items).not.toContain("/compras");
   });
@@ -18,5 +18,11 @@ describe("permissões em árvore", () => {
   });
   it("administrador sempre tem acesso", () => {
     expect(canAccessHref("/compras", ["admin"], ["/compras"])).toBe(true);
+  });
+  it("permite Vendas, Financeiro e Cobranças marcados para um técnico", () => {
+    for (const href of ["/vendas", "/financeiro", "/cobrancas"]) {
+      expect(canAccessHref(href, ["tecnico"], toggleHrefs([href], [href], true))).toBe(true);
+      expect(canAccessHref(href, ["tecnico"], toggleHrefs([], [href], false))).toBe(false);
+    }
   });
 });
