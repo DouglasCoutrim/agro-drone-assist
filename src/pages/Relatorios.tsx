@@ -13,6 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { FechamentoDia } from "@/components/relatorios/FechamentoDia";
+import { usePagination } from "@/hooks/usePagination";
+import { RecordPagination } from "@/components/RecordPagination";
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--success))', 'hsl(var(--warning))', 'hsl(var(--destructive))', '#8884d8', '#82ca9d'];
 
@@ -30,6 +32,7 @@ export default function Relatorios() {
   const [finData, setFinData] = useState<{ name: string; receita: number; despesa: number }[]>([]);
   const [lowStock, setLowStock] = useState<{ descricao: string; quantidade: number; estoque_minimo: number }[]>([]);
   const [topClientes, setTopClientes] = useState<{ nome: string; total: number }[]>([]);
+  const lowStockPagination = usePagination(lowStock);
 
   useEffect(() => { fetchAll(); }, [periodo]);
 
@@ -151,10 +154,10 @@ export default function Relatorios() {
       <div className="space-y-6" id="report-content">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <BarChart3 className="h-8 w-8 text-primary" />Relatórios
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <BarChart3 className="h-6 w-6 text-primary" />Relatórios
             </h1>
-            <p className="text-muted-foreground">Análises e relatórios gerenciais com dados reais</p>
+            <p className="text-sm text-muted-foreground">Análises e relatórios gerenciais com dados reais</p>
           </div>
           <div className="flex items-center gap-3">
             <Select value={periodo} onValueChange={setPeriodo}>
@@ -179,23 +182,23 @@ export default function Relatorios() {
         ) : (
           <>
             {/* KPI Cards */}
-            <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
-              <Card className="shadow-soft"><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-primary">{stats.osAbertas}</p><p className="text-xs text-muted-foreground">OS Abertas</p></CardContent></Card>
-              <Card className="shadow-soft"><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-success">{stats.osConcluidas}</p><p className="text-xs text-muted-foreground">OS Concluídas</p></CardContent></Card>
-              <Card className="shadow-soft"><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-success">{fmt(stats.faturamento)}</p><p className="text-xs text-muted-foreground">Faturamento</p></CardContent></Card>
-              <Card className="shadow-soft"><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-destructive">{fmt(stats.despesas)}</p><p className="text-xs text-muted-foreground">Despesas</p></CardContent></Card>
-              <Card className="shadow-soft"><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{stats.totalClientes}</p><p className="text-xs text-muted-foreground">Clientes</p></CardContent></Card>
-              <Card className="shadow-soft"><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{stats.totalItensEstoque}</p><p className="text-xs text-muted-foreground">Itens Estoque</p></CardContent></Card>
+            <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+              <Card className="shadow-soft"><CardContent className="p-3 text-center"><p className="text-xl font-bold text-primary">{stats.osAbertas}</p><p className="text-[11px] text-muted-foreground">OS Abertas</p></CardContent></Card>
+              <Card className="shadow-soft"><CardContent className="p-3 text-center"><p className="text-xl font-bold text-success">{stats.osConcluidas}</p><p className="text-[11px] text-muted-foreground">OS Concluídas</p></CardContent></Card>
+              <Card className="shadow-soft"><CardContent className="p-3 text-center"><p className="text-xl font-bold text-success">{fmt(stats.faturamento)}</p><p className="text-[11px] text-muted-foreground">Faturamento</p></CardContent></Card>
+              <Card className="shadow-soft"><CardContent className="p-3 text-center"><p className="text-xl font-bold text-destructive">{fmt(stats.despesas)}</p><p className="text-[11px] text-muted-foreground">Despesas</p></CardContent></Card>
+              <Card className="shadow-soft"><CardContent className="p-3 text-center"><p className="text-xl font-bold">{stats.totalClientes}</p><p className="text-[11px] text-muted-foreground">Clientes</p></CardContent></Card>
+              <Card className="shadow-soft"><CardContent className="p-3 text-center"><p className="text-xl font-bold">{stats.totalItensEstoque}</p><p className="text-[11px] text-muted-foreground">Itens Estoque</p></CardContent></Card>
             </div>
 
             {/* Charts Row */}
             <div className="grid gap-6 lg:grid-cols-2">
               {/* OS by Status Pie */}
               <Card className="shadow-soft">
-                <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><FileText className="h-5 w-5 text-primary" />OS por Status</CardTitle></CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><FileText className="h-4 w-4 text-primary" />OS por Status</CardTitle></CardHeader>
                 <CardContent>
                   {osByStatus.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">Nenhuma OS no período</p>
+                    <p className="text-center text-sm text-muted-foreground py-8">Nenhuma OS no período</p>
                   ) : (
                     <ResponsiveContainer width="100%" height={280} debounce={1}>
                       <PieChart>
@@ -212,10 +215,10 @@ export default function Relatorios() {
 
               {/* OS by Equipment Bar */}
               <Card className="shadow-soft">
-                <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Zap className="h-5 w-5 text-primary" />OS por Equipamento</CardTitle></CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><Zap className="h-4 w-4 text-primary" />OS por Equipamento</CardTitle></CardHeader>
                 <CardContent>
                   {osByEquip.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">Nenhuma OS no período</p>
+                    <p className="text-center text-sm text-muted-foreground py-8">Nenhuma OS no período</p>
                   ) : (
                     <ResponsiveContainer width="100%" height={280} debounce={1}>
                       <BarChart data={osByEquip}>
@@ -234,7 +237,7 @@ export default function Relatorios() {
             {/* Financial Chart */}
             {finData.length > 0 && (
               <Card className="shadow-soft">
-                <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><DollarSign className="h-5 w-5 text-success" />Financeiro por Categoria</CardTitle></CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><DollarSign className="h-4 w-4 text-success" />Financeiro por Categoria</CardTitle></CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300} debounce={1}>
                     <BarChart data={finData}>
@@ -254,42 +257,45 @@ export default function Relatorios() {
             {/* Tables Row */}
             <div className="grid gap-6 lg:grid-cols-2">
               {/* Low Stock */}
-              <Card className="shadow-soft">
-                <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><AlertTriangle className="h-5 w-5 text-destructive" />Estoque Baixo</CardTitle></CardHeader>
-                <CardContent>
+              <Card className="shadow-soft overflow-hidden">
+                <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><AlertTriangle className="h-4 w-4 text-destructive" />Estoque Baixo</CardTitle></CardHeader>
+                <CardContent className="p-0">
                   {lowStock.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-4">Todos os itens com estoque adequado</p>
+                    <p className="text-center text-sm text-muted-foreground py-4">Todos os itens com estoque adequado</p>
                   ) : (
-                    <Table>
-                      <TableHeader><TableRow><TableHead>Item</TableHead><TableHead className="text-center">Atual</TableHead><TableHead className="text-center">Mínimo</TableHead></TableRow></TableHeader>
-                      <TableBody>
-                        {lowStock.map((i, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell className="font-medium">{i.descricao}</TableCell>
-                            <TableCell className="text-center"><Badge variant="destructive">{i.quantidade}</Badge></TableCell>
-                            <TableCell className="text-center">{i.estoque_minimo}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                    <>
+                      <Table>
+                        <TableHeader><TableRow><TableHead className="h-8 px-3 text-xs">Item</TableHead><TableHead className="h-8 px-3 text-xs text-center">Atual</TableHead><TableHead className="h-8 px-3 text-xs text-center">Mínimo</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                          {lowStockPagination.items.map((i, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell className="px-3 py-1.5 text-xs font-medium">{i.descricao}</TableCell>
+                              <TableCell className="px-3 py-1.5 text-center"><Badge variant="destructive" className="px-1.5 py-0 text-[10px]">{i.quantidade}</Badge></TableCell>
+                              <TableCell className="px-3 py-1.5 text-center text-xs">{i.estoque_minimo}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      <RecordPagination {...lowStockPagination} />
+                    </>
                   )}
                 </CardContent>
               </Card>
 
               {/* Top Clients */}
-              <Card className="shadow-soft">
-                <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Users className="h-5 w-5 text-primary" />Top 5 Clientes por OS</CardTitle></CardHeader>
-                <CardContent>
+              <Card className="shadow-soft overflow-hidden">
+                <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><Users className="h-4 w-4 text-primary" />Top 5 Clientes por OS</CardTitle></CardHeader>
+                <CardContent className="p-0">
                   {topClientes.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-4">Nenhuma OS no período</p>
+                    <p className="text-center text-sm text-muted-foreground py-4">Nenhuma OS no período</p>
                   ) : (
                     <Table>
-                      <TableHeader><TableRow><TableHead>Cliente</TableHead><TableHead className="text-center">Total OS</TableHead></TableRow></TableHeader>
+                      <TableHeader><TableRow><TableHead className="h-8 px-3 text-xs">Cliente</TableHead><TableHead className="h-8 px-3 text-xs text-center">Total OS</TableHead></TableRow></TableHeader>
                       <TableBody>
                         {topClientes.map((c, idx) => (
                           <TableRow key={idx}>
-                            <TableCell className="font-medium">{c.nome}</TableCell>
-                            <TableCell className="text-center"><Badge>{c.total}</Badge></TableCell>
+                            <TableCell className="px-3 py-1.5 text-xs font-medium">{c.nome}</TableCell>
+                            <TableCell className="px-3 py-1.5 text-center"><Badge className="px-1.5 py-0 text-[10px]">{c.total}</Badge></TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
