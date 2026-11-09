@@ -6,8 +6,8 @@ import dyadComponentTagger from '@dyad-sh/react-vite-component-tagger';
 
 // Both values are public browser credentials. Use the managed environment when
 // available; the fallback prevents a publication missing .env from going blank.
-const PUBLIC_CLOUD_URL = "https://iynljexyjhbkfxsurddn.supabase.co";
-const PUBLIC_CLOUD_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5bmxqZXh5amhia2Z4c3VyZGRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMjY4MDUsImV4cCI6MjA4MDcwMjgwNX0.CRE9hg8SldQb7Ec3eohNPAu4nwXNnKLjZtrKla4EGWA";
+const PUBLIC_CLOUD_URL = "https://qanmmpjofbacoxlxcgfy.supabase.co";
+const PUBLIC_CLOUD_KEY = "sb_publishable_dCqriRZlaAp6SE-LL_KR6w_aXk3aIsM";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "VITE_");
