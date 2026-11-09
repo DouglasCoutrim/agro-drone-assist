@@ -163,7 +163,7 @@ export default function Vendas() {
   };
 
   const handleOpenNewVenda = () => {
-    navigate("/vendas?nova=1");
+    navigate("/pdv");
   };
 
   useEffect(() => {

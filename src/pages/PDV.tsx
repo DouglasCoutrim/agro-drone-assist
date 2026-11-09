@@ -5,10 +5,9 @@ import { useVendasData } from "@/hooks/useVendasData";
 import { SmartSelect } from "@/components/ui/smart-select";
 import { NumberInput } from "@/components/ui/number-input";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calculator, Receipt, Trash2 } from "lucide-react";
+import { Calculator, FileText, Loader2, Receipt, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/formatters";
 import { limitarPercentualDesconto, calcularValorDesconto, calcularTotalComDesconto, tetoDesconto } from "@/lib/desconto";
@@ -23,7 +22,7 @@ interface Linha { key: string; produto_id: string; nome: string; ncm: string; cf
 
 export default function PDV() {
   const { organization } = useOrganization();
-  const { createVenda } = useVendasData();
+  const { createVenda, fetchData } = useVendasData();
   const [produtos, setProdutos] = useState<any[]>([]);
   const [clientes, setClientes] = useState<any[]>([]);
   const [linhas, setLinhas] = useState<Linha[]>([]);
@@ -90,7 +89,8 @@ export default function PDV() {
     doc.save(`recibo-${venda.numero}.pdf`);
   };
 
-  const finalizar = async () => {
+  // Conclui a venda e, em seguida, emite a nota fiscal ou gera o recibo.
+  const finalizar = async (emitirNotaFiscal: boolean) => {
     if (linhas.length === 0) return toast.error("Adicione pelo menos um produto");
     if (forma === "dinheiro" && recebido > 0 && recebido < total) return toast.error("Valor recebido menor que o total");
     setSaving(true);
@@ -104,12 +104,31 @@ export default function PDV() {
         data_venda: new Date().toISOString().split("T")[0],
         cliente_id: cliente?.id || null, cliente_nome: cliente?.nome || "Consumidor",
         cliente_cpf_cnpj: cliente?.cpf_cnpj || null, cliente_email: cliente?.email || null,
-        forma_pagamento: forma, status_pagamento: "pago", obs: "Venda PDV (recibo, sem nota fiscal)",
+        forma_pagamento: forma, status_pagamento: "pago",
+        obs: emitirNotaFiscal ? "Venda PDV" : "Venda PDV (recibo, sem nota fiscal)",
         nf_numero: null, nf_chave: null, nf_emitida_em: null, nf_provider: null,
-        nfe_dados: { emitir_nota: false, origem: "pdv" },
+        nfe_dados: { emitir_nota: emitirNotaFiscal, origem: "pdv" },
       } as any, itens as any);
-      await gerarRecibo(venda);
-      toast.success(`Venda ${venda.numero} registrada`);
+
+      if (emitirNotaFiscal) {
+        try {
+          const { error } = await supabase.functions.invoke("emitir-nfe-venda", { body: { action: "emitir", venda_id: venda.id } });
+          if (error) throw error;
+          await fetchData();
+          toast.success(`Venda ${venda.numero} registrada e NF-e enviada!`);
+        } catch (err: any) {
+          let msg = err?.message;
+          try {
+            const body = await err.context?.json?.();
+            if (body?.problemas?.length) msg = body.problemas.join("\n");
+            else if (body?.error) msg = body.error;
+          } catch { /* ignora */ }
+          toast.error("Venda salva, mas a NF-e não foi emitida", { description: msg, duration: 12000 });
+        }
+      } else {
+        await gerarRecibo(venda);
+        toast.success(`Venda ${venda.numero} registrada e recibo gerado`);
+      }
       setLinhas([]); setCliente(null); setRecebido(0);
     } catch (err: any) {
       toast.error(err?.message || "Não foi possível finalizar a venda");
@@ -118,7 +137,7 @@ export default function PDV() {
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto pb-24">
-      <div className="flex items-center gap-2"><Calculator className="h-6 w-6 text-primary" /><h1 className="text-2xl font-bold">PDV — Venda com recibo</h1></div>
+      <div className="flex items-center gap-2"><Calculator className="h-6 w-6 text-primary" /><h1 className="text-2xl font-bold">PDV — Nova venda</h1></div>
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="lg:col-span-2 rounded-xl border bg-card p-4 space-y-3">
           <SmartSelect
@@ -154,8 +173,17 @@ export default function PDV() {
             <div className="flex justify-between text-xl font-bold text-primary"><span>Total</span><span>{formatCurrency(total)}</span></div>
             {troco > 0 && <div className="flex justify-between font-semibold"><span>Troco</span><span>{formatCurrency(troco)}</span></div>}
           </div>
-          <Button className="w-full" size="lg" disabled={saving || linhas.length === 0} onClick={finalizar}><Receipt className="h-4 w-4 mr-2" />{saving ? "Finalizando..." : "Finalizar e gerar recibo"}</Button>
-          <Input readOnly value="Venda sem nota fiscal" className="text-center text-xs text-muted-foreground" />
+          <div className="grid grid-cols-1 gap-2">
+            <Button className="w-full gap-2" size="lg" disabled={saving || linhas.length === 0} onClick={() => finalizar(true)}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+              Emitir Nota Fiscal
+            </Button>
+            <Button variant="outline" className="w-full gap-2" size="lg" disabled={saving || linhas.length === 0} onClick={() => finalizar(false)}>
+              <Receipt className="h-4 w-4" />
+              Emitir Recibo
+            </Button>
+          </div>
+          <p className="text-center text-[11px] text-muted-foreground">Ao clicar, a venda é concluída e o documento é gerado em seguida.</p>
         </aside>
       </div>
     </div>

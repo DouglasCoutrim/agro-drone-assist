@@ -51,9 +51,8 @@ export const navSections: NavSection[] = [
   {
     title: "Vendas",
     items: [
-      { title: "PDV (venda com recibo)", icon: Calculator, href: "/pdv", roles: STAFF },
+      { title: "Nova Venda (PDV)", icon: Calculator, href: "/pdv", roles: STAFF },
       { title: "Pedidos de Venda", icon: ShoppingCart, href: "/vendas", roles: STAFF },
-      { title: "Nova Venda", icon: ShoppingCart, href: "/vendas?nova=1", roles: STAFF },
     ],
   },
   {

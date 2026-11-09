@@ -201,7 +201,7 @@ const Index = () => {
         {/* Ações rápidas */}
         <div className="flex flex-wrap gap-2">
           <Button className="gap-2 bg-primary text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-md" onClick={() => navigate("/ordens-servico")}><Plus className="h-4 w-4" />Nova OS</Button>
-          <Button className="gap-2 bg-primary text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-md" onClick={() => navigate("/vendas")}><ShoppingCart className="h-4 w-4" />Nova venda</Button>
+          <Button className="gap-2 bg-primary text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-md" onClick={() => navigate("/pdv")}><ShoppingCart className="h-4 w-4" />Nova venda</Button>
           <Button className="gap-2 bg-primary text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-md" onClick={() => navigate("/financeiro")}><DollarSign className="h-4 w-4" />Financeiro</Button>
           <Button className="gap-2 bg-primary text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-md" onClick={() => navigate("/relatorios")}><BarChart3 className="h-4 w-4" />Relatórios</Button>
         </div>
