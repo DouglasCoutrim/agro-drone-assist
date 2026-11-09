@@ -198,6 +198,14 @@ const Index = () => {
           </div>
         </div>
 
+        {/* Ações rápidas */}
+        <div className="flex flex-wrap gap-2">
+          <Button className="gap-2 bg-primary text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-md" onClick={() => navigate("/ordens-servico")}><Plus className="h-4 w-4" />Nova OS</Button>
+          <Button className="gap-2 bg-primary text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-md" onClick={() => navigate("/vendas")}><ShoppingCart className="h-4 w-4" />Nova venda</Button>
+          <Button className="gap-2 bg-primary text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-md" onClick={() => navigate("/financeiro")}><DollarSign className="h-4 w-4" />Financeiro</Button>
+          <Button className="gap-2 bg-primary text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-md" onClick={() => navigate("/relatorios")}><BarChart3 className="h-4 w-4" />Relatórios</Button>
+        </div>
+
         {/* KPIs */}
         {loading || !dados ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -311,10 +319,10 @@ const Index = () => {
           </div>
         )}
 
-        {/* Alertas + Ações rápidas */}
+        {/* Alertas */}
         {dados && !loading && (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <PremiumCard className="lg:col-span-2">
+          <div className="grid grid-cols-1 gap-4">
+            <PremiumCard>
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="flex items-center gap-2 text-base font-semibold"><AlertTriangle className="h-4 w-4 text-destructive" />Requer atenção</h3>
                 <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold">{totalAlertas}</span>
@@ -344,16 +352,6 @@ const Index = () => {
                   )}
                 </div>
               )}
-            </PremiumCard>
-
-            <PremiumCard>
-              <h3 className="mb-4 text-base font-semibold">Ações rápidas</h3>
-              <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
-                <Button variant="outline" className="justify-start gap-2" onClick={() => navigate("/ordens-servico")}><Plus className="h-4 w-4" />Nova OS</Button>
-                <Button variant="outline" className="justify-start gap-2" onClick={() => navigate("/vendas")}><ShoppingCart className="h-4 w-4" />Nova venda</Button>
-                <Button variant="outline" className="justify-start gap-2" onClick={() => navigate("/financeiro")}><DollarSign className="h-4 w-4" />Financeiro</Button>
-                <Button variant="outline" className="justify-start gap-2" onClick={() => navigate("/relatorios")}><BarChart3 className="h-4 w-4" />Relatórios</Button>
-              </div>
             </PremiumCard>
           </div>
         )}
