@@ -7,7 +7,7 @@ import { NumberInput } from "@/components/ui/number-input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calculator, FileText, Loader2, Receipt, Trash2 } from "lucide-react";
+import { Calculator, FileText, Loader2, Receipt, ShoppingCart, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/formatters";
 import { limitarPercentualDesconto, calcularValorDesconto, calcularTotalComDesconto, tetoDesconto } from "@/lib/desconto";
@@ -157,20 +157,36 @@ export default function PDV() {
             value={undefined}
             onSelect={(o) => addProduto(o.id)}
           />
-          {linhas.length === 0 && <p className="text-center text-muted-foreground py-8">Nenhum produto adicionado</p>}
+          {linhas.length === 0 && (
+            <div className="flex flex-col items-center justify-center gap-1 py-10 text-center">
+              <ShoppingCart className="h-8 w-8 text-muted-foreground/50" />
+              <p className="text-sm font-medium text-muted-foreground">Busque um produto para começar</p>
+              <p className="text-xs text-muted-foreground">Pressione Enter após digitar o código ou nome</p>
+            </div>
+          )}
+          {linhas.length > 0 && (
+            <div className="hidden items-center gap-1 px-2 text-xs text-muted-foreground sm:grid sm:grid-cols-[34%_14%_24%_12%_1fr]">
+              <span>Produto</span>
+              <span className="text-center">Qtd</span>
+              <span>Preço</span>
+              <span className="text-center">Desc %</span>
+              <span className="text-right">Total</span>
+            </div>
+          )}
           {linhas.map((l) => { const c = calc(l); return (
             <div key={l.key} className="rounded-md border border-border/60 bg-card/50 px-2 py-1.5 space-y-1">
-              <div className="flex items-center justify-between gap-1.5">
-                <p className="text-[12px] font-medium truncate flex-1">{l.nome}</p>
-                <Button type="button" size="icon" variant="ghost" className="h-5 w-5 p-0 text-destructive/60 hover:text-destructive shrink-0" title="Remover item" onClick={() => setLinhas((p) => p.filter((x) => x.key !== l.key))}><Trash2 className="h-3 w-3" /></Button>
+              <div className="flex items-start gap-1.5">
+                <p className="min-w-0 flex-1 truncate text-[13px] font-semibold">{l.nome}</p>
+                <Button type="button" size="icon" variant="ghost" className="h-5 w-5 shrink-0 p-0 text-destructive/60 hover:text-destructive" title="Remover item" onClick={() => setLinhas((p) => p.filter((x) => x.key !== l.key))}><Trash2 className="h-3 w-3" /></Button>
               </div>
-              <div className="grid grid-cols-[22%_36%_22%_1fr] gap-1 items-center">
-                <NumberInput min={1} step={1} inputMode="numeric" value={l.qtd} onChange={(v) => upd(l.key, { qtd: Math.round(v) })} placeholder="Qtd" className="h-7 w-full min-w-0 px-1.5 text-[11px] text-center" />
+              <div className="grid grid-cols-2 gap-1 sm:grid-cols-[34%_14%_24%_12%_1fr] sm:items-center">
+                <span aria-hidden className="hidden sm:block" />
+                <NumberInput min={1} step={1} inputMode="numeric" value={l.qtd} onChange={(v) => upd(l.key, { qtd: Math.round(v) })} placeholder="Qtd" className="h-7 w-full min-w-0 px-1.5 text-center text-[11px]" />
                 <MoneyInput value={l.preco} onChange={(v) => upd(l.key, { preco: v })} className="h-7 pl-6 pr-1.5 text-[11px]" />
-                <NumberInput min={0} max={tetoDesconto(l.max)} step={0.1} value={l.pct} onChange={(v) => upd(l.key, { pct: v })} placeholder="Desc %" title={`Desconto máximo: ${tetoDesconto(l.max)}%`} className="h-7 w-full min-w-0 px-1.5 text-[11px] text-center" />
-                <div className="h-7 flex items-center justify-end truncate px-1 text-[11px] font-semibold text-primary">{formatCurrency(c.total)}</div>
+                <NumberInput min={0} max={tetoDesconto(l.max)} step={0.1} value={l.pct} onChange={(v) => upd(l.key, { pct: v })} placeholder="Desc %" title={`Desconto máximo: ${tetoDesconto(l.max)}%`} className="h-7 w-full min-w-0 px-1.5 text-center text-[11px]" />
+                <div className="flex h-7 items-center justify-end truncate px-1 text-[13px] font-semibold">{formatCurrency(c.total)}</div>
               </div>
-              {c.desc > 0 && <p className="text-[10px] text-muted-foreground text-right">Desconto: - {formatCurrency(c.desc)} ({l.pct}%)</p>}
+              {c.desc > 0 && <p className="text-[10px] text-muted-foreground">Desconto: - {formatCurrency(c.desc)} ({l.pct}%)</p>}
             </div>
           ); })}
         </section>
@@ -183,11 +199,11 @@ export default function PDV() {
               <SelectContent>{FORMAS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}</SelectContent></Select>
           </div>
           {forma === "dinheiro" && <div><Label>Valor recebido</Label><MoneyInput value={recebido} onChange={setRecebido} className="h-10 pl-7 pr-3" /></div>}
-          <div className="space-y-1 text-sm border-t pt-3">
+          <div className="space-y-1 text-sm">
             <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
             <div className="flex justify-between text-destructive"><span>Descontos</span><span>-{formatCurrency(descontos)}</span></div>
-            <div className="flex justify-between text-xl font-bold text-primary"><span>Total</span><span>{formatCurrency(total)}</span></div>
-            {troco > 0 && <div className="flex justify-between font-semibold"><span>Troco</span><span>{formatCurrency(troco)}</span></div>}
+            <div className="mt-2 flex items-center justify-between border-t pt-2 text-xl font-bold text-primary"><span>Total</span><span>{formatCurrency(total)}</span></div>
+            {troco > 0 && <div className="flex justify-between rounded-md bg-primary/10 px-2 py-1 font-semibold"><span>Troco</span><span>{formatCurrency(troco)}</span></div>}
           </div>
           <div className="grid grid-cols-1 gap-2">
             <Button className="w-full gap-2" size="lg" disabled={saving || linhas.length === 0} onClick={() => finalizar(true)}>
@@ -199,6 +215,8 @@ export default function PDV() {
               Emitir Recibo
             </Button>
           </div>
+          <p className="text-center text-xs text-muted-foreground">Venda sem nota fiscal</p>
+          {linhas.length === 0 && <p className="text-center text-xs text-muted-foreground">Adicione pelo menos um produto</p>}
           <p className="text-center text-[11px] text-muted-foreground">Ao clicar, a venda é concluída e o documento é gerado em seguida.</p>
         </aside>
       </div>
