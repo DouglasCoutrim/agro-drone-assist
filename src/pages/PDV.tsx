@@ -42,6 +42,7 @@ async function buscarProdutos(organizationId: string, termo: string) {
     .select(SELECT_PRODUTO)
     .eq("organization_id", organizationId)
     .or(`codigo.ilike.%${safe}%,descricao.ilike.%${safe}%`)
+    .order("descricao")
     .limit(20);
   return data || [];
 }
