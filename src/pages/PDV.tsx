@@ -208,10 +208,10 @@ export default function PDV() {
   }, [saving, linhas, finalizar]);
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto pb-24">
+    <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto pb-24 bg-slate-100 min-h-screen">
       <div className="flex items-center gap-2"><Calculator className="h-6 w-6 text-primary" /><h1 className="text-2xl font-bold">PDV — Nova venda</h1></div>
       <div className="grid gap-4 lg:grid-cols-3">
-        <section className="lg:col-span-2 rounded-xl border bg-card p-4 space-y-2">
+        <section className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white shadow-sm p-4 space-y-2">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -276,7 +276,7 @@ export default function PDV() {
             </div>
           ); })}
         </section>
-        <aside className="rounded-xl border bg-card p-4 space-y-4 h-fit lg:sticky lg:top-4">
+        <aside className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 space-y-4 h-fit lg:sticky lg:top-4">
           <div><Label>Cliente (opcional)</Label>
             <SmartSelect placeholder="Consumidor" options={clientes.map((c) => ({ id: c.id, label: c.nome, sublabel: c.cpf_cnpj || "" }))} value={cliente?.id} onSelect={(o) => setCliente(clientes.find((c) => c.id === o.id) || null)} onClear={() => setCliente(null)} />
           </div>
