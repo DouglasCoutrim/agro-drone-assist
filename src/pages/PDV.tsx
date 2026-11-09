@@ -47,7 +47,7 @@ async function buscarProdutos(organizationId: string, termo: string) {
   return data || [];
 }
 
-interface Linha { key: string; produto_id: string; nome: string; ncm: string; cfop: string; qtd: number; preco: number; pct: number; max: number; }
+interface Linha { key: string; produto_id: string; codigo: string; nome: string; ncm: string; cfop: string; qtd: number; preco: number; pct: number; max: number; }
 
 export default function PDV() {
   const { organization } = useOrganization();
@@ -94,7 +94,7 @@ export default function PDV() {
     setLinhas((prev) => {
       const ex = prev.find((l) => l.produto_id === id);
       if (ex) return prev.map((l) => (l === ex ? { ...l, qtd: l.qtd + 1 } : l));
-      return [...prev, { key: crypto.randomUUID(), produto_id: id, nome: p.descricao, ncm: p.ncm || "", cfop: p.cfop || "5102", qtd: 1, preco: Number(p.preco_venda) || 0, pct: 0, max: Number(p.desconto_maximo_percentual) || 0 }];
+      return [...prev, { key: crypto.randomUUID(), produto_id: id, codigo: p.codigo || "", nome: p.descricao, ncm: p.ncm || "", cfop: p.cfop || "5102", qtd: 1, preco: Number(p.preco_venda) || 0, pct: 0, max: Number(p.desconto_maximo_percentual) || 0 }];
     });
     setTermoBusca("");
     setResultados([]);
@@ -251,30 +251,45 @@ export default function PDV() {
             </div>
           )}
           {linhas.length > 0 && (
-            <div className="hidden items-center gap-1 px-2 text-xs text-muted-foreground sm:grid sm:grid-cols-[34%_14%_24%_12%_1fr]">
+            <div className="hidden md:grid md:grid-cols-[minmax(0,1fr)_96px_124px_88px_112px_32px] md:items-center md:gap-3 border-b border-slate-200 px-2 pb-2 text-xs uppercase tracking-wide text-slate-500">
               <span>Produto</span>
-              <span className="text-center">Qtd</span>
-              <span>Preço</span>
-              <span className="text-center">Desc %</span>
+              <span className="text-right">Qtd</span>
+              <span className="text-right">Preço</span>
+              <span className="text-right">Desc %</span>
               <span className="text-right">Total</span>
+              <span />
             </div>
           )}
-          {linhas.map((l) => { const c = calc(l); return (
-            <div key={l.key} className="rounded-md border border-border/60 bg-card/50 px-2 py-1.5 space-y-1">
-              <div className="flex items-start gap-1.5">
-                <p className="min-w-0 flex-1 truncate text-[13px] font-semibold">{l.nome}</p>
-                <Button type="button" size="icon" variant="ghost" className="h-5 w-5 shrink-0 p-0 text-destructive/60 hover:text-destructive" title="Remover item" onClick={() => setLinhas((p) => p.filter((x) => x.key !== l.key))}><Trash2 className="h-3 w-3" /></Button>
+          <div className="divide-y divide-slate-200">
+            {linhas.map((l) => { const c = calc(l); return (
+              <div key={l.key} className="relative px-2 py-2 hover:bg-slate-50 md:grid md:grid-cols-[minmax(0,1fr)_96px_124px_88px_112px_32px] md:items-center md:gap-3">
+                <div className="min-w-0 pr-9 md:pr-0">
+                  {l.codigo && <p className="truncate text-xs text-slate-500">{l.codigo}</p>}
+                  <p className="truncate text-sm font-medium">{l.nome}</p>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-2 md:contents">
+                  <div className="space-y-1">
+                    <span className="block text-xs uppercase tracking-wide text-slate-500 md:hidden">Qtd</span>
+                    <NumberInput min={1} step={1} inputMode="numeric" value={l.qtd} onChange={(v) => upd(l.key, { qtd: Math.round(v) })} placeholder="Qtd" className="h-10 w-full text-right text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="block text-xs uppercase tracking-wide text-slate-500 md:hidden">Preço</span>
+                    <MoneyInput value={l.preco} onChange={(v) => upd(l.key, { preco: v })} className="h-10 text-right" />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="block text-xs uppercase tracking-wide text-slate-500 md:hidden">Desc %</span>
+                    <NumberInput min={0} max={tetoDesconto(l.max)} step={0.1} value={l.pct} onChange={(v) => upd(l.key, { pct: v })} placeholder="Desc %" title={`Desconto máximo: ${tetoDesconto(l.max)}%`} className="h-10 w-full text-right text-sm" />
+                  </div>
+                  <div className="space-y-1 text-right">
+                    <span className="block text-xs uppercase tracking-wide text-slate-500 md:hidden">Total</span>
+                    <p className="truncate text-right text-sm font-semibold">{formatCurrency(c.total)}</p>
+                    {c.desc > 0 && <p className="text-xs text-emerald-700">- {formatCurrency(c.desc)} ({l.pct}%)</p>}
+                  </div>
+                </div>
+                <Button type="button" size="icon" variant="ghost" className="absolute right-2 top-2 h-8 w-8 shrink-0 p-0 text-slate-400 hover:text-destructive md:static md:justify-self-center" title="Remover item" onClick={() => setLinhas((p) => p.filter((x) => x.key !== l.key))}><Trash2 className="h-4 w-4" /></Button>
               </div>
-              <div className="grid grid-cols-2 gap-1 sm:grid-cols-[34%_14%_24%_12%_1fr] sm:items-center">
-                <span aria-hidden className="hidden sm:block" />
-                <NumberInput min={1} step={1} inputMode="numeric" value={l.qtd} onChange={(v) => upd(l.key, { qtd: Math.round(v) })} placeholder="Qtd" className="h-7 w-full min-w-0 px-1.5 text-center text-[11px]" />
-                <MoneyInput value={l.preco} onChange={(v) => upd(l.key, { preco: v })} className="h-7 pl-6 pr-1.5 text-[11px]" />
-                <NumberInput min={0} max={tetoDesconto(l.max)} step={0.1} value={l.pct} onChange={(v) => upd(l.key, { pct: v })} placeholder="Desc %" title={`Desconto máximo: ${tetoDesconto(l.max)}%`} className="h-7 w-full min-w-0 px-1.5 text-center text-[11px]" />
-                <div className="flex h-7 items-center justify-end truncate px-1 text-[13px] font-semibold">{formatCurrency(c.total)}</div>
-              </div>
-              {c.desc > 0 && <p className="text-[10px] text-muted-foreground">Desconto: - {formatCurrency(c.desc)} ({l.pct}%)</p>}
-            </div>
-          ); })}
+            ); })}
+          </div>
         </section>
         <aside className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 space-y-4 h-fit lg:sticky lg:top-4">
           <div><Label>Cliente (opcional)</Label>
