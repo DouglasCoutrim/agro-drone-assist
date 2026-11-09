@@ -372,12 +372,12 @@ export function OSItemsSection({ items, onChange, organizationId, disabled }: OS
           renderCampos={(item, idx) => {
             const globalIdx = getGlobalIndex(tipo, idx);
             return (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <NumberInput
                   min="1"
                   value={item.quantidade}
                   onChange={(v) => updateItem(globalIdx, "quantidade", Math.max(1, v))}
-                  className="h-11 w-full text-sm text-center"
+                  className="h-9 w-full px-2 text-[12px] text-center"
                   disabled={disabled}
                   placeholder="Qtd"
                 />
@@ -386,7 +386,7 @@ export function OSItemsSection({ items, onChange, organizationId, disabled }: OS
                   min="0"
                   value={item.valor_unitario}
                   onChange={(v) => updateItem(globalIdx, "valor_unitario", v)}
-                  className="h-11 w-full text-sm"
+                  className="h-9 w-full px-2 text-[12px]"
                   disabled={disabled}
                   placeholder="Unit."
                 />
@@ -396,11 +396,11 @@ export function OSItemsSection({ items, onChange, organizationId, disabled }: OS
                   max={tetoDesconto(item.desconto_maximo_percentual)}
                   value={item.desconto_percentual ?? 0}
                   onChange={(v) => updateItem(globalIdx, "desconto_percentual", v)}
-                  className="h-11 w-full text-sm text-center"
+                  className="h-9 w-full px-2 text-[12px] text-center"
                   disabled={disabled}
                   placeholder={`Desconto % (máx ${tetoDesconto(item.desconto_maximo_percentual)}%)`}
                 />
-                <div className="flex h-11 items-center justify-end text-sm font-semibold text-primary">
+                <div className="flex h-9 items-center justify-end text-[12px] font-semibold text-primary">
                   {formatCurrency(item.valor_total)}
                 </div>
               </div>

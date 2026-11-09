@@ -18,8 +18,8 @@ import { cn } from "@/lib/utils";
 function MoneyInput({ value, onChange, className }: { value: number; onChange: (v: number) => void; className?: string }) {
   return (
     <div className="relative">
-      <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
-      <NumberInput value={value} step={0.01} min={0} onChange={onChange} className={cn("h-8 pl-8 pr-2 text-sm", className)} />
+      <span className="pointer-events-none absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">R$</span>
+      <NumberInput value={value} step={0.01} min={0} onChange={onChange} className={cn("h-8 pl-6 pr-1.5 text-sm", className)} />
     </div>
   );
 }
@@ -150,7 +150,7 @@ export default function PDV() {
     <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto pb-24">
       <div className="flex items-center gap-2"><Calculator className="h-6 w-6 text-primary" /><h1 className="text-2xl font-bold">PDV — Nova venda</h1></div>
       <div className="grid gap-4 lg:grid-cols-3">
-        <section className="lg:col-span-2 rounded-xl border bg-card p-4 space-y-3">
+        <section className="lg:col-span-2 rounded-xl border bg-card p-4 space-y-2">
           <SmartSelect
             placeholder="Buscar produto por código ou nome..."
             options={produtos.map((p) => ({ id: p.id, label: `${p.codigo ? p.codigo + " · " : ""}${p.descricao}`, sublabel: formatCurrency(p.preco_venda) }))}
@@ -159,13 +159,18 @@ export default function PDV() {
           />
           {linhas.length === 0 && <p className="text-center text-muted-foreground py-8">Nenhum produto adicionado</p>}
           {linhas.map((l) => { const c = calc(l); return (
-            <div key={l.key} className="grid grid-cols-2 md:grid-cols-12 gap-2 items-end border rounded-lg p-2">
-              <div className="col-span-2 md:col-span-3"><Label className="text-xs">Produto</Label><p className="text-sm font-medium truncate">{l.nome}</p></div>
-              <div className="md:col-span-2"><Label className="text-xs">Qtd</Label><NumberInput value={l.qtd} min={1} step={1} inputMode="numeric" onChange={(v) => upd(l.key, { qtd: Math.round(v) })} className="h-8 px-2 text-sm" /></div>
-              <div className="md:col-span-2"><Label className="text-xs">Preço</Label><MoneyInput value={l.preco} onChange={(v) => upd(l.key, { preco: v })} /></div>
-              <div className="md:col-span-1"><Label className="text-xs">Desc %</Label><NumberInput value={l.pct} min={0} max={tetoDesconto(l.max)} step={0.1} onChange={(v) => upd(l.key, { pct: v })} className="h-8 px-2 text-sm" /></div>
-              <div className="md:col-span-3 text-right"><Label className="text-xs">Total</Label><p className="font-bold text-primary">{formatCurrency(c.total)}</p>{c.desc > 0 && <p className="text-xs text-destructive">-{formatCurrency(c.desc)}</p>}</div>
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="Remover item" onClick={() => setLinhas((p) => p.filter((x) => x.key !== l.key))}><Trash2 className="h-4 w-4" /></Button>
+            <div key={l.key} className="rounded-md border border-border/60 bg-card/50 px-2 py-1.5 space-y-1">
+              <div className="flex items-center justify-between gap-1.5">
+                <p className="text-[12px] font-medium truncate flex-1">{l.nome}</p>
+                <Button type="button" size="icon" variant="ghost" className="h-5 w-5 p-0 text-destructive/60 hover:text-destructive shrink-0" title="Remover item" onClick={() => setLinhas((p) => p.filter((x) => x.key !== l.key))}><Trash2 className="h-3 w-3" /></Button>
+              </div>
+              <div className="grid grid-cols-[22%_36%_22%_1fr] gap-1 items-center">
+                <NumberInput min={1} step={1} inputMode="numeric" value={l.qtd} onChange={(v) => upd(l.key, { qtd: Math.round(v) })} placeholder="Qtd" className="h-7 w-full min-w-0 px-1.5 text-[11px] text-center" />
+                <MoneyInput value={l.preco} onChange={(v) => upd(l.key, { preco: v })} className="h-7 pl-6 pr-1.5 text-[11px]" />
+                <NumberInput min={0} max={tetoDesconto(l.max)} step={0.1} value={l.pct} onChange={(v) => upd(l.key, { pct: v })} placeholder="Desc %" title={`Desconto máximo: ${tetoDesconto(l.max)}%`} className="h-7 w-full min-w-0 px-1.5 text-[11px] text-center" />
+                <div className="h-7 flex items-center justify-end truncate px-1 text-[11px] font-semibold text-primary">{formatCurrency(c.total)}</div>
+              </div>
+              {c.desc > 0 && <p className="text-[10px] text-muted-foreground text-right">Desconto: - {formatCurrency(c.desc)} ({l.pct}%)</p>}
             </div>
           ); })}
         </section>
@@ -177,7 +182,7 @@ export default function PDV() {
             <Select value={forma} onValueChange={setForma}><SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{FORMAS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}</SelectContent></Select>
           </div>
-          {forma === "dinheiro" && <div><Label>Valor recebido</Label><MoneyInput value={recebido} onChange={setRecebido} className="h-10 pl-9 pr-3" /></div>}
+          {forma === "dinheiro" && <div><Label>Valor recebido</Label><MoneyInput value={recebido} onChange={setRecebido} className="h-10 pl-7 pr-3" /></div>}
           <div className="space-y-1 text-sm border-t pt-3">
             <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
             <div className="flex justify-between text-destructive"><span>Descontos</span><span>-{formatCurrency(descontos)}</span></div>

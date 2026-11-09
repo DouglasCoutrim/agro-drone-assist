@@ -533,42 +533,27 @@ export default function Vendas() {
                     {itensForm.length === 0 && <p className="text-muted-foreground text-center py-4">Nenhum item adicionado</p>}
                     <div className="space-y-2">
                       {itensForm.map((item, idx) => (
-                        <div key={item.id} className="border rounded-lg p-3 grid grid-cols-2 md:grid-cols-12 gap-2 items-end">
-                          <div className="col-span-2 md:col-span-3">
-                            <Label className="text-xs">Produto</Label>
-                            <SmartSelect
-                              placeholder="Digite para buscar produto..."
-                              options={produtos.map((p) => ({ id: p.id, label: `${p.codigo ? p.codigo + " · " : ""}${p.descricao}`, sublabel: formatCurrency(p.preco_venda) }))}
-                              value={item.produto_id || undefined}
-                              onSelect={(o) => handleItemChange(idx, "produto_id", o.id)}
-                              onClear={() => handleItemChange(idx, "produto_id", "manual")}
-                            />
+                        <div key={item.id} className="rounded-md border border-border/60 bg-card/50 px-2 py-1.5 space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <div className="min-w-0 flex-1">
+                              <SmartSelect
+                                placeholder="Buscar produto..."
+                                options={produtos.map((p) => ({ id: p.id, label: `${p.codigo ? p.codigo + " · " : ""}${p.descricao}`, sublabel: formatCurrency(p.preco_venda) }))}
+                                value={item.produto_id || undefined}
+                                onSelect={(o) => handleItemChange(idx, "produto_id", o.id)}
+                                onClear={() => handleItemChange(idx, "produto_id", "manual")}
+                              />
+                            </div>
+                            <Button type="button" variant="ghost" size="icon" className="h-5 w-5 p-0 text-destructive/60 hover:text-destructive shrink-0" title="Remover item" onClick={() => handleRemoveItem(idx)}><Trash2 className="h-3 w-3" /></Button>
                           </div>
-                          <div className="col-span-2 md:col-span-2">
-                            <Label className="text-xs">Nome</Label>
-                            <Input value={item.nome_produto} onChange={(e) => handleItemChange(idx, "nome_produto", e.target.value)} />
+                          <div className="grid grid-cols-[32%_14%_20%_14%_1fr] gap-1 items-center">
+                            <Input value={item.nome_produto} onChange={(e) => handleItemChange(idx, "nome_produto", e.target.value)} placeholder="Nome do item" className="h-7 w-full min-w-0 px-1.5 text-[11px]" />
+                            <NumberInput value={item.quantidade} onChange={(v) => handleItemChange(idx, "quantidade", v)} step={0.001} min={0.001} placeholder="Qtd" className="h-7 w-full min-w-0 px-1.5 text-[11px] text-center" />
+                            <NumberInput value={item.preco_unitario} onChange={(v) => handleItemChange(idx, "preco_unitario", v)} placeholder="Preço unit." className="h-7 w-full min-w-0 px-1.5 text-[11px]" />
+                            <NumberInput value={item.desconto_percentual} onChange={(v) => handleItemChange(idx, "desconto_percentual", v)} step={0.1} min={0} max={tetoDesconto(item.desconto_maximo_percentual)} placeholder="Desc %" title={`Desconto máximo: ${tetoDesconto(item.desconto_maximo_percentual)}%`} className="h-7 w-full min-w-0 px-1.5 text-[11px] text-center" />
+                            <div className="h-7 flex items-center justify-end truncate px-1 text-[11px] font-semibold text-primary">{formatCurrency(item.valor_total)}</div>
                           </div>
-                          <div className="md:col-span-1">
-                            <Label className="text-xs">Qtd</Label>
-                            <NumberInput value={item.quantidade} onChange={(v) => handleItemChange(idx, "quantidade", v)} step={0.001} min={0.001} />
-                          </div>
-                          <div className="md:col-span-2">
-                            <Label className="text-xs">Preço Unit.</Label>
-                            <NumberInput value={item.preco_unitario} onChange={(v) => handleItemChange(idx, "preco_unitario", v)} />
-                          </div>
-                          <div className="md:col-span-1">
-                            <Label className="text-xs" title={`Desconto máximo: ${tetoDesconto(item.desconto_maximo_percentual)}%`}>Desc. %</Label>
-                            <NumberInput value={item.desconto_percentual} onChange={(v) => handleItemChange(idx, "desconto_percentual", v)} step={0.1} min={0} max={tetoDesconto(item.desconto_maximo_percentual)} />
-                          </div>
-                          <div className="md:col-span-1">
-                            <Label className="text-xs">Desc. R$</Label>
-                            <Input value={formatCurrency(item.desconto_valor)} readOnly className="text-right" />
-                          </div>
-                          <div className="md:col-span-1">
-                            <Label className="text-xs">Total</Label>
-                            <Input value={formatCurrency(item.valor_total)} readOnly className="font-bold text-primary text-right" />
-                          </div>
-                          <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => handleRemoveItem(idx)}><Trash2 className="h-4 w-4" /></Button>
+                          {item.desconto_valor > 0 && <p className="text-[10px] text-muted-foreground text-right">Desconto: - {formatCurrency(item.desconto_valor)} ({item.desconto_percentual}%)</p>}
                         </div>
                       ))}
                     </div>
