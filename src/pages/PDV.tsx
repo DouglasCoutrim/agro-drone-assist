@@ -292,7 +292,13 @@ export default function PDV() {
             {troco > 0 && <div className="flex justify-between rounded-md bg-primary/10 px-2 py-1 font-semibold"><span>Troco</span><span>{formatCurrency(troco)}</span></div>}
           </div>
           <div className="grid grid-cols-1 gap-2">
-            <Button className="w-full gap-2" size="lg" disabled={saving || linhas.length === 0} onClick={() => finalizar(true)}>
+            <Button
+              className="w-full gap-2"
+              size="lg"
+              disabled={saving || linhas.length === 0 || !cliente}
+              title={!cliente ? "Selecione um cliente cadastrado para emitir a nota fiscal" : undefined}
+              onClick={() => finalizar(true)}
+            >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
               Emitir Nota Fiscal
             </Button>
@@ -301,9 +307,10 @@ export default function PDV() {
               Emitir Recibo
             </Button>
           </div>
-          <p className="text-center text-xs text-muted-foreground">Venda sem nota fiscal</p>
           {linhas.length === 0 && <p className="text-center text-xs text-muted-foreground">Adicione pelo menos um produto</p>}
-          <p className="text-center text-[11px] text-muted-foreground">Ao clicar, a venda é concluída e o documento é gerado em seguida.</p>
+          {linhas.length > 0 && !cliente && <p className="text-center text-xs text-muted-foreground">Selecione um cliente cadastrado para emitir a nota fiscal.</p>}
+          <p className="text-center text-xs text-muted-foreground">Venda sem nota fiscal</p>
+          <p className="text-center text-[11px] text-muted-foreground">Pressione <kbd className="rounded border border-border bg-muted px-1 font-mono text-[10px]">F2</kbd> para finalizar com recibo.</p>
         </aside>
       </div>
     </div>
