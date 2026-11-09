@@ -251,7 +251,7 @@ export default function PDV() {
             </div>
           )}
           {linhas.length > 0 && (
-            <div className="hidden md:grid md:grid-cols-[minmax(0,1fr)_96px_124px_88px_112px_32px] md:items-center md:gap-3 border-b border-slate-200 px-2 pb-2 text-xs uppercase tracking-wide text-slate-500">
+            <div className="hidden md:grid md:grid-cols-[minmax(0,1fr)_96px_124px_88px_112px_32px] md:items-center md:gap-3 rounded-lg border-b border-slate-200 bg-vc-green-light px-3 pt-4 pb-2 text-xs uppercase tracking-wide text-vc-green-text">
               <span>Produto</span>
               <span className="text-right">Qtd</span>
               <span className="text-right">Preço</span>
