@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useVendasData } from "@/hooks/useVendasData";
 import { SmartSelect } from "@/components/ui/smart-select";
 import { NumberInput } from "@/components/ui/number-input";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calculator, FileText, Loader2, Receipt, ShoppingCart, Trash2 } from "lucide-react";
+import { Calculator, FileText, Loader2, Receipt, Search, ShoppingCart, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/formatters";
 import { limitarPercentualDesconto, calcularValorDesconto, calcularTotalComDesconto, tetoDesconto } from "@/lib/desconto";
@@ -29,24 +30,52 @@ const FORMAS = [
   { value: "debito", label: "Débito" }, { value: "credito", label: "Crédito" },
 ];
 
+const SELECT_PRODUTO = "id,codigo,descricao,preco_venda,ncm,cfop,quantidade,desconto_maximo_percentual";
+
+// Busca produtos no servidor por código ou descrição (máx. 20)
+async function buscarProdutos(organizationId: string, termo: string) {
+  // Remove caracteres que quebram o filtro .or()
+  const safe = termo.replace(/[,()%*]/g, " ").trim();
+  if (!safe) return [];
+  const { data } = await supabase
+    .from("itens_estoque")
+    .select(SELECT_PRODUTO)
+    .eq("organization_id", organizationId)
+    .or(`codigo.ilike.%${safe}%,descricao.ilike.%${safe}%`)
+    .limit(20);
+  return data || [];
+}
+
 interface Linha { key: string; produto_id: string; nome: string; ncm: string; cfop: string; qtd: number; preco: number; pct: number; max: number; }
 
 export default function PDV() {
   const { organization } = useOrganization();
   const { createVenda, fetchData } = useVendasData();
-  const [produtos, setProdutos] = useState<any[]>([]);
   const [clientes, setClientes] = useState<any[]>([]);
+  const [termoBusca, setTermoBusca] = useState("");
+  const [resultados, setResultados] = useState<any[]>([]);
   const [linhas, setLinhas] = useState<Linha[]>([]);
   const [cliente, setCliente] = useState<any | null>(null);
   const [forma, setForma] = useState("dinheiro");
   const [recebido, setRecebido] = useState(0);
   const [saving, setSaving] = useState(false);
+  const buscaRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!organization?.id) return;
-    supabase.from("itens_estoque").select("id,codigo,descricao,preco_venda,ncm,cfop,quantidade,desconto_maximo_percentual").eq("organization_id", organization.id).order("descricao").then(({ data }) => setProdutos(data || []));
     supabase.from("clientes").select("*").eq("organization_id", organization.id).order("nome").then(({ data }) => setClientes(data || []));
   }, [organization?.id]);
+
+  // Busca de produtos no servidor, com debounce de 250 ms
+  useEffect(() => {
+    if (!organization?.id) return;
+    const termo = termoBusca.trim();
+    if (termo.length < 2) { setResultados([]); return; }
+    const timeout = setTimeout(() => {
+      buscarProdutos(organization.id, termo).then(setResultados);
+    }, 250);
+    return () => clearTimeout(timeout);
+  }, [termoBusca, organization?.id]);
 
   const calc = (l: Linha) => ({ desc: calcularValorDesconto(l.qtd, l.preco, l.pct), total: calcularTotalComDesconto(l.qtd, l.preco, l.pct) });
   const subtotal = useMemo(() => linhas.reduce((s, l) => s + l.qtd * l.preco, 0), [linhas]);
@@ -54,14 +83,33 @@ export default function PDV() {
   const total = Math.max(0, Math.round((subtotal - descontos) * 100) / 100);
   const troco = forma === "dinheiro" && recebido > total ? recebido - total : 0;
 
-  const addProduto = (id: string) => {
-    const p = produtos.find((x) => x.id === id);
+  const addProduto = async (id: string) => {
+    let p: any = resultados.find((x) => x.id === id);
+    if (!p && organization?.id) {
+      const { data } = await supabase.from("itens_estoque").select(SELECT_PRODUTO).eq("id", id).eq("organization_id", organization.id).maybeSingle();
+      p = data;
+    }
     if (!p) return;
     setLinhas((prev) => {
       const ex = prev.find((l) => l.produto_id === id);
       if (ex) return prev.map((l) => (l === ex ? { ...l, qtd: l.qtd + 1 } : l));
       return [...prev, { key: crypto.randomUUID(), produto_id: id, nome: p.descricao, ncm: p.ncm || "", cfop: p.cfop || "5102", qtd: 1, preco: Number(p.preco_venda) || 0, pct: 0, max: Number(p.desconto_maximo_percentual) || 0 }];
     });
+    setTermoBusca("");
+    setResultados([]);
+    buscaRef.current?.focus();
+  };
+
+  // Enter: usa o código exato ou o único resultado encontrado
+  const adicionarPorEnter = async () => {
+    const termo = termoBusca.trim();
+    if (termo.length < 2 || !organization?.id) return;
+    const lista = resultados.length > 0 ? resultados : await buscarProdutos(organization.id, termo);
+    const exato = lista.find((p) => (p.codigo || "").toLowerCase() === termo.toLowerCase());
+    const alvo = exato || (lista.length === 1 ? lista[0] : null);
+    if (alvo) { await addProduto(alvo.id); return; }
+    if (lista.length === 0) toast.error("Produto não encontrado");
+    else setResultados(lista);
   };
 
   const upd = (key: string, patch: Partial<Linha>) => setLinhas((prev) => prev.map((l) => {
@@ -146,17 +194,54 @@ export default function PDV() {
     } finally { setSaving(false); }
   };
 
+  // F2 finaliza a venda em qualquer lugar da tela
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "F2") return;
+      e.preventDefault();
+      if (saving || linhas.length === 0) return;
+      finalizar(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [saving, linhas, finalizar]);
+
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto pb-24">
       <div className="flex items-center gap-2"><Calculator className="h-6 w-6 text-primary" /><h1 className="text-2xl font-bold">PDV — Nova venda</h1></div>
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="lg:col-span-2 rounded-xl border bg-card p-4 space-y-2">
-          <SmartSelect
-            placeholder="Buscar produto por código ou nome..."
-            options={produtos.map((p) => ({ id: p.id, label: `${p.codigo ? p.codigo + " · " : ""}${p.descricao}`, sublabel: formatCurrency(p.preco_venda) }))}
-            value={undefined}
-            onSelect={(o) => addProduto(o.id)}
-          />
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              ref={buscaRef}
+              value={termoBusca}
+              onChange={(e) => setTermoBusca(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") { setTermoBusca(""); setResultados([]); return; }
+                if (e.key === "Enter") { e.preventDefault(); adicionarPorEnter(); }
+              }}
+              placeholder="Buscar produto por código ou nome..."
+              autoComplete="off"
+              className="h-9 pl-9 text-sm"
+            />
+          </div>
+          {resultados.length > 0 && (
+            <div className="max-h-72 overflow-y-auto rounded-md border border-border bg-popover shadow-lg">
+              {resultados.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => addProduto(p.id)}
+                  className="flex w-full items-center gap-2 border-b border-border/30 px-3 py-2 text-left last:border-b-0 hover:bg-muted/50"
+                >
+                  <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{p.codigo || "—"}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm">{p.descricao}</span>
+                  <span className="shrink-0 text-sm font-semibold text-primary">{formatCurrency(p.preco_venda)}</span>
+                </button>
+              ))}
+            </div>
+          )}
           {linhas.length === 0 && (
             <div className="flex flex-col items-center justify-center gap-1 py-10 text-center">
               <ShoppingCart className="h-8 w-8 text-muted-foreground/50" />
