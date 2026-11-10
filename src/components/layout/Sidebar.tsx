@@ -12,6 +12,7 @@ import logo from "@/assets/logo-icon.png";
 import { sectionsForRoles } from "./navConfig";
 import { NavModules } from "./NavModules";
 import { Button } from "@/components/ui/button";
+import { useOrganization } from "@/hooks/useOrganization";
 
 interface SidebarProps { className?: string; }
 
@@ -22,6 +23,7 @@ export function Sidebar({ className }: SidebarProps) {
   const navigate = useNavigate();
   const { roles, user, signOut } = useAuth();
   const { blocked } = usePermissions();
+  const { organization } = useOrganization();
   const [profile, setProfile] = useState<{ nome: string; avatar_url: string | null } | null>(null);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
 
@@ -56,7 +58,7 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-1 space-y-1 overflow-y-auto scrollbar-thin">
-        <NavModules dark sections={sectionsForRoles(roles, blocked)} />
+        <NavModules dark flat sections={sectionsForRoles(roles, blocked)} />
       </nav>
 
       {/* User footer */}
@@ -71,6 +73,15 @@ export function Sidebar({ className }: SidebarProps) {
           </Link>
         )}
 
+        {organization?.name && (
+          <Link to="/empresa" className="flex items-center gap-2.5 rounded-xl bg-sidebar-accent/60 p-2 hover:bg-sidebar-accent">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground"><Building2 className="h-4 w-4" /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[13px] font-semibold text-sidebar-accent-foreground">{organization.name}</span>
+              <span className="block text-[11px] text-sidebar-foreground/70">Sua empresa</span>
+            </span>
+          </Link>
+        )}
         <div className="flex items-center gap-2.5 rounded-xl bg-sidebar-accent/60 p-2">
           <div className="w-[36px] h-[36px] rounded-full bg-sidebar-primary flex items-center justify-center text-[13px] font-bold text-primary-foreground flex-shrink-0">
             {initials}
