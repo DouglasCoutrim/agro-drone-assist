@@ -8,6 +8,7 @@ const corsHeaders = {
 };
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { applyPaidReference } from '../_shared/payment-order-scope.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -37,28 +38,29 @@ Deno.serve(async (req) => {
     );
 
     if (event === 'PAYMENT_RECEIVED' || event === 'PAYMENT_CONFIRMED') {
-      const ref = payment.externalReference;
-      if (ref) {
-        // Só busca por id se `ref` for um UUID válido; um número de OS legado
-        // (ex.: "OS-0001") aqui faria o .eq('id', ref) estourar erro de tipo.
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ref);
-        const { data: os } = isUuid
-          ? await admin.from('ordens_servico').select('id').eq('id', ref).maybeSingle()
-          : { data: null };
-        if (os) {
-          // "finalizada" não existe no enum status_os (aberta, em_andamento,
-          // aguardando_peca, concluida, entregue, cancelada, recebido,
-          // aguardando_diagnostico, aguardando_aprovacao, aprovado, em_reparo,
-          // em_testes, pronto_retirada, ...) — esse update sempre falhava.
-          // Ajustado para "entregue", que é o status terminal mais próximo
-          // do que a migration original pretendia. Confirme se é o status
-          // certo para o seu fluxo de negócio.
-          await admin.from('ordens_servico').update({ status: 'entregue' }).eq('id', ref);
-        } else if (isUuid) {
-          await admin.from('orcamentos').update({ status: 'aprovado' }).eq('id', ref);
-        }
+      // Resolve the payment using each shop's provider account, never trust the
+      // callback reference to choose a shop or an order.
+      if (typeof payment.id !== 'string' || !/^pay_[a-zA-Z0-9_-]+$/.test(payment.id)) {
+        return json({ error: 'Pagamento inválido' }, 400);
       }
-      console.log(`[asaas-tenant-webhook] ${event}`, payment.id, ref);
+      const { data: configs, error: configError } = await admin.from('empresa_config')
+        .select('organization_id,gateway_clientes,gateway_clientes_credentials')
+        .eq('gateway_clientes', 'asaas');
+      if (configError) throw configError;
+      for (const cfg of configs ?? []) {
+        const credentials = cfg.gateway_clientes_credentials as any;
+        if (!credentials?.api_key || !cfg.organization_id) continue;
+        const base = credentials.asaas_environment === 'sandbox'
+          ? 'https://api-sandbox.asaas.com/v3' : 'https://api.asaas.com/v3';
+        const response = await fetch(`${base}/payments/${encodeURIComponent(payment.id)}`, {
+          headers: { 'access_token': credentials.api_key },
+        });
+        if (!response.ok) continue;
+        const verified = await response.json();
+        if (verified.id !== payment.id || !['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(verified.status)) continue;
+        await applyPaidReference(admin, cfg.organization_id, verified.externalReference);
+        break;
+      }
     }
 
     return json({ received: true });

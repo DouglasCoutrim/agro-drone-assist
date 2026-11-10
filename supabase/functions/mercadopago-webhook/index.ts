@@ -10,6 +10,7 @@ const corsHeaders = {
 };
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { applyPaidReference } from '../_shared/payment-order-scope.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -81,6 +82,7 @@ async function handlePayment(paymentId: string | null, type: string | null) {
 
   let approved = false;
   let externalRef: string | undefined;
+  let organizationId: string | undefined;
 
   for (const cfg of cfgs ?? []) {
     if (cfg.gateway_clientes !== 'mercadopago') continue;
@@ -94,26 +96,13 @@ async function handlePayment(paymentId: string | null, type: string | null) {
     if (pay?.status === 'approved') {
       approved = true;
       externalRef = pay.external_reference;
+      organizationId = cfg.organization_id;
       break;
     }
   }
 
-  if (approved && externalRef) {
-    // Só busca por id se `externalRef` for um UUID válido (mesmo problema do
-    // asaas-tenant-webhook: uma referência não-UUID faria o .eq('id', ...)
-    // estourar erro de tipo).
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(externalRef);
-    const { data: os } = isUuid
-      ? await admin.from('ordens_servico').select('id').eq('id', externalRef).maybeSingle()
-      : { data: null };
-    if (os) {
-      // "finalizada" não existe no enum status_os — substituído por "entregue"
-      // (status terminal mais próximo). Confirme se é o status certo para o
-      // seu fluxo de negócio.
-      await admin.from('ordens_servico').update({ status: 'entregue' }).eq('id', externalRef);
-    } else if (isUuid) {
-      await admin.from('orcamentos').update({ status: 'aprovado' }).eq('id', externalRef);
-    }
+  if (approved && externalRef && organizationId) {
+    await applyPaidReference(admin, organizationId, externalRef);
   }
 }
 
