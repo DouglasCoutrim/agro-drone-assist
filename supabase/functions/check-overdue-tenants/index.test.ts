@@ -26,7 +26,7 @@ function setup({ secret, user = null, authError = null, member = null, roleError
     serve: (fn: typeof handler) => { handler = fn; },
   };
   // Only the import is replaced; all authorization and business code stays intact.
-  const transpiled = source.replace(/: any/g, '');
+  const transpiled = new Bun.Transpiler({ loader: 'ts' }).transformSync(source);
   new Function('Deno', 'createClient', transpiled)(deno, () => ({ from, auth: { getUser } }));
   const call = (headers: Record<string, string> = { authorization: 'Bearer test-token' }) =>
     handler(new Request('https://example.test/check', { method: 'POST', headers }));
