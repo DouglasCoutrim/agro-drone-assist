@@ -8,6 +8,7 @@ const data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const Body = z.discriminatedUnion('action', [
   z.object({ action: z.literal('sincronizar') }),
   z.object({ action: z.literal('listar'), inicio: data, fim: data }),
+  z.object({ action: z.literal('buscar_chave'), chave: z.string().regex(/^\d{44}$/) }),
   z.object({ action: z.literal('xml'), chave: z.string().regex(/^\d{44}$/), confirmar_ciencia: z.boolean().optional() }),
 ]);
 
@@ -86,6 +87,31 @@ Deno.serve(async (req) => {
       }
       await admin.from('sincronizacao_nfe_recebidas').upsert({ organization_id: orgId, ultima_versao: versao, ultima_consulta: new Date().toISOString(), status: 'sucesso', updated_at: new Date().toISOString() }, { onConflict: 'organization_id' });
       return json({ atualizadas: novas });
+    }
+
+    // Busca por chave: usa o registro salvo ou consulta a Focus e grava a nota recebida
+    const campos = 'chave_acesso,numero,nome_emitente,cnpj_emitente,data_emissao,valor_total,situacao_sefaz,manifestacao_destinatario,tem_xml,importada,nota_compra_id';
+    if (parsed.data.action === 'buscar_chave') {
+      const chaveBusca = parsed.data.chave;
+      const { data: salva } = await admin.from('notas_recebidas').select(campos).eq('organization_id', orgId).eq('chave_acesso', chaveBusca).maybeSingle();
+      if (salva) return json({ nota: salva });
+      const r = await focusRequest(config, 'GET', `/v2/nfes_recebidas/${chaveBusca}.json`);
+      if (r.status === 404) return json({ error: 'Nota não encontrada. A SEFAZ só disponibiliza notas emitidas para o CNPJ da sua empresa.' }, 404);
+      if (!r.ok) return json({ error: focusErrorMessage(r.data) }, 400);
+      const n: any = r.data || {};
+      const dest = onlyDigits(n.documento_destinatario || n.cnpj_destinatario || '');
+      if (dest && dest !== cnpj) return json({ error: 'Esta nota não foi emitida para o CNPJ da sua empresa.' }, 403);
+      const row = {
+        organization_id: orgId, chave_acesso: chaveBusca, numero: String(n.numero ?? chaveBusca.slice(25, 34)),
+        serie: n.serie ? String(n.serie) : null, data_emissao: n.data_emissao || null,
+        cnpj_emitente: onlyDigits(n.documento_emitente || n.cnpj_emitente || '').slice(0, 14) || null, nome_emitente: n.nome_emitente || null,
+        valor_total: Number(n.valor_total) || 0, situacao_sefaz: n.situacao || null,
+        manifestacao_destinatario: n.manifestacao_destinatario || 'sem_manifestacao',
+        tem_xml: n.nfe_completa === true || n.nfe_completa === 'true', updated_at: new Date().toISOString(),
+      };
+      const { data: gravada, error } = await admin.from('notas_recebidas').upsert(row, { onConflict: 'organization_id,chave_acesso' }).select(campos).single();
+      if (error) return json({ error: error.message }, 400);
+      return json({ nota: gravada });
     }
 
     // Baixar XML: só registra ciência se o usuário confirmar
