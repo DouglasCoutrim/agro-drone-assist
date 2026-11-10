@@ -5,7 +5,7 @@
 @layer base {
   :root {
     /* Backgrounds */
-    --background: 216 25% 97%;
+    --background: 150 14% 97%;
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
@@ -13,7 +13,8 @@
     --popover-foreground: 222 47% 11%;
 
     /* Primary - Green */
-    --primary: 142 76% 40%;
+    --primary: 158 84% 26%;
+    --primary-glow: 145 63% 42%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary */
@@ -38,18 +39,18 @@
     --border: 214 32% 91%;
     --border-subtle: 210 40% 96%;
     --input: 215 25% 84%;
-    --ring: 142 72% 37%;
-    --radius: 0.5rem;
+    --ring: 158 84% 26%;
+    --radius: 0.75rem;
 
     /* Sidebar - always dark */
-    --sidebar-background: 220 26% 12%;
+    --sidebar-background: 158 72% 13%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 142 72% 37%;
+    --sidebar-primary: 152 62% 34%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 26% 16%;
+    --sidebar-accent: 158 55% 18%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 220 26% 16%;
-    --sidebar-ring: 142 72% 37%;
+    --sidebar-border: 158 45% 20%;
+    --sidebar-ring: 152 62% 34%;
 
     /* Semantic status colors */
     --green: 142 72% 37%;
@@ -78,6 +79,7 @@
     /* Layout */
     --sidebar-width: 248px;
     --header-height: 64px;
+    --gradient-brand: linear-gradient(135deg, hsl(158 72% 13%), hsl(156 70% 22%) 60%, hsl(150 60% 30%));
     --bottom-nav-height: 64px;
   }
 
