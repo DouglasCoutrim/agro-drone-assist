@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     if (parsed.data.action === 'listar') {
       const { inicio, fim } = parsed.data;
       const { data: notas, error } = await admin.from('notas_recebidas')
-        .select('chave_acesso,numero,nome_emitente,cnpj_emitente,data_emissao,valor_total,situacao_sefaz,manifestacao_destinatario,tem_xml,importada')
+        .select('chave_acesso,numero,nome_emitente,cnpj_emitente,data_emissao,valor_total,situacao_sefaz,manifestacao_destinatario,tem_xml,importada,nota_compra_id')
         .eq('organization_id', orgId).gte('data_emissao', inicio).lt('data_emissao', `${fim}T23:59:59.999`)
         .order('data_emissao', { ascending: false }).limit(500);
       if (error) return json({ error: error.message }, 400);

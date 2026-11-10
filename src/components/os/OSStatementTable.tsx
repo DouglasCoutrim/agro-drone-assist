@@ -64,7 +64,7 @@ export function OSStatementTable({ data, loading = false }: OSStatementTableProp
   const getRoleBadge = (role: "PRINCIPAL" | "AUXILIARY" | "VENDA") => (
     <Badge variant={role === "PRINCIPAL" ? "default" : "secondary"} className="gap-1">
       {role === "PRINCIPAL" ? <BadgePercent className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
-      {role === "PRINCIPAL" ? "OS" : role === "VENDA" ? "Venda" : "Auxiliar"}
+      {role === "VENDA" ? "Venda" : "OS"}
     </Badge>
   );
 
@@ -90,8 +90,7 @@ export function OSStatementTable({ data, loading = false }: OSStatementTableProp
               <th className="px-4 py-2.5 w-[100px]">Papel</th>
               <th className="px-4 py-2.5 w-[100px]">Data</th>
               <th className="px-4 py-2.5 text-right w-[110px]">Valor Bruto</th>
-              <th className="px-4 py-2.5 text-right w-[110px]">Imposto</th>
-              <th className="px-4 py-2.5 text-right w-[110px]">Líquido</th>
+              <th className="px-4 py-2.5 text-right w-[110px]">Comissão</th>
               <th className="px-4 py-2.5 w-[100px]">NFe</th>
             </tr>
           </thead>
@@ -108,12 +107,6 @@ export function OSStatementTable({ data, loading = false }: OSStatementTableProp
                 <td className="px-4 py-2.5 text-right font-medium text-foreground">
                   {formatCurrency(item.valor_bruto)}
                 </td>
-                <td className="px-4 py-2.5 text-right text-orange-500 font-medium">
-                  -{formatCurrency(item.imposto_descontado)}
-                </td>
-                <td className="px-4 py-2.5 text-right font-semibold text-green-600">
-                  {formatCurrency(item.comissao_liquida)}
-                </td>
                 <td className="px-4 py-2.5">{getNFeBadge(item.nfe_emitida)}</td>
               </tr>
             ))}
@@ -122,8 +115,6 @@ export function OSStatementTable({ data, loading = false }: OSStatementTableProp
             <tr className="bg-muted/50 font-semibold border-t-2 border-border">
               <td className="px-4 py-2.5" colSpan={3}>TOTAL</td>
               <td className="px-4 py-2.5 text-right text-foreground">{formatCurrency(totals.valor_bruto)}</td>
-              <td className="px-4 py-2.5 text-right text-orange-500">-{formatCurrency(totals.imposto_descontado)}</td>
-              <td className="px-4 py-2.5 text-right text-green-600">{formatCurrency(totals.comissao_liquida)}</td>
               <td className="px-4 py-2.5"></td>
             </tr>
           </tbody>

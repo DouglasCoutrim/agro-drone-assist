@@ -3,6 +3,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { absoluteUrl, focusErrorMessage, focusRequest, mapStatus } from '../_shared/focus-nfe.ts';
+import { baixarEstoqueDevolucao } from '../_shared/devolucao-estoque.ts';
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -67,6 +68,9 @@ Deno.serve(async (req) => {
     }
     if (status === 'autorizado' && nf.venda_id) {
       await admin.from('vendas').update({ nf_numero: patch.numero, nf_chave: patch.chave_acesso, nf_emitida_em: patch.emitida_em, nf_provider: 'focusnfe' }).eq('id', nf.venda_id);
+    }
+    if (status === 'autorizado' && tipo === 'nfe' && !nf.venda_id && !nf.os_id) {
+      await baixarEstoqueDevolucao(admin, nf.id);
     }
     if (status === 'autorizado' && nf.os_id) {
       await admin.from('ordens_servico').update({ nfe_emitida: true, nfse_numero: patch.numero }).eq('id', nf.os_id);
