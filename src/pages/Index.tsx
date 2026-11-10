@@ -240,10 +240,10 @@ const Index = () => {
     ...dados.vendasRecentes.map(v => ({ id: `v-${v.id}`, icon: ShoppingCart, titulo: "Venda realizada", sub: `${v.cliente_nome || "Consumidor"} • ${formatCurrency(Number(v.valor_total || 0))}`, data: v.criado_em, onClick: () => navigate("/vendas") })),
   ].sort((x, y) => new Date(y.data).getTime() - new Date(x.data).getTime()).slice(0, 5) : [];
   const kpis = dados ? [
-    { label: "Receita Total", value: formatCurrency(dados.receita), hint: `Período: ${periodoLabel}`, icon: DollarSign, href: "/financeiro", spark: true },
-    { label: "Lucro Operacional", value: formatCurrency(lucro), hint: `${margem}% de margem`, icon: BarChart3, href: "/financeiro", spark: true },
-    { label: "Ordens em Andamento", value: String(dados.osTotal - dados.osConcluidas), hint: `${dados.osConcluidas} de ${dados.osTotal} finalizadas`, icon: Wrench, href: "/ordens-servico", warm: true },
-    { label: "Clientes Ativos", value: String(dados.clientesTotal), hint: `${dados.clientesNovos} novo(s) no período`, icon: Users, href: "/clientes" },
+    { label: "Receita Total", value: formatCurrency(dados.receita), delta: variacao(dados.receita, dados.anterior.receita), bars: dados.barras.receita, icon: DollarSign, href: "/financeiro" },
+    { label: "Lucro Operacional", value: formatCurrency(lucro), delta: variacao(lucro, dados.anterior.lucro), bars: dados.barras.receita, icon: BarChart3, href: "/financeiro" },
+    { label: "Ordens em Andamento", value: String(dados.osTotal - dados.osConcluidas), delta: variacao(dados.osTotal, dados.anterior.os), bars: dados.barras.os, icon: ClipboardList, href: "/ordens-servico" },
+    { label: "Clientes Ativos", value: String(dados.clientesTotal), delta: variacao(dados.clientesNovos, dados.anterior.clientes), bars: dados.barras.clientes, icon: Users, href: "/clientes" },
   ] : [];
   const pieData = dados ? [
     { name: "Entradas", value: Math.max(dados.receita, 0) },
@@ -254,16 +254,26 @@ const Index = () => {
     <MainLayout>
       <div className="space-y-5 lg:space-y-6 lg:py-2" data-tour="dashboard-content">
         {/* Saudação — no celular fica sobre a faixa verde */}
-        <section className="-mx-3 -mt-4 rounded-b-[2rem] px-5 pb-14 pt-4 text-sidebar-accent-foreground sm:-mx-6 lg:hidden" style={{ background: "var(--gradient-brand)" }}>
-          <h1 className="text-2xl font-bold">Olá{nome ? `, ${nome}` : ""}!</h1>
-          <p className="text-sm opacity-85">Aqui está o resumo das suas operações</p>
+        <section className="relative -mx-3 -mt-4 overflow-hidden bg-sidebar px-5 pb-16 pt-1 text-sidebar-accent-foreground sm:-mx-6 lg:hidden">
+          <h1 className="relative z-10 text-[1.7rem] font-bold leading-tight">Olá{nome ? `, ${nome.charAt(0).toUpperCase()}${nome.slice(1).toLowerCase()}` : ""}!</h1>
+          <p className="relative z-10 mt-1 text-[15px] opacity-90">Aqui está o resumo das suas operações</p>
+          <svg className="pointer-events-none absolute inset-x-0 bottom-0 h-20 w-full" viewBox="0 0 400 80" preserveAspectRatio="none" aria-hidden>
+            <path d="M0 80 L0 66 C 120 74, 200 30, 300 14 C 340 8, 380 10, 400 14 L400 80 Z" fill="hsl(var(--primary-glow) / 0.55)" />
+            <path d="M0 80 L0 72 C 130 80, 210 42, 300 26 C 345 18, 380 20, 400 24 L400 80 Z" fill="hsl(var(--background))" />
+          </svg>
         </section>
-        <button type="button" onClick={openGlobalSearch}
-          className="relative z-10 -mt-14 flex h-14 w-full items-center gap-3 rounded-full border border-border bg-card px-3 shadow-md lg:hidden">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"><Search className="h-4 w-4 text-muted-foreground" /></span>
-          <span className="flex-1 text-left text-muted-foreground">Buscar no sistema...</span>
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"><SlidersHorizontal className="h-4 w-4 text-foreground" /></span>
-        </button>
+        <div className="relative z-10 -mt-12 !mt-[-3.25rem] flex h-[68px] w-full items-center gap-2 rounded-full bg-card px-2.5 shadow-lg lg:hidden">
+          <button type="button" onClick={openGlobalSearch} className="flex flex-1 items-center gap-2" aria-label="Buscar no sistema">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted"><Search className="h-5 w-5 text-muted-foreground" /></span>
+            <span className="flex h-11 flex-1 items-center rounded-full bg-muted px-4 text-left text-[15px] text-muted-foreground">Buscar no sistema...</span>
+          </button>
+          <Select value={periodo} onValueChange={(v) => setPeriodo(v as Periodo)}>
+            <SelectTrigger className="h-11 w-11 shrink-0 justify-center rounded-full border-0 bg-muted p-0 [&>svg:last-child]:hidden" aria-label="Filtrar período">
+              <SlidersHorizontal className="h-5 w-5 text-foreground" />
+            </SelectTrigger>
+            <SelectContent align="end">{PERIODOS.map(p => <SelectItem key={p.id} value={p.id}>{p.id === "hoje" ? "Hoje" : `Últimos ${p.label}`}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
 
         <div className="hidden flex-col gap-4 lg:flex lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -293,48 +303,55 @@ const Index = () => {
                 <button key={k.label} onClick={() => navigate(k.href)}
                   className="group relative overflow-hidden rounded-2xl border border-border bg-card p-3 text-left shadow-sm transition-shadow hover:shadow-md sm:p-5">
                   <div className="flex items-start gap-3">
-                    <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full sm:h-12 sm:w-12", k.warm ? "bg-warning/15 text-warning" : "bg-primary text-primary-foreground")}>
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground sm:h-12 sm:w-12">
                       <k.icon className="h-5 w-5 sm:h-6 sm:w-6" />
                     </span>
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-foreground sm:text-sm">{k.label}</p>
-                      <p className="mt-0.5 truncate text-lg font-bold tracking-tight text-foreground sm:text-2xl">{k.value}</p>
-                      <p className="mt-1 text-[11px] text-muted-foreground sm:text-xs">{k.hint}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[12px] font-medium text-foreground sm:text-sm">{k.label}</p>
+                      <p className="mt-0.5 truncate text-[17px] font-bold tracking-tight text-foreground sm:text-2xl">{k.value}</p>
+                      <div className="mt-1 flex items-end justify-between gap-1">
+                        <span className={cn("flex items-center gap-0.5 text-[13px] font-bold sm:text-sm", k.delta != null && k.delta < 0 ? "text-destructive" : "text-primary")}>
+                          {k.delta == null ? <span className="font-medium text-muted-foreground">—</span> : (
+                            <>{k.delta < 0 ? <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUp className="h-3.5 w-3.5" />}{Math.abs(k.delta).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</>
+                          )}
+                        </span>
+                        <MiniBarras valores={k.bars} />
+                      </div>
                     </div>
                   </div>
-                  {k.spark && dados.serie.length > 1 && (
-                    <div className="pointer-events-none mt-2 h-10 opacity-80" aria-hidden>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={dados.serie} margin={{ top: 2, bottom: 0, left: 0, right: 0 }}>
-                          <Area type="monotone" dataKey="receita" stroke="hsl(var(--primary-glow))" strokeWidth={2} fill="hsl(var(--primary-glow) / 0.15)" />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
                 </button>
-              ))}
-            </div>
-
-            {/* Período no celular */}
-            <div className="flex gap-1 overflow-x-auto rounded-full border border-border bg-card p-1 lg:hidden">
-              {PERIODOS.map(p => (
-                <Button key={p.id} size="sm" variant={periodo === p.id ? "default" : "ghost"} className="flex-1 rounded-full" onClick={() => setPeriodo(p.id)}>{p.label}</Button>
               ))}
             </div>
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
               {/* Faturamento: cartão verde no celular, gráfico completo no computador */}
               <section className="relative overflow-hidden rounded-2xl p-5 text-sidebar-accent-foreground shadow-md lg:hidden" style={{ background: "var(--gradient-brand)" }}>
-                <p className="flex items-center gap-2 font-semibold"><BarChart3 className="h-5 w-5" />Faturamento</p>
-                <p className="mt-2 text-3xl font-bold tracking-tight">{formatCurrency(dados.receita)}</p>
-                <p className="text-xs opacity-85">{periodo === "hoje" ? "Hoje" : `Últimos ${periodoLabel}`}</p>
-                <div className="mt-2 h-24" aria-hidden>
+                <div className="relative z-10 flex items-center justify-between gap-2">
+                  <p className="flex items-center gap-2 text-lg font-semibold"><BarChart3 className="h-5 w-5" />Faturamento</p>
+                  <Select value={periodo} onValueChange={(v) => setPeriodo(v as Periodo)}>
+                    <SelectTrigger className="h-8 w-auto gap-1 rounded-full border-0 bg-sidebar-accent/70 px-3 text-xs text-sidebar-accent-foreground" aria-label="Período"><SelectValue /></SelectTrigger>
+                    <SelectContent align="end">{PERIODOS.map(p => <SelectItem key={p.id} value={p.id}>{p.id === "hoje" ? "Hoje" : `Últimos ${p.label}`}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <p className="relative z-10 mt-3 text-[2rem] font-bold leading-none tracking-tight">{formatCurrency(dados.receita)}</p>
+                <p className="relative z-10 mt-2 flex max-w-[55%] items-center gap-1 text-xs opacity-90">
+                  {(() => { const d = variacao(dados.receita, dados.anterior.receita); return d == null ? "Sem base no período anterior" : <><span className="flex items-center font-bold">{d < 0 ? <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUp className="h-3.5 w-3.5" />}{Math.abs(d).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</span> em relação ao período anterior</>; })()}
+                </p>
+                <div className="pointer-events-none absolute bottom-0 right-0 h-28 w-[62%]" aria-hidden>
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={dados.serie} margin={{ top: 4, bottom: 0, left: 0, right: 0 }}>
-                      <Area type="monotone" dataKey="receita" stroke="hsl(var(--primary-foreground))" strokeWidth={2} fill="hsl(var(--primary-glow) / 0.45)" />
+                    <AreaChart data={dados.serie} margin={{ top: 8, bottom: 0, left: 0, right: 6 }}>
+                      <defs>
+                        <linearGradient id="gFatMobile" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="hsl(var(--primary-glow))" stopOpacity={0.9} />
+                          <stop offset="100%" stopColor="hsl(var(--primary-glow))" stopOpacity={0.1} />
+                        </linearGradient>
+                      </defs>
+                      <Area type="monotone" dataKey="receita" stroke="hsl(var(--primary-foreground) / 0.85)" strokeWidth={2}
+                        fill="url(#gFatMobile)" dot={dados.serie.length <= 12 ? { r: 3, fill: "hsl(var(--primary-foreground))", stroke: "none" } : false} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
+                <div className="h-6" />
               </section>
 
               <section className="hidden rounded-2xl border border-border bg-card p-6 shadow-sm lg:col-span-2 lg:block">
