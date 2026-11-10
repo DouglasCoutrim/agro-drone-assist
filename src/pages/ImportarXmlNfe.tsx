@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileUp, Loader2, ArrowLeft, CheckCircle2, Search, Download } from "lucide-react";
+import { FileUp, Loader2, ArrowLeft, CheckCircle2, Search, Download, RefreshCw } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
@@ -43,18 +44,33 @@ export default function ImportarXmlNfe() {
   const [buscando, setBuscando] = useState(false);
   const [baixando, setBaixando] = useState<string | null>(null);
 
+  const [sincronizando, setSincronizando] = useState(false);
+  const [ultimaSinc, setUltimaSinc] = useState<string | null>(null);
+  const [cienciaChave, setCienciaChave] = useState<string | null>(null);
+
   const buscarNotas = async () => {
     setBuscando(true);
     const { data, error } = await supabase.functions.invoke("nfes-recebidas", { body: { action: "listar", inicio, fim } });
     setBuscando(false);
     if (error || data?.error) return toast.error(data?.error || await functionErrorMessage(error, "Não foi possível buscar as notas."));
     setRecebidas(data.notas || []);
+    setUltimaSinc(data.ultima_sincronizacao ?? null);
   };
 
-  const importarChave = async (chave: string) => {
+  const sincronizar = async () => {
+    setSincronizando(true);
+    const { data, error } = await supabase.functions.invoke("nfes-recebidas", { body: { action: "sincronizar" } });
+    setSincronizando(false);
+    if (error || data?.error) return toast.error(data?.error || await functionErrorMessage(error, "Não foi possível atualizar da SEFAZ."));
+    toast.success(data.atualizadas ? `${data.atualizadas} nota(s) atualizada(s).` : "Nenhuma nota nova na SEFAZ.");
+    await buscarNotas();
+  };
+
+  const importarChave = async (chave: string, confirmar_ciencia = false) => {
     setBaixando(chave);
-    const { data, error } = await supabase.functions.invoke("nfes-recebidas", { body: { action: "xml", chave } });
+    const { data, error } = await supabase.functions.invoke("nfes-recebidas", { body: { action: "xml", chave, confirmar_ciencia } });
     setBaixando(null);
+    if (data?.precisa_ciencia) return setCienciaChave(chave);
     if (error || !data?.xml) return toast[data?.pendente ? "info" : "error"](data?.error || await functionErrorMessage(error, "Não foi possível baixar o XML."));
     await processXml(data.xml);
     window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
@@ -97,6 +113,15 @@ export default function ImportarXmlNfe() {
           if (error) throw error; log.push(`Transportadora ${nota.transportadora.nome} cadastrada.`);
         }
       }
+      const db = supabase as any;
+      const { data: forn } = await supabase.from("fornecedores").select("id").eq("organization_id", org).eq("cpf_cnpj", nota.emitente.cpf_cnpj).limit(1);
+      const totalProd = nota.produtos.reduce((s, p) => s + p.quantidade * p.custo_unitario, 0);
+      const { data: nc, error: ncErr } = await db.from("notas_compra").insert({
+        organization_id: org, fornecedor_id: forn?.[0]?.id ?? null, chave_acesso: nota.chave || null,
+        numero: nota.numero || "s/n", serie: nota.serie || "1", data_emissao: new Date().toISOString(),
+        valor_produtos: totalProd, valor_total: totalProd, created_by: user.id,
+      }).select("id").single();
+      if (ncErr) throw ncErr;
       const motivo = `Entrada via NF-e nº ${nota.numero}`;
       for (const l of linhas) {
         const p = nota.produtos[l.idx];
@@ -119,7 +144,18 @@ export default function ImportarXmlNfe() {
           log.push(`${p.descricao}: novo produto cadastrado (${p.quantidade}).`);
         }
         await supabase.from("movimentacoes_estoque").insert({ item_id: itemId!, organization_id: org, quantidade: p.quantidade, tipo: "entrada", motivo, usuario_id: user.id });
+        const { error: itErr } = await db.from("notas_compra_itens").insert({
+          nota_compra_id: nc.id, organization_id: org, item_estoque_id: itemId, codigo_fornecedor: p.codigo || null,
+          descricao: p.descricao, ncm: p.ncm || null, cfop: p.cfop || null, unidade: p.unidade || null,
+          quantidade: p.quantidade, valor_unitario: p.custo_unitario, valor_total: p.quantidade * p.custo_unitario,
+        });
+        if (itErr) throw itErr;
       }
+      if (nota.chave) {
+        await db.from("notas_recebidas").update({ importada: true, nota_compra_id: nc.id }).eq("organization_id", org).eq("chave_acesso", nota.chave);
+        setRecebidas((rs) => rs?.map((r) => r.chave_acesso === nota.chave ? { ...r, importada: true } : r) ?? rs);
+      }
+      log.push(`Nota de compra nº ${nota.numero} registrada.`);
       setDone(log); setNota(null);
       toast.success("Importação concluída.");
     } catch (e: any) {
@@ -164,18 +200,25 @@ export default function ImportarXmlNfe() {
               <div><label className="text-xs text-muted-foreground">De</label><Input type="date" value={inicio} max={fim} onChange={(e) => setInicio(e.target.value)} /></div>
               <div><label className="text-xs text-muted-foreground">Até</label><Input type="date" value={fim} min={inicio} max={hoje} onChange={(e) => setFim(e.target.value)} /></div>
               <Button onClick={buscarNotas} disabled={buscando}>{buscando ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}Buscar notas</Button>
+              <Button variant="outline" onClick={sincronizar} disabled={sincronizando}>{sincronizando ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}Atualizar da SEFAZ</Button>
             </div>
-            {recebidas && (recebidas.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma nota encontrada no período.</p> : (
+            {ultimaSinc && <p className="text-xs text-muted-foreground">Última atualização da SEFAZ: {new Date(ultimaSinc).toLocaleString("pt-BR")}</p>}
+            {recebidas && (recebidas.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma nota no período. Use "Atualizar da SEFAZ" para trazer notas novas.</p> : (
               <div className="space-y-2">{recebidas.map((n) => (
-                <div key={n.chave} className="flex flex-col md:flex-row md:items-center gap-2 border rounded-md p-3">
+                <div key={n.chave_acesso} className="flex flex-col md:flex-row md:items-center gap-2 border rounded-md p-3">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{n.emitente || "Emitente"}</p>
-                    <p className="text-xs text-muted-foreground font-mono">NF {n.numero} · {n.documento_emitente} · {n.data_emissao ? new Date(n.data_emissao).toLocaleDateString("pt-BR") : "—"}</p>
+                    <p className="font-medium truncate">{n.nome_emitente || "Emitente"}</p>
+                    <p className="text-xs text-muted-foreground font-mono">NF {n.numero} · {n.cnpj_emitente} · {n.data_emissao ? new Date(n.data_emissao).toLocaleDateString("pt-BR") : "—"}</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {n.importada && <Badge variant="secondary">Importada</Badge>}
+                      <Badge variant="outline">{n.tem_xml ? "XML disponível" : "Sem XML"}</Badge>
+                      {n.manifestacao_destinatario && n.manifestacao_destinatario !== "sem_manifestacao" && <Badge variant="outline">Ciência registrada</Badge>}
+                    </div>
                   </div>
-                  <span className="font-semibold">{brl(n.valor_total)}</span>
-                  {n.situacao === "cancelada" ? <Badge variant="destructive">Cancelada</Badge> : (
-                    <Button size="sm" variant="outline" disabled={!!baixando || busy} onClick={() => importarChave(n.chave)}>
-                      {baixando === n.chave ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}Importar
+                  <span className="font-semibold">{brl(Number(n.valor_total) || 0)}</span>
+                  {n.situacao_sefaz === "cancelada" ? <Badge variant="destructive">Cancelada</Badge> : (
+                    <Button size="sm" variant="outline" disabled={!!baixando || busy} onClick={() => importarChave(n.chave_acesso)}>
+                      {baixando === n.chave_acesso ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}{n.importada ? "Reimportar" : "Importar"}
                     </Button>)}
                 </div>))}</div>))}
           </CardContent></Card>
@@ -214,6 +257,18 @@ export default function ImportarXmlNfe() {
           </div>
         </>)}
       </div>
+      <AlertDialog open={!!cienciaChave} onOpenChange={(o) => !o && setCienciaChave(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Registrar ciência da operação?</AlertDialogTitle>
+            <AlertDialogDescription>A SEFAZ exige registrar "Ciência da Operação" para liberar o XML completo desta nota. Esse registro fica vinculado ao CNPJ da empresa.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { const c = cienciaChave; setCienciaChave(null); if (c) importarChave(c, true); }}>Confirmar ciência</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
