@@ -24,26 +24,25 @@ CREATE TABLE IF NOT EXISTS public.devolucoes_venda (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_devolucoes_venda_org ON public.devolucoes_venda(organization_id);
+GRANT SELECT ON public.devolucoes_venda TO authenticated;
+GRANT ALL ON public.devolucoes_venda TO service_role;
 ALTER TABLE public.devolucoes_venda ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS devolucoes_venda_select ON public.devolucoes_venda;
 CREATE POLICY devolucoes_venda_select ON public.devolucoes_venda FOR SELECT TO authenticated
   USING (organization_id = public.get_user_org_id(auth.uid()));
-GRANT SELECT ON public.devolucoes_venda TO authenticated;
-GRANT ALL ON public.devolucoes_venda TO service_role;
 
--- 4) Regras fiscais de devolução de venda, aguardando validação do contador
-ALTER TABLE public.fiscal_regras
-  ADD COLUMN IF NOT EXISTS tipo_operacao text,
-  ADD COLUMN IF NOT EXISTS cfop text,
-  ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'pendente';
-CREATE UNIQUE INDEX IF NOT EXISTS uq_fiscal_regras_org_tipo
-  ON public.fiscal_regras(organization_id, tipo_operacao);
-
-INSERT INTO public.fiscal_regras (organization_id, operacao, tipo_operacao, cfop, status)
-SELECT o.id, 'devolucao_venda_estadual', 'devolucao_venda_estadual', '1202', 'pendente' FROM public.organizations o
-WHERE NOT EXISTS (SELECT 1 FROM public.fiscal_regras r WHERE r.organization_id = o.id AND (r.tipo_operacao = 'devolucao_venda_estadual' OR r.operacao = 'devolucao_venda_estadual'));
-INSERT INTO public.fiscal_regras (organization_id, operacao, tipo_operacao, cfop, status)
-SELECT o.id, 'devolucao_venda_interestadual', 'devolucao_venda_interestadual', '2202', 'pendente' FROM public.organizations o
-WHERE NOT EXISTS (SELECT 1 FROM public.fiscal_regras r WHERE r.organization_id = o.id AND (r.tipo_operacao = 'devolucao_venda_interestadual' OR r.operacao = 'devolucao_venda_interestadual'));
+-- 4) Regra fiscal de devolução de venda (uma regra, CFOP por UF), aguardando o contador
+INSERT INTO public.fiscal_regras
+  (organization_id, operacao, tipo_operacao, tipo_documento, finalidade,
+   cfop_mesma_uf, cfop_outra_uf, status, observacao)
+SELECT o.id, 'devolucao_venda', 'devolucao_venda', 'NFE', '4',
+       '1202', '2202', 'pendente_contador',
+       'Criada automaticamente. CST/CSOSN, PIS e COFINS devem ser definidos pelo contador.'
+FROM public.organizations o
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.fiscal_regras r
+  WHERE r.organization_id = o.id
+    AND (r.operacao = 'devolucao_venda' OR r.tipo_operacao = 'devolucao_venda')
+);
 
 NOTIFY pgrst, 'reload schema';
