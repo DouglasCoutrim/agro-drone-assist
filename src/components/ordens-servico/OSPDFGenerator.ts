@@ -28,6 +28,9 @@ export const generateOSPDF = (
   tecnicoNome?: string,
   checklistRevisaoItems?: Array<{ label: string; marcado: boolean; obrigatorio: boolean }>
 ) => {
+  // Encode every dynamic text/attribute at the HTML boundary, not the stored data.
+  const escapeHTML = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
   const fmtCur = (v: number | null | undefined) => formatCurrency(v || 0);
   const fmtDt = (d: string | null | undefined) => formatDate(d || "");
   const os = viewingOS as any;
@@ -60,12 +63,12 @@ export const generateOSPDF = (
       <div class="section">
         <div class="section-title">⚡ Dados do Equipamento / Mobilidade</div>
         <div class="grid">
-          <div class="field"><div class="field-label">Voltagem</div><div class="field-value">${mobilityMatch[2] || "Não informado"}</div></div>
-          <div class="field"><div class="field-label">Capacidade Bateria</div><div class="field-value">${mobilityMatch[3] || "Não informado"}Ah</div></div>
-          <div class="field"><div class="field-label">Odômetro</div><div class="field-value">${mobilityMatch[4] || "Não informado"}km</div></div>
-          <div class="field"><div class="field-label">Chave Ignição</div><div class="field-value">${mobilityMatch[5] || "Não informado"}</div></div>
-          <div class="field"><div class="field-label">Carregador</div><div class="field-value">${mobilityMatch[6] || "Não informado"}</div></div>
-          ${mCheckItems ? `<div class="field full-width"><div class="field-label">Checklist</div><div class="field-value">${mCheckItems.replace(/,/g, ", ")}</div></div>` : ""}
+          <div class="field"><div class="field-label">Voltagem</div><div class="field-value">${escapeHTML(mobilityMatch[2] || "Não informado")}</div></div>
+          <div class="field"><div class="field-label">Capacidade Bateria</div><div class="field-value">${escapeHTML(mobilityMatch[3] || "Não informado")}Ah</div></div>
+          <div class="field"><div class="field-label">Odômetro</div><div class="field-value">${escapeHTML(mobilityMatch[4] || "Não informado")}km</div></div>
+          <div class="field"><div class="field-label">Chave Ignição</div><div class="field-value">${escapeHTML(mobilityMatch[5] || "Não informado")}</div></div>
+          <div class="field"><div class="field-label">Carregador</div><div class="field-value">${escapeHTML(mobilityMatch[6] || "Não informado")}</div></div>
+          ${mCheckItems ? `<div class="field full-width"><div class="field-label">Checklist</div><div class="field-value">${escapeHTML(mCheckItems.replace(/,/g, ", "))}</div></div>` : ""}
         </div>
       </div>`;
   }
@@ -93,8 +96,8 @@ export const generateOSPDF = (
         </tr></thead>
         <tbody>
           ${list.length > 0 ? list.map(i => `<tr>
-            <td style="${tdStyle}">${i.descricao || "Item sem descrição"}${i.codigo ? ` <span style="color:#888">(${i.codigo})</span>` : ""}</td>
-            <td style="${tdStyle}text-align:center">${i.quantidade || 0}</td>
+            <td style="${tdStyle}">${escapeHTML(i.descricao || "Item sem descrição")}${i.codigo ? ` <span style="color:#888">(${escapeHTML(i.codigo)})</span>` : ""}</td>
+            <td style="${tdStyle}text-align:center">${escapeHTML(i.quantidade || 0)}</td>
             <td style="${tdStyle}text-align:right">${fmtCur(i.valor_unitario)}</td>
             <td style="${tdStyle}text-align:right;font-weight:600">${fmtCur(i.valor_total)}</td>
           </tr>`).join("") : `<tr><td style="${tdStyle}color:#777;text-align:center" colspan="4">Nenhum item, peça ou serviço foi encontrado para esta OS.</td></tr>`}
@@ -118,7 +121,7 @@ export const generateOSPDF = (
   return `<!DOCTYPE html>
 <html>
 <head>
-  <title>OS ${viewingOS.numero || "Sem número"}</title>
+  <title>OS ${escapeHTML(viewingOS.numero || "Sem número")}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: Arial, sans-serif; padding: 30px; color: #333; max-width: 210mm; margin: 0 auto; font-size: 12px; }
@@ -144,34 +147,34 @@ export const generateOSPDF = (
 <body>
   <div class="header">
     <div style="display: flex; align-items: center; gap: 15px;">
-      ${empresa.logo_url ? `<img src="${empresa.logo_url}" alt="Logo" style="max-height:45px" />` : ""}
+      ${empresa.logo_url ? `<img src="${escapeHTML(empresa.logo_url)}" alt="Logo" style="max-height:45px" />` : ""}
       <div>
-        <h1>${empresa.nome_empresa || "Nome da Empresa"}</h1>
+        <h1>${escapeHTML(empresa.nome_empresa || "Nome da Empresa")}</h1>
         ${empresa.cnpj || empresa.telefone ? `<p style="font-size:10px;color:#888">${empresa.cnpj ? "CNPJ: " + empresa.cnpj : ""} ${empresa.cnpj && empresa.telefone ? " | " : ""} ${empresa.telefone ? "Tel: " + empresa.telefone : ""}</p>` : ""}
-        ${empresa.endereco ? `<p style="font-size:10px;color:#888">${empresa.endereco}</p>` : ""}
+        ${empresa.endereco ? `<p style="font-size:10px;color:#888">${escapeHTML(empresa.endereco)}</p>` : ""}
       </div>
     </div>
     <div style="text-align:right">
-      <div style="font-size:18px;font-weight:bold;">OS ${viewingOS.numero || "Sem número"}</div>
-      <div class="status-badge">${getStatusLabel(viewingOS.status) || "Status não informado"}</div>
+      <div style="font-size:18px;font-weight:bold;">OS ${escapeHTML(viewingOS.numero || "Sem número")}</div>
+      <div class="status-badge">${escapeHTML(getStatusLabel(viewingOS.status) || "Status não informado")}</div>
     </div>
   </div>
 
   <div class="section">
     <div class="section-title">Cliente</div>
     <div class="grid">
-      <div class="field"><div class="field-label">Nome</div><div class="field-value">${viewingOS.clientes?.nome || "Não informado"}</div></div>
-      <div class="field"><div class="field-label">Telefone</div><div class="field-value">${viewingOS.clientes?.telefone || "Não informado"}</div></div>
+      <div class="field"><div class="field-label">Nome</div><div class="field-value">${escapeHTML(viewingOS.clientes?.nome || "Não informado")}</div></div>
+      <div class="field"><div class="field-label">Telefone</div><div class="field-value">${escapeHTML(viewingOS.clientes?.telefone || "Não informado")}</div></div>
     </div>
   </div>
 
   <div class="section">
     <div class="section-title">Equipamento</div>
     <div class="grid">
-      <div class="field"><div class="field-label">Tipo</div><div class="field-value">${displayType}</div></div>
-      <div class="field"><div class="field-label">Marca</div><div class="field-value">${os.marca || "Não informado"}</div></div>
-      <div class="field"><div class="field-label">Modelo</div><div class="field-value">${viewingOS.modelo_equipamento || "Não informado"}</div></div>
-      <div class="field"><div class="field-label">Nº Série</div><div class="field-value">${viewingOS.numero_serie || "Não informado"}</div></div>
+      <div class="field"><div class="field-label">Tipo</div><div class="field-value">${escapeHTML(displayType)}</div></div>
+      <div class="field"><div class="field-label">Marca</div><div class="field-value">${escapeHTML(os.marca || "Não informado")}</div></div>
+      <div class="field"><div class="field-label">Modelo</div><div class="field-value">${escapeHTML(viewingOS.modelo_equipamento || "Não informado")}</div></div>
+      <div class="field"><div class="field-label">Nº Série</div><div class="field-value">${escapeHTML(viewingOS.numero_serie || "Não informado")}</div></div>
     </div>
   </div>
 
@@ -188,7 +191,7 @@ ${mobilityHTML}
          </tr></thead>
          <tbody>
            ${checklistRevisaoItems.map(item => `<tr>
-             <td style="${tdStyle}">${item.label}${item.obrigatorio ? ' <span style="color:red">*</span>' : ''}</td>
+             <td style="${tdStyle}">${escapeHTML(item.label)}${item.obrigatorio ? ' <span style="color:red">*</span>' : ''}</td>
              <td style="${tdStyle}text-align:center;font-weight:600;color:${item.marcado ? '#16a34a' : '#dc2626'}">${item.marcado ? '✓ Marcado' : '✗ Desmarcado'}</td>
            </tr>`).join("")}
          </tbody>
@@ -200,15 +203,15 @@ ${mobilityHTML}
       <div class="section-title">Checklist e Condição</div>
       <div class="grid">
         ${checklistItems.length > 0 ? `<div class="field full-width"><div class="field-label">Itens Entregues</div><div class="field-value">${checklistItems.join(", ")}</div></div>` : ""}
-        ${os.condicao_visual ? `<div class="field full-width"><div class="field-label">Condição Visual</div><div class="field-value">${os.condicao_visual}</div></div>` : ""}
+        ${os.condicao_visual ? `<div class="field full-width"><div class="field-label">Condição Visual</div><div class="field-value">${escapeHTML(os.condicao_visual)}</div></div>` : ""}
       </div>
     </div>` : ""}
 
   <div class="section">
     <div class="section-title">Diagnóstico</div>
     <div class="grid">
-      <div class="field full-width"><div class="field-label">Defeito Relatado</div><div class="field-value" style="white-space: pre-wrap;">${viewingOS.descricao_problema || "Não informado"}</div></div>
-      ${viewingOS.diagnostico ? `<div class="field full-width"><div class="field-label">Diagnóstico Técnico</div><div class="field-value" style="white-space: pre-wrap;">${viewingOS.diagnostico || "Não informado"}</div></div>` : ""}
+      <div class="field full-width"><div class="field-label">Defeito Relatado</div><div class="field-value" style="white-space: pre-wrap;">${escapeHTML(viewingOS.descricao_problema || "Não informado")}</div></div>
+      ${viewingOS.diagnostico ? `<div class="field full-width"><div class="field-label">Diagnóstico Técnico</div><div class="field-value" style="white-space: pre-wrap;">${escapeHTML(viewingOS.diagnostico || "Não informado")}</div></div>` : ""}
     </div>
   </div>
 
@@ -227,11 +230,11 @@ ${mobilityHTML}
 
   <div class="footer-sigs">
     <div class="signature">
-      ${finalTecnicoNome}<br/>
+      ${escapeHTML(finalTecnicoNome)}<br/>
       Técnico Responsável
     </div>
     <div class="signature">
-      ${viewingOS.clientes?.nome || "Cliente"}
+      ${escapeHTML(viewingOS.clientes?.nome || "Cliente")}
     </div>
   </div>
 
