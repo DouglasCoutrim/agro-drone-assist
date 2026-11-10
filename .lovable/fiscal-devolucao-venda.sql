@@ -39,11 +39,11 @@ ALTER TABLE public.fiscal_regras
 CREATE UNIQUE INDEX IF NOT EXISTS uq_fiscal_regras_org_tipo
   ON public.fiscal_regras(organization_id, tipo_operacao);
 
-INSERT INTO public.fiscal_regras (organization_id, tipo_operacao, cfop, status)
-SELECT o.id, 'devolucao_venda_estadual', '1202', 'pendente' FROM public.organizations o
-WHERE NOT EXISTS (SELECT 1 FROM public.fiscal_regras r WHERE r.organization_id = o.id AND r.tipo_operacao = 'devolucao_venda_estadual');
-INSERT INTO public.fiscal_regras (organization_id, tipo_operacao, cfop, status)
-SELECT o.id, 'devolucao_venda_interestadual', '2202', 'pendente' FROM public.organizations o
-WHERE NOT EXISTS (SELECT 1 FROM public.fiscal_regras r WHERE r.organization_id = o.id AND r.tipo_operacao = 'devolucao_venda_interestadual');
+INSERT INTO public.fiscal_regras (organization_id, operacao, tipo_operacao, cfop, status)
+SELECT o.id, 'devolucao_venda_estadual', 'devolucao_venda_estadual', '1202', 'pendente' FROM public.organizations o
+WHERE NOT EXISTS (SELECT 1 FROM public.fiscal_regras r WHERE r.organization_id = o.id AND (r.tipo_operacao = 'devolucao_venda_estadual' OR r.operacao = 'devolucao_venda_estadual'));
+INSERT INTO public.fiscal_regras (organization_id, operacao, tipo_operacao, cfop, status)
+SELECT o.id, 'devolucao_venda_interestadual', 'devolucao_venda_interestadual', '2202', 'pendente' FROM public.organizations o
+WHERE NOT EXISTS (SELECT 1 FROM public.fiscal_regras r WHERE r.organization_id = o.id AND (r.tipo_operacao = 'devolucao_venda_interestadual' OR r.operacao = 'devolucao_venda_interestadual'));
 
 NOTIFY pgrst, 'reload schema';
