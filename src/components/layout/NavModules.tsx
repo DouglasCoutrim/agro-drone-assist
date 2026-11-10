@@ -36,7 +36,31 @@ function Module({ section, onNavigate, dark }: { section: NavSection; onNavigate
   );
 }
 
-export function NavModules({ sections, onNavigate, dark }: { sections: NavSection[]; onNavigate?: () => void; dark?: boolean }) {
+/** Menu fixo do computador: títulos dos grupos em maiúsculas e itens sempre visíveis. */
+function FlatModule({ section }: { section: NavSection }) {
   const { pathname } = useLocation();
+  return (
+    <div className="pt-3">
+      <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/60">{section.title}</p>
+      <div className="space-y-0.5">
+        {section.items.map(item => {
+          const on = pathname === item.href;
+          return (
+            <Link key={item.href} to={item.href}
+              className={cn('flex items-center gap-3 rounded-xl px-3 py-2 text-[14px] transition-colors',
+                on ? 'bg-sidebar-primary font-semibold text-sidebar-primary-foreground shadow-sm' : 'text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground')}>
+              <item.icon className="h-[18px] w-[18px] shrink-0" />
+              <span className="truncate">{item.title}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function NavModules({ sections, onNavigate, dark, flat }: { sections: NavSection[]; onNavigate?: () => void; dark?: boolean; flat?: boolean }) {
+  const { pathname } = useLocation();
+  if (flat) return <>{sections.map(section => <FlatModule key={section.title} section={section} />)}</>;
   return <>{sections.map(section => <Module key={`${section.title}-${pathname}`} section={section} onNavigate={onNavigate} dark={dark} />)}</>;
 }
