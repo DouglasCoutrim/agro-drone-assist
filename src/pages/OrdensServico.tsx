@@ -1627,8 +1627,7 @@ export default function OrdensServico() {
                         Houve emissão de NFe/NFS-e?
                       </Label>
                       <p className="text-[10px] text-muted-foreground">
-                        Se marcada: imposto é responsabilidade da empresa (paga governo).
-                        Se desmarcada: imposto fica retido no fundo para liberação em 6 meses.
+                        Marque quando a nota fiscal desta OS já foi emitida.
                       </p>
                     </div>
 
