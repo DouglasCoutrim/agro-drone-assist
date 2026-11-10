@@ -1,0 +1,1 @@
+- Edge functions deploy to the external backend via deploy-functions.yml with repo secret SUPABASE_ACCESS_TOKEN, because the sandbox has no credentials for it.
