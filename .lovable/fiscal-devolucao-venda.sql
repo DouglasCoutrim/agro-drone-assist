@@ -32,6 +32,13 @@ GRANT SELECT ON public.devolucoes_venda TO authenticated;
 GRANT ALL ON public.devolucoes_venda TO service_role;
 
 -- 4) Regras fiscais de devolução de venda, aguardando validação do contador
+ALTER TABLE public.fiscal_regras
+  ADD COLUMN IF NOT EXISTS tipo_operacao text,
+  ADD COLUMN IF NOT EXISTS cfop text,
+  ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'pendente';
+CREATE UNIQUE INDEX IF NOT EXISTS uq_fiscal_regras_org_tipo
+  ON public.fiscal_regras(organization_id, tipo_operacao);
+
 INSERT INTO public.fiscal_regras (organization_id, tipo_operacao, cfop, status)
 SELECT o.id, 'devolucao_venda_estadual', '1202', 'pendente' FROM public.organizations o
 WHERE NOT EXISTS (SELECT 1 FROM public.fiscal_regras r WHERE r.organization_id = o.id AND r.tipo_operacao = 'devolucao_venda_estadual');
