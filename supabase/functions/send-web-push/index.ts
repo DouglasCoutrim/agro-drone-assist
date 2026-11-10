@@ -15,10 +15,19 @@ webpush.setVapidDetails(
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   try {
-    const { notification_id } = await req.json();
-    if (typeof notification_id !== "string") return new Response("bad request", { status: 400, headers: cors });
+    const { notification_id, dispatch_token } = await req.json();
+    const uuidRe = /^[0-9a-f-]{36}$/i;
+    if (typeof notification_id !== "string" || typeof dispatch_token !== "string" ||
+        !uuidRe.test(notification_id) || !uuidRe.test(dispatch_token)) {
+      return new Response("unauthorized", { status: 401, headers: cors });
+    }
 
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    // Token de uso único gerado pelo gatilho do banco; impede chamadas externas e reenvios.
+    const { data: ok, error: consumeErr } = await admin.rpc("consume_push_dispatch", {
+      _notification_id: notification_id, _token: dispatch_token,
+    });
+    if (consumeErr || ok !== true) return new Response("unauthorized", { status: 401, headers: cors });
     const { data: n } = await admin.from("notifications")
       .select("id,user_id,title,body,link,created_at").eq("id", notification_id).maybeSingle();
     // Só envia notificações recém-criadas (evita reenvio por chamadas externas)
@@ -41,6 +50,6 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ sent }), { headers: { ...cors, "Content-Type": "application/json" } });
   } catch (e) {
     console.error(e);
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "internal error" }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
   }
 });
