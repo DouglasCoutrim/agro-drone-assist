@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { validateChargeReferences } from '../_shared/payment-order-scope.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -44,6 +45,10 @@ Deno.serve(async (req) => {
 
     const { data: profile } = await admin.from('profiles').select('organization_id').eq('id', userId).maybeSingle();
     if (!profile?.organization_id) return json({ error: 'Sem organização' }, 400);
+
+    if (!await validateChargeReferences(admin, profile.organization_id, { ordem_servico_id, orcamento_id })) {
+      return json({ error: 'OS ou orçamento não pertence à sua organização' }, 400);
+    }
 
     // Verificação de plano no servidor: o módulo de cobranças precisa estar no plano da organização.
     const { data: orgRow } = await admin.from('organizations').select('plan').eq('id', profile.organization_id).maybeSingle();
