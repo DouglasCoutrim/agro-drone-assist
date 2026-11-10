@@ -101,7 +101,7 @@ const Index = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { organization, loading: orgLoading } = useOrganization();
-  const [periodo, setPeriodo] = useState<Periodo>("30");
+  const [periodo, setPeriodo] = useState<Periodo>("365");
   const [dados, setDados] = useState<Dados | null>(null);
   const [loading, setLoading] = useState(true);
   const [osId, setOsId] = useState<string | null>(null);
@@ -284,12 +284,12 @@ const Index = () => {
           </Select>
         </div>
 
-        <div className="hidden flex-col gap-4 lg:flex lg:flex-row lg:items-end lg:justify-between">
-          <div>
+        <div className="hidden flex-col gap-4 lg:flex xl:flex-row xl:items-end xl:justify-between">
+          <div className="min-w-0">
             <h1 className="text-4xl font-bold leading-tight tracking-tight text-foreground">Visão geral</h1>
             <p className="mt-1 text-muted-foreground">{saudacao}{nome ? `, ${nome}` : ""}! Acompanhe o desempenho e a operação da sua empresa.</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex shrink-0 flex-nowrap items-center gap-2">
             <Select value={periodo} onValueChange={(v) => setPeriodo(v as Periodo)}>
               <SelectTrigger className="h-11 w-[170px] rounded-xl bg-card shadow-sm" aria-label="Período"><CalendarDays className="mr-2 h-4 w-4" /><SelectValue /></SelectTrigger>
               <SelectContent>{PERIODOS.map(p => <SelectItem key={p.id} value={p.id}>{p.id === "hoje" ? "Hoje" : `Últimos ${p.label}`}</SelectItem>)}</SelectContent>
@@ -310,23 +310,33 @@ const Index = () => {
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-5">
               {kpis.map(k => (
                 <button key={k.label} onClick={() => navigate(k.href)}
-                  className="group relative overflow-hidden rounded-2xl border border-border bg-card p-3 text-left shadow-sm transition-shadow hover:shadow-md sm:p-5">
-                  <div className="flex items-start gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground sm:h-12 sm:w-12">
+                  className="group relative overflow-hidden rounded-2xl border border-border bg-card p-3 pb-12 text-left shadow-sm transition-shadow hover:shadow-md sm:p-5 sm:pb-14">
+                  <div className="relative z-10 flex items-start gap-3">
+                    <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full sm:h-12 sm:w-12", k.tone === "warning" ? "bg-warning/15 text-warning" : "bg-primary/15 text-primary")}>
                       <k.icon className="h-5 w-5 sm:h-6 sm:w-6" />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[12px] font-medium text-foreground sm:text-sm">{k.label}</p>
-                      <p className="mt-0.5 truncate text-[17px] font-bold tracking-tight text-foreground sm:text-2xl">{k.value}</p>
-                      <div className="mt-1 flex items-end justify-between gap-1">
-                        <span className={cn("flex items-center gap-0.5 text-[13px] font-bold sm:text-sm", k.delta != null && k.delta < 0 ? "text-destructive" : "text-primary")}>
-                          {k.delta == null ? <span className="font-medium text-muted-foreground">—</span> : (
-                            <>{k.delta < 0 ? <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUp className="h-3.5 w-3.5" />}{Math.abs(k.delta).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</>
-                          )}
-                        </span>
-                        <MiniBarras valores={k.bars} />
-                      </div>
+                      <p className="text-[12px] font-semibold leading-tight text-foreground sm:text-[15px]">{k.label}</p>
+                      <p className="mt-1 truncate text-[17px] font-bold tracking-tight text-foreground sm:text-[26px]">{k.value}</p>
+                      <span className={cn("mt-1 flex items-center gap-0.5 text-[12px] font-bold sm:text-[13px]", k.delta != null && k.delta < 0 ? "text-destructive" : "text-primary")}>
+                        {k.delta == null ? <span className="font-medium text-muted-foreground">—</span> : (
+                          <>{k.delta < 0 ? <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUp className="h-3.5 w-3.5" />}{Math.abs(k.delta).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%<span className="ml-1 hidden font-normal text-muted-foreground sm:inline">vs período anterior</span></>
+                        )}
+                      </span>
                     </div>
+                  </div>
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14" aria-hidden>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={k.bars.map((v, i) => ({ i, v }))} margin={{ top: 4, bottom: 0, left: 0, right: 0 }}>
+                        <defs>
+                          <linearGradient id={`spark-${k.label}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={k.tone === "warning" ? "hsl(var(--warning))" : "hsl(var(--primary-glow))"} stopOpacity={0.4} />
+                            <stop offset="100%" stopColor={k.tone === "warning" ? "hsl(var(--warning))" : "hsl(var(--primary-glow))"} stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <Area type="monotone" dataKey="v" stroke={k.tone === "warning" ? "hsl(var(--warning))" : "hsl(var(--primary-glow))"} strokeWidth={2} fill={`url(#spark-${k.label})`} isAnimationActive={false} />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
                 </button>
               ))}
