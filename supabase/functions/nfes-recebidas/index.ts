@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
     if (!token) return json({ error: 'Token da Focus NFe não configurado.' }, 400);
 
     // Sincronização incremental a partir da última versão gravada
-    if (parsed.data.action === 'sincronizar') {
+    const sincronizar = async (): Promise<{ error?: string; novas: number }> => {
       const { data: sinc } = await admin.from('sincronizacao_nfe_recebidas').select('ultima_versao').eq('organization_id', orgId).maybeSingle();
       let versao = Number(sinc?.ultima_versao) || 0;
       let novas = 0;
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
         const r = await focusRequest(config, 'GET', `/v2/nfes_recebidas?cnpj=${cnpj}&versao=${versao}`);
         if (!r.ok) {
           await admin.from('sincronizacao_nfe_recebidas').upsert({ organization_id: orgId, ultima_versao: versao, ultima_consulta: new Date().toISOString(), status: 'erro', updated_at: new Date().toISOString() }, { onConflict: 'organization_id' });
-          return json({ error: focusErrorMessage(r.data) }, 400);
+          return { error: focusErrorMessage(r.data), novas };
         }
         const lista = Array.isArray(r.data) ? r.data : [];
         if (!lista.length) break;
@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
         }));
         if (rows.length) {
           const { error } = await admin.from('notas_recebidas').upsert(rows, { onConflict: 'organization_id,chave_acesso' });
-          if (error) return json({ error: error.message }, 400);
+          if (error) return { error: error.message, novas };
           novas += rows.length;
         }
         const maior = Math.max(...lista.map((n: any) => Number(n.versao) || 0));
@@ -86,7 +86,12 @@ Deno.serve(async (req) => {
         if (lista.length < 100) break;
       }
       await admin.from('sincronizacao_nfe_recebidas').upsert({ organization_id: orgId, ultima_versao: versao, ultima_consulta: new Date().toISOString(), status: 'sucesso', updated_at: new Date().toISOString() }, { onConflict: 'organization_id' });
-      return json({ atualizadas: novas });
+      return { novas };
+    };
+    if (parsed.data.action === 'sincronizar') {
+      const res = await sincronizar();
+      if (res.error) return json({ error: res.error }, 400);
+      return json({ atualizadas: res.novas });
     }
 
     // Busca por chave: usa o registro salvo ou consulta a Focus e grava a nota recebida
@@ -96,7 +101,17 @@ Deno.serve(async (req) => {
       const { data: salva } = await admin.from('notas_recebidas').select(campos).eq('organization_id', orgId).eq('chave_acesso', chaveBusca).maybeSingle();
       if (salva) return json({ nota: salva });
       const r = await focusRequest(config, 'GET', `/v2/nfes_recebidas/${chaveBusca}.json`);
-      if (r.status === 404) return json({ error: 'Nota não encontrada. A SEFAZ só disponibiliza notas emitidas para o CNPJ da sua empresa.' }, 404);
+      if (r.status === 404) {
+        // A Focus só conhece a nota depois de receber da SEFAZ: sincroniza e procura de novo
+        const res = await sincronizar();
+        const { data: aposSinc } = await admin.from('notas_recebidas').select(campos).eq('organization_id', orgId).eq('chave_acesso', chaveBusca).maybeSingle();
+        if (aposSinc) return json({ nota: aposSinc });
+        const homolog = String(config.ambiente || '').toLowerCase().startsWith('homolog') || String(config.ambiente) === '2';
+        const motivo = homolog
+          ? 'A configuração NF-e está em ambiente de homologação; notas reais só aparecem em produção.'
+          : 'A SEFAZ ainda não repassou esta nota à Focus NFe (pode levar algumas horas após a emissão). Confira também se o recebimento de NF-e está ativado para o seu CNPJ no painel da Focus.';
+        return json({ error: `Nota não encontrada. ${motivo}${res.error ? ` (Sincronização: ${res.error})` : ''}` }, 404);
+      }
       if (!r.ok) return json({ error: focusErrorMessage(r.data) }, 400);
       const n: any = r.data || {};
       const dest = onlyDigits(n.documento_destinatario || n.cnpj_destinatario || '');
