@@ -1,5 +1,6 @@
 // Bloqueia tenants com faturas vencidas há mais de N dias (default 5)
-// Verifica JWT + webhook secret (verify_jwt=true no config.toml)
+// Cron exige webhook secret; sem secret, exige usuário validado e platform admin.
+// Mantém verify_jwt=true no config.toml para as chamadas agendadas.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
 const corsHeadersRestricted = { 'Access-Control-Allow-Origin': 'https://iynljexyjhbkfxsurddn.supabase.co' };
@@ -22,6 +23,24 @@ Deno.serve(async (req) => {
 
   try {
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    // A ausência do secret nunca pode liberar usuários comuns ou JWTs forjados.
+    // Com secret configurado, a chamada agendada já foi autorizada acima.
+    if (!secret) {
+      const userClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user }, error: authError } = await userClient.auth.getUser(authHeader.slice(7));
+      if (authError || !user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeadersRestricted });
+      }
+      const { data: platformAdmin, error: roleError } = await admin
+        .from('platform_admins').select('user_id').eq('user_id', user.id).maybeSingle();
+      if (roleError || !platformAdmin) {
+        return new Response(JSON.stringify({ error: 'Apenas administradores da plataforma podem executar esta ação.' }), { status: 403, headers: corsHeadersRestricted });
+      }
+    }
     const graceDays = 5;
     const cutoff = new Date(Date.now() - graceDays * 86400000).toISOString().slice(0, 10);
 
