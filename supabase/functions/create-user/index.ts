@@ -89,6 +89,21 @@ serve(async (req) => {
       return jsonResponse({ error: "Seu usuário não está vinculado a uma empresa." }, 400);
     }
 
+    const { data: organization, error: organizationError } = await adminClient
+      .from("organizations").select("plan").eq("id", callerProfile.organization_id).maybeSingle();
+    const planSlug = organization?.plan === "trial" ? "bronze" : organization?.plan;
+    const { data: plan, error: planError } = await adminClient
+      .from("subscription_plans").select("max_users").eq("slug", planSlug).maybeSingle();
+    const { count: memberCount, error: countError } = await adminClient
+      .from("profiles").select("id", { count: "exact", head: true })
+      .eq("organization_id", callerProfile.organization_id);
+    if (organizationError || planError || countError || !plan || memberCount === null) {
+      return jsonResponse({ error: "Não foi possível verificar o limite de usuários." }, 503);
+    }
+    if (plan.max_users !== -1 && memberCount >= plan.max_users) {
+      return jsonResponse({ error: "Sua empresa atingiu o limite de usuários do plano." }, 403);
+    }
+
     // Create the user with admin API (auto-confirms email)
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
