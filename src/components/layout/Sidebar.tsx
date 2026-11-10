@@ -46,14 +46,17 @@ export function Sidebar({ className }: SidebarProps) {
       className
     )} style={{ width: "var(--sidebar-width)" }}>
       {/* Logo */}
-      <div className="flex flex-col items-center gap-1 px-5 py-5 border-b border-sidebar-border mb-2 ">
-        <img src={logo} alt="LivreOS" className="h-12 w-auto" />
-        <p className="text-base font-semibold text-sidebar-foreground">LivreOS</p>
-      </div>
+      <Link to="/dashboard" className="flex items-center gap-3 px-5 py-5 mb-1" aria-label="LivreOS Enterprise - início">
+        <img src={logo} alt="" className="h-11 w-11 object-contain" />
+        <div className="leading-tight">
+          <p className="text-xl font-bold tracking-tight text-sidebar-accent-foreground">LivreOS</p>
+          <p className="text-[11px] font-medium text-sidebar-foreground/80">Enterprise</p>
+        </div>
+      </Link>
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-1 space-y-1 overflow-y-auto scrollbar-thin">
-        <NavModules sections={sectionsForRoles(roles, blocked)} />
+        <NavModules dark sections={sectionsForRoles(roles, blocked)} />
       </nav>
 
       {/* User footer */}
@@ -61,24 +64,24 @@ export function Sidebar({ className }: SidebarProps) {
         {isPlatformAdmin && (
           <Link
             to="/admin/dashboard"
-            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 bg-secondary text-secondary-foreground border border-border hover:bg-accent mb-2"
+            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-primary mb-2"
           >
             <ShieldCheck className="h-4 w-4 shrink-0" />
             Painel Admin Master
           </Link>
         )}
 
-        <div className="flex items-center gap-2.5">
-          <div className="w-[34px] h-[34px] rounded-lg bg-primary flex items-center justify-center text-[13px] font-bold text-primary-foreground flex-shrink-0">
+        <div className="flex items-center gap-2.5 rounded-xl bg-sidebar-accent/60 p-2">
+          <div className="w-[36px] h-[36px] rounded-full bg-sidebar-primary flex items-center justify-center text-[13px] font-bold text-primary-foreground flex-shrink-0">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-medium text-sidebar-accent-foreground leading-tight truncate">{profile?.nome || user?.email?.split("@")[0]}</p>
-            <p className="text-[11px] text-muted-foreground">{roleLabel}</p>
+            <p className="text-[11px] text-sidebar-foreground/70">{roleLabel}</p>
           </div>
           <Button variant="ghost" size="icon"
             onClick={handleSignOut}
-            className="w-7 h-7 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-150"
+            className="w-7 h-7 rounded flex items-center justify-center text-sidebar-foreground/70 hover:text-destructive hover:bg-destructive/10 transition-all duration-150"
             aria-label="Sair"
           >
             <LogOut className="h-3.5 w-3.5" />
