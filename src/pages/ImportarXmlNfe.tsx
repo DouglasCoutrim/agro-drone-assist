@@ -68,12 +68,31 @@ export default function ImportarXmlNfe() {
     await buscarNotas();
   };
 
-  const importarChave = async (chave: string, confirmar_ciencia = false) => {
+  const [chaveBusca, setChaveBusca] = useState("");
+  const [cienciaModo, setCienciaModo] = useState<"importar" | "baixar">("importar");
+
+  const buscarPorChave = async () => {
+    const chave = chaveBusca.replace(/\D/g, "");
+    if (chave.length !== 44) return toast.error("A chave de acesso precisa ter 44 números.");
+    setBuscando(true);
+    const { data, error } = await supabase.functions.invoke("nfes-recebidas", { body: { action: "buscar_chave", chave } });
+    setBuscando(false);
+    if (error || data?.error) return toast.error(data?.error || await functionErrorMessage(error, "Não foi possível buscar a nota."));
+    setRecebidas(data.nota ? [data.nota] : []);
+  };
+
+  const importarChave = async (chave: string, confirmar_ciencia = false, modo: "importar" | "baixar" = "importar") => {
     setBaixando(chave);
     const { data, error } = await supabase.functions.invoke("nfes-recebidas", { body: { action: "xml", chave, confirmar_ciencia } });
     setBaixando(null);
-    if (data?.precisa_ciencia) return setCienciaChave(chave);
+    if (data?.precisa_ciencia) { setCienciaModo(modo); return setCienciaChave(chave); }
     if (error || !data?.xml) return toast[data?.pendente ? "info" : "error"](data?.error || await functionErrorMessage(error, "Não foi possível baixar o XML."));
+    if (modo === "baixar") {
+      const url = URL.createObjectURL(new Blob([data.xml], { type: "application/xml" }));
+      const a = document.createElement("a"); a.href = url; a.download = `${chave}.xml`; a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
     await processXml(data.xml);
     window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
   };
@@ -199,6 +218,12 @@ export default function ImportarXmlNfe() {
         <Card><CardHeader className="pb-2"><CardTitle className="text-base">Buscar notas emitidas para a empresa</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap items-end gap-3">
+              <div className="flex-1 min-w-[260px]"><label className="text-xs text-muted-foreground">Chave de acesso</label>
+                <Input inputMode="numeric" className="font-mono" placeholder="44 números da chave" value={chaveBusca}
+                  onChange={(e) => setChaveBusca(e.target.value.replace(/\D/g, "").slice(0, 44))} onKeyDown={(e) => e.key === "Enter" && buscarPorChave()} /></div>
+              <Button onClick={buscarPorChave} disabled={buscando}>{buscando ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}Buscar</Button>
+            </div>
+            <div className="flex flex-wrap items-end gap-3">
               <div><label className="text-xs text-muted-foreground">De</label><Input type="date" value={inicio} max={fim} onChange={(e) => setInicio(e.target.value)} /></div>
               <div><label className="text-xs text-muted-foreground">Até</label><Input type="date" value={fim} min={inicio} max={hoje} onChange={(e) => setFim(e.target.value)} /></div>
               <Button onClick={buscarNotas} disabled={buscando}>{buscando ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}Buscar notas</Button>
@@ -219,6 +244,10 @@ export default function ImportarXmlNfe() {
                   </div>
                   <span className="font-semibold">{brl(Number(n.valor_total) || 0)}</span>
                   {n.importada && n.nota_compra_id && <Button size="sm" variant="outline" onClick={() => setDevolverId(n.nota_compra_id)}>Devolver</Button>}
+                  {n.situacao_sefaz !== "cancelada" && (
+                    <Button size="sm" variant="outline" disabled={!!baixando || busy} onClick={() => importarChave(n.chave_acesso, false, "baixar")}>
+                      <Download className="h-4 w-4 mr-2" />Baixar XML
+                    </Button>)}
                   {n.situacao_sefaz === "cancelada" ? <Badge variant="destructive">Cancelada</Badge> : (
                     <Button size="sm" variant="outline" disabled={!!baixando || busy} onClick={() => importarChave(n.chave_acesso)}>
                       {baixando === n.chave_acesso ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}{n.importada ? "Reimportar" : "Importar"}
@@ -269,7 +298,7 @@ export default function ImportarXmlNfe() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { const c = cienciaChave; setCienciaChave(null); if (c) importarChave(c, true); }}>Confirmar ciência</AlertDialogAction>
+            <AlertDialogAction onClick={() => { const c = cienciaChave; setCienciaChave(null); if (c) importarChave(c, true, cienciaModo); }}>Confirmar ciência</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
