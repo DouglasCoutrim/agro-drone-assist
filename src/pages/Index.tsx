@@ -240,10 +240,10 @@ const Index = () => {
     ...dados.vendasRecentes.map(v => ({ id: `v-${v.id}`, icon: ShoppingCart, titulo: "Venda realizada", sub: `${v.cliente_nome || "Consumidor"} • ${formatCurrency(Number(v.valor_total || 0))}`, data: v.criado_em, onClick: () => navigate("/vendas") })),
   ].sort((x, y) => new Date(y.data).getTime() - new Date(x.data).getTime()).slice(0, 5) : [];
   const kpis = dados ? [
-    { label: "Receita Total", value: formatCurrency(dados.receita), delta: variacao(dados.receita, dados.anterior.receita), bars: dados.barras.receita, icon: DollarSign, href: "/financeiro" },
-    { label: "Lucro Operacional", value: formatCurrency(lucro), delta: variacao(lucro, dados.anterior.lucro), bars: dados.barras.receita, icon: BarChart3, href: "/financeiro" },
-    { label: "Ordens em Andamento", value: String(dados.osTotal - dados.osConcluidas), delta: variacao(dados.osTotal, dados.anterior.os), bars: dados.barras.os, icon: ClipboardList, href: "/ordens-servico" },
-    { label: "Clientes Ativos", value: String(dados.clientesTotal), delta: variacao(dados.clientesNovos, dados.anterior.clientes), bars: dados.barras.clientes, icon: Users, href: "/clientes" },
+    { label: "Receita Total", value: formatCurrency(dados.receita), delta: variacao(dados.receita, dados.anterior.receita), bars: dados.barras.receita, icon: DollarSign, href: "/financeiro", tone: "primary" },
+    { label: "Lucro Operacional", value: formatCurrency(lucro), delta: variacao(lucro, dados.anterior.lucro), bars: dados.barras.receita, icon: BarChart3, href: "/financeiro", tone: "primary" },
+    { label: "Ordens em Andamento", value: String(dados.osTotal - dados.osConcluidas), delta: variacao(dados.osTotal, dados.anterior.os), bars: dados.barras.os, icon: Wrench, href: "/ordens-servico", tone: "warning" },
+    { label: "Clientes Ativos", value: String(dados.clientesTotal), delta: variacao(dados.clientesNovos, dados.anterior.clientes), bars: dados.barras.clientes, icon: Users, href: "/clientes", tone: "primary" },
   ] : [];
   const serieAcumulada = (() => {
     if (!dados?.serie.length) return [];
@@ -308,7 +308,7 @@ const Index = () => {
           <>
             {/* Indicadores */}
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-5">
-              {kpis.map(k => (
+              {kpis.map((k, idx) => (
                 <button key={k.label} onClick={() => navigate(k.href)}
                   className="group relative overflow-hidden rounded-2xl border border-border bg-card p-3 pb-12 text-left shadow-sm transition-shadow hover:shadow-md sm:p-5 sm:pb-14">
                   <div className="relative z-10 flex items-start gap-3">
@@ -329,12 +329,12 @@ const Index = () => {
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={k.bars.map((v, i) => ({ i, v }))} margin={{ top: 4, bottom: 0, left: 0, right: 0 }}>
                         <defs>
-                          <linearGradient id={`spark-${k.label}`} x1="0" y1="0" x2="0" y2="1">
+                          <linearGradient id={`spark-${idx}`} x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stopColor={k.tone === "warning" ? "hsl(var(--warning))" : "hsl(var(--primary-glow))"} stopOpacity={0.4} />
                             <stop offset="100%" stopColor={k.tone === "warning" ? "hsl(var(--warning))" : "hsl(var(--primary-glow))"} stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <Area type="monotone" dataKey="v" stroke={k.tone === "warning" ? "hsl(var(--warning))" : "hsl(var(--primary-glow))"} strokeWidth={2} fill={`url(#spark-${k.label})`} isAnimationActive={false} />
+                        <Area type="monotone" dataKey="v" stroke={k.tone === "warning" ? "hsl(var(--warning))" : "hsl(var(--primary-glow))"} strokeWidth={2} fill={`url(#spark-${idx})`} isAnimationActive={false} />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -420,8 +420,8 @@ const Index = () => {
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                      <span className="text-base font-bold sm:text-lg">{formatCurrency(lucro)}</span>
-                      <span className="text-xs text-muted-foreground">Saldo</span>
+                      <span className="text-base font-bold sm:text-xl">{compacto(dados.receita)}</span>
+                      <span className="text-xs text-muted-foreground">Total</span>
                     </div>
                   </div>
                   <ul className="space-y-3 text-sm">
@@ -552,6 +552,10 @@ function ListaHeader({ icon: Icon, title, onAll }: { icon: typeof FileText; titl
       <Button size="sm" variant="ghost" onClick={onAll}>Ver todas<ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>
     </div>
   );
+}
+
+function compacto(n: number) {
+  return n >= 1000 ? `R$ ${(n / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}k` : formatCurrency(n);
 }
 
 function tempoRelativo(d: string) {
