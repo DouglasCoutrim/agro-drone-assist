@@ -25,6 +25,11 @@ const OrdensServico = lazy(() => import("./pages/OrdensServico"));
 const Estoque = lazy(() => import("./pages/Estoque"));
 const ImportarXmlNfe = lazy(() => import("./pages/ImportarXmlNfe"));
 const NovaNfse = lazy(() => import("./pages/NovaNfse"));
+const NotasFiscais = lazy(() => import("./pages/fiscal/NotasFiscais"));
+const NfeVenda = lazy(() => import("./pages/fiscal/NfeVenda"));
+const DevolucaoVenda = lazy(() => import("./pages/fiscal/DevolucaoVenda"));
+const DevolucaoCompra = lazy(() => import("./pages/fiscal/DevolucaoCompra"));
+const NfeComplementar = lazy(() => import("./pages/fiscal/NfeComplementar"));
 const Servicos = lazy(() => import("./pages/Servicos"));
 const Relatorios = lazy(() => import("./pages/Relatorios"));
 const Financeiro = lazy(() => import("./pages/Financeiro"));
@@ -120,6 +125,11 @@ const App = () => {
                   <Route path="/estoque" element={<ProtectedRoute requiredPermission="acesso_estoque"><Estoque /></ProtectedRoute>} />
                   <Route path="/estoque/importar-xml" element={<ProtectedRoute requiredPermission="acesso_estoque"><ImportarXmlNfe /></ProtectedRoute>} />
                   <Route path="/fiscal/nfse" element={<ProtectedRoute><NovaNfse /></ProtectedRoute>} />
+                  <Route path="/fiscal/notas" element={<ProtectedRoute requiredPermission="acesso_financeiro"><NotasFiscais /></ProtectedRoute>} />
+                  <Route path="/fiscal/nfe/venda" element={<ProtectedRoute requiredPermission="acesso_financeiro"><NfeVenda /></ProtectedRoute>} />
+                  <Route path="/fiscal/nfe/devolucao-venda" element={<ProtectedRoute requiredPermission="acesso_financeiro"><DevolucaoVenda /></ProtectedRoute>} />
+                  <Route path="/fiscal/nfe/devolucao-compra" element={<ProtectedRoute requiredPermission="acesso_financeiro"><DevolucaoCompra /></ProtectedRoute>} />
+                  <Route path="/fiscal/nfe/complementar" element={<ProtectedRoute requiredPermission="acesso_financeiro"><NfeComplementar /></ProtectedRoute>} />
                   <Route path="/produtos" element={<Navigate to="/estoque" replace />} />
                   <Route path="/pdv" element={<ProtectedRoute><PDV /></ProtectedRoute>} />
                   <Route path="/vendas" element={<ProtectedRoute requiredPermission="acesso_financeiro"><Vendas /></ProtectedRoute>} />
