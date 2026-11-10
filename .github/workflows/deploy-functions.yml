@@ -1,0 +1,22 @@
+name: "Deploy Edge Functions (Supabase externo)"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/**"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_REF: qanmmpjofbacoxlxcgfy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Deploy de todas as funções
+        run: supabase functions deploy --project-ref "$PROJECT_REF" --use-api
