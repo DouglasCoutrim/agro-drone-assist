@@ -35,7 +35,7 @@ CREATE POLICY devolucoes_venda_select ON public.devolucoes_venda FOR SELECT TO a
 INSERT INTO public.fiscal_regras
   (organization_id, operacao, tipo_operacao, tipo_documento, finalidade,
    cfop_mesma_uf, cfop_outra_uf, status, observacao)
-SELECT o.id, 'devolucao_venda', 'devolucao_venda', 'NFE', '4',
+SELECT o.id, 'devolucao_venda', 'devolucao_venda', NULL, 4,
        '1202', '2202', 'pendente_contador',
        'Criada automaticamente. CST/CSOSN, PIS e COFINS devem ser definidos pelo contador.'
 FROM public.organizations o
