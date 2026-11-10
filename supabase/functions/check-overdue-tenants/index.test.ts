@@ -1,18 +1,16 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, mock } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 // Execute the actual Deno handler with isolated auth/database doubles.
 const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8')
   .replace(/^import .*createClient.*;\r?\n/m, '');
 
-afterEach(() => vi.restoreAllMocks());
-
 function setup({ secret, user = null, authError = null, member = null, roleError = null }: {
   secret?: string; user?: { id: string } | null; authError?: unknown;
   member?: { user_id: string } | null; roleError?: unknown;
 } = {}) {
   const tables: string[] = [];
-  const getUser = vi.fn(async () => ({ data: { user }, error: authError }));
+  const getUser = mock(async () => ({ data: { user }, error: authError }));
   const from = (table: string) => {
     tables.push(table);
     const query: any = {
