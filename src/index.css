@@ -272,7 +272,7 @@ iframe[src*="lovable"] {
 /* ===== Tema LivreOS v1.1 (esmeralda) ===== */
 @layer base {
   :root {
-    --background: 210 45% 96%;
+    --background: 150 14% 97%;
     --foreground: 215 35% 21%;
     --card: 0 0% 100%;
     --card-foreground: 215 35% 21%;
@@ -290,13 +290,13 @@ iframe[src*="lovable"] {
     --border-subtle: 220 22% 95%;
     --input: 225 18% 88%;
     --ring: 160 84% 34%;
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 215 35% 27%;
-    --sidebar-primary: 160 83% 26%;
+    --sidebar-background: 158 72% 13%;
+    --sidebar-foreground: 150 30% 92%;
+    --sidebar-primary: 152 62% 34%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 33% 96%;
-    --sidebar-accent-foreground: 215 35% 21%;
-    --sidebar-border: 225 21% 93%;
+    --sidebar-accent: 158 55% 19%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 158 45% 21%;
     --sidebar-ring: 160 84% 34%;
     --kg-bg: #EAF7F1; --kg-bd: #CDEBDD; --kg-tx: #0B7A55;
     --kb-bg: #EAF1FF; --kb-bd: #CFE0FF; --kb-tx: #1D4ED8;
@@ -322,11 +322,11 @@ iframe[src*="lovable"] {
     --border-subtle: 154 17% 16%;
     --input: 152 15% 20%;
     --ring: 149 58% 49%;
-    --sidebar-background: 150 18% 11%;
+    --sidebar-background: 158 60% 8%;
     --sidebar-foreground: 142 10% 74%;
     --sidebar-primary: 160 85% 29%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 154 20% 7%;
+    --sidebar-accent: 158 45% 14%;
     --sidebar-accent-foreground: 137 17% 92%;
     --sidebar-border: 152 15% 17%;
     --sidebar-ring: 149 58% 49%;
