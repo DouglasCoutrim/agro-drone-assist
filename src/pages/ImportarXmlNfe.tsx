@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { parseNfeXml, type NfeImport, type NfeParte } from "@/lib/nfe-xml";
 import { functionErrorMessage } from "@/lib/function-error";
+import { DevolucaoCompraDialog } from "@/components/fiscal/DevolucaoCompraDialog";
 
 type Linha = { idx: number; existenteId: string | null; qtdAtual: number; preco_venda: number };
 const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -47,6 +48,7 @@ export default function ImportarXmlNfe() {
   const [sincronizando, setSincronizando] = useState(false);
   const [ultimaSinc, setUltimaSinc] = useState<string | null>(null);
   const [cienciaChave, setCienciaChave] = useState<string | null>(null);
+  const [devolverId, setDevolverId] = useState<string | null>(null);
 
   const buscarNotas = async () => {
     setBuscando(true);
@@ -153,7 +155,7 @@ export default function ImportarXmlNfe() {
       }
       if (nota.chave) {
         await db.from("notas_recebidas").update({ importada: true, nota_compra_id: nc.id }).eq("organization_id", org).eq("chave_acesso", nota.chave);
-        setRecebidas((rs) => rs?.map((r) => r.chave_acesso === nota.chave ? { ...r, importada: true } : r) ?? rs);
+        setRecebidas((rs) => rs?.map((r) => r.chave_acesso === nota.chave ? { ...r, importada: true, nota_compra_id: nc.id } : r) ?? rs);
       }
       log.push(`Nota de compra nº ${nota.numero} registrada.`);
       setDone(log); setNota(null);
@@ -216,6 +218,7 @@ export default function ImportarXmlNfe() {
                     </div>
                   </div>
                   <span className="font-semibold">{brl(Number(n.valor_total) || 0)}</span>
+                  {n.importada && n.nota_compra_id && <Button size="sm" variant="outline" onClick={() => setDevolverId(n.nota_compra_id)}>Devolver</Button>}
                   {n.situacao_sefaz === "cancelada" ? <Badge variant="destructive">Cancelada</Badge> : (
                     <Button size="sm" variant="outline" disabled={!!baixando || busy} onClick={() => importarChave(n.chave_acesso)}>
                       {baixando === n.chave_acesso ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}{n.importada ? "Reimportar" : "Importar"}
@@ -257,6 +260,7 @@ export default function ImportarXmlNfe() {
           </div>
         </>)}
       </div>
+      <DevolucaoCompraDialog notaCompraId={devolverId} onOpenChange={(o) => !o && setDevolverId(null)} />
       <AlertDialog open={!!cienciaChave} onOpenChange={(o) => !o && setCienciaChave(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
