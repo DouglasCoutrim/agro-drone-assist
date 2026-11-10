@@ -7,7 +7,7 @@ import {
 import {
   DollarSign, TrendingUp, Users, CheckCircle, ShoppingCart, Wallet, AlertTriangle,
   Package, Plus, BarChart3, FileText, ClipboardList, ArrowRight,
-  Wrench, Search, SlidersHorizontal, CalendarDays, RefreshCw, PieChart as PieIcon, ChevronRight, Zap,
+  Wrench, Search, ArrowUp, ArrowDown, SlidersHorizontal, CalendarDays, RefreshCw, PieChart as PieIcon, ChevronRight, Zap,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { openGlobalSearch } from "@/components/layout/openSearch";
@@ -245,6 +245,15 @@ const Index = () => {
     { label: "Ordens em Andamento", value: String(dados.osTotal - dados.osConcluidas), delta: variacao(dados.osTotal, dados.anterior.os), bars: dados.barras.os, icon: ClipboardList, href: "/ordens-servico" },
     { label: "Clientes Ativos", value: String(dados.clientesTotal), delta: variacao(dados.clientesNovos, dados.anterior.clientes), bars: dados.barras.clientes, icon: Users, href: "/clientes" },
   ] : [];
+  const serieAcumulada = (() => {
+    if (!dados?.serie.length) return [];
+    let acc = 0;
+    const acum = dados.serie.map(p => (acc += p.receita));
+    const passo = Math.max(1, Math.ceil(acum.length / 8));
+    const pts = acum.filter((_, i) => i % passo === 0);
+    if (pts[pts.length - 1] !== acum[acum.length - 1]) pts.push(acum[acum.length - 1]);
+    return pts.map(receita => ({ receita }));
+  })();
   const pieData = dados ? [
     { name: "Entradas", value: Math.max(dados.receita, 0) },
     { name: "Saídas", value: Math.max(dados.despesas, 0) },
@@ -262,7 +271,7 @@ const Index = () => {
             <path d="M0 80 L0 72 C 130 80, 210 42, 300 26 C 345 18, 380 20, 400 24 L400 80 Z" fill="hsl(var(--background))" />
           </svg>
         </section>
-        <div className="relative z-10 -mt-12 !mt-[-3.25rem] flex h-[68px] w-full items-center gap-2 rounded-full bg-card px-2.5 shadow-lg lg:hidden">
+        <div className="relative z-10 !mt-[-3.25rem] flex h-[68px] w-full items-center gap-2 rounded-full bg-card px-2.5 shadow-lg lg:hidden">
           <button type="button" onClick={openGlobalSearch} className="flex flex-1 items-center gap-2" aria-label="Buscar no sistema">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted"><Search className="h-5 w-5 text-muted-foreground" /></span>
             <span className="flex h-11 flex-1 items-center rounded-full bg-muted px-4 text-left text-[15px] text-muted-foreground">Buscar no sistema...</span>
@@ -339,7 +348,7 @@ const Index = () => {
                 </p>
                 <div className="pointer-events-none absolute bottom-0 right-0 h-28 w-[62%]" aria-hidden>
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={dados.serie} margin={{ top: 8, bottom: 0, left: 0, right: 6 }}>
+                    <AreaChart data={serieAcumulada} margin={{ top: 8, bottom: 0, left: 0, right: 6 }}>
                       <defs>
                         <linearGradient id="gFatMobile" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="0%" stopColor="hsl(var(--primary-glow))" stopOpacity={0.9} />
@@ -347,7 +356,7 @@ const Index = () => {
                         </linearGradient>
                       </defs>
                       <Area type="monotone" dataKey="receita" stroke="hsl(var(--primary-foreground) / 0.85)" strokeWidth={2}
-                        fill="url(#gFatMobile)" dot={dados.serie.length <= 12 ? { r: 3, fill: "hsl(var(--primary-foreground))", stroke: "none" } : false} />
+                        fill="url(#gFatMobile)" dot={{ r: 3, fill: "hsl(var(--primary-foreground))", stroke: "none" }} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -463,22 +472,21 @@ const Index = () => {
                         </tbody>
                       </table>
                     </div>
-                    <ul className="divide-y divide-border md:hidden">
-                      {dados.osRecentes.map(o => (
-                        <li key={o.id}>
-                          <button className="flex w-full items-center gap-3 py-3 text-left" onClick={() => setOsId(o.id)}>
-                            <div className="min-w-0 flex-1">
-                              <p className="flex items-center gap-2 text-sm"><span className="font-mono font-semibold">#{o.numero}</span><span className="truncate">{o.clientes?.nome || "Cliente"}</span></p>
-                              <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                                <span className={cn("rounded-full px-2 py-0.5 font-medium", statusTone(o.status))}>{STATUS_LABEL[o.status] || o.status}</span>
-                                {new Date(o.created_at).toLocaleDateString("pt-BR")}
-                              </p>
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                    <table className="w-full table-fixed text-[13px] md:hidden">
+                      <thead><tr className="border-b border-border text-left text-xs text-muted-foreground">
+                        <th className="w-[22%] py-2 font-medium">#OS</th><th className="w-[30%] font-medium">Cliente</th><th className="font-medium">Status</th><th className="w-[24%] font-medium">Data</th>
+                      </tr></thead>
+                      <tbody>
+                        {dados.osRecentes.map(o => (
+                          <tr key={o.id} className="cursor-pointer border-b border-border last:border-0" onClick={() => setOsId(o.id)}>
+                            <td className="truncate py-3 font-medium">#{o.numero}</td>
+                            <td className="truncate pr-1">{o.clientes?.nome || "—"}</td>
+                            <td className="pr-1"><span className={cn("inline-block max-w-full truncate rounded-full px-2 py-0.5 text-[11px] font-semibold", statusTone(o.status))}>{STATUS_LABEL[o.status] || o.status}</span></td>
+                            <td className="text-xs"><span className="flex items-center justify-between">{new Date(o.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" })}<ChevronRight className="h-4 w-4 text-muted-foreground" /></span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </>
                 )}
               </section>

@@ -36,11 +36,11 @@ export function NotificationBell({ compact = false }: { compact?: boolean }) {
         <button
           aria-label="Notificações"
           className={cn(
-            "relative rounded-lg border border-border bg-card text-muted-foreground flex items-center justify-center transition-all hover:bg-background hover:text-foreground",
-            compact ? "w-9 h-9" : "w-9 h-9"
+            "relative rounded-lg flex items-center justify-center transition-all",
+            compact ? "w-10 h-10 bg-transparent text-sidebar-accent-foreground hover:bg-sidebar-accent" : "w-9 h-9 border border-border bg-card text-muted-foreground hover:bg-background hover:text-foreground"
           )}
         >
-          <Bell size={16} />
+          <Bell size={compact ? 24 : 16} />
           {unread > 0 && (
             <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
               {unread > 99 ? "99+" : unread}
