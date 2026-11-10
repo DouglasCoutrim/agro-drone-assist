@@ -68,6 +68,33 @@ interface Dados {
   tecnicos: { nome: string; os: number }[];
   statusOS: { name: string; value: number }[];
   osRecentes: any[]; vendasRecentes: any[]; osAtrasadas: any[];
+  anterior: { receita: number; lucro: number; os: number; clientes: number };
+  barras: { receita: number[]; os: number[]; clientes: number[] };
+}
+
+/** Variação percentual entre o período atual e o anterior (null quando não há base). */
+function variacao(atual: number, anterior: number): number | null {
+  if (!anterior) return atual > 0 ? 100 : null;
+  return ((atual - anterior) / Math.abs(anterior)) * 100;
+}
+
+/** Divide uma série em 5 grupos somados, para as barrinhas dos indicadores. */
+function cincoBarras(valores: number[]): number[] {
+  if (!valores.length) return [0, 0, 0, 0, 0];
+  const tam = Math.ceil(valores.length / 5);
+  return Array.from({ length: 5 }, (_, i) => valores.slice(i * tam, (i + 1) * tam).reduce((a, n) => a + n, 0));
+}
+
+function MiniBarras({ valores, claro }: { valores: number[]; claro?: boolean }) {
+  const max = Math.max(...valores, 1);
+  return (
+    <span className="flex h-8 items-end gap-[3px]" aria-hidden>
+      {valores.map((v, i) => (
+        <span key={i} className={cn("w-[7px] rounded-[2px]", claro ? "bg-primary-glow/35" : "bg-primary-glow/40", i === valores.length - 1 && "bg-primary-glow")}
+          style={{ height: `${Math.max(18, (v / max) * 100)}%`, opacity: 0.45 + (i / valores.length) * 0.55 }} />
+      ))}
+    </span>
+  );
 }
 
 const Index = () => {
@@ -92,17 +119,24 @@ const Index = () => {
     const inicio = inicioPeriodo(periodo);
     const inicioIso = inicio.toISOString();
     const hoje = new Date().toISOString();
+    const dias = periodo === "hoje" ? 1 : Number(periodo);
+    const inicioAnt = new Date(inicio); inicioAnt.setDate(inicioAnt.getDate() - dias);
+    const inicioAntIso = inicioAnt.toISOString();
     try {
       const r = await Promise.allSettled([
         supabase.from("financeiro").select("valor, tipo, data_transacao").eq("organization_id", orgId).gte("data_transacao", inicioIso),
         supabase.from("vendas").select("id, numero, cliente_nome, valor_total, status_pagamento, data_venda, criado_em").eq("organization_id", orgId).gte("criado_em", inicioIso).order("criado_em", { ascending: false }),
         supabase.from("clientes").select("id", { count: "exact", head: true }).eq("organization_id", orgId),
-        supabase.from("clientes").select("id", { count: "exact", head: true }).eq("organization_id", orgId).gte("created_at", inicioIso),
+        supabase.from("clientes").select("id, created_at").eq("organization_id", orgId).gte("created_at", inicioIso),
         supabase.from("ordens_servico").select("id, numero, status, tecnico_id, created_at, data_conclusao, tipo_equipamento, modelo_equipamento, clientes(nome)").eq("organization_id", orgId).gte("created_at", inicioIso).order("created_at", { ascending: false }),
         supabase.from("itens_estoque").select("quantidade, estoque_minimo").eq("organization_id", orgId),
         supabase.from("ordens_servico").select("id, numero, clientes(nome)").eq("organization_id", orgId).not("data_previsao", "is", null).lt("data_previsao", hoje).not("status", "in", `(${ENCERRADAS.join(",")})`).order("data_previsao").limit(5),
         supabase.from("profiles").select("id, nome").eq("organization_id", orgId),
         fetchOsComValores(orgId),
+        supabase.from("financeiro").select("valor, tipo").eq("organization_id", orgId).gte("data_transacao", inicioAntIso).lt("data_transacao", inicioIso),
+        supabase.from("vendas").select("valor_total").eq("organization_id", orgId).gte("criado_em", inicioAntIso).lt("criado_em", inicioIso),
+        supabase.from("ordens_servico").select("id", { count: "exact", head: true }).eq("organization_id", orgId).gte("created_at", inicioAntIso).lt("created_at", inicioIso),
+        supabase.from("clientes").select("id", { count: "exact", head: true }).eq("organization_id", orgId).gte("created_at", inicioAntIso).lt("created_at", inicioIso),
       ]);
       const v = (i: number): any => (r[i].status === "fulfilled" ? (r[i] as PromiseFulfilledResult<any>).value : null);
       r.forEach((x, i) => x.status === "rejected" && console.error(`Dashboard consulta ${i}:`, x.reason));
@@ -153,13 +187,27 @@ const Index = () => {
       const porStatus = new Map<string, number>();
       os.forEach(o => { const n = STATUS_LABEL[o.status] || o.status; porStatus.set(n, (porStatus.get(n) || 0) + 1); });
 
+      const finAnt: any[] = v(9)?.data || [];
+      const receitaAnt = finAnt.filter(f => f.tipo === "receita").reduce((a, f) => a + Number(f.valor || 0), 0)
+        + (v(10)?.data || []).reduce((a: number, s: any) => a + Number(s.valor_total || 0), 0);
+      const despesaAnt = finAnt.filter(f => f.tipo === "despesa").reduce((a, f) => a + Number(f.valor || 0), 0);
+      const chavesSerie = Array.from(buckets.keys());
+      const contarPor = (lista: any[]) => {
+        const m = new Map(chavesSerie.map(k => [k, 0]));
+        lista.forEach(x => { const k = chave(new Date(x.created_at)); if (m.has(k)) m.set(k, (m.get(k) || 0) + 1); });
+        return cincoBarras(Array.from(m.values()));
+      };
+      const clientesNovosLista: any[] = v(3)?.data || [];
+
       setDados({
+        anterior: { receita: receitaAnt, lucro: receitaAnt - despesaAnt, os: v(11)?.count || 0, clientes: v(12)?.count || 0 },
+        barras: { receita: cincoBarras(Array.from(buckets.values())), os: contarPor(os), clientes: contarPor(clientesNovosLista) },
         receita: receitaFin + osFaturadasPeriodo + vendasTotal,
         despesas,
         vendasTotal,
         vendasQtd: vendas.length,
         clientesTotal: v(2)?.count || 0,
-        clientesNovos: v(3)?.count || 0,
+        clientesNovos: clientesNovosLista.length,
         osTotal: os.length,
         osConcluidas: os.filter(o => FINALIZADAS.includes(o.status)).length,
         aReceber: osValores.filter(o => !o.pago && o.valor > 0).reduce((a, o) => a + o.valor, 0)
