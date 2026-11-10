@@ -5,7 +5,7 @@
 @layer base {
   :root {
     /* Backgrounds */
-    --background: 216 25% 97%;
+    --background: 150 14% 97%;
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
@@ -13,7 +13,8 @@
     --popover-foreground: 222 47% 11%;
 
     /* Primary - Green */
-    --primary: 142 76% 40%;
+    --primary: 158 84% 26%;
+    --primary-glow: 145 63% 42%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary */
@@ -38,18 +39,18 @@
     --border: 214 32% 91%;
     --border-subtle: 210 40% 96%;
     --input: 215 25% 84%;
-    --ring: 142 72% 37%;
-    --radius: 0.5rem;
+    --ring: 158 84% 26%;
+    --radius: 0.75rem;
 
     /* Sidebar - always dark */
-    --sidebar-background: 220 26% 12%;
+    --sidebar-background: 158 72% 13%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 142 72% 37%;
+    --sidebar-primary: 152 62% 34%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 26% 16%;
+    --sidebar-accent: 158 55% 18%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 220 26% 16%;
-    --sidebar-ring: 142 72% 37%;
+    --sidebar-border: 158 45% 20%;
+    --sidebar-ring: 152 62% 34%;
 
     /* Semantic status colors */
     --green: 142 72% 37%;
@@ -78,6 +79,7 @@
     /* Layout */
     --sidebar-width: 248px;
     --header-height: 64px;
+    --gradient-brand: linear-gradient(135deg, hsl(158 72% 13%), hsl(156 70% 22%) 60%, hsl(150 60% 30%));
     --bottom-nav-height: 64px;
   }
 
@@ -270,7 +272,7 @@ iframe[src*="lovable"] {
 /* ===== Tema LivreOS v1.1 (esmeralda) ===== */
 @layer base {
   :root {
-    --background: 210 45% 96%;
+    --background: 150 14% 97%;
     --foreground: 215 35% 21%;
     --card: 0 0% 100%;
     --card-foreground: 215 35% 21%;
@@ -288,13 +290,13 @@ iframe[src*="lovable"] {
     --border-subtle: 220 22% 95%;
     --input: 225 18% 88%;
     --ring: 160 84% 34%;
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 215 35% 27%;
-    --sidebar-primary: 160 83% 26%;
+    --sidebar-background: 158 72% 13%;
+    --sidebar-foreground: 150 30% 92%;
+    --sidebar-primary: 152 62% 34%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 33% 96%;
-    --sidebar-accent-foreground: 215 35% 21%;
-    --sidebar-border: 225 21% 93%;
+    --sidebar-accent: 158 55% 19%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 158 45% 21%;
     --sidebar-ring: 160 84% 34%;
     --kg-bg: #EAF7F1; --kg-bd: #CDEBDD; --kg-tx: #0B7A55;
     --kb-bg: #EAF1FF; --kb-bd: #CFE0FF; --kb-tx: #1D4ED8;
@@ -320,11 +322,11 @@ iframe[src*="lovable"] {
     --border-subtle: 154 17% 16%;
     --input: 152 15% 20%;
     --ring: 149 58% 49%;
-    --sidebar-background: 150 18% 11%;
+    --sidebar-background: 158 60% 8%;
     --sidebar-foreground: 142 10% 74%;
     --sidebar-primary: 160 85% 29%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 154 20% 7%;
+    --sidebar-accent: 158 45% 14%;
     --sidebar-accent-foreground: 137 17% 92%;
     --sidebar-border: 152 15% 17%;
     --sidebar-ring: 149 58% 49%;

@@ -1,6 +1,6 @@
-import { LogOut } from "lucide-react";
+import { LogOut, User } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo-icon.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
@@ -8,20 +8,13 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
+/** Cabeçalho verde do aplicativo no celular, respeitando a área segura do aparelho. */
 export function MobileHeader() {
-  const { user, role, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const handleSignOut = async () => { await signOut(); navigate("/auth"); };
-  const roleBadge = role === "admin"
-    ? <Badge className="bg-primary/20 text-primary text-[10px] px-1.5 py-0">Admin</Badge>
-    : role === "tecnico"
-    ? <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Técnico</Badge>
-    : role === "consulta"
-    ? <Badge variant="outline" className="text-[10px] px-1.5 py-0">Consulta</Badge>
-    : null;
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -32,34 +25,40 @@ export function MobileHeader() {
   }, [user]);
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-[var(--header-height)] bg-card/90 backdrop-blur-xl border-b border-border flex items-center justify-between px-5 z-[100] lg:hidden w-full transition-all duration-300 shadow-sm">
-      <div className="flex items-center">
-        <img src={logo} alt="LivreOS" className="h-9 w-auto drop-shadow-[0_2px_8px_rgba(57,255,20,0.2)]" />
-      </div>
-      <div className="flex items-center gap-1">
-        <ThemeToggle />
-        <NotificationBell compact />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="w-8 h-8 rounded-lg overflow-hidden bg-primary/20 flex items-center justify-center ml-1" aria-label="Menu da conta">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-xs font-bold text-primary">{user?.email?.charAt(0)?.toUpperCase() || "U"}</span>
-              )}
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel className="text-xs flex items-center justify-between gap-2">
-              <span className="truncate">{user?.email}</span>
-              {roleBadge}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut} className="text-destructive cursor-pointer text-xs">
-              <LogOut className="mr-2 h-3.5 w-3.5" />Sair
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+    <header
+      className="fixed top-0 left-0 right-0 z-[100] w-full pt-[env(safe-area-inset-top)] text-sidebar-accent-foreground lg:hidden"
+      style={{ background: "var(--gradient-brand)" }}
+    >
+      <div className="flex h-[var(--header-height)] items-center justify-between px-4">
+        <Link to="/dashboard" className="flex items-center gap-2.5" aria-label="LivreOS Enterprise - início">
+          <img src={logo} alt="" className="h-9 w-9 object-contain" />
+          <span className="leading-none">
+            <span className="block text-lg font-bold tracking-tight">LivreOS</span>
+            <span className="block text-[10px] font-medium opacity-80">Enterprise</span>
+          </span>
+        </Link>
+        <div className="flex items-center gap-1 [&_button]:text-sidebar-accent-foreground [&_button:hover]:bg-sidebar-accent">
+          <ThemeToggle />
+          <NotificationBell compact />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="relative ml-1 h-10 w-10 rounded-full border-2 border-sidebar-accent-foreground/80 bg-sidebar-accent" aria-label="Menu da conta">
+                <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-full">
+                  {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : <span className="text-sm font-bold">{user?.email?.charAt(0)?.toUpperCase() || "U"}</span>}
+                </span>
+                <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-sidebar bg-primary-glow" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="text-xs truncate">{user?.email}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate("/configuracoes")} className="cursor-pointer text-xs"><User className="mr-2 h-3.5 w-3.5" />Meu perfil</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSignOut} className="text-destructive cursor-pointer text-xs">
+                <LogOut className="mr-2 h-3.5 w-3.5" />Sair
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </header>
   );
