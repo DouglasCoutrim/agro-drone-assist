@@ -24,9 +24,14 @@ export default function DevolucaoCompra() {
 
   useEffect(() => {
     if (!organization?.id) return;
-    db.from("notas_compra").select("id, numero, serie, chave_acesso, valor_total, data_emissao, fornecedores(nome), notas_compra_itens(id, descricao, quantidade, quantidade_devolvida)")
+    db.from("notas_compra").select("id, numero, serie, chave_acesso, valor_total, data_emissao, fornecedor_id, notas_compra_itens(id, descricao, quantidade, quantidade_devolvida)")
       .eq("organization_id", organization.id).order("data_emissao", { ascending: false }).limit(300)
-      .then(({ data }: any) => setNotas(data || []));
+      .then(async ({ data }: any) => {
+        const ids = [...new Set((data || []).map((n: any) => n.fornecedor_id).filter(Boolean))];
+        const { data: fs } = ids.length ? await supabase.from("fornecedores").select("id, nome").eq("organization_id", organization.id).in("id", ids as string[]) : { data: [] };
+        const nomes = new Map((fs || []).map((f: any) => [f.id, f.nome]));
+        setNotas((data || []).map((n: any) => ({ ...n, fornecedores: { nome: nomes.get(n.fornecedor_id) } })));
+      });
   }, [organization?.id]);
 
   const itens: ItemSelecao[] = (nota?.notas_compra_itens || []).map((i: any) => ({ id: i.id, descricao: i.descricao, total: Number(i.quantidade), devolvido: Number(i.quantidade_devolvida || 0) }));
