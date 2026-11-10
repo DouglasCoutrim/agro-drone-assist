@@ -22,3 +22,28 @@ export async function baixarEstoqueDevolucao(admin: any, nfId: string, usuarioId
     }
   }
 }
+
+// Devolução de venda: soma o saldo devolvido e devolve ao estoque somente após a autorização (uma única vez).
+export async function entradaEstoqueDevolucaoVenda(admin: any, nfId: string, usuarioId: string | null = null) {
+  const { data: devs } = await admin.from('devolucoes_venda')
+    .update({ saldo_baixado: true }).eq('nf_id', nfId).eq('saldo_baixado', false).select('*');
+  for (const d of devs || []) {
+    for (const it of (d.itens || []) as any[]) {
+      const qtd = Number(it.quantidade) || 0;
+      if (qtd <= 0) continue;
+      const { data: vi } = await admin.from('venda_itens').select('quantidade_devolvida').eq('id', it.venda_item_id).maybeSingle();
+      if (vi) await admin.from('venda_itens').update({ quantidade_devolvida: Number(vi.quantidade_devolvida || 0) + qtd }).eq('id', it.venda_item_id);
+      if (it.item_estoque_id) {
+        const { data: est } = await admin.from('itens_estoque').select('quantidade')
+          .eq('id', it.item_estoque_id).eq('organization_id', d.organization_id).maybeSingle();
+        if (est) {
+          await admin.from('itens_estoque').update({ quantidade: Number(est.quantidade) + qtd }).eq('id', it.item_estoque_id);
+          await admin.from('movimentacoes_estoque').insert({
+            item_id: it.item_estoque_id, organization_id: d.organization_id, quantidade: qtd, tipo: 'entrada',
+            motivo: 'Devolução de venda pelo cliente', usuario_id: usuarioId ?? d.created_by,
+          });
+        }
+      }
+    }
+  }
+}
