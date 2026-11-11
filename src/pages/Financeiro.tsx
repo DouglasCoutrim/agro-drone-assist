@@ -123,7 +123,6 @@ export default function Financeiro() {
     setEditingTransacao(null);
   };
 
-  
 
   const { receitaMensal, despesaMensal, comissoesMensal, lucroLiquido } = useMemo(() => {
     const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
@@ -199,20 +198,7 @@ export default function Financeiro() {
                           <div className="space-y-1.5"><Label className="text-xs">Valor (R$) *</Label><NumberInput step="0.01" className="h-9" value={formData.valor} onChange={(v) => setFormData({ ...formData, valor: v })} placeholder="0,00" required /></div>
                           <div className="sm:col-span-2 space-y-1.5">
                             <Label className="text-xs">Descrição *</Label>
-                            <CatalogAutocomplete
-                              value={formData.descricao}
-                              onChange={(v) => setFormData({ ...formData, descricao: v })}
-                              onSelect={(item) => setFormData(f => ({
-                                ...f,
-                                descricao: item.descricao,
-                                valor: item.preco > 0 ? item.preco : f.valor,
-                                categoria: item.categoria || f.categoria,
-                              }))}
-                              placeholder="Buscar produto/serviço ou digitar..."
-                              mode="text"
-                              required
-                              currentCategory={formData.categoria}
-                            />
+                            <Input className="h-9 w-full" value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} placeholder="Descreva livremente o lançamento" required />
                           </div>
                           <div className="space-y-1.5"><Label className="text-xs">Categoria</Label><Input className="h-9" value={formData.categoria} onChange={(e) => setFormData({ ...formData, categoria: e.target.value })} placeholder="Ex: Serviços, Estoque" /></div>
                           <div className="space-y-1.5"><Label className="text-xs">Data *</Label><Input type="date" className="h-9" value={formData.data_transacao} onChange={(e) => setFormData({ ...formData, data_transacao: e.target.value })} required /></div>
