@@ -1,5 +1,9 @@
 # Roadmap
 
+## Monitoramento: notificações push e salvamento de vendas
+- [ ] Verificar e corrigir o envio de campos exclusivos do formulário ao salvar/criar vendas; testar ambos os caminhos.
+- [ ] Verificar o contrato de autorização das notificações no serviço ativo; se exigir banco externo, apresentar SQL para aprovação sem aplicar no Cloud antigo.
+
 ## Monitoramento: acessos, pedidos, notas recebidas e patrimônio
 - [x] Corrigir acessos por árvore, rascunhos desatualizados e mensagens das notas recebidas; 19 testes passaram e compilação sem erros.
 - [ ] Corrigir patrimônio com atualização e histórico atômicos: aguarda aprovação do plano/SQL e disponibilidade do banco para conferir restrições atuais.
