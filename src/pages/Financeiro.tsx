@@ -10,7 +10,6 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { DollarSign, TrendingUp, TrendingDown, Plus, Wallet, Receipt, Loader2, Edit, Trash2, Search, MessageCircle, ClipboardList, CreditCard } from "lucide-react";
-import { CatalogAutocomplete } from "@/components/ui/catalog-autocomplete";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
