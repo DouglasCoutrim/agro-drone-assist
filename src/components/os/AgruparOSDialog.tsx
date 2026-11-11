@@ -8,7 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { NumberInput } from "@/components/ui/number-input";
 import { Badge } from "@/components/ui/badge";
 import { SmartSelect } from "@/components/ui/smart-select";
-import { Loader2, Download, MessageCircle, Save, Layers } from "lucide-react";
+import { Loader2, Download, MessageCircle, Save, Layers, Receipt } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/hooks/useAuth";
+import { gerarDocumentoPadrao } from "@/lib/pdf-padrao";
+import { SERVICO_NCM } from "@/lib/venda-servico";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useOrganization } from "@/hooks/useOrganization";
@@ -24,6 +28,10 @@ const TIPO: Record<string, string> = {
   drone_agricola: "Drone Agrícola", drone_convencional: "Drone", controle: "Controle Remoto", bateria: "Bateria", outro: "Outro",
 };
 const CLOSED = ["entregue", "cancelada", "finalizada"];
+const FORMAS = [
+  { value: "dinheiro", label: "Dinheiro" }, { value: "pix", label: "PIX" },
+  { value: "debito", label: "Débito" }, { value: "credito", label: "Crédito" },
+];
 
 interface OSRow {
   id: string; numero: string; status: string; tipo_equipamento: string; marca: string | null;
@@ -49,6 +57,8 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
   const [validade, setValidade] = useState(new Date(Date.now() + 15 * 86400000).toISOString().split("T")[0]);
   const [observacao, setObservacao] = useState("");
   const [busy, setBusy] = useState(false);
+  const [forma, setForma] = useState("dinheiro");
+  const { user } = useAuth();
 
   useEffect(() => {
     if (!open || !organization?.id) return;
@@ -140,6 +150,54 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
     } catch (e) { toast.error("Erro ao salvar: " + getErrorMessage(e)); } finally { setBusy(false); }
   };
 
+  // Registra a venda das OS agrupadas (peças + serviços) e gera o recibo. Peças já saíram do estoque na OS.
+  const handleVenda = async () => {
+    if (!guard() || !organization?.id || !user) return;
+    setBusy(true);
+    try {
+      const { data: last } = await supabase.from("vendas").select("numero").eq("organization_id", organization.id)
+        .order("criado_em", { ascending: false }).limit(1).maybeSingle();
+      const m = last?.numero?.match(/(\d+)$/);
+      const numero = `VND-${String(m ? parseInt(m[1]) + 1 : 1).padStart(5, "0")}`;
+      const linhas = grupos.flatMap((g: any) => g.itens.map((i: any) => ({ ...i, os_numero: g.os_numero })));
+      const { data: venda, error } = await supabase.from("vendas").insert({
+        organization_id: organization.id, numero, data_venda: new Date().toISOString().split("T")[0],
+        cliente_id: clienteId, cliente_nome: cliente!.nome, forma_pagamento: forma, status_pagamento: "pago",
+        valor_produtos: subtotal, valor_desconto: desconto, valor_impostos: 0, valor_total: total, vendido_por: user.id,
+        obs: `Venda do orçamento agrupado (${grupos.map(g => g.os_numero).join(", ")}) — recibo, sem nota fiscal`,
+        nfe_dados: { emitir_nota: false, origem: "orcamento_agrupado" },
+      } as any).select().single();
+      if (error) throw error;
+      const { error: e2 } = await supabase.from("venda_itens").insert(linhas.map((i: any) => ({
+        venda_id: venda.id, produto_id: null, nome_produto: `${i.descricao} (${i.os_numero})`,
+        ncm: i.tipo === "servico" ? SERVICO_NCM : null, cfop: null,
+        quantidade: i.quantidade, preco_unitario: i.valor_unitario, valor_total: i.valor_total,
+      })) as any);
+      if (e2) { await supabase.from("vendas").delete().eq("id", venda.id); throw e2; }
+
+      const doc = gerarDocumentoPadrao({
+        titulo: "Recibo de Venda", numero,
+        linhasCabecalho: [`Emissão: ${new Date().toLocaleString("pt-BR")}`, `OS: ${grupos.map(g => g.os_numero).join(", ")}`, "Documento sem valor fiscal"],
+        empresa: { nome: empresa.nome_empresa, cnpj: empresa.cnpj, telefone: empresa.telefone, endereco: empresa.endereco, logoDataUrl: await loadImageAsDataUrl(empresa.logo_url) },
+        parte: { rotulo: "Cliente", nome: cliente!.nome, detalhes: [cliente!.telefone ? `Telefone: ${cliente!.telefone}` : ""] },
+        tabela: {
+          titulo: "Itens",
+          colunas: [{ titulo: "Descrição" }, { titulo: "Tipo", largura: 20 }, { titulo: "Qtd", largura: 14, alinhar: "right" }, { titulo: "Unit.", largura: 26, alinhar: "right" }, { titulo: "Total", largura: 28, alinhar: "right" }],
+          linhas: linhas.map((i: any) => [`${i.descricao} (${i.os_numero})`, i.tipo === "servico" ? "Serviço" : "Peça", String(i.quantidade), formatCurrency(i.valor_unitario), formatCurrency(i.valor_total)]),
+        },
+        totais: [
+          { rotulo: "Subtotal", valor: subtotal },
+          ...(desconto > 0 ? [{ rotulo: "Desconto", valor: desconto, negativo: true }] : []),
+          { rotulo: "TOTAL PAGO", valor: total, destaque: true },
+        ],
+        observacao: `Forma de pagamento: ${FORMAS.find(f => f.value === forma)?.label}`,
+        assinaturas: [empresa.nome_empresa || "Empresa", cliente!.nome],
+      } as any);
+      doc.save(`recibo-${numero}.pdf`);
+      toast.success(`Venda ${numero} registrada e recibo gerado.`);
+    } catch (e) { toast.error("Erro ao registrar a venda: " + getErrorMessage(e)); } finally { setBusy(false); }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[92vh] min-h-[60vh] overflow-y-auto">
@@ -210,6 +268,14 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
                 <div className="flex justify-between border-t border-border pt-1"><span>Subtotal</span><span className="font-mono">{formatCurrency(subtotal)}</span></div>
                 {desconto > 0 && <div className="flex justify-between"><span>Desconto</span><span className="font-mono">- {formatCurrency(desconto)}</span></div>}
                 <div className="flex justify-between font-bold text-base"><span>TOTAL</span><span className="font-mono text-primary">{formatCurrency(total)}</span></div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2 sm:items-end rounded-lg border border-border p-3">
+                <div className="space-y-1.5 flex-1"><Label>Forma de pagamento</Label>
+                  <Select value={forma} onValueChange={setForma}><SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{FORMAS.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}</SelectContent></Select>
+                </div>
+                <Button onClick={handleVenda} disabled={busy}><Receipt className="h-4 w-4 mr-1.5" />Efetuar venda e emitir recibo</Button>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
