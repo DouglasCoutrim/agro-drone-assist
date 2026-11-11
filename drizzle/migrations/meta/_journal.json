@@ -162,6 +162,13 @@
       "when": 1794062020506,
       "tag": "0022_itens_os_price_org_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794394140918,
+      "tag": "0023_enforce_monthly_os_limit",
+      "breakpoints": true
     }
   ]
 }
