@@ -16,8 +16,17 @@ import { functionErrorMessage } from "@/lib/function-error";
 import { todayDateInput } from "@/lib/formatters";
 import { DevolucaoCompraDialog } from "@/components/fiscal/DevolucaoCompraDialog";
 
-type Linha = { idx: number; existenteId: string | null; qtdAtual: number; preco_venda: number };
+type Finalidade = "revenda" | "uso_interno" | "ferramenta";
+type Linha = { idx: number; existenteId: string | null; qtdAtual: number; preco_venda: number; finalidade: Finalidade };
 const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+const FINALIDADES: { value: Finalidade; label: string }[] = [
+  { value: "revenda", label: "Revenda (produto)" },
+  { value: "uso_interno", label: "Uso interno (consumo)" },
+  { value: "ferramenta", label: "Ferramenta da loja" },
+];
+const categoriaDaFinalidade = (f: Finalidade) =>
+  f === "revenda" ? "Peças" : f === "ferramenta" ? "Ferramentas" : "Uso interno";
 
 export default function ImportarXmlNfe() {
   const { organization } = useOrganization();
@@ -108,7 +117,7 @@ export default function ImportarXmlNfe() {
       const all = itens || [];
       setLinhas(n.produtos.map((p, idx) => {
         const hit = all.find((i) => (p.gtin && i.gtin === p.gtin) || i.codigo === p.codigo || i.descricao.trim().toLowerCase() === p.descricao.trim().toLowerCase());
-        return { idx, existenteId: hit?.id ?? null, qtdAtual: Number(hit?.quantidade ?? 0), preco_venda: 0 };
+        return { idx, existenteId: hit?.id ?? null, qtdAtual: Number(hit?.quantidade ?? 0), preco_venda: 0, finalidade: "revenda" as Finalidade };
       }));
       setFornExiste(await findParte("fornecedores", n.emitente));
       setTranspExiste(await findParte("transportadoras", n.transportadora));
@@ -136,11 +145,23 @@ export default function ImportarXmlNfe() {
         }
       }
       const db = supabase as any;
+
+      // Reimportação: se a nota já gerou uma nota de compra, não duplica estoque.
+      if (nota.chave) {
+        const { data: jaImportada } = await db.from("notas_recebidas")
+          .select("nota_compra_id").eq("organization_id", org).eq("chave", nota.chave).maybeSingle();
+        if (jaImportada?.nota_compra_id) {
+          toast.error("Esta NF-e já foi importada para o estoque.");
+          setNota(null);
+          return;
+        }
+      }
+
       const { data: forn } = await supabase.from("fornecedores").select("id").eq("organization_id", org).eq("cpf_cnpj", nota.emitente.cpf_cnpj).limit(1);
       const totalProd = nota.produtos.reduce((s, p) => s + p.quantidade * p.custo_unitario, 0);
       const { data: nc, error: ncErr } = await db.from("notas_compra").insert({
         organization_id: org, fornecedor_id: forn?.[0]?.id ?? null, chave_acesso: nota.chave || null,
-        numero: nota.numero || "s/n", serie: nota.serie || "1", data_emissao: new Date().toISOString(),
+        numero: nota.numero || "s/n", serie: nota.serie || "1", data_emissao: nota.data_emissao,
         valor_produtos: totalProd, valor_total: totalProd, created_by: user.id,
       }).select("id").single();
       if (ncErr) throw ncErr;
@@ -156,14 +177,17 @@ export default function ImportarXmlNfe() {
           let codigo = p.codigo || `NF-${nota.numero}-${l.idx + 1}`;
           const { data: dup } = await supabase.from("itens_estoque").select("id").eq("organization_id", org).eq("codigo", codigo).limit(1);
           if (dup?.length) codigo = `${codigo}-${Date.now().toString().slice(-4)}`;
+          const finalidade: Finalidade = l.finalidade || "revenda";
           const { data, error } = await supabase.from("itens_estoque").insert({
-            organization_id: org, codigo, descricao: p.descricao, categoria: "Peças", quantidade: p.quantidade,
-            custo_unitario: p.custo_unitario, preco_venda: l.preco_venda, fornecedor: nota.emitente.nome,
+            organization_id: org, codigo, descricao: p.descricao, categoria: categoriaDaFinalidade(finalidade),
+            quantidade: p.quantidade, custo_unitario: p.custo_unitario,
+            preco_venda: finalidade === "revenda" ? l.preco_venda : 0,
+            finalidade, fornecedor: nota.emitente.nome,
             ncm: p.ncm || null, cest: p.cest || null, unidade: p.unidade, gtin: p.gtin || null,
           }).select("id").single();
           if (error) throw error;
           itemId = data.id;
-          log.push(`${p.descricao}: novo produto cadastrado (${p.quantidade}).`);
+          log.push(`${p.descricao}: novo item cadastrado como ${FINALIDADES.find(f => f.value === finalidade)?.label} (${p.quantidade}).`);
         }
         await supabase.from("movimentacoes_estoque").insert({ item_id: itemId!, organization_id: org, quantidade: p.quantidade, tipo: "entrada", motivo, usuario_id: user.id });
         const { error: itErr } = await db.from("notas_compra_itens").insert({
@@ -174,7 +198,11 @@ export default function ImportarXmlNfe() {
         if (itErr) throw itErr;
       }
       if (nota.chave) {
-        await db.from("notas_recebidas").update({ importada: true, nota_compra_id: nc.id }).eq("organization_id", org).eq("chave_acesso", nota.chave);
+        const { error: vincErr } = await db.from("notas_recebidas")
+          .update({ nota_compra_id: nc.id })
+          .eq("organization_id", org)
+          .eq("chave", nota.chave);
+        if (vincErr) log.push(`Atenção: a nota foi importada, mas o vínculo com a NF-e não foi salvo (${vincErr.message}).`);
         setRecebidas((rs) => rs?.map((r) => r.chave_acesso === nota.chave ? { ...r, importada: true, nota_compra_id: nc.id } : r) ?? rs);
       }
       log.push(`Nota de compra nº ${nota.numero} registrada.`);
@@ -279,8 +307,20 @@ export default function ImportarXmlNfe() {
                     {l.existenteId ? `Atualiza estoque (+${p.quantidade})` : "Novo produto"}
                   </Badge>
                   {!l.existenteId && (
-                    <Input type="number" step="0.01" min={0} placeholder="Preço de venda" className="md:w-36"
-                      onChange={(e) => setLinhas((ls) => ls.map((x) => x.idx === l.idx ? { ...x, preco_venda: Number(e.target.value) || 0 } : x))} />
+                    <>
+                      <select
+                        aria-label="Finalidade do item"
+                        className="h-9 rounded-md border border-input bg-background px-2 text-xs md:w-56"
+                        value={l.finalidade}
+                        onChange={(e) => setLinhas((ls) => ls.map((x) => x.idx === l.idx ? { ...x, finalidade: e.target.value as Finalidade } : x))}
+                      >
+                        {FINALIDADES.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+                      </select>
+                      {l.finalidade === "revenda" && (
+                        <Input type="number" step="0.01" min={0} placeholder="Preço de venda" className="md:w-36"
+                          onChange={(e) => setLinhas((ls) => ls.map((x) => x.idx === l.idx ? { ...x, preco_venda: Number(e.target.value) || 0 } : x))} />
+                      )}
+                    </>
                   )}
                 </div>); })}
             </CardContent></Card>

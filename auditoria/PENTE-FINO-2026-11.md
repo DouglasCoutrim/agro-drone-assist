@@ -279,18 +279,53 @@ não mostra mais "Importada" falso nem duplica nota.
 
 ---
 
-## 5. Decisões que preciso de você
+## 5. Decisões tomadas (nov/2026)
 
-1. **Admin pode ser técnico?** Hoje 7 usuários são só-admin. A regra proposta é `tecnico_id` exigir papel `tecnico`
-   (quem executa precisa receber o papel). Confirmar, ou manter "admin pode" e apenas esconder quem não é admin nem técnico.
-2. **Consumo interno pode ser vendido?** Se sim, `finalidade` precisa ser "principalmente interno" e não bloqueante.
-3. **Limpeza de dados:** posso remover de `produtos` as linhas de despesa ("Compra de Lanche", "Gastos pessoais", "Gast", "Bike Souza")
-   e as duplicatas? Prefiro fazer isso com sua confirmação item a item.
-4. **`estoque_tecnico`/`transferencias_estoque`:** corrigir ou remover? Hoje não existe tela usando, e o trigger está quebrado.
+1. **Admin pode ser técnico** → seletores usam papéis `tecnico` **ou** `admin`; perfis só-`consulta` nunca são atribuídos.
+2. **Consumo interno não é vendido** → buscas de OS/orçamento/PDV/vendas filtram `finalidade = 'revenda'`.
+3. **Limpeza aprovada** → despesas e duplicatas removidas do catálogo legado.
+4. **Estoque do técnico: corrigir** → fluxo loja → técnico → loja implementado via RPC.
 
 ---
 
-## 6. Observação de método
+## 6. Execução (aplicado)
 
-As evidências vêm de consultas agregadas (`GROUP BY`, `count`) e de leitura de código; nenhuma alteração foi feita.
-Os números citados refletem o banco no momento da auditoria e podem variar.
+### Banco
+- `itens_estoque.finalidade` (`revenda` | `uso_interno` | `ferramenta`) com CHECK, e classificação dos itens de limpeza existentes.
+- `UNIQUE (organization_id, numero)` em `ordens_servico` (era global) + `generate_os_number()` isolado por organização.
+- `technician_expenses`: políticas de INSERT/UPDATE/DELETE para o próprio técnico.
+- `user_roles`: membros passam a ler os papéis da própria organização (lista de técnicos funciona para não-admin).
+- `patrimonio_ferramentas.status`: CHECK aceita `danificado`, `extraviado`, `extraviada`, `baixado` (a tela já oferecia).
+- RPCs `transferir_estoque_tecnico` (loja → técnico) e `devolver_estoque_central` (técnico → loja), registrando transferência e movimentação.
+- Trigger `confirmar_transferencia_estoque` (quebrado, usava o mesmo id para item e técnico e gravava `tipo` fora do CHECK) removido.
+- Triggers de estoque baixo (solicitação e notificação) só disparam na transição acima→abaixo do mínimo.
+- `get_fluxo_caixa_projetado` corrigido (colunas inexistentes) e `get_dre_simplificada` com filtro de organização no custo de peças.
+- Função morta `handle_new_notification_push` removida.
+- `produtos`: 8 linhas removidas (5 despesas/teste + 3 duplicatas) → 26 linhas; `itens_os.produto_id` migrado para `item_estoque_id`;
+  serviço duplicado "Placa BMS Bateria DJI T50" removido e o lançamento da OS reapontado para o produto (total preservado).
+
+### Aplicação
+- `useTeamMembers`: carrega `nivel_tecnico`; responsáveis = `tecnico` ou `admin`.
+- `OrdensServico`: não grava mais o usuário logado como técnico quando ele é só `consulta`.
+- `Orcamentos`: conversão em OS grava técnico só se o usuário executa serviço, preserva descontos dos itens, consultas com filtro de organização.
+- `catalog-autocomplete`: consulta `itens_estoque` (revenda, filtrada por organização); nunca mais lê nem grava em `produtos`.
+- `OSItemsSection`, `PDV`, `Vendas`: busca de produtos restrita a `finalidade = 'revenda'`.
+- `Estoque`: campo, selo e filtro de finalidade + ação **Entregar ao técnico** com quantidade.
+- `Meu Estoque` (`/meu-estoque`): lista os itens recebidos da loja e permite **Devolver à loja**.
+- `ImportarXmlNfe`: grava a data real da nota, permite classificar cada linha, bloqueia reimportação da mesma chave e
+  corrige o vínculo em `notas_recebidas` (coluna `chave`, antes `chave_acesso`/`importada` inexistentes).
+- `Patrimonio`: responsável escolhido entre técnicos; histórico grava `entrega`/`devolucao`/`extravio` sem violar o CHECK.
+- `Servicos` e `ServicoDialog`: bloqueiam serviço cuja descrição já exista no estoque.
+- `Financeiro`: categorias filtradas por organização.
+
+### Pendências conhecidas
+- As 48 solicitações de compra automáticas já existentes continuam abertas (são itens realmente abaixo do mínimo); nenhuma nova é criada no cadastro de produto. Limpar é decisão de negócio.
+- Não existe tela administrativa consolidada de "estoque por técnico" (hoje o técnico vê o próprio em **Meu Estoque**).
+- Itens `ferramenta`/`uso_interno` ainda aparecem em telas de conferência (Estoque, Demonstrações), nunca em venda.
+
+---
+
+## 7. Observação de método
+
+As evidências vieram de consultas agregadas (`GROUP BY`, `count`) e de leitura de código. As correções foram aplicadas em nov/2026
+e verificadas com novas consultas (`servicos_que_sao_peca = 0`, `finalidade` distribuída, RPCs presentes).

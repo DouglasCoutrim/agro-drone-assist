@@ -75,7 +75,7 @@ export default function Vendas() {
   const [transportadorasList, setTransportadorasList] = useState<any[]>([]);
   useEffect(() => {
     if (!organization?.id) return;
-    supabase.from("itens_estoque").select("id,codigo,descricao,preco_venda,ncm,cfop,quantidade,desconto_maximo_percentual").eq("organization_id", organization.id).order("descricao").then(({ data }) => setProdutos(data || []));
+    supabase.from("itens_estoque").select("id,codigo,descricao,preco_venda,ncm,cfop,quantidade,desconto_maximo_percentual").eq("organization_id", organization.id).eq("finalidade", "revenda").order("descricao").then(({ data }) => setProdutos(data || []));
     supabase.from("transportadoras").select("id,nome").eq("organization_id", organization.id).eq("ativo", true).order("nome").then(({ data }) => setTransportadorasList(data || []));
     supabase.from("clientes").select("*").eq("organization_id", organization.id).order("nome").then(({ data }) => setClientesList(data || []));
   }, [organization?.id]);

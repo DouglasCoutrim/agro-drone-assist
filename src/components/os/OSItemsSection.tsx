@@ -85,7 +85,7 @@ function ItemSearchRow({
         const safe = search.trim().replace(/[,()%]/g, " ");
         const term = `%${safe}%`;
         if (tipo === "produto") {
-          let query = supabase.from("itens_estoque").select("id, descricao, preco_venda, codigo, categoria, quantidade, desconto_maximo_percentual").or(`descricao.ilike.${term},codigo.ilike.${term}`).order("descricao").limit(20);
+          let query = supabase.from("itens_estoque").select("id, descricao, preco_venda, codigo, categoria, quantidade, desconto_maximo_percentual").or(`descricao.ilike.${term},codigo.ilike.${term}`).eq("finalidade", "revenda").order("descricao").limit(20);
           if (organizationId) query = query.eq("organization_id", organizationId);
           const { data } = await query;
           setResults((data || []).map(p => ({ id: p.id, descricao: p.descricao, preco: Number(p.preco_venda) || 0, tipo: "produto" as const, codigo: p.codigo || undefined, categoria: p.categoria || undefined, quantidade: p.quantidade, desconto_maximo_percentual: Number(p.desconto_maximo_percentual) || 0 })));

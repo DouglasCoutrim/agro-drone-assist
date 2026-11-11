@@ -61,7 +61,7 @@ export default function Financeiro() {
     const fetchCategorias = async () => {
       if (!organization?.id) return;
       try {
-        const { data, error } = await supabase.from('financeiro').select('categoria').not('categoria', 'is', null);
+        const { data, error } = await supabase.from('financeiro').select('categoria').eq('organization_id', organization.id).not('categoria', 'is', null);
         if (error) throw error;
         const uniqueCategories = [...new Set(data.map(item => item.categoria).filter(Boolean))].sort();
         setCategorias(uniqueCategories);

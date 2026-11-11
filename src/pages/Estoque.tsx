@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import {
   Plus, AlertTriangle, Package, TrendingDown, TrendingUp,
-  Edit, Trash2, Loader2, Eye, Search, ImageIcon
+  Edit, Trash2, Loader2, Eye, Search, ImageIcon, ArrowRightLeft
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,13 +23,24 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { CsvImportExport, parseNumberBR, emptyToNull } from "@/components/CsvImportExport";
+import { getErrorMessage } from "@/lib/formatters";
 import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 import { ProductImageHover, ProductPhotoPanel, buscarFotos } from "@/components/estoque/ProductImage";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 
 const ESTOQUE_CSV_COLUMNS = [
   "codigo", "descricao", "categoria", "quantidade", "estoque_minimo",
   "custo_unitario", "preco_venda", "fornecedor", "localizacao",
 ];
+
+const FINALIDADES = [
+  { value: "revenda", label: "Revenda", description: "Aparece em OS, orçamentos, PDV e vendas." },
+  { value: "ferramenta", label: "Ferramenta da loja", description: "Patrimônio da empresa; pode ser entregue a um técnico." },
+  { value: "uso_interno", label: "Uso interno", description: "Consumo da empresa (limpeza, copa, EPI). Não é vendido." },
+] as const;
+
+const finalidadeLabel = (v?: string | null) =>
+  FINALIDADES.find((f) => f.value === (v || "revenda"))?.label || "Revenda";
 
 type ItemEstoque = Tables<"itens_estoque">;
 
@@ -52,8 +63,14 @@ export default function Estoque() {
     estoque_minimo: 0, custo_unitario: 0, preco_venda: 0,
     fornecedor: "", localizacao: "",
     ncm: "", cest: "", cfop: "5102", origem: 0, csosn: "102", unidade: "UN", gtin: "", emite_nfe: true,
-    desconto_maximo_percentual: 0
+    desconto_maximo_percentual: 0,
+    finalidade: "revenda" as "revenda" | "uso_interno" | "ferramenta",
   });
+
+  const [finalidadeFilter, setFinalidadeFilter] = useState<string>("todos");
+  const { tecnicos } = useTeamMembers();
+  const [transferItem, setTransferItem] = useState<ItemEstoque | null>(null);
+  const [transferForm, setTransferForm] = useState({ tecnico_id: "", quantidade: 1, saving: false });
 
   useEffect(() => {
     if (organization?.id) fetchItens();
@@ -165,6 +182,7 @@ export default function Estoque() {
       quantidade: item.quantidade, estoque_minimo: item.estoque_minimo,
       custo_unitario: item.custo_unitario, preco_venda: item.preco_venda,
       fornecedor: item.fornecedor || "", localizacao: item.localizacao || "",
+      finalidade: (item as any).finalidade || "revenda",
       ncm: (item as any).ncm || "", cest: (item as any).cest || "", cfop: (item as any).cfop || "5102",
       origem: (item as any).origem ?? 0, csosn: (item as any).csosn || "102", unidade: (item as any).unidade || "UN", gtin: (item as any).gtin || "", emite_nfe: (item as any).emite_nfe !== false,
       desconto_maximo_percentual: Number((item as any).desconto_maximo_percentual) || 0
@@ -182,8 +200,34 @@ export default function Estoque() {
   };
 
   const resetForm = () => {
-    setFormData({ codigo: "", descricao: "", categoria: "", quantidade: 0, estoque_minimo: 0, custo_unitario: 0, preco_venda: 0, fornecedor: "", localizacao: "", ncm: "", cest: "", cfop: "5102", origem: 0, csosn: "102", unidade: "UN", gtin: "", emite_nfe: true, desconto_maximo_percentual: 0 });
+    setFormData({ codigo: "", descricao: "", categoria: "", quantidade: 0, estoque_minimo: 0, custo_unitario: 0, preco_venda: 0, fornecedor: "", localizacao: "", ncm: "", cest: "", cfop: "5102", origem: 0, csosn: "102", unidade: "UN", gtin: "", emite_nfe: true, desconto_maximo_percentual: 0, finalidade: "revenda" });
     setEditingItem(null);
+  };
+
+  const abrirTransferencia = (item: ItemEstoque) => {
+    setTransferItem(item);
+    setTransferForm({ tecnico_id: "", quantidade: Math.min(1, item.quantidade), saving: false });
+  };
+
+  const confirmarTransferencia = async () => {
+    if (!transferItem) return;
+    if (!transferForm.tecnico_id) { toast.error("Selecione o técnico que vai receber o item."); return; }
+    setTransferForm((p) => ({ ...p, saving: true }));
+    try {
+      const { error } = await supabase.rpc("transferir_estoque_tecnico" as any, {
+        _item_id: transferItem.id,
+        _tecnico_id: transferForm.tecnico_id,
+        _quantidade: Math.max(1, Number(transferForm.quantidade) || 1),
+      });
+      if (error) throw error;
+      toast.success("Item transferido para o estoque do técnico.");
+      setTransferItem(null);
+      fetchItens();
+    } catch (err: any) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setTransferForm((p) => ({ ...p, saving: false }));
+    }
   };
 
   const handleOpenNewDialog = async () => {
@@ -202,12 +246,15 @@ export default function Estoque() {
 
   const filteredItens = useMemo(() => {
     const term = searchTerm.toLowerCase();
-    return itens.filter(item =>
-      item.descricao.toLowerCase().includes(term) ||
-      item.codigo.toLowerCase().includes(term) ||
-      item.categoria.toLowerCase().includes(term)
-    );
-  }, [itens, searchTerm]);
+    return itens.filter(item => {
+      const matchFinalidade = finalidadeFilter === "todos" || ((item as any).finalidade || "revenda") === finalidadeFilter;
+      return matchFinalidade && (
+        item.descricao.toLowerCase().includes(term) ||
+        item.codigo.toLowerCase().includes(term) ||
+        item.categoria.toLowerCase().includes(term)
+      );
+    });
+  }, [itens, searchTerm, finalidadeFilter]);
 
   const itensEstoqueBaixo = useMemo(() => itens.filter(item => item.quantidade <= item.estoque_minimo), [itens]);
   const valorTotal = useMemo(() => itens.reduce((acc, item) => acc + (item.quantidade * item.custo_unitario), 0), [itens]);
@@ -242,7 +289,8 @@ export default function Estoque() {
   const columns = [
     { key: "codigo", label: "Código", width: "w-[80px]" },
     { key: "descricao", label: "Descrição", width: "flex-1" },
-    { key: "categoria", label: "Categoria", width: "w-[100px]", align: "center" as const },
+    { key: "categoria", label: "Categoria", width: "w-[120px]", align: "center" as const },
+    { key: "finalidade", label: "Finalidade", width: "w-[120px]", align: "center" as const },
     { key: "quantidade", label: "Qtd", width: "w-[80px]", align: "right" as const },
     { key: "custo_unitario", label: "Custo", width: "w-[100px]", align: "right" as const },
     { key: "preco_venda", label: "Preço Venda", width: "w-[120px]", align: "right" as const },
@@ -268,6 +316,15 @@ export default function Estoque() {
     if (key === "categoria") {
       return <Badge variant="outline">{item.categoria}</Badge>;
     }
+    if (key === "finalidade") {
+      const fin = item.finalidade || "revenda";
+      const styles: Record<string, string> = {
+        revenda: "bg-blue-50 text-blue-700",
+        ferramenta: "bg-purple-50 text-purple-700",
+        uso_interno: "bg-amber-50 text-amber-700",
+      };
+      return <Badge variant="outline" className={styles[fin]}>{finalidadeLabel(fin)}</Badge>;
+    }
     if (key === "status") {
       const { status, variant, icon: Icon } = item.statusInfo;
       const variantMap = {
@@ -284,6 +341,9 @@ export default function Estoque() {
     if (key === "acoes") {
       return (
         <div className="flex gap-1 justify-end" onClick={(e) => e.stopPropagation()}>
+          {isAdmin && (item.finalidade || "revenda") === "ferramenta" && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Entregar a um técnico" onClick={() => abrirTransferencia(item)}><ArrowRightLeft className="h-4 w-4" /></Button>
+          )}
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewingItem(item)}><Eye className="h-4 w-4" /></Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(item)}><Edit className="h-4 w-4" /></Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4 text-red-600" /></Button>
@@ -381,15 +441,24 @@ export default function Estoque() {
           />
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input
-            placeholder="Buscar por código, nome ou categoria..."
-            className="pl-9 h-10 text-sm bg-gray-50 border-gray-200"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        {/* Search + finalidade */}
+        <div className="flex flex-col sm:flex-row gap-2 max-w-2xl">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="Buscar por código, nome ou categoria..."
+              className="pl-9 h-10 text-sm bg-gray-50 border-gray-200"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Select value={finalidadeFilter} onValueChange={setFinalidadeFilter}>
+            <SelectTrigger className="h-10 w-full sm:w-56"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todas as finalidades</SelectItem>
+              {FINALIDADES.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Main Table */}
@@ -456,6 +525,21 @@ export default function Estoque() {
                     addNewLabel="Criar categoria"
                     required
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label>Finalidade *</Label>
+                  <Select
+                    value={formData.finalidade}
+                    onValueChange={(v) => setFormData((prev) => ({ ...prev, finalidade: v as typeof prev.finalidade }))}
+                  >
+                    <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {FINALIDADES.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {FINALIDADES.find((f) => f.value === formData.finalidade)?.description}
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="descricao">Descrição *</Label>
@@ -588,6 +672,7 @@ export default function Estoque() {
                       <div><p className="text-xs text-gray-500">Código</p><p className="font-medium">{viewingItem.codigo}</p></div>
                       <div><p className="text-xs text-gray-500">Categoria</p><Badge variant="outline">{viewingItem.categoria}</Badge></div>
                       <div className="col-span-2"><p className="text-xs text-gray-500">Descrição</p><p className="font-medium">{viewingItem.descricao}</p></div>
+                      <div><p className="text-xs text-gray-500">Finalidade</p><Badge variant="outline">{finalidadeLabel((viewingItem as any).finalidade)}</Badge></div>
                       <div><p className="text-xs text-gray-500">Quantidade</p><p className="font-bold text-lg">{viewingItem.quantidade}</p></div>
                       <div><p className="text-xs text-gray-500">Estoque Mínimo</p><p className="font-medium">{viewingItem.estoque_minimo}</p></div>
                       <div><p className="text-xs text-gray-500">Custo Unitário</p><p className="font-medium">{formatCurrency(viewingItem.custo_unitario)}</p></div>
@@ -607,6 +692,54 @@ export default function Estoque() {
                 </DialogFooter>
               </>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Transferir para o estoque do técnico */}
+        <Dialog open={!!transferItem} onOpenChange={(open) => { if (!open) setTransferItem(null); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><ArrowRightLeft className="h-4 w-4 text-primary" />Entregar ao técnico</DialogTitle>
+              <DialogDescription>
+                {transferItem?.descricao} · {transferItem?.quantidade ?? 0} un. na loja
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>Técnico responsável *</Label>
+                <Select
+                  value={transferForm.tecnico_id}
+                  onValueChange={(v) => setTransferForm((p) => ({ ...p, tecnico_id: v }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
+                  <SelectContent>
+                    {tecnicos.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.nome}{t.nivel_tecnico ? ` · Nível ${t.nivel_tecnico}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Quantidade *</Label>
+                <NumberInput
+                  min="1"
+                  max={transferItem?.quantidade ?? 1}
+                  value={transferForm.quantidade}
+                  onChange={(v) => setTransferForm((p) => ({ ...p, quantidade: Math.max(1, Math.min(v, transferItem?.quantidade ?? 1)) }))}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                O item sai do estoque da loja e passa a aparecer em "Meu Estoque" do técnico.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setTransferItem(null)}>Cancelar</Button>
+              <Button onClick={confirmarTransferencia} disabled={transferForm.saving}>
+                {transferForm.saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Confirmar entrega
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

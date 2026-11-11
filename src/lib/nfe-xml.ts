@@ -9,7 +9,10 @@ export interface NfeProduto {
   unidade: string; quantidade: number; custo_unitario: number;
 }
 export interface NfeImport {
-  numero: string; serie: string; chave: string; emitente: NfeParte; transportadora: NfeParte | null; produtos: NfeProduto[];
+  numero: string; serie: string; chave: string;
+  /** Data de emissão da nota (ISO). Usada para a nota de compra, nunca a data da importação. */
+  data_emissao: string;
+  emitente: NfeParte; transportadora: NfeParte | null; produtos: NfeProduto[];
 }
 
 const digits = (s: string) => (s || "").replace(/\D/g, "");
@@ -49,8 +52,14 @@ export function parseNfeXml(xml: string): NfeImport {
       quantidade: Number(txt(p, "qCom")) || 0, custo_unitario: Number(txt(p, "vUnCom")) || 0,
     };
   });
+  const emissao = txt(ide, "dhEmi") || txt(ide, "dEmi");
+  const dataEmissao = emissao && !Number.isNaN(new Date(emissao).getTime())
+    ? new Date(emissao).toISOString()
+    : new Date().toISOString();
+
   return {
     numero: txt(ide, "nNF"), serie: txt(ide, "serie"), chave: (inf.getAttribute("Id") || "").replace(/^NFe/, ""),
+    data_emissao: dataEmissao,
     emitente: parte(emit, "enderEmit"),
     transportadora: transp && (transp.cpf_cnpj || transp.nome) ? transp : null,
     produtos,

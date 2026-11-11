@@ -79,6 +79,21 @@ export default function Servicos() {
     }
     setFormLoading(true);
     try {
+      if (!editing) {
+        // Impede que uma peça/produto já existente no estoque vire serviço.
+        const { data: jaNoEstoque } = await supabase
+          .from("itens_estoque")
+          .select("id, descricao")
+          .eq("organization_id", organization?.id || "")
+          .ilike("descricao", formData.descricao.trim())
+          .limit(1);
+        if (jaNoEstoque?.length) {
+          toast.error("Esse item já existe no estoque.", {
+            description: "Cadastre/reutilize como peça na OS ou no orçamento, em vez de criar um serviço.",
+          });
+          return;
+        }
+      }
       const payload = {
         descricao: formData.descricao.trim(),
         preco: Number(formData.preco) || 0,

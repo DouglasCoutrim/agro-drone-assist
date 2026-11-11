@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Wrench, ArrowRightLeft, Calculator } from "lucide-react";
+import { Plus, Pencil, Trash2, Wrench, ArrowRightLeft, Calculator, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,11 +30,12 @@ export default function Patrimonio({ meu = false }: { meu?: boolean }) {
   const isAdmin = roles.includes("admin") && !meu;
   const confirm = useConfirm();
   const qc = useQueryClient();
-  const { members } = useTeamMembers();
+  const { members, tecnicos } = useTeamMembers();
   const [filtro, setFiltro] = useState("todos");
   const [form, setForm] = useState<any>(null);
   const [entrega, setEntrega] = useState<any>(null);
   const [calc, setCalc] = useState<any>(null);
+  const [devolucao, setDevolucao] = useState<{ item: any; quantidade: number; saving: boolean } | null>(null);
 
   const key = ["patrimonio", organization?.id, meu];
   const { data: itens = [], isLoading } = useQuery({
@@ -47,7 +48,44 @@ export default function Patrimonio({ meu = false }: { meu?: boolean }) {
       return data as any[];
     },
   });
-  const refresh = () => qc.invalidateQueries({ queryKey: ["patrimonio"] });
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["patrimonio"] });
+    qc.invalidateQueries({ queryKey: ["estoque-tecnico"] });
+  };
+
+  // Itens (peças/ferramentas) que a loja transferiu para o técnico.
+  const { data: meuEstoque = [] } = useQuery({
+    queryKey: ["estoque-tecnico", organization?.id, user?.id],
+    enabled: !!organization?.id && !!user && meu,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("estoque_tecnico")
+        .select("id, quantidade, item_estoque_id, itens_estoque(descricao, codigo, unidade)")
+        .eq("organization_id", organization!.id)
+        .eq("tecnico_id", user!.id)
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+
+  const devolver = async () => {
+    if (!devolucao) return;
+    setDevolucao({ ...devolucao, saving: true });
+    try {
+      const { error } = await supabase.rpc("devolver_estoque_central" as any, {
+        _item_id: devolucao.item.item_estoque_id,
+        _quantidade: Math.max(1, Number(devolucao.quantidade) || 1),
+      });
+      if (error) throw error;
+      toast.success("Item devolvido ao estoque da loja.");
+      setDevolucao(null);
+      refresh();
+    } catch (e) {
+      toast.error(getErrorMessage(e));
+      setDevolucao((d) => (d ? { ...d, saving: false } : d));
+    }
+  };
   const nomeDe = (id?: string | null) => members.find((m) => m.id === id)?.nome || "—";
 
   const enriched = itens.map((i) => {
@@ -82,9 +120,14 @@ export default function Patrimonio({ meu = false }: { meu?: boolean }) {
       tecnico_atual_id: novo, status: novoStatus, data_entrega: novo ? todayDateInput() : null,
     }).eq("id", item.id);
     if (error) return toast.error(getErrorMessage(error));
+    // O histórico aceita apenas entrega/devolucao/transferencia/extravio:
+    // a situação (manutenção, danificado, baixado) fica registrada na observação.
     await supabase.from("patrimonio_movimentacoes").insert({
-      patrimonio_id: item.id, tipo: novo ? "entrega" : novoStatus, tecnico_anterior_id: item.tecnico_atual_id, tecnico_novo_id: novo,
-      confirmado_por: user!.id, observacao: entrega.obs || null,
+      patrimonio_id: item.id,
+      tipo: novo ? "entrega" : novoStatus === "extraviado" || novoStatus === "extraviada" ? "extravio" : "devolucao",
+      tecnico_anterior_id: item.tecnico_atual_id, tecnico_novo_id: novo,
+      confirmado_por: user!.id,
+      observacao: [novo ? null : `Situação na devolução: ${STATUS[novoStatus] || novoStatus}`, entrega.obs || null].filter(Boolean).join(" · ") || null,
     });
     toast.success("Responsável atualizado."); setEntrega(null); refresh();
   };
@@ -119,9 +162,33 @@ export default function Patrimonio({ meu = false }: { meu?: boolean }) {
             <SelectContent>
               <SelectItem value="todos">Todos os itens</SelectItem>
               <SelectItem value="livre">No almoxarifado</SelectItem>
-              {members.map((m) => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
+              {tecnicos.map((m) => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
             </SelectContent>
           </Select>
+        )}
+
+        {meu && meuEstoque.length > 0 && (
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Itens do meu estoque</h2>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {meuEstoque.map((e) => (
+                <Card key={e.id}>
+                  <CardContent className="p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold truncate">{e.itens_estoque?.descricao || "Item"}</p>
+                        <p className="text-xs text-muted-foreground font-mono">{e.itens_estoque?.codigo || "—"}</p>
+                      </div>
+                      <Badge variant="secondary">{e.quantidade} {e.itens_estoque?.unidade || "un."}</Badge>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => setDevolucao({ item: e, quantidade: 1, saving: false })}>
+                      <ArrowRightLeft className="h-4 w-4 mr-1.5" />Devolver à loja
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
         )}
 
         {isLoading ? <p className="text-muted-foreground">Carregando…</p> : enriched.length === 0 ? (
@@ -183,7 +250,7 @@ export default function Patrimonio({ meu = false }: { meu?: boolean }) {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Ninguém (devolver)</SelectItem>
-                {members.map((m) => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
+                {tecnicos.map((m) => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
               </SelectContent>
             </Select>
             {entrega.tecnico === "none" && <>
@@ -197,6 +264,33 @@ export default function Patrimonio({ meu = false }: { meu?: boolean }) {
             <Input value={entrega.obs || ""} onChange={(e) => setEntrega({ ...entrega, obs: e.target.value })} />
             <DialogFooter><Button onClick={movimentar}>Confirmar</Button></DialogFooter>
           </div>}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!devolucao} onOpenChange={(o) => !o && setDevolucao(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Devolver à loja</DialogTitle></DialogHeader>
+          {devolucao && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {devolucao.item.itens_estoque?.descricao} · disponível: {devolucao.item.quantidade}
+              </p>
+              <Label>Quantidade</Label>
+              <Input
+                type="number"
+                min={1}
+                max={devolucao.item.quantidade}
+                value={devolucao.quantidade}
+                onChange={(e) => setDevolucao({ ...devolucao, quantidade: Math.max(1, Math.min(Number(e.target.value) || 1, devolucao.item.quantidade)) })}
+              />
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDevolucao(null)}>Cancelar</Button>
+                <Button onClick={devolver} disabled={devolucao.saving}>
+                  {devolucao.saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Confirmar devolução
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

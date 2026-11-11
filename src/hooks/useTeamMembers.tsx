@@ -8,6 +8,8 @@ export interface TeamMember {
   email: string;
   role: string;
   roles: string[];
+  /** Nível técnico cadastrado em profiles (1 a 3) — usado nas OS e na atribuição. */
+  nivel_tecnico: number | null;
 }
 
 export function useTeamMembers() {
@@ -27,7 +29,7 @@ export function useTeamMembers() {
     const fetchMembers = async () => {
       setLoading(true);
       try {
-        let profilesQuery = supabase.from("profiles").select("id, nome, email, organization_id");
+        let profilesQuery = supabase.from("profiles").select("id, nome, email, organization_id, nivel_tecnico");
         if (organization?.id) {
           profilesQuery = profilesQuery.eq("organization_id", organization.id);
         }
@@ -47,7 +49,14 @@ export function useTeamMembers() {
           profiles.map((p) => {
             const assignedRoles = roles.filter((r) => r.user_id === p.id).map((r) => r.role);
             const effectiveRole = ["admin", "tecnico", "consulta"].find((candidate) => assignedRoles.includes(candidate as typeof assignedRoles[number])) || "consulta";
-            return { id: p.id, nome: p.nome, email: p.email, role: effectiveRole, roles: assignedRoles.length ? assignedRoles : ["consulta"] };
+            return {
+              id: p.id,
+              nome: p.nome,
+              email: p.email,
+              role: effectiveRole,
+              roles: assignedRoles.length ? assignedRoles : ["consulta"],
+              nivel_tecnico: (p as { nivel_tecnico?: number | null }).nivel_tecnico ?? null,
+            };
           })
         );
       } catch {
@@ -59,6 +68,8 @@ export function useTeamMembers() {
     fetchMembers();
   }, [organization?.id, isPlatformAdmin, orgLoading]);
 
+  // Quem executa serviço: papel técnico ou admin (admins também atendem OS).
+  // Perfis apenas "consulta" nunca entram na lista de responsáveis técnicos.
   const tecnicos = members.filter((m) => m.roles.includes("tecnico") || m.roles.includes("admin"));
   const vendedores = members.filter((m) => m.roles.includes("admin") || m.roles.includes("tecnico"));
 

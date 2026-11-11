@@ -50,7 +50,7 @@ interface Orcamento {
 }
 
 export default function Orcamentos() {
-  const { user } = useAuth();
+  const { user, isAdmin, isTecnico } = useAuth();
   const { config: empresa } = useEmpresaConfig();
   const { vendedores } = useTeamMembers();
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
@@ -78,8 +78,6 @@ export default function Orcamentos() {
   const subtotal = useMemo(() => items.reduce((s, i) => s + i.valor_total, 0), [items]);
   const total = Math.max(0, subtotal - (formData.desconto || 0));
 
-  useEffect(() => { fetchData(); }, []);
-
   useEffect(() => {
     (async () => {
       if (!user) return;
@@ -88,11 +86,13 @@ export default function Orcamentos() {
     })();
   }, [user]);
 
+  useEffect(() => { if (orgId) fetchData(); }, [orgId]);
+
   const fetchData = async () => {
     try {
       const [orcRes, cliRes] = await Promise.all([
-        supabase.from("orcamentos").select("*, clientes(nome, telefone)").order("created_at", { ascending: false }),
-        supabase.from("clientes").select("*").order("nome"),
+        supabase.from("orcamentos").select("*, clientes(nome, telefone)").eq("organization_id", orgId!).order("created_at", { ascending: false }),
+        supabase.from("clientes").select("*").eq("organization_id", orgId!).order("nome"),
       ]);
       if (orcRes.error) throw orcRes.error;
       if (cliRes.error) throw cliRes.error;
@@ -165,7 +165,8 @@ export default function Orcamentos() {
         descricao_problema: orc.descricao,
         valor_orcamento: orc.valor,
         numero: "",
-        tecnico_id: user.id,
+        // Só assume o usuário logado como técnico se ele realmente executa serviço.
+        tecnico_id: isAdmin || isTecnico ? user.id : null,
         status: "aprovado" as any,
         prioridade: "media",
         organization_id: orgId,
@@ -185,6 +186,10 @@ export default function Orcamentos() {
           quantidade: it.quantidade,
           valor_unitario: it.valor_unitario,
           valor_total: it.valor_total,
+          // Mantém os descontos do orçamento na OS gerada.
+          desconto_percentual: Number(it.desconto_percentual) || 0,
+          desconto_valor: Number(it.desconto_valor) || 0,
+          desconto_maximo_percentual: Number(it.desconto_maximo_percentual) || 0,
           organization_id: osData.organization_id || null,
         })));
       }

@@ -111,6 +111,17 @@ export function ServicoDialog({ open, onOpenChange, organizationId, initialName,
     if (!form.descricao.trim()) { toast.error("Informe a descrição do serviço"); return; }
     setSaving(true);
     try {
+      // Peça/produto não pode ser criado como serviço: evita catálogos duplicados.
+      const { data: jaNoEstoque } = await supabase
+        .from("itens_estoque")
+        .select("id")
+        .eq("organization_id", organizationId)
+        .ilike("descricao", form.descricao.trim())
+        .limit(1);
+      if (jaNoEstoque?.length) {
+        toast.error("Esse item já está no estoque. Adicione-o em \"Itens / Peças\".");
+        return;
+      }
       const { data, error } = await supabase.from("servicos").insert({
         descricao: form.descricao.trim(), preco: Number(form.preco) || 0,
         tempo_estimado: form.tempo_estimado.trim() || null, organization_id: organizationId,

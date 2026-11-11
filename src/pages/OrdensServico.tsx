@@ -124,7 +124,7 @@ const getTypeDisplayLabel = (os: any, segs: string[], customs: CustomType[], con
 };
 
 export default function OrdensServico() {
-  const { user, canEdit, isAdmin } = useAuth();
+  const { user, canEdit, isAdmin, isTecnico } = useAuth();
   const { organization, isPlatformAdmin, loading: orgLoading } = useOrganization();
   const { config: empresa } = useEmpresaConfig();
   const [agruparOpen, setAgruparOpen] = useState(false);
@@ -455,8 +455,16 @@ export default function OrdensServico() {
         valor_orcamento: valorOrcamentoFinal,
         data_previsao: formData.data_previsao ? dateOnlyToIso(formData.data_previsao) : null,
         diagnostico: formData.diagnostico || null,
-        // Campos UUID nunca podem ir como string vazia (erro 22P02 no Postgres)
-        tecnico_id: formData.tecnico_id || (editingOS ? (editingOS as any).tecnico_id || user.id : user.id),
+        // Campos UUID nunca podem ir como string vazia (erro 22P02 no Postgres).
+        // Sem técnico escolhido, só assume o usuário logado se ele realmente executa serviço
+        // (admin ou técnico); perfis de consulta não podem virar responsáveis técnicos.
+        tecnico_id:
+          formData.tecnico_id ||
+          (editingOS
+            ? (editingOS as any).tecnico_id || (isAdmin || isTecnico ? user.id : null)
+            : isAdmin || isTecnico
+              ? user.id
+              : null),
         ciclos_carga_entrada: isBateria ? ciclos_carga_entrada || null : null,
          ciclos_carga_saida: isBateria ? ciclos_carga_saida || null : null,
          tipo_os: tipo_os || "normal",

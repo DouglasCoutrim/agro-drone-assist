@@ -24,7 +24,10 @@ interface CatalogAutocompleteProps {
   className?: string;
   disabled?: boolean;
   required?: boolean;
-  /** Which catalog to search: "all" | "produtos" | "servicos" */
+  /**
+   * Catálogo consultado. Sempre usa o estoque real (`itens_estoque`) para produtos;
+   * o catálogo legado `produtos` não é mais lido por nenhuma tela.
+   */
   source?: "all" | "produtos" | "servicos";
   /** Whether selecting an item fills only the text or triggers onSelect callback */
   mode?: "text" | "select";
@@ -45,7 +48,7 @@ export function CatalogAutocomplete({
   className,
   disabled,
   required,
-  source = "all",
+  source = "produtos",
   mode = "select",
   organizationId,
   currentCategory,
@@ -56,6 +59,7 @@ export function CatalogAutocomplete({
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [orgId, setOrgId] = useState<string | null>(organizationId ?? null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -63,6 +67,23 @@ export function CatalogAutocomplete({
   useEffect(() => {
     if (mode === "text") setSearch(value);
   }, [value, mode]);
+
+  useEffect(() => {
+    setOrgId(organizationId ?? null);
+  }, [organizationId]);
+
+  // Resolve a organização do usuário quando o chamador não informa.
+  useEffect(() => {
+    if (orgId) return;
+    (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) return;
+      const { data: profile } = await supabase
+        .from("profiles").select("organization_id").eq("id", auth.user.id).maybeSingle();
+      if (profile?.organization_id) setOrgId(profile.organization_id);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Close on outside click
   useEffect(() => {
@@ -75,36 +96,37 @@ export function CatalogAutocomplete({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Debounced search
+  // Debounced search — nunca mistura produtos e serviços na mesma lista.
   useEffect(() => {
-    const term = mode === "text" ? search : search;
-    if (!term.trim()) { setResults([]); return; }
+    const term = search.trim();
+    if (!term || !orgId) { setResults([]); return; }
     const timeout = setTimeout(async () => {
       setLoading(true);
       try {
-        const like = `%${term.trim()}%`;
+        const like = `%${term}%`;
         const items: CatalogResult[] = [];
 
-        if (source === "all" || source === "produtos") {
+        if (source !== "servicos") {
           const { data } = await supabase
-            .from("produtos")
+            .from("itens_estoque")
             .select("id, descricao, preco_venda, codigo, categoria")
+            .eq("organization_id", orgId)
+            .eq("finalidade", "revenda")
             .ilike("descricao", like)
             .limit(8);
-          (data || []).forEach(p => items.push({
-            id: p.id, descricao: p.descricao, preco: p.preco_venda,
+          (data || []).forEach((p) => items.push({
+            id: p.id, descricao: p.descricao, preco: Number(p.preco_venda) || 0,
             tipo: "produto", codigo: p.codigo, categoria: p.categoria,
           }));
-        }
-
-        if (source === "all" || source === "servicos") {
+        } else {
           const { data } = await supabase
             .from("servicos")
             .select("id, descricao, preco")
+            .eq("organization_id", orgId)
             .ilike("descricao", like)
             .limit(8);
-          (data || []).forEach(s => items.push({
-            id: s.id, descricao: s.descricao, preco: s.preco,
+          (data || []).forEach((s) => items.push({
+            id: s.id, descricao: s.descricao, preco: Number(s.preco) || 0,
             tipo: "servico",
           }));
         }
@@ -117,7 +139,7 @@ export function CatalogAutocomplete({
       }
     }, 250);
     return () => clearTimeout(timeout);
-  }, [search, source]);
+  }, [search, source, orgId]);
 
   const handleSelectItem = useCallback((item: CatalogResult) => {
     if (mode === "text") {
@@ -131,45 +153,40 @@ export function CatalogAutocomplete({
 
   const handleAddNew = useCallback(async (name: string) => {
     if (!name.trim()) return;
+    if (!orgId) {
+      toast.error("Sua conta não está vinculada a uma empresa. Contate o administrador.");
+      return;
+    }
     setAdding(true);
     try {
-      let orgId = organizationId || null;
-      if (!orgId) {
-        const { data: auth } = await supabase.auth.getUser();
-        if (!auth.user) throw new Error("Sessão expirada. Faça login novamente.");
-        const { data: profile } = await supabase
-          .from("profiles").select("organization_id").eq("id", auth.user.id).maybeSingle();
-        orgId = profile?.organization_id || null;
-      }
-      if (!orgId) {
-        throw new Error("Sua conta não está vinculada a uma empresa. Contate o administrador.");
-      }
-      const table = source === "servicos" ? "servicos" : "produtos";
-      if (table === "produtos") {
-        const { data, error } = await supabase.from("produtos").insert({
-          descricao: name.trim(), preco_venda: 0, custo_unitario: 0,
-          categoria: currentCategory?.trim() || "geral", codigo: "",
-          organization_id: orgId,
-        }).select("id, descricao, preco_venda, codigo, categoria").single();
+      if (source === "servicos") {
+        const { data, error } = await supabase.from("servicos").insert({
+          descricao: name.trim(), preco: 0, organization_id: orgId,
+        }).select("id, descricao, preco").single();
         if (error) throw error;
         const newItem: CatalogResult = {
-          id: data.id, descricao: data.descricao, preco: data.preco_venda,
-          tipo: "produto", codigo: data.codigo, categoria: data.categoria,
+          id: data.id, descricao: data.descricao, preco: Number(data.preco) || 0, tipo: "servico",
         };
-        toast.success(`"${data.descricao}" adicionado ao catálogo`);
+        toast.success(`"${data.descricao}" adicionado aos serviços`);
         if (mode === "text") { setSearch(data.descricao); onChange(data.descricao); }
         onCreateNew?.(name, newItem);
         onSelect?.(newItem);
       } else {
-        const { data, error } = await supabase.from("servicos").insert({
-          descricao: name.trim(), preco: 0,
+        const { data, error } = await supabase.from("itens_estoque").insert({
+          descricao: name.trim(),
+          preco_venda: 0,
+          custo_unitario: 0,
+          categoria: currentCategory?.trim() || "Geral",
+          codigo: `P-${String(Date.now()).slice(-6)}`,
+          finalidade: "revenda",
           organization_id: orgId,
-        }).select("id, descricao, preco").single();
+        } as any).select("id, descricao, preco_venda, codigo, categoria").single();
         if (error) throw error;
         const newItem: CatalogResult = {
-          id: data.id, descricao: data.descricao, preco: data.preco, tipo: "servico",
+          id: data.id, descricao: data.descricao, preco: Number(data.preco_venda) || 0,
+          tipo: "produto", codigo: data.codigo, categoria: data.categoria,
         };
-        toast.success(`"${data.descricao}" adicionado ao catálogo`);
+        toast.success(`"${data.descricao}" adicionado ao estoque`);
         if (mode === "text") { setSearch(data.descricao); onChange(data.descricao); }
         onCreateNew?.(name, newItem);
         onSelect?.(newItem);
@@ -181,9 +198,9 @@ export function CatalogAutocomplete({
     } finally {
       setAdding(false);
     }
-  }, [source, organizationId, mode, onChange, onCreateNew, onSelect]);
+  }, [source, orgId, mode, onChange, onCreateNew, onSelect, currentCategory]);
 
-  const displaySearch = mode === "text" ? search : search;
+  const displaySearch = search;
   const exactMatch = results.some(r => r.descricao.toLowerCase() === displaySearch.trim().toLowerCase());
 
   const formatPrice = (v: number) =>
@@ -200,7 +217,7 @@ export function CatalogAutocomplete({
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
         <Input
           ref={inputRef}
-          value={mode === "text" ? search : search}
+          value={search}
           onChange={(e) => {
             const v = e.target.value;
             setSearch(v);
