@@ -1,38 +1,30 @@
-# Concluir as três correções pendentes
+# Restaurar notificações sem retirar a proteção
 
-## Já corrigido no código
-- Cobranças não podem alterar OS ou orçamentos de outra empresa (dois apontamentos).
-- Texto da OS não executa código ao imprimir ou compartilhar PDF (dois apontamentos).
-- Cadastro de membros verifica o limite do plano antes de criar a conta (um apontamento).
-- 18 testes passaram. A publicação das funções no serviço externo ainda precisa ser confirmada.
+## Resultado da revisão dos dois alertas
+- **Vendas: alerta desatualizado.** O serviço externo aceita `select=desconto_maximo_percentual` em `venda_itens` (HTTP 200). Uma coluna inexistente de controle retorna 400/42703. Não alterar vendas, descontos ou estoque. O achado foi encerrado como desatualizado; não foi feita uma venda real para testar o fluxo completo.
+- **Notificações: incompatibilidade confirmada.** O código exige autorização de uso único; a tabela correspondente não existe no serviço externo (404/PGRST205). O banco Cloud acessível também não tem a tabela nem a função, e seu gatilho envia somente o identificador. A função publicada rejeitou a chamada sem autorização com HTTP 401. A definição do gatilho externo e a entrega real ainda precisam ser verificadas no destino externo.
 
-## Aprovação necessária
-As três correções restantes exigem alteração no banco externo e publicação coordenada da função de alertas. Não foram marcadas como corrigidas nem ignoradas.
+## Correção proposta, somente para notificações
+1. Conferir no serviço externo a definição atual de `trg_send_web_push`, o gatilho associado a `notifications` e a função publicada.
+2. Após aprovação, aplicar somente o SQL abaixo no **serviço externo ativo**, por migração aditiva/idempotente conectada ao destino correto ou execução pelo proprietário. Não aplicar no Cloud antigo. Nenhum limite de plano ou outro achado será alterado.
+3. Publicar/conferir `send-web-push` junto da mudança: manter a rejeição de chamadas sem autorização, expiradas ou repetidas. A aplicação do SQL vem antes da publicação da função que depende dele.
+4. Conferir tabela, permissões, função e corpo enviado pelo gatilho; testar uma notificação para o próprio usuário com inscrição push ativa, confirmar entrega e rejeição do reuso do token. Não registrar tokens ou credenciais nos relatórios.
+5. Encerrar o achado de notificações como corrigido somente após essas verificações.
 
-1. Emitir uma autorização de uso único para cada alerta automático; rejeitar chamadas sem autorização e reenvios.
-2. Impor o limite mensal de OS no banco, incluindo inserções diretas e simultâneas. Preservar a exceção atual do administrador de plataforma.
-3. Reforçar também o limite de membros no banco para impedir cadastros simultâneos acima do limite.
+## Limitações atuais
+A sessão não fornece acesso de escrita/publicação ao serviço externo. Aprovar o plano não dá acesso automático: se continuar indisponível, será necessário executar o SQL nesse destino e confirmar o resultado. Nenhum código de aplicação foi alterado, nenhuma notificação real foi enviada e nenhum teste autenticado de vendas foi realizado. A compilação automática atual registra **build OK**.
 
-Não alterar outros apontamentos. Não aplicar este SQL ao banco Cloud antigo: o aplicativo utiliza o serviço externo, cujo acesso de escrita não está disponível nesta sessão. Após aprovação, aplicar por uma ferramenta de migração conectada ao destino correto, ou fornecer o SQL para execução pelo proprietário. Publicar a função de alertas junto com essa mudança para não interromper os avisos automáticos.
+## Arquivos
+- Alterados nesta revisão: `roadmap.md` e o plano.
+- Previsto após aprovação: uma nova migração de notificações no destino correto; ajustar código/publicação somente se a conferência mostrar necessidade.
 
-## Arquivos alterados ou criados
-- `src/components/ordens-servico/OSPDFGenerator.ts` e seu teste.
-- `supabase/functions/create-customer-charge/index.ts`.
-- `supabase/functions/mercadopago-webhook/index.ts`.
-- `supabase/functions/asaas-tenant-webhook/index.ts`.
-- `supabase/functions/create-user/index.ts` e seu teste.
-- `supabase/functions/_shared/payment-order-scope.ts` e seu teste.
-- SQL proposto e o plano de aprovação; nenhuma alteração de banco foi aplicada.
+## SQL para aprovação
+O bloco preserva a URL e os cabeçalhos atuais do gatilho, sem copiá-los para arquivos, e aborta caso a definição não corresponda ao formato esperado. A tabela fica inacessível aos usuários comuns; a organização é copiada da notificação, inclusive quando vazia em avisos globais. Não executar parcialmente; usar uma única transação na aplicação da migração.
 
-## Validação
-18 testes passaram, cobrindo isolamento entre empresas, texto malicioso no PDF, limites de membros e a proteção anterior de bloqueio de empresas. A compilação automática e os fluxos autenticados no serviço externo não foram verificados nesta etapa; não há credencial de publicação disponível.
-
-## SQL proposto para revisão
 ```sql
--- Proposed SQL for the active external backend; requires user approval.
-BEGIN;
 CREATE TABLE IF NOT EXISTS public.push_dispatch_authorizations (
   notification_id uuid PRIMARY KEY REFERENCES public.notifications(id) ON DELETE CASCADE,
+  organization_id uuid REFERENCES public.organizations(id),
   token uuid NOT NULL DEFAULT gen_random_uuid(),
   expires_at timestamptz NOT NULL DEFAULT (now() + interval '2 minutes'),
   used_at timestamptz
@@ -55,89 +47,29 @@ $$;
 REVOKE ALL ON FUNCTION public.consume_push_dispatch(uuid, uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.consume_push_dispatch(uuid, uuid) TO service_role;
 
--- Preserve the active deployment URL and transport header without copying
--- credentials into SQL files. Add a one-time authorization capability.
+-- Preserve the active URL and headers without copying credentials.
 DO $$
 DECLARE definition text;
 BEGIN
   SELECT pg_get_functiondef('public.trg_send_web_push()'::regprocedure) INTO definition;
   IF position('dispatch_token' IN definition) = 0 THEN
-    IF position('BEGIN' IN definition) = 0 OR
-       definition !~ 'jsonb_build_object\(''notification_id'',\s*NEW.id\)' THEN
+    IF definition !~ 'AS \$function\$[[:space:]]*BEGIN' OR
+       definition !~ 'jsonb_build_object\(''notification_id'',[[:space:]]*NEW.id\)' OR
+       position('PERFORM net.http_post(' IN definition) = 0 THEN
       RAISE EXCEPTION 'Unexpected push trigger definition; review before applying';
     END IF;
-    definition := replace(definition, 'BEGIN', 'DECLARE dispatch_token uuid; BEGIN');
-    definition := replace(definition, 'PERFORM net.http_post(',
-      'INSERT INTO public.push_dispatch_authorizations(notification_id) VALUES (NEW.id) RETURNING token INTO dispatch_token; PERFORM net.http_post(');
     definition := regexp_replace(definition,
-      'jsonb_build_object\(''notification_id'',\s*NEW.id\)',
+      'AS \$function\$[[:space:]]*BEGIN',
+      'AS $function$ DECLARE dispatch_token uuid; BEGIN');
+    definition := replace(definition, 'PERFORM net.http_post(',
+      'INSERT INTO public.push_dispatch_authorizations(notification_id, organization_id) VALUES (NEW.id, NEW.organization_id) RETURNING token INTO dispatch_token; PERFORM net.http_post(');
+    definition := regexp_replace(definition,
+      'jsonb_build_object\(''notification_id'',[[:space:]]*NEW.id\)',
       'jsonb_build_object(''notification_id'', NEW.id, ''dispatch_token'', dispatch_token)');
     EXECUTE definition;
   END IF;
 END;
 $$;
 REVOKE ALL ON FUNCTION public.trg_send_web_push() FROM PUBLIC, anon, authenticated;
-
-CREATE OR REPLACE FUNCTION public.enforce_organization_plan_limits()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE org uuid; plan_slug text; maximum integer; used bigint;
-BEGIN
-  org := NEW.organization_id;
-  IF org IS NULL THEN RETURN NEW; END IF;
-  IF TG_TABLE_NAME = 'profiles' AND TG_OP = 'UPDATE' THEN
-    IF NEW.organization_id IS NOT DISTINCT FROM OLD.organization_id THEN RETURN NEW; END IF;
-  END IF;
-  IF TG_TABLE_NAME = 'ordens_servico' AND TG_OP = 'UPDATE' THEN
-    IF NEW.organization_id IS NOT DISTINCT FROM OLD.organization_id
-       AND NEW.created_at IS NOT DISTINCT FROM OLD.created_at THEN RETURN NEW; END IF;
-  END IF;
-  IF auth.role() = 'authenticated' AND
-     org IS DISTINCT FROM public.get_user_org_id(auth.uid()) AND
-     NOT public.is_platform_admin(auth.uid()) THEN
-    RAISE EXCEPTION 'Acesso negado';
-  END IF;
-  -- Serialize quota-changing writes within each organization.
-  SELECT CASE WHEN plan = 'trial' THEN 'bronze' ELSE plan END INTO plan_slug
-    FROM public.organizations WHERE id = org FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Empresa não encontrada'; END IF;
-  IF public.is_platform_admin(auth.uid()) THEN RETURN NEW; END IF;
-  IF TG_TABLE_NAME = 'ordens_servico' THEN
-    SELECT max_os_per_month INTO maximum FROM public.subscription_plans WHERE slug = plan_slug;
-    IF auth.role() = 'authenticated' AND TG_OP = 'INSERT' THEN NEW.created_at := now(); END IF;
-    IF auth.role() = 'authenticated' AND TG_OP = 'UPDATE'
-       AND NEW.created_at IS DISTINCT FROM OLD.created_at THEN
-      RAISE EXCEPTION 'Não é permitido alterar a data de criação da OS';
-    END IF;
-    SELECT count(*) INTO used FROM public.ordens_servico
-      WHERE organization_id = org AND id IS DISTINCT FROM NEW.id
-      AND created_at >= date_trunc('month', NEW.created_at)
-      AND created_at < date_trunc('month', NEW.created_at) + interval '1 month';
-  ELSE
-    SELECT max_users INTO maximum FROM public.subscription_plans WHERE slug = plan_slug;
-    SELECT count(*) INTO used FROM public.profiles
-      WHERE organization_id = org AND id IS DISTINCT FROM NEW.id;
-  END IF;
-  IF maximum IS NULL THEN RAISE EXCEPTION 'Não foi possível verificar o limite do plano'; END IF;
-  IF maximum <> -1 AND used >= maximum THEN RAISE EXCEPTION 'Limite do plano atingido'; END IF;
-  RETURN NEW;
-END;
-$$;
-REVOKE ALL ON FUNCTION public.enforce_organization_plan_limits() FROM PUBLIC, anon, authenticated;
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.ordens_servico'::regclass AND tgname = 'enforce_os_plan_limit') THEN
-    CREATE TRIGGER enforce_os_plan_limit BEFORE INSERT OR UPDATE OF organization_id, created_at
-      ON public.ordens_servico FOR EACH ROW EXECUTE FUNCTION public.enforce_organization_plan_limits();
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.profiles'::regclass AND tgname = 'enforce_member_plan_limit') THEN
-    CREATE TRIGGER enforce_member_plan_limit BEFORE INSERT OR UPDATE OF organization_id
-      ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.enforce_organization_plan_limits();
-  END IF;
-END;
-$$;
-COMMIT;
+NOTIFY pgrst, 'reload schema';
 ```
-
-**Fixed:** 5 issues (corrigidos no código)
-**Remaining:** 3 issues (da seleção, aguardando aprovação e aplicação)
-**Summary:** As correções acima estão no código; três problemas selecionados ainda permanecem. Refaça a verificação após aplicar e publicar. O agente identifica problemas comuns, mas não realiza testes avançados de invasão.
