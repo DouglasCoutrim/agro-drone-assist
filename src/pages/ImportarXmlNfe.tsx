@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { parseNfeXml, type NfeImport, type NfeParte } from "@/lib/nfe-xml";
 import { functionErrorMessage } from "@/lib/function-error";
+import { todayDateInput } from "@/lib/formatters";
 import { DevolucaoCompraDialog } from "@/components/fiscal/DevolucaoCompraDialog";
 
 type Linha = { idx: number; existenteId: string | null; qtdAtual: number; preco_venda: number };
@@ -38,8 +39,8 @@ export default function ImportarXmlNfe() {
 
   const onFile = async (file?: File) => { if (file) await processXml(await file.text()); };
 
-  const hoje = new Date().toISOString().slice(0, 10);
-  const [inicio, setInicio] = useState(new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10));
+  const hoje = todayDateInput();
+  const [inicio, setInicio] = useState(todayDateInput(new Date(Date.now() - 30 * 864e5)));
   const [fim, setFim] = useState(hoje);
   const [recebidas, setRecebidas] = useState<any[] | null>(null);
   const [buscando, setBuscando] = useState(false);

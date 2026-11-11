@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calculator, FileText, Loader2, Receipt, Search, ShoppingCart, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, todayDateInput } from "@/lib/formatters";
 import { limitarPercentualDesconto, calcularValorDesconto, calcularTotalComDesconto, tetoDesconto } from "@/lib/desconto";
 import { gerarDocumentoPadrao, loadImageAsDataUrl } from "@/lib/pdf-padrao";
 import { cn } from "@/lib/utils";
@@ -174,7 +174,7 @@ export default function PDV() {
         icms_percentual: null, icms_valor: null, pis_cofins_valor: null, ipi_valor: null,
       }; });
       const venda = await createVenda({
-        data_venda: new Date().toISOString().split("T")[0],
+        data_venda: todayDateInput(),
         cliente_id: cliente?.id || null, cliente_nome: cliente?.nome || "Consumidor",
         cliente_cpf_cnpj: cliente?.cpf_cnpj || null, cliente_email: cliente?.email || null,
         forma_pagamento: forma, status_pagamento: "pago",

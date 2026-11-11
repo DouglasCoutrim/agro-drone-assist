@@ -26,7 +26,7 @@ import { LegalTermsFooter, getLegalTermsHTML } from "@/components/os/LegalTermsF
 import { SmartSelect, SmartSelectOption } from "@/components/ui/smart-select";
 import { StatusPipeline, getNextStatus, getStatusLabel } from "@/components/os/StatusPipeline";
 import { OSItemsSection, OSItem } from "@/components/os/OSItemsSection";
-import { formatCurrency, formatDate, getErrorMessage } from "@/lib/formatters";
+import { dateOnlyToIso, formatCurrency, formatDate, getErrorMessage, todayDateInput } from "@/lib/formatters";
 import { whatsappTemplates, openWhatsApp, WhatsAppOS } from "@/lib/whatsapp-templates";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { generateOSPDF } from "@/components/ordens-servico/OSPDFGenerator";
@@ -453,7 +453,7 @@ export default function OrdensServico() {
         organization_id: editingOS?.organization_id || organizationId,
         observacoes: observacoesWithMobility || null,
         valor_orcamento: valorOrcamentoFinal,
-        data_previsao: formData.data_previsao || null,
+        data_previsao: formData.data_previsao ? dateOnlyToIso(formData.data_previsao) : null,
         diagnostico: formData.diagnostico || null,
         // Campos UUID nunca podem ir como string vazia (erro 22P02 no Postgres)
         tecnico_id: formData.tecnico_id || (editingOS ? (editingOS as any).tecnico_id || user.id : user.id),
@@ -835,7 +835,7 @@ export default function OrdensServico() {
         categoria: "Serviços",
         descricao: `Recebimento OS ${paymentDialog.osNumero}`,
         valor: data.valor,
-        data_transacao: new Date().toISOString().slice(0, 10),
+        data_transacao: todayDateInput(),
         observacoes: [`Forma: ${data.forma_pagamento}`, data.observacoes].filter(Boolean).join(" | "),
       });
       if (finErr) throw finErr;
@@ -1044,7 +1044,7 @@ export default function OrdensServico() {
     try {
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 3);
-      const dueDateStr = dueDate.toISOString().split("T")[0];
+      const dueDateStr = todayDateInput(dueDate);
       const { data: result, error } = await supabase.functions.invoke('asaas', {
         body: {
           action: 'create_payment',

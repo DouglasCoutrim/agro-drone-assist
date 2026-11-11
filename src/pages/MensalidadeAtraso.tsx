@@ -5,6 +5,7 @@ import { useOrganization } from '@/hooks/useOrganization';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, LogOut, ExternalLink } from 'lucide-react';
+import { formatDate } from '@/lib/formatters';
 
 export default function MensalidadeAtraso() {
   const { signOut } = useAuth();
@@ -46,7 +47,7 @@ export default function MensalidadeAtraso() {
               <div key={inv.id} className="border rounded-lg p-3 flex items-center justify-between">
                 <div>
                   <div className="font-medium">Competência {inv.competencia}</div>
-                  <div className="text-sm text-muted-foreground">Vence: {new Date(inv.vencimento).toLocaleDateString('pt-BR')}</div>
+                  <div className="text-sm text-muted-foreground">Vence: {formatDate(inv.vencimento)}</div>
                   <div className="text-lg font-bold text-primary">R$ {Number(inv.valor).toFixed(2)}</div>
                 </div>
                 {inv.payment_url && (

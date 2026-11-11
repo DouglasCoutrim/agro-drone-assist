@@ -43,7 +43,7 @@ import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useNavigate, useLocation } from "react-router-dom";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate, parseDate, todayDateInput } from "@/lib/formatters";
 import { limitarPercentualDesconto, calcularValorDesconto, calcularTotalComDesconto, tetoDesconto } from "@/lib/desconto";
 import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 import { useVendasData, Venda, VendaItem, NotaFiscalEmitida } from "@/hooks/useVendasData";
@@ -111,7 +111,7 @@ export default function Vendas() {
     cliente_nome: "",
     cliente_cpf_cnpj: "",
     cliente_email: "",
-    data_venda: new Date().toISOString().split("T")[0],
+    data_venda: todayDateInput(),
     forma_pagamento: "pix",
     status_pagamento: "pendente",
     obs: "",
@@ -153,7 +153,7 @@ export default function Vendas() {
   const resetVendaForm = () => {
     setVendaFormData({
       cliente_id: "", cliente_nome: "", cliente_cpf_cnpj: "", cliente_email: "",
-      data_venda: new Date().toISOString().split("T")[0],
+      data_venda: todayDateInput(),
       forma_pagamento: "pix", status_pagamento: "pendente", obs: "",
     });
     setItensForm([]);
@@ -401,7 +401,7 @@ export default function Vendas() {
     const anoAtual = new Date().getFullYear();
     return vendas
       .filter((v) => {
-        const d = new Date(v.data_venda);
+        const d = parseDate(v.data_venda);
         return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
       })
       .reduce((acc, v) => acc + v.valor_total, 0);

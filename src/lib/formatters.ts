@@ -71,8 +71,49 @@ export function formatCurrency(value: number | null): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
-export function formatDate(date: string | null): string {
+/** Extrai a parte de data (yyyy-mm-dd) de uma string ISO sem aplicar conversão de fuso. */
+export function toDateOnly(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  return match ? `${match[1]}-${match[2]}-${match[3]}` : null;
+}
+
+/** Data de hoje no fuso local, no formato yyyy-mm-dd (pronta para <input type="date">). */
+export function todayDateInput(base: Date = new Date()): string {
+  const ano = base.getFullYear();
+  const mes = String(base.getMonth() + 1).padStart(2, '0');
+  const dia = String(base.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
+
+/**
+ * Converte uma string de data em Date.
+ * Datas puras ("yyyy-mm-dd", colunas `date` e inputs type=date) viram meia-noite LOCAL,
+ * evitando o deslocamento de 1 dia causado pelo parse UTC do JavaScript.
+ */
+export function parseDate(value: string): Date {
+  const apenasData = toDateOnly(value);
+  if (apenasData && value.length === 10) {
+    const [ano, mes, dia] = apenasData.split('-').map(Number);
+    return new Date(ano, mes - 1, dia);
+  }
+  return new Date(value);
+}
+
+/** Converte "yyyy-mm-dd" em timestamp ISO local (meio-dia) para colunas timestamptz que guardam datas. */
+export function dateOnlyToIso(value: string): string {
+  const d = parseDate(value);
+  d.setHours(12, 0, 0, 0);
+  return d.toISOString();
+}
+
+/** Formata a data no padrão brasileiro. Datas puras ("yyyy-mm-dd") não passam por conversão de fuso. */
+export function formatDate(date: string | null | undefined): string {
   if (!date) return '-';
+  if (date.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const [ano, mes, dia] = date.split('-');
+    return `${dia}/${mes}/${ano}`;
+  }
   return new Date(date).toLocaleDateString('pt-BR');
 }
 

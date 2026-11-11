@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, todayDateInput } from "@/lib/formatters";
 import { FiscalHeader, NotaStatusBadge } from "@/components/fiscal/fiscalShared";
 
 const TIPOS: Record<string, string> = {
@@ -24,8 +24,8 @@ function tipoNota(n: any): string {
   return "nfe";
 }
 
-const hoje = new Date();
-const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0, 10);
+const hoje = todayDateInput();
+const inicioMes = `${hoje.slice(0, 7)}-01`;
 
 export default function NotasFiscais() {
   const { organization } = useOrganization();
@@ -34,7 +34,7 @@ export default function NotasFiscais() {
   const [tipo, setTipo] = useState("todos");
   const [status, setStatus] = useState("todos");
   const [de, setDe] = useState(inicioMes);
-  const [ate, setAte] = useState(hoje.toISOString().slice(0, 10));
+  const [ate, setAte] = useState(hoje);
   const [sel, setSel] = useState<any>(null);
 
   useEffect(() => {

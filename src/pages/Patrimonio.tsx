@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatCurrency, getErrorMessage } from "@/lib/formatters";
+import { formatCurrency, formatDate, getErrorMessage, todayDateInput } from "@/lib/formatters";
 import { mesesDecorridos, valorDepreciado } from "@/lib/depreciacao";
 import { toast } from "sonner";
 
@@ -22,7 +22,7 @@ const STATUS: Record<string, string> = {
   disponivel: "No almoxarifado", em_uso: "Com funcionário", manutencao: "Em manutenção",
   danificado: "Danificado", extraviado: "Extraviado", baixado: "Baixado",
 };
-const empty = { nome: "", categoria: "", marca_modelo: "", numero_serie: "", valor_referencia: "", data_aquisicao: new Date().toISOString().slice(0, 10), vida_util_meses: "36", valor_residual_pct: "10", observacao: "" };
+const empty = { nome: "", categoria: "", marca_modelo: "", numero_serie: "", valor_referencia: "", data_aquisicao: todayDateInput(), vida_util_meses: "36", valor_residual_pct: "10", observacao: "" };
 
 export default function Patrimonio({ meu = false }: { meu?: boolean }) {
   const { organization } = useOrganization();
@@ -79,7 +79,7 @@ export default function Patrimonio({ meu = false }: { meu?: boolean }) {
     const novo = tecnico === "none" ? null : tecnico;
     const novoStatus = novo ? "em_uso" : status || "disponivel";
     const { error } = await supabase.from("patrimonio_ferramentas").update({
-      tecnico_atual_id: novo, status: novoStatus, data_entrega: novo ? new Date().toISOString().slice(0, 10) : null,
+      tecnico_atual_id: novo, status: novoStatus, data_entrega: novo ? todayDateInput() : null,
     }).eq("id", item.id);
     if (error) return toast.error(getErrorMessage(error));
     await supabase.from("patrimonio_movimentacoes").insert({
@@ -138,7 +138,7 @@ export default function Patrimonio({ meu = false }: { meu?: boolean }) {
                   <Badge variant={i.status === "em_uso" ? "default" : "secondary"}>{STATUS[i.status] || i.status}</Badge>
                 </div>
                 {!meu && <p className="text-sm">Responsável: <b>{nomeDe(i.tecnico_atual_id)}</b></p>}
-                {i.data_entrega && <p className="text-xs text-muted-foreground">Entregue em {new Date(i.data_entrega + "T00:00:00").toLocaleDateString("pt-BR")}</p>}
+                {i.data_entrega && <p className="text-xs text-muted-foreground">Entregue em {formatDate(i.data_entrega)}</p>}
                 <div className="grid grid-cols-2 text-sm gap-1">
                   <span className="text-muted-foreground">Compra</span><span className="text-right">{formatCurrency(Number(i.valor_referencia || 0))}</span>
                   <span className="text-muted-foreground">Uso</span><span className="text-right">{i.meses} de {i.vida_util_meses} meses</span>

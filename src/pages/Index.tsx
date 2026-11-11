@@ -19,7 +19,7 @@ import { OSSummaryDialog } from "@/components/os/OSSummaryDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, parseDate, todayDateInput } from "@/lib/formatters";
 import { fetchOsComValores } from "@/lib/os-billing";
 import { cn } from "@/lib/utils";
 
@@ -124,7 +124,7 @@ const Index = () => {
     const inicioAntIso = inicioAnt.toISOString();
     try {
       const r = await Promise.allSettled([
-        supabase.from("financeiro").select("valor, tipo, data_transacao").eq("organization_id", orgId).gte("data_transacao", inicioIso),
+        supabase.from("financeiro").select("valor, tipo, data_transacao").eq("organization_id", orgId).gte("data_transacao", todayDateInput(inicio)),
         supabase.from("vendas").select("id, numero, cliente_nome, valor_total, status_pagamento, data_venda, criado_em").eq("organization_id", orgId).gte("criado_em", inicioIso).order("criado_em", { ascending: false }),
         supabase.from("clientes").select("id", { count: "exact", head: true }).eq("organization_id", orgId),
         supabase.from("clientes").select("id, created_at").eq("organization_id", orgId).gte("created_at", inicioIso),
@@ -133,7 +133,7 @@ const Index = () => {
         supabase.from("ordens_servico").select("id, numero, clientes(nome)").eq("organization_id", orgId).not("data_previsao", "is", null).lt("data_previsao", hoje).not("status", "in", `(${ENCERRADAS.join(",")})`).order("data_previsao").limit(5),
         supabase.from("profiles").select("id, nome").eq("organization_id", orgId),
         fetchOsComValores(orgId),
-        supabase.from("financeiro").select("valor, tipo").eq("organization_id", orgId).gte("data_transacao", inicioAntIso).lt("data_transacao", inicioIso),
+        supabase.from("financeiro").select("valor, tipo").eq("organization_id", orgId).gte("data_transacao", todayDateInput(inicioAnt)).lt("data_transacao", todayDateInput(inicio)),
         supabase.from("vendas").select("valor_total").eq("organization_id", orgId).gte("criado_em", inicioAntIso).lt("criado_em", inicioIso),
         supabase.from("ordens_servico").select("id", { count: "exact", head: true }).eq("organization_id", orgId).gte("created_at", inicioAntIso).lt("created_at", inicioIso),
         supabase.from("clientes").select("id", { count: "exact", head: true }).eq("organization_id", orgId).gte("created_at", inicioAntIso).lt("created_at", inicioIso),
@@ -173,7 +173,7 @@ const Index = () => {
       }
       const somar = (data: string | null, valor: number) => {
         if (!data) return;
-        const k = chave(new Date(data));
+        const k = chave(parseDate(data));
         if (buckets.has(k)) buckets.set(k, (buckets.get(k) || 0) + valor);
       };
       fin.filter(f => f.tipo === "receita").forEach(f => somar(f.data_transacao, Number(f.valor || 0)));

@@ -29,7 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { NumberInput } from "@/components/ui/number-input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { dateOnlyToIso, formatCurrency, formatDate, todayDateInput } from "@/lib/formatters";
 import { KpiCard } from "@/components/premium/KpiCard";
 import { PremiumCard } from "@/components/premium/PremiumCard";
 import { PremiumTable } from "@/components/premium/PremiumTable";
@@ -76,7 +76,7 @@ export default function TechnicianFinancialDashboard() {
   const [expenseForm, setExpenseForm] = useState({
     description: "",
     amount: 0,
-    expense_date: new Date().toISOString().split("T")[0],
+    expense_date: todayDateInput(),
     category: "ferramenta",
   });
   const [savingExpense, setSavingExpense] = useState(false);
@@ -124,7 +124,7 @@ export default function TechnicianFinancialDashboard() {
         organization_id: profile?.organization_id,
         description: expenseForm.description,
         amount: expenseForm.amount,
-        expense_date: expenseForm.expense_date,
+        expense_date: dateOnlyToIso(expenseForm.expense_date),
         category: expenseForm.category,
         created_by: user.id,
       };
@@ -181,7 +181,7 @@ export default function TechnicianFinancialDashboard() {
     setExpenseForm({
       description: "",
       amount: 0,
-      expense_date: new Date().toISOString().split("T")[0],
+      expense_date: todayDateInput(),
       category: "ferramenta",
     });
   };

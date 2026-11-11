@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { todayDateInput } from "@/lib/formatters";
 import type { PeriodPreset, PeriodRange } from "@/hooks/useTechnicianFinancials";
 
 interface PeriodFilterBarProps {
@@ -20,7 +21,7 @@ const PRESETS: { value: PeriodPreset; label: string; icon: React.ReactNode }[] =
 ];
 
 function formatDateForInput(date: Date): string {
-  return date.toISOString().split("T")[0];
+  return todayDateInput(date);
 }
 
 function parseInputDate(value: string): Date | null {

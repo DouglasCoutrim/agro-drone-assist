@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Crown, Loader2, MoreHorizontal, Search, Ban, CheckCircle2, Package, User, Key, Eye } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatDate } from '@/lib/formatters';
 
 interface Org {
   id: string; name: string; status: string; plan: string; plan_id: string | null;
@@ -202,7 +203,7 @@ export default function TenantsTab() {
                     <TableCell className={o.is_vip ? 'line-through text-muted-foreground' : ''}>
                       R$ {Number(o.monthly_fee || 0).toFixed(2)}
                     </TableCell>
-                    <TableCell>{o.next_due_date ? new Date(o.next_due_date).toLocaleDateString('pt-BR') : '—'}</TableCell>
+                    <TableCell>{o.next_due_date ? formatDate(o.next_due_date) : '—'}</TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-3">
                         <div className="flex items-center gap-2">

@@ -1,3 +1,5 @@
+import { formatDate } from '@/lib/formatters';
+
 export interface WhatsAppOS {
   numero: string;
   clienteNome: string;
@@ -15,7 +17,7 @@ const fmtCur = (v: number | null | undefined) =>
   v != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v) : 'A definir';
 
 const fmtDate = (d: string | null | undefined) =>
-  d ? new Date(d).toLocaleDateString('pt-BR') : '-';
+  d ? formatDate(d) : '-';
 
 export const whatsappTemplates = {
   osRecebida: (os: WhatsAppOS, nomeEmpresa: string, termos?: string) => {

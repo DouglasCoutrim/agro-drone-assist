@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
 import { getStatusLabel } from "@/components/os/StatusPipeline";
-import { formatCurrency, formatDate, getErrorMessage } from "@/lib/formatters";
+import { formatCurrency, formatDate, getErrorMessage, todayDateInput } from "@/lib/formatters";
 import {
   ConsolidadoGrupo, GroupedStoredItem, generateOrcamentoConsolidadoPDF, grupoSubtotal,
   loadImageAsDataUrl, shareConsolidadoPDF,
@@ -54,7 +54,7 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
   const [itemsByOS, setItemsByOS] = useState<Record<string, any[]>>({});
   const [loadingOS, setLoadingOS] = useState(false);
   const [desconto, setDesconto] = useState(0);
-  const [validade, setValidade] = useState(new Date(Date.now() + 15 * 86400000).toISOString().split("T")[0]);
+  const [validade, setValidade] = useState(todayDateInput(new Date(Date.now() + 15 * 86400000)));
   const [observacao, setObservacao] = useState("");
   const [busy, setBusy] = useState(false);
   const [forma, setForma] = useState("dinheiro");
@@ -114,7 +114,7 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
   const buildDoc = async (numero?: string) => generateOrcamentoConsolidadoPDF({
     numero,
     data: new Date().toLocaleDateString("pt-BR"),
-    validade: new Date(validade + "T12:00:00").toLocaleDateString("pt-BR"),
+    validade: formatDate(validade),
     cliente: { nome: cliente?.nome || "Cliente", telefone: cliente?.telefone },
     empresa: { nome: empresa.nome_empresa, telefone: empresa.telefone, cnpj: empresa.cnpj, endereco: empresa.endereco, logoDataUrl: await loadImageAsDataUrl(empresa.logo_url) },
     grupos, desconto, observacao, termos: empresa.termos_servico,
@@ -128,7 +128,7 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
     if (!guard()) return;
     setBusy(true);
     try {
-      const msg = `Olá *${cliente!.nome}*! 👋\n\nSegue o orçamento consolidado da *${empresa.nome_empresa}* referente a ${grupos.length} ordem(ns) de serviço (${grupos.map(g => g.os_numero).join(", ")}).\n\n💰 *Total: ${formatCurrency(total)}*\n📅 Válido até: ${new Date(validade + "T12:00:00").toLocaleDateString("pt-BR")}`;
+      const msg = `Olá *${cliente!.nome}*! 👋\n\nSegue o orçamento consolidado da *${empresa.nome_empresa}* referente a ${grupos.length} ordem(ns) de serviço (${grupos.map(g => g.os_numero).join(", ")}).\n\n💰 *Total: ${formatCurrency(total)}*\n📅 Válido até: ${formatDate(validade)}`;
       await shareConsolidadoPDF(await buildDoc(), fileName(), msg, cliente!.telefone);
     } catch (e) { toast.error("Erro ao compartilhar: " + getErrorMessage(e)); } finally { setBusy(false); }
   };
@@ -161,7 +161,7 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
       const numero = `VND-${String(m ? parseInt(m[1]) + 1 : 1).padStart(5, "0")}`;
       const linhas = grupos.flatMap((g: any) => g.itens.map((i: any) => ({ ...i, os_numero: g.os_numero })));
       const { data: venda, error } = await supabase.from("vendas").insert({
-        organization_id: organization.id, numero, data_venda: new Date().toISOString().split("T")[0],
+        organization_id: organization.id, numero, data_venda: todayDateInput(),
         cliente_id: clienteId, cliente_nome: cliente!.nome, forma_pagamento: forma, status_pagamento: "pago",
         valor_produtos: subtotal, valor_desconto: desconto, valor_impostos: 0, valor_total: total, vendido_por: user.id,
         obs: `Venda do orçamento agrupado (${grupos.map(g => g.os_numero).join(", ")}) — recibo, sem nota fiscal`,

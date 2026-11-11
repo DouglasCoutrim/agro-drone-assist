@@ -24,7 +24,7 @@ import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { generateOrcamentoPDF, shareOrcamentoViaWhatsApp } from "@/lib/orcamento-pdf";
 import { generateOrcamentoConsolidadoPDF, groupsFromStoredItems, isGroupedOrcamento, loadImageAsDataUrl, shareConsolidadoPDF } from "@/lib/orcamento-consolidado-pdf";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatDate, todayDateInput } from "@/lib/formatters";
 import { PayButton } from "@/components/PayButton";
 import { useConfirm } from "@/hooks/useConfirm";
 import { PremiumCard, PremiumCardHeader, PremiumCardContent } from "@/components/premium/PremiumCard";
@@ -70,7 +70,7 @@ export default function Orcamentos() {
     equipamento: "",
     descricao: "",
     desconto: 0,
-    validade: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
+    validade: todayDateInput(new Date(Date.now() + 30 * 86400000)),
     vendedor_id: "",
   });
   const [items, setItems] = useState<OSItem[]>([]);
@@ -211,7 +211,7 @@ export default function Orcamentos() {
       subtotal: sub > 0 ? sub : Number(orc.valor),
       desconto: desc,
       total: Number(orc.valor),
-      validade: new Date(orc.validade).toLocaleDateString("pt-BR"),
+      validade: formatDate(orc.validade),
       empresa: {
         nome: empresa.nome_empresa, telefone: empresa.telefone,
         cnpj: empresa.cnpj, endereco: empresa.endereco,
@@ -223,7 +223,7 @@ export default function Orcamentos() {
 
   const buildGroupedDoc = async (orc: Orcamento) => generateOrcamentoConsolidadoPDF({
     data: new Date(orc.created_at).toLocaleDateString("pt-BR"),
-    validade: new Date(orc.validade).toLocaleDateString("pt-BR"),
+    validade: formatDate(orc.validade),
     cliente: { nome: orc.clientes?.nome || "Cliente", telefone: orc.clientes?.telefone },
     empresa: { nome: empresa.nome_empresa, telefone: empresa.telefone, cnpj: empresa.cnpj, endereco: empresa.endereco, logoDataUrl: await loadImageAsDataUrl(empresa.logo_url) },
     grupos: groupsFromStoredItems(orc.itens as any),
@@ -256,7 +256,7 @@ export default function Orcamentos() {
   };
 
   const resetForm = () => {
-    setFormData({ cliente_id: "", equipamento: "", descricao: "", desconto: 0, validade: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0], vendedor_id: "" });
+    setFormData({ cliente_id: "", equipamento: "", descricao: "", desconto: 0, validade: todayDateInput(new Date(Date.now() + 30 * 86400000)), vendedor_id: "" });
     setItems([]);
     setEditingOrc(null);
   };
@@ -456,7 +456,7 @@ export default function Orcamentos() {
                     case "status":
                       return <Badge variant={sc.variant}>{sc.label}</Badge>;
                     case "validade":
-                      return <span className="text-sm text-gray-700">{new Date(item.validade).toLocaleDateString("pt-BR")}</span>;
+                      return <span className="text-sm text-gray-700">{formatDate(item.validade)}</span>;
                     case "valor":
                       return <span className="text-sm font-semibold text-primary">{formatCurrency(item.valor)}</span>;
                     case "actions":
@@ -507,7 +507,7 @@ export default function Orcamentos() {
                     <div><p className="text-xs text-muted-foreground">Equipamento</p><p className="font-medium">{viewingOrc.equipamento}</p></div>
                     {viewingOrc.descricao && <div className="col-span-2"><p className="text-xs text-muted-foreground">Descrição</p><p className="text-sm">{viewingOrc.descricao}</p></div>}
                     <div><p className="text-xs text-muted-foreground">Total</p><p className="font-bold text-primary text-lg">{formatCurrency(viewingOrc.valor)}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Validade</p><p className="font-medium">{new Date(viewingOrc.validade).toLocaleDateString("pt-BR")}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Validade</p><p className="font-medium">{formatDate(viewingOrc.validade)}</p></div>
                   </div>
 
                   {Array.isArray(viewingOrc.itens) && viewingOrc.itens.length > 0 && (

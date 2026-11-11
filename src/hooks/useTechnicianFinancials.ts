@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, todayDateInput } from "@/lib/formatters";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -61,7 +61,7 @@ function getPeriodRange(preset: PeriodPreset, customStart?: Date, customEnd?: Da
 }
 
 function formatDateForDB(date: Date): string {
-  return date.toISOString().split("T")[0];
+  return todayDateInput(date);
 }
 
 export function useTechnicianFinancials() {

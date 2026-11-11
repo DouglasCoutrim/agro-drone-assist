@@ -16,7 +16,7 @@ import { Tables, Enums } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useOrganization } from "@/hooks/useOrganization";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatDate, parseDate, todayDateInput } from "@/lib/formatters";
 import { CobrancaClienteDialog } from "@/components/financeiro/CobrancaClienteDialog";
 import { fetchOsComValores, OsCobranca } from "@/lib/os-billing";
 import { PremiumCard } from "@/components/premium/PremiumCard";
@@ -46,7 +46,7 @@ export default function Financeiro() {
   const [formData, setFormData] = useState({
     tipo: "receita" as Enums<"tipo_transacao">,
     descricao: "", valor: 0, categoria: "",
-    data_transacao: new Date().toISOString().split('T')[0], observacoes: ""
+    data_transacao: todayDateInput(), observacoes: ""
   });
 
   useEffect(() => {
@@ -135,14 +135,14 @@ export default function Financeiro() {
   };
 
   const resetForm = () => {
-    setFormData({ tipo: "receita", descricao: "", valor: 0, categoria: "", data_transacao: new Date().toISOString().split('T')[0], observacoes: "" });
+    setFormData({ tipo: "receita", descricao: "", valor: 0, categoria: "", data_transacao: todayDateInput(), observacoes: "" });
     setEditingTransacao(null);
   };
 
 
   const { receitaMensal, despesaMensal, comissoesMensal, lucroLiquido } = useMemo(() => {
     const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
-    const thisMonth = transacoes.filter(t => new Date(t.data_transacao) >= startOfMonth);
+    const thisMonth = transacoes.filter(t => parseDate(t.data_transacao) >= startOfMonth);
     const r = thisMonth.filter(t => t.tipo === 'receita').reduce((acc, t) => acc + Number(t.valor), 0);
     const d = thisMonth.filter(t => t.tipo === 'despesa' || t.tipo === 'salario').reduce((acc, t) => acc + Number(t.valor), 0);
     const c = thisMonth.filter(t => t.tipo === 'comissao').reduce((acc, t) => acc + Number(t.valor), 0);
@@ -365,7 +365,7 @@ export default function Financeiro() {
                   const tipoConfig = getTipoConfig(row.tipo);
                   switch (columnKey) {
                     case 'data':
-                      return <span className="text-sm font-mono text-muted-foreground">{new Date(row.data_transacao).toLocaleDateString('pt-BR')}</span>;
+                      return <span className="text-sm font-mono text-muted-foreground">{formatDate(row.data_transacao)}</span>;
                     case 'descricao':
                       return <span className="text-sm font-medium truncate max-w-[250px]">{row.descricao}</span>;
                     case 'categoria':
@@ -416,7 +416,7 @@ export default function Financeiro() {
                       <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Tipo</p><Badge variant={getTipoConfig(viewingTransacao.tipo).badgeVariant}>{getTipoConfig(viewingTransacao.tipo).label}</Badge></div>
                       <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Valor</p><p className={`font-bold text-lg ${getTipoConfig(viewingTransacao.tipo).color}`}>{formatCurrency(viewingTransacao.valor)}</p></div>
                       <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Categoria</p><p className="text-sm font-medium">{viewingTransacao.categoria || "-"}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Data</p><p className="text-sm font-medium">{new Date(viewingTransacao.data_transacao).toLocaleDateString('pt-BR')}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Data</p><p className="text-sm font-medium">{formatDate(viewingTransacao.data_transacao)}</p></div>
                       {viewingTransacao.observacoes && <div className="col-span-2"><p className="text-[10px] text-muted-foreground uppercase tracking-wide">Observações</p><p className="text-sm">{viewingTransacao.observacoes}</p></div>}
                     </div>
                   </div>

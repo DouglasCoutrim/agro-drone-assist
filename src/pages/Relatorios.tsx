@@ -15,6 +15,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { FechamentoDia } from "@/components/relatorios/FechamentoDia";
 import { usePagination } from "@/hooks/usePagination";
 import { RecordPagination } from "@/components/RecordPagination";
+import { todayDateInput } from "@/lib/formatters";
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--success))', 'hsl(var(--warning))', 'hsl(var(--destructive))', '#8884d8', '#82ca9d'];
 
@@ -42,7 +43,7 @@ export default function Relatorios() {
     else if (periodo === 'mes') { d.setDate(1); d.setHours(0, 0, 0, 0); }
     else if (periodo === 'trimestre') { d.setMonth(d.getMonth() - 3); d.setHours(0, 0, 0, 0); }
     else { d.setMonth(0); d.setDate(1); d.setHours(0, 0, 0, 0); }
-    return d.toISOString();
+    return d;
   };
 
   const fetchAll = async () => {
@@ -50,8 +51,8 @@ export default function Relatorios() {
     try {
       const startDate = getStartDate();
       const [osRes, finRes, clientesRes, estoqueRes] = await Promise.all([
-        supabase.from('ordens_servico').select('*').gte('created_at', startDate),
-        supabase.from('financeiro').select('*').gte('data_transacao', startDate),
+        supabase.from('ordens_servico').select('*').gte('created_at', startDate.toISOString()),
+        supabase.from('financeiro').select('*').gte('data_transacao', todayDateInput(startDate)),
         supabase.from('clientes').select('*', { count: 'exact', head: true }),
         supabase.from('itens_estoque').select('*'),
       ]);
