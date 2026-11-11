@@ -1,5 +1,9 @@
 # Roadmap
 
+## Monitoramento: notificações push e salvamento de vendas
+- [x] Verificar vendas: o serviço externo já aceita desconto_maximo_percentual (HTTP 200); coluna de controle inexistente retorna 42703. Achado desatualizado, sem alteração de código ou gravação de vendas reais.
+- [ ] Restaurar o contrato de autorização das notificações: tabela ausente no serviço externo; aguarda aprovação do SQL, aplicação no destino externo e publicação coordenada. Não aplicar no Cloud antigo.
+
 ## Monitoramento: acessos, pedidos, notas recebidas e patrimônio
 - [x] Corrigir acessos por árvore, rascunhos desatualizados e mensagens das notas recebidas; 19 testes passaram e compilação sem erros.
 - [ ] Corrigir patrimônio com atualização e histórico atômicos: aguarda aprovação do plano/SQL e disponibilidade do banco para conferir restrições atuais.
