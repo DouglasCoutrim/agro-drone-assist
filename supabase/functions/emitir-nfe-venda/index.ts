@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
-import { absoluteUrl, focusErrorMessage, focusRequest, focusToken, mapStatus, onlyDigits, dataEmissaoBrasil } from '../_shared/focus-nfe.ts';
+import { absoluteUrl, focusErrorMessage, focusRequest, focusToken, mapStatus, onlyDigits, dataEmissaoBrasil, withFocusToken } from '../_shared/focus-nfe.ts';
 
 const Body = z.object({
   action: z.enum(['validar', 'emitir', 'consultar', 'diagnosticar']).default('emitir'),
@@ -47,7 +47,8 @@ Deno.serve(async (req) => {
     if (!parsed.success) return json({ error: 'Requisição inválida', detalhes: parsed.error.flatten().fieldErrors }, 400);
     const { action, venda_id, nf_id } = parsed.data;
 
-    const { data: config } = await admin.from('nfe_config').select('*').eq('organization_id', orgId).maybeSingle();
+    const { data: configRaw } = await admin.from('nfe_config').select('*').eq('organization_id', orgId).maybeSingle();
+    const config = await withFocusToken(admin, configRaw);
 
     // ---------- DIAGNOSTICAR ----------
     if (action === 'diagnosticar') {
@@ -99,7 +100,7 @@ Deno.serve(async (req) => {
       if (!config) return json({ error: 'Configuração fiscal não encontrada' }, 400);
       const { data: nf } = await admin.from('nota_fiscal_emitida').select('*').eq('id', nf_id).eq('organization_id', orgId).maybeSingle();
       if (!nf) return json({ error: 'Nota não encontrada' }, 404);
-      const cfg = { ...config, ambiente: nf.ambiente };
+      const cfg = await withFocusToken(admin, { ...config, ambiente: nf.ambiente });
       const r = await focusRequest(cfg, 'GET', `/v2/nfe/${encodeURIComponent(nf.referencia)}`);
       const updated = await applyFocusResult(admin, cfg, nf, r.data);
       return json({ success: true, nf: updated });

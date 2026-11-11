@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
-import { focusErrorMessage, focusRequest } from '../_shared/focus-nfe.ts';
+import { focusErrorMessage, focusRequest, withFocusToken } from '../_shared/focus-nfe.ts';
 
 const Body = z.object({
   nf_id: z.string().uuid(),
@@ -42,9 +42,9 @@ Deno.serve(async (req) => {
     if (!nf) return json({ error: 'Nota fiscal não encontrada' }, 404);
     if (nf.status !== 'autorizado') return json({ error: 'Somente notas autorizadas podem ser canceladas' }, 400);
 
-    const { data: config } = await admin.from('nfe_config').select('*').eq('organization_id', profile.organization_id).maybeSingle();
-    if (!config) return json({ error: 'Configuração fiscal não encontrada' }, 400);
-    const cfg = { ...config, ambiente: nf.ambiente };
+    const { data: configRaw } = await admin.from('nfe_config').select('*').eq('organization_id', profile.organization_id).maybeSingle();
+    if (!configRaw) return json({ error: 'Configuração fiscal não encontrada' }, 400);
+    const cfg = await withFocusToken(admin, { ...configRaw, ambiente: nf.ambiente });
 
     const rota = nf.tipo === 'nfse' ? 'nfse' : 'nfe';
     const r = await focusRequest(cfg, 'DELETE', `/v2/${rota}/${encodeURIComponent(nf.referencia)}`, { justificativa: motivo });

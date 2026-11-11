@@ -3,7 +3,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
-import { absoluteUrl, dataEmissaoBrasil, focusErrorMessage, focusRequest, focusToken, mapStatus, onlyDigits } from '../_shared/focus-nfe.ts';
+import { absoluteUrl, dataEmissaoBrasil, focusErrorMessage, focusRequest, focusToken, mapStatus, onlyDigits, withFocusToken } from '../_shared/focus-nfe.ts';
 import { baixarEstoqueDevolucao } from '../_shared/devolucao-estoque.ts';
 
 const Body = z.discriminatedUnion('action', [
@@ -39,13 +39,14 @@ Deno.serve(async (req) => {
     const parsed = Body.safeParse(await req.json().catch(() => ({})));
     if (!parsed.success) return json({ error: 'Requisição inválida', detalhes: parsed.error.flatten().fieldErrors }, 400);
 
-    const { data: config } = await admin.from('nfe_config').select('*').eq('organization_id', orgId).maybeSingle();
+    const { data: configRaw } = await admin.from('nfe_config').select('*').eq('organization_id', orgId).maybeSingle();
+    const config = await withFocusToken(admin, configRaw);
     if (!config || !focusToken(config)) return json({ error: 'Configure a NF-e (token da Focus) antes de emitir a devolução.' }, 400);
 
     if (parsed.data.action === 'consultar') {
       const { data: nf } = await admin.from('nota_fiscal_emitida').select('*').eq('id', parsed.data.nf_id).eq('organization_id', orgId).maybeSingle();
       if (!nf) return json({ error: 'Nota não encontrada' }, 404);
-      const cfg = { ...config, ambiente: nf.ambiente };
+      const cfg = await withFocusToken(admin, { ...config, ambiente: nf.ambiente });
       const r = await focusRequest(cfg, 'GET', `/v2/nfe/${encodeURIComponent(nf.referencia)}`);
       const status = mapStatus(r.data?.status);
       const patch: Record<string, unknown> = { status, payload_retorno: r.data };

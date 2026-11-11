@@ -2,7 +2,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
-import { focusBaseUrl, focusErrorMessage, focusRequest, focusToken, onlyDigits } from '../_shared/focus-nfe.ts';
+import { focusBaseUrl, focusErrorMessage, focusRequest, focusToken, onlyDigits, withFocusToken } from '../_shared/focus-nfe.ts';
 
 const data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const Body = z.discriminatedUnion('action', [
@@ -47,7 +47,8 @@ Deno.serve(async (req) => {
       return json({ notas: notas || [], ultima_sincronizacao: sinc?.ultima_consulta ?? null });
     }
 
-    const { data: config } = await admin.from('nfe_config').select('*').eq('organization_id', orgId).maybeSingle();
+    const { data: configRaw } = await admin.from('nfe_config').select('*').eq('organization_id', orgId).maybeSingle();
+    const config = await withFocusToken(admin, configRaw);
     if (!config) return json({ error: 'Configure a NF-e (Fiscal → Configuração NF-e) antes de buscar notas.' }, 400);
     const cnpj = onlyDigits(config.cnpj);
     if (cnpj.length !== 14) return json({ error: 'CNPJ da empresa inválido na configuração fiscal.' }, 400);

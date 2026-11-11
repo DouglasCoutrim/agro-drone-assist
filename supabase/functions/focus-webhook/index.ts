@@ -2,7 +2,7 @@
 // O corpo do aviso não é confiável: usamos só a referência e reconsultamos a Focus com o token da empresa.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
-import { absoluteUrl, focusErrorMessage, focusRequest, mapStatus } from '../_shared/focus-nfe.ts';
+import { absoluteUrl, focusErrorMessage, focusRequest, mapStatus, withFocusToken } from '../_shared/focus-nfe.ts';
 import { baixarEstoqueDevolucao, entradaEstoqueDevolucaoVenda } from '../_shared/devolucao-estoque.ts';
 
 function json(data: unknown, status = 200) {
@@ -29,10 +29,10 @@ Deno.serve(async (req) => {
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const { data: nf } = await admin.from('nota_fiscal_emitida').select('*').eq('referencia', ref).maybeSingle();
     if (!nf) return json({ ok: true, ignorado: 'nota desconhecida' });
-    const { data: config } = await admin.from('nfe_config').select('*').eq('organization_id', nf.organization_id).maybeSingle();
-    if (!config) return json({ ok: true, ignorado: 'sem configuração' });
+    const { data: configRaw } = await admin.from('nfe_config').select('*').eq('organization_id', nf.organization_id).maybeSingle();
+    if (!configRaw) return json({ ok: true, ignorado: 'sem configuração' });
 
-    const cfg = { ...config, ambiente: nf.ambiente };
+    const cfg = await withFocusToken(admin, { ...configRaw, ambiente: nf.ambiente });
     const tipo = nf.tipo === 'nfse' ? 'nfse' : 'nfe';
     const r = await focusRequest(cfg, 'GET', `/v2/${tipo}/${encodeURIComponent(ref)}`);
     if (!r.ok) return json({ ok: true, ignorado: 'consulta falhou' });
