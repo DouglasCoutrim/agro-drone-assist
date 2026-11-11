@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { formatCurrency } from "@/lib/formatters";
 import { toast } from "sonner";
+import { podeEmitirNfe, MSG_NFE_COM_SERVICO } from "@/lib/venda-servico";
 import { FiscalHeader, ResultadoEmissao, fiscalErrorMessage } from "@/components/fiscal/fiscalShared";
 
 export default function NfeVenda() {
@@ -34,6 +35,7 @@ export default function NfeVenda() {
 
   const emitir = async () => {
     if (!venda || busy || nf) return;
+    if (!podeEmitirNfe(venda.venda_itens || [])) { setErro(MSG_NFE_COM_SERVICO); return; }
     setBusy(true); setErro("");
     const { data, error } = await supabase.functions.invoke("emitir-nfe-venda", { body: { action: "emitir", venda_id: venda.id } });
     setBusy(false);
@@ -84,10 +86,11 @@ export default function NfeVenda() {
                   ))}
                   <div className="flex justify-between p-2 font-semibold"><span>Total</span><span>{formatCurrency(Number(venda.valor_total || 0))}</span></div>
                 </div>
+                {!podeEmitirNfe(venda.venda_itens || []) && !erro && <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{MSG_NFE_COM_SERVICO}</p>}
                 {erro && <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive whitespace-pre-line">{erro}</p>}
                 <div className="flex flex-wrap justify-between gap-2">
                   <Button variant="outline" disabled={busy} onClick={() => { setVenda(null); setNf(null); setErro(""); }}>Trocar venda</Button>
-                  <Button onClick={emitir} disabled={busy || !!nf}>
+                  <Button onClick={emitir} disabled={busy || !!nf || !podeEmitirNfe(venda.venda_itens || [])}>
                     {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Enviando para a SEFAZ...</> : <><Send className="h-4 w-4 mr-2" />Emitir NF-e</>}
                   </Button>
                 </div>

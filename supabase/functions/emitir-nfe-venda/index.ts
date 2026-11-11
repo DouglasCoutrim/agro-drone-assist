@@ -236,6 +236,10 @@ function validar(config: any, venda: any, estoque: Map<string, any>): string[] {
 
   const itens = venda.venda_itens || [];
   if (!itens.length) p.push('A venda não possui itens.');
+  if (itens.some((i: any) => !i.produto_id && String(i.ncm || '').trim() === '00')) {
+    p.push('Esta venda tem serviços junto com peças. A NF-e aceita somente produtos — emita um recibo para esta venda.');
+    return p;
+  }
   itens.forEach((i: any, idx: number) => {
     const e = estoque.get(i.produto_id);
     if (e && e.emite_nfe === false) p.push(`Item ${idx + 1} (${i.nome_produto}): produto marcado como "sem nota fiscal" — remova-o da venda para emitir NF-e.`);
