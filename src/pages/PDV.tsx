@@ -14,6 +14,7 @@ import { formatCurrency } from "@/lib/formatters";
 import { limitarPercentualDesconto, calcularValorDesconto, calcularTotalComDesconto, tetoDesconto } from "@/lib/desconto";
 import { gerarDocumentoPadrao, loadImageAsDataUrl } from "@/lib/pdf-padrao";
 import { cn } from "@/lib/utils";
+import { SERVICO_NCM, MSG_NFE_COM_SERVICO } from "@/lib/venda-servico";
 
 // Campo de valor em reais (mostra o prefixo R$)
 function MoneyInput({ value, onChange, className }: { value: number; onChange: (v: number) => void; className?: string }) {
@@ -44,10 +45,21 @@ async function buscarProdutos(organizationId: string, termo: string) {
     .or(`codigo.ilike.%${safe}%,descricao.ilike.%${safe}%`)
     .order("descricao")
     .limit(20);
-  return data || [];
+  const { data: svcs } = await supabase
+    .from("servicos")
+    .select("id,descricao,preco,desconto_maximo_percentual")
+    .eq("organization_id", organizationId)
+    .ilike("descricao", `%${safe}%`)
+    .order("descricao")
+    .limit(10);
+  const servicos = (svcs || []).map((s: any) => ({
+    id: `svc:${s.id}`, codigo: "SERVIÇO", descricao: s.descricao, preco_venda: s.preco,
+    ncm: SERVICO_NCM, cfop: "", desconto_maximo_percentual: s.desconto_maximo_percentual, servico: true,
+  }));
+  return [...(data || []), ...servicos];
 }
 
-interface Linha { key: string; produto_id: string; codigo: string; nome: string; ncm: string; cfop: string; qtd: number; preco: number; pct: number; max: number; }
+interface Linha { key: string; produto_id: string; codigo: string; nome: string; ncm: string; cfop: string; qtd: number; preco: number; pct: number; max: number; servico?: boolean; }
 
 export default function PDV() {
   const { organization } = useOrganization();
@@ -86,7 +98,7 @@ export default function PDV() {
 
   const addProduto = async (id: string) => {
     let p: any = resultados.find((x) => x.id === id);
-    if (!p && organization?.id) {
+    if (!p && organization?.id && !id.startsWith("svc:")) {
       const { data } = await supabase.from("itens_estoque").select(SELECT_PRODUTO).eq("id", id).eq("organization_id", organization.id).maybeSingle();
       p = data;
     }
@@ -94,7 +106,7 @@ export default function PDV() {
     setLinhas((prev) => {
       const ex = prev.find((l) => l.produto_id === id);
       if (ex) return prev.map((l) => (l === ex ? { ...l, qtd: l.qtd + 1 } : l));
-      return [...prev, { key: crypto.randomUUID(), produto_id: id, codigo: p.codigo || "", nome: p.descricao, ncm: p.ncm || "", cfop: p.cfop || "5102", qtd: 1, preco: Number(p.preco_venda) || 0, pct: 0, max: Number(p.desconto_maximo_percentual) || 0 }];
+      return [...prev, { key: crypto.randomUUID(), produto_id: id, codigo: p.codigo || "", nome: p.descricao, ncm: p.ncm || "", cfop: p.servico ? "" : (p.cfop || "5102"), servico: !!p.servico, qtd: 1, preco: Number(p.preco_venda) || 0, pct: 0, max: Number(p.desconto_maximo_percentual) || 0 }];
     });
     setTermoBusca("");
     setResultados([]);
@@ -152,11 +164,12 @@ export default function PDV() {
   // Conclui a venda e, em seguida, emite a nota fiscal ou gera o recibo.
   const finalizar = async (emitirNotaFiscal: boolean) => {
     if (linhas.length === 0) return toast.error("Adicione pelo menos um produto");
+    if (emitirNotaFiscal && linhas.some((l) => l.servico)) return toast.error("Nota fiscal não permitida", { description: MSG_NFE_COM_SERVICO, duration: 10000 });
     if (forma === "dinheiro" && recebido > 0 && recebido < total) return toast.error("Valor recebido menor que o total");
     setSaving(true);
     try {
       const itens = linhas.map((l) => { const c = calc(l); return {
-        produto_id: l.produto_id, nome_produto: l.nome, ncm: l.ncm, cfop: l.cfop, quantidade: l.qtd, preco_unitario: l.preco,
+        produto_id: l.servico ? null : l.produto_id, nome_produto: l.nome, ncm: l.servico ? SERVICO_NCM : l.ncm, cfop: l.servico ? null : l.cfop, quantidade: l.qtd, preco_unitario: l.preco,
         desconto_percentual: l.pct, desconto_valor: c.desc, valor_total: c.total,
         icms_percentual: null, icms_valor: null, pis_cofins_valor: null, ipi_valor: null,
       }; });
@@ -222,7 +235,7 @@ export default function PDV() {
                 if (e.key === "Escape") { setTermoBusca(""); setResultados([]); return; }
                 if (e.key === "Enter") { e.preventDefault(); adicionarPorEnter(); }
               }}
-              placeholder="Buscar produto por código ou nome..."
+              placeholder="Buscar produto ou serviço por código ou nome..."
               autoComplete="off"
               className="h-9 pl-9 text-sm"
             />
