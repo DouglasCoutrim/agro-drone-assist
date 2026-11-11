@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, Mail, Lock, ArrowLeft } from "lucide-react";
-import logo from "@/assets/logo.png";
+import { LivreOSLogo } from "@/components/brand/LivreOSLogo";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -67,7 +67,7 @@ export default function ResetPassword() {
       <Card className="w-full max-w-md shadow-strong relative z-10 border-primary/20">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
-            <img src={logo} alt="LivreOS" className="h-16 w-auto" />
+            <LivreOSLogo size="lg" tone="onLight" />
           </div>
           <CardDescription>
             {mode === "request"

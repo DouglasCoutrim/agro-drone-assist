@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Loader2, Lock, ShieldCheck, Mail, ArrowLeft } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import logo from "@/assets/logo.png";
+import { LivreOSLogo } from "@/components/brand/LivreOSLogo";
 
 const emailSchema = z.string().email("E-mail inválido");
 const passwordSchema = z.string().min(6, "Senha é obrigatória");
@@ -105,7 +105,7 @@ export default function AdminAuth() {
       <Card className="w-full max-w-md shadow-2xl relative z-10 border-blue-500/20 bg-[#111111] text-white">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center flex-col items-center gap-2">
-            <img src={logo} alt="LivreOS Admin" className="h-16 w-auto grayscale brightness-200" />
+            <LivreOSLogo size="lg" tone="onDark" />
             <div className="flex items-center gap-2 text-blue-400 font-mono text-sm tracking-widest uppercase">
               <ShieldCheck className="h-4 w-4" />
               Portal Administrativo

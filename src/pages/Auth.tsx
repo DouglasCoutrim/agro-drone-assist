@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { Loader2, Mail, Lock, Zap } from "lucide-react";
 import { z } from "zod";
-import logo from "@/assets/logo.png";
+import { LivreOSLogo } from "@/components/brand/LivreOSLogo";
 
 const emailSchema = z.string().email("Email inválido");
 const passwordSchema = z.string().min(6, "Senha deve ter no mínimo 6 caracteres");
@@ -76,7 +76,7 @@ export default function Auth() {
       <Card className="w-full max-w-md shadow-strong relative z-10 border-primary/20">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
-            <img src={logo} alt="LivreOS" className="h-20 w-auto drop-shadow-[0_2px_12px_hsl(var(--primary)/0.25)]" />
+            <LivreOSLogo size="lg" tone="onLight" />
           </div>
           <CardDescription>Gestão completa para sua assistência técnica</CardDescription>
         </CardHeader>

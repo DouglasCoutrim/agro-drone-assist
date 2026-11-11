@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import logo from "@/assets/logo-icon.png";
+import { LivreOSLogo } from "@/components/brand/LivreOSLogo";
 import { sectionsForRoles } from "./navConfig";
 import { NavModules } from "./NavModules";
 
@@ -31,12 +31,8 @@ export function Sidebar({ className }: SidebarProps) {
       className
     )} style={{ width: "var(--sidebar-width)" }}>
       {/* Logo */}
-      <Link to="/dashboard" className="flex items-center gap-3 px-5 py-5 mb-1" aria-label="LivreOS Enterprise - início">
-        <img src={logo} alt="" className="h-11 w-11 object-contain" />
-        <div className="leading-tight">
-          <p className="text-xl font-bold tracking-tight text-sidebar-accent-foreground">LivreOS</p>
-          <p className="text-[11px] font-medium text-sidebar-foreground/80">Enterprise</p>
-        </div>
+      <Link to="/dashboard" className="flex items-center px-5 py-5 mb-1" aria-label="LivreOS Enterprise - início">
+        <LivreOSLogo size="md" tone="onDark" />
       </Link>
 
       {/* Navigation */}

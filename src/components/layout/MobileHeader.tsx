@@ -1,6 +1,6 @@
 import { LogOut, User } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
-import logo from "@/assets/logo-icon.png";
+import { LivreOSLogo } from "@/components/brand/LivreOSLogo";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,12 +27,8 @@ export function MobileHeader() {
     <header
       className="fixed top-0 left-0 right-0 z-[100] w-full pt-[env(safe-area-inset-top)] text-sidebar-accent-foreground bg-sidebar lg:hidden">
       <div className="flex h-[var(--header-height)] items-center justify-between px-4">
-        <Link to="/dashboard" className="flex items-center gap-2.5" aria-label="LivreOS Enterprise - início">
-          <img src={logo} alt="" className="h-10 w-10 rounded-lg object-contain" />
-          <span className="leading-none">
-            <span className="block text-[22px] font-bold tracking-tight">LivreOS</span>
-            <span className="block text-xs font-medium opacity-85">Enterprise</span>
-          </span>
+        <Link to="/dashboard" className="flex items-center" aria-label="LivreOS Enterprise - início">
+          <LivreOSLogo size="md" tone="onDark" />
         </Link>
         <div className="flex items-center gap-1 [&_button]:text-sidebar-accent-foreground [&_button:hover]:bg-sidebar-accent">
           <NotificationBell compact />

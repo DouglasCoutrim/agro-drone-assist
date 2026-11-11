@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import logo from '@/assets/logo.png';
+import { LivreOSLogo } from '@/components/brand/LivreOSLogo';
 
 interface Plan {
   id: string;
@@ -67,7 +67,7 @@ export default function Landing() {
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src={logo} alt="LivreOS" className="h-9 w-auto" />
+            <LivreOSLogo size="sm" tone="onLight" />
           </div>
           <nav className="hidden md:flex items-center gap-6 text-sm">
             <a href="#features" className="hover:text-primary">Recursos</a>
@@ -248,7 +248,7 @@ export default function Landing() {
       <footer className="border-t py-8">
         <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
-            <img src={logo} alt="LivreOS" className="h-6 w-auto" />
+            <LivreOSLogo size="xs" tone="onLight" />
             <span>© {new Date().getFullYear()} LivreOS. Todos os direitos reservados.</span>
           </div>
           <div className="flex gap-4">

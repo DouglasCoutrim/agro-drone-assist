@@ -4,7 +4,7 @@ import {
 } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import logo from "@/assets/logold.png";
+import { LivreOSLogo } from "@/components/brand/LivreOSLogo";
 
 const navSections = [
   {
@@ -51,7 +51,7 @@ export function PlatformSidebar({ className, onNavigate }: { className?: string,
     )}>
       {/* Admin Branding */}
       <div className="flex flex-col items-center gap-1 px-5 py-6 border-b border-sidebar-border bg-sidebar-accent/30">
-        <img src={logo} alt="LivreOS" className="h-10 w-auto" />
+        <LivreOSLogo size="md" tone="onDark" />
         <div className="mt-2 px-2 py-0.5 rounded bg-sidebar-primary/10 border border-sidebar-primary/20">
            <span className="text-[10px] text-sidebar-primary font-bold tracking-widest uppercase">PLATFORM ADMIN</span>
         </div>
