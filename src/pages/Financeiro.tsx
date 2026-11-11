@@ -22,6 +22,7 @@ import { fetchOsComValores, OsCobranca } from "@/lib/os-billing";
 import { PremiumCard } from "@/components/premium/PremiumCard";
 import { KpiCard } from "@/components/premium/KpiCard";
 import { PremiumTable } from "@/components/premium/PremiumTable";
+import { SearchableInput } from "@/components/ui/searchable-input";
 
 type Transacao = Tables<"financeiro">;
 
@@ -40,6 +41,7 @@ export default function Financeiro() {
   const [cobrancaOpen, setCobrancaOpen] = useState(false);
   const [cobrancaCliente, setCobrancaCliente] = useState<string | undefined>(undefined);
   const [osAbertas, setOsAbertas] = useState<OsCobranca[]>([]);
+  const [categorias, setCategorias] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
     tipo: "receita" as Enums<"tipo_transacao">,
@@ -48,12 +50,26 @@ export default function Financeiro() {
   });
 
   useEffect(() => {
-    if (!organization?.id) return;
-    fetchTransacoes();
-    fetchOsComValores(organization.id)
-      .then(list => setOsAbertas(list.filter(o => !o.pago && o.valor > 0)))
-      .catch(() => { /* silent */ });
-  }, [organization?.id]);
+      if (!organization?.id) return;
+      fetchTransacoes();
+      fetchOsComValores(organization.id)
+        .then(list => setOsAbertas(list.filter(o => !o.pago && o.valor > 0)))
+        .catch(() => { /* silent */ });
+      fetchCategorias();
+    }, [organization?.id]);
+  
+    const fetchCategorias = async () => {
+      if (!organization?.id) return;
+      try {
+        const { data, error } = await supabase.from('financeiro').select('categoria').not('categoria', 'is', null);
+        if (error) throw error;
+        const uniqueCategories = [...new Set(data.map(item => item.categoria).filter(Boolean))].sort();
+        setCategorias(uniqueCategories);
+      } catch {
+        // Fallback to some default categories if DB query fails
+        setCategorias(["Serviços", "Geral"]);
+      }
+    };
 
 
   const fetchTransacoes = async () => {
@@ -200,7 +216,7 @@ export default function Financeiro() {
                             <Label className="text-xs">Descrição *</Label>
                             <Input className="h-9 w-full" value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} placeholder="Descreva livremente o lançamento" required />
                           </div>
-                          <div className="space-y-1.5"><Label className="text-xs">Categoria</Label><Input className="h-9" value={formData.categoria} onChange={(e) => setFormData({ ...formData, categoria: e.target.value })} placeholder="Ex: Serviços, Estoque" /></div>
+                          <div className="space-y-1.5"><Label className="text-xs">Categoria</Label><SearchableInput value={formData.categoria} onChange={(v) => setFormData({ ...formData, categoria: v })} suggestions={categorias} placeholder="Ex: Serviços, Estoque" onAddNew={(v) => { setFormData({ ...formData, categoria: v }); }} addNewLabel="Cadastrar nova" /></div>
                           <div className="space-y-1.5"><Label className="text-xs">Data *</Label><Input type="date" className="h-9" value={formData.data_transacao} onChange={(e) => setFormData({ ...formData, data_transacao: e.target.value })} required /></div>
                           <div className="sm:col-span-2 space-y-1.5"><Label className="text-xs">Observações</Label><Textarea value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} /></div>
                         </div>
