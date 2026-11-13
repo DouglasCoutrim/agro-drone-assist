@@ -3,7 +3,7 @@ import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
-import { formatDate, getErrorMessage } from "@/lib/formatters";
+import { formatCurrency, formatDate, getErrorMessage } from "@/lib/formatters";
 import { gerarDocumentoPadrao, loadImageAsDataUrl, type ColunaPDF } from "@/lib/pdf-padrao";
 import { toast } from "sonner";
 import { AlertBox } from "@/components/premium/AlertBox";
@@ -18,7 +18,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Download, FileSpreadsheet, FileText, Loader2, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 
 type AppRole = "admin" | "tecnico" | "consulta";
-type TipoColuna = "texto" | "numero" | "data" | "booleano";
+/** "moeda" e "numero" sao ambos numericos, mas so "moeda" recebe R$ (valor x quantidade). */
+type TipoColuna = "texto" | "numero" | "moeda" | "data" | "booleano";
 
 interface ColunaMeta {
   nome: string;
@@ -80,9 +81,21 @@ function valorTexto(valor: unknown, tipo: TipoColuna): string {
   if (valor === null || valor === undefined || valor === "") return "-";
   if (tipo === "booleano") return valor ? "Sim" : "Não";
   if (tipo === "data") return formatDate(String(valor));
+  if (tipo === "moeda") {
+    const numero = Number(valor);
+    return Number.isFinite(numero) ? formatCurrency(numero) : String(valor);
+  }
   if (tipo === "numero") return typeof valor === "number" ? valor.toLocaleString("pt-BR") : String(valor);
   return String(valor);
 }
+
+/** O placeholder do filtro numerico sugere virgula decimal: aceita "1.500,25" e tambem "1500.25". */
+function normalizarNumero(valor: string): string {
+  const limpo = valor.replace(/R\$\s*/i, "").trim();
+  return limpo.includes(",") ? limpo.replace(/\./g, "").replace(",", ".") : limpo;
+}
+
+const tipoNumerico = (tipo: TipoColuna) => tipo === "numero" || tipo === "moeda";
 
 /** Impede que um valor iniciado por =, +, - ou @ seja interpretado como fórmula na planilha. */
 function protegerPlanilha(valor: string): string {
@@ -204,11 +217,14 @@ export function RelatorioPersonalizado() {
 
     const filtrosUsados = filtros
       .filter((f) => f.campo && f.operador)
-      .map((f) => ({
-        campo: f.campo,
-        operador: f.operador,
-        valor: SEM_VALOR.includes(f.operador) ? "" : f.valor,
-      }));
+      .map((f) => {
+        const tipo = fonte.colunas.find((c) => c.nome === f.campo)?.tipo ?? "texto";
+        return {
+          campo: f.campo,
+          operador: f.operador,
+          valor: SEM_VALOR.includes(f.operador) ? "" : tipoNumerico(tipo) ? normalizarNumero(f.valor) : f.valor,
+        };
+      });
 
     setGerando(true);
     try {
@@ -285,7 +301,7 @@ export function RelatorioPersonalizado() {
       const colunasPdf: ColunaPDF[] = resultado.colunas.map((col, i) => ({
         titulo: col.rotulo,
         largura: larguras[i],
-        alinhar: col.tipo === "numero" ? "right" : "left",
+        alinhar: tipoNumerico(col.tipo) ? "right" : "left",
       }));
       const linhasPdf = resultado.linhas.map((linha) =>
         resultado.colunas.map((col) => valorTexto(linha[col.nome], col.tipo)),
@@ -500,7 +516,7 @@ export function RelatorioPersonalizado() {
                                 value={filtro.valor}
                                 disabled={SEM_VALOR.includes(filtro.operador)}
                                 placeholder={
-                                  tipoDoCampo(filtro.campo) === "numero" ? "0,00" : "Valor"
+                                  tipoNumerico(tipoDoCampo(filtro.campo)) ? "0,00" : "Valor"
                                 }
                                 onChange={(e) =>
                                   atualizarFiltro(filtro.id, { valor: e.target.value })
