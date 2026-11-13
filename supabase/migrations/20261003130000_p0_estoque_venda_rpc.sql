@@ -1,25 +1,46 @@
 -- =====================================================================
--- RASCUNHO - NAO APLICAR
--- Arquivo: supabase/migrations/RASCUNHO_p0_estoque_venda.sql
--- Objetivo: centralizar baixa de estoque e criacao de venda no banco,
---           eliminando o padrao ler-e-depois-gravar executado hoje pelo
---           navegador (src/hooks/useVendasData.ts).
--- Situacao: documento para revisao. Nenhum banco foi alterado.
--- Colunas usadas: somente as confirmadas na revisao anterior
---   vendas: id, numero, organization_id, cliente_id, cliente_nome,
---           cliente_cpf_cnpj, cliente_email, data_venda, forma_pagamento,
---           status_pagamento, valor_produtos, valor_desconto, valor_total,
---           obs, vendido_por, ambiente
---   venda_itens: id, venda_id, produto_id, nome_produto, quantidade,
---           preco_unitario, desconto_percentual, desconto_valor,
---           valor_total, quantidade_devolvida
---   itens_estoque: id, organization_id, quantidade, preco_venda,
---           desconto_maximo_percentual, finalidade
---   movimentacoes_estoque: id, item_id, organization_id, tipo, quantidade,
---           motivo, usuario_id, ordem_servico_id, created_at
--- Observacao: a funcao de organizacao no banco e
---   public.get_user_org_id(_user_id uuid), portanto e chamada como
---   public.get_user_org_id(auth.uid()).
+-- P0 ESTOQUE E VENDA: funcoes de servidor
+-- Arquivo: supabase/migrations/20261003130000_p0_estoque_venda_rpc.sql
+-- Objetivo: tirar do navegador o calculo de saldo e a gravacao de venda.
+--           Passa a existir um unico caminho de escrita para estoque
+--           (ajustar_estoque) e para venda (criar_venda), com saldo
+--           recalculado dentro do UPDATE e preco vindo do catalogo.
+--
+-- Estado: pronto para aplicar.
+-- Impacto no app atual: nenhum. Sao funcoes novas, com nomes novos, e
+--           nenhum codigo do app as chama ainda. O fluxo antigo
+--           (src/hooks/useVendasData.ts) continua exatamente como esta
+--           ate que o front seja migrado.
+--
+-- Fatos conferidos nos arquivos de migration do repositorio:
+--   vendas.data_venda            DATE DEFAULT CURRENT_DATE
+--   vendas.numero                VARCHAR(20) UNIQUE NOT NULL
+--   vendas.cliente_nome          VARCHAR(255) NOT NULL
+--   vendas.valor_impostos        DECIMAL(12,2) DEFAULT 0  (por isso nao entra no INSERT)
+--   vendas.status_pagamento      VARCHAR(50) DEFAULT 'pendente'
+--   itens_estoque.quantidade     INTEGER NOT NULL DEFAULT 0
+--   movimentacoes_estoque.tipo   TEXT NOT NULL CHECK (tipo IN ('entrada','saida'))
+--   movimentacoes_estoque.quantidade INTEGER NOT NULL
+--   movimentacoes_estoque.usuario_id UUID NOT NULL
+--   funcao de organizacao        public.get_user_org_id(_user_id uuid)
+--
+-- Pendencias que NAO sao resolviveis por estes arquivos e que precisam
+-- de confirmacao no banco antes de ligar o front nestas funcoes:
+--   1. vendas.numero e UNIQUE global (nao por organizacao). A numeracao
+--      gerada aqui e por organizacao (VND-00001), igual a que o app usa
+--      hoje, portanto duas organizacoes chegam ao mesmo numero.
+--   2. venda_itens.produto_id foi criado como REFERENCES produtos(id)
+--      (tabela paralela, nao itens_estoque). Esta funcao grava aqui o id
+--      de itens_estoque, que e o que o app envia hoje. Se a FK ainda
+--      existir apontando para produtos, todo INSERT em venda_itens falha.
+--   3. vendas.ambiente e itens_estoque.finalidade existem no codigo e nos
+--      tipos, mas nao aparecem em nenhuma migration, ou seja, foram
+--      criados fora do fluxo de migrations. Nulabilidade e DEFAULT
+--      desconhecidos: por isso ambiente NAO entra no INSERT.
+--   4. Modo das funcoes: INVOKER (padrao), ou seja, RLS vale. Se tecnico
+--      sem policy de INSERT em venda_itens/movimentacoes_estoque precisar
+--      vender, avaliar SECURITY DEFINER (as checagens de organizacao ja
+--      sao explicitas nas duas funcoes).
 -- =====================================================================
 
 
@@ -28,6 +49,7 @@
 -- ---------------------------------------------------------------------
 -- Ponto unico de alteracao de saldo. O saldo e recalculado dentro do
 -- proprio UPDATE (quantidade = quantidade + _delta), sem leitura previa.
+-- Retorna o saldo resultante. Saldo negativo aborta a transacao inteira.
 CREATE OR REPLACE FUNCTION public.ajustar_estoque(
   _item_id uuid,
   _delta numeric,
@@ -53,6 +75,7 @@ BEGIN
     RAISE EXCEPTION 'Item não encontrado';
   END IF;
 
+  -- Atualizacao atomica: sem leitura previa do saldo.
   UPDATE itens_estoque
      SET quantidade = quantidade + _delta
    WHERE id = _item_id
@@ -133,11 +156,12 @@ BEGIN
   ) + 1;
   _numero := 'VND-' || lpad(_sequencia::text, 5, '0');
 
-  -- Totais entram zerados e sao recalculados no servidor ao final.
+  -- valor_impostos nao entra: a coluna tem DEFAULT 0.
+  -- Totais entram zerados e sao recalculados no servidor no fim.
   INSERT INTO vendas (
     numero, organization_id, cliente_id, cliente_nome, cliente_cpf_cnpj,
     cliente_email, data_venda, forma_pagamento, status_pagamento,
-    valor_produtos, valor_desconto, valor_total, obs, ambiente, vendido_por
+    valor_produtos, valor_desconto, valor_total, obs, vendido_por
   )
   VALUES (
     _numero,
@@ -148,12 +172,11 @@ BEGIN
     NULLIF(_payload->>'cliente_email', ''),
     COALESCE(NULLIF(_payload->>'data_venda', '')::date, CURRENT_DATE),
     NULLIF(_payload->>'forma_pagamento', ''),
-    COALESCE(NULLIF(_payload->>'status_pagamento', ''), 'pago'),
+    COALESCE(NULLIF(_payload->>'status_pagamento', ''), 'pendente'),
     0,
     0,
     0,
     NULLIF(_payload->>'obs', ''),
-    NULLIF(_payload->>'ambiente', ''),
     auth.uid()
   )
   RETURNING id INTO _venda_id;
@@ -229,7 +252,7 @@ $$;
 
 
 -- ---------------------------------------------------------------------
--- B.1) Bloco comentado - NAO ATIVO
+-- B.1) Bloco COMENTADO - NAO ATIVO
 -- ---------------------------------------------------------------------
 -- AGUARDA MIGRATION: ALTER TABLE financeiro ADD COLUMN venda_id uuid REFERENCES vendas(id);
 -- e INSERT em financeiro com esse campo.
@@ -249,8 +272,8 @@ $$;
 
 -- ---------------------------------------------------------------------
 -- C) TESTES - COMENTADOS
--- Executar somente depois da aprovacao e do deploy das funcoes.
--- Substituir os campos indicados por valores reais do ambiente de teste.
+-- Executar apos o deploy das funcoes, com uuid real de produto da
+-- organizacao de teste.
 -- ---------------------------------------------------------------------
 --
 -- C1) Venda com quantidade maior que o saldo: deve falhar, sem venda e sem movimentacao.
@@ -334,13 +357,14 @@ $$;
 -- --       'produto_id', '<uuid-do-produto>', 'nome_produto', 'Item de teste',
 -- --       'quantidade', 1, 'desconto_percentual', 0)))); COMMIT;
 -- -- Alternativa sem duas sessoes: disparar as duas chamadas em paralelo pelo
--- -- app (duas abas do PDV) e conferir depois.
+-- -- app e conferir depois.
 -- -- Esperado: 2 vendas criadas, 2 movimentacoes tipo 'saida' e saldo final
 -- -- igual ao saldo inicial menos 2 (nenhuma atualizacao perdida).
 -- SELECT quantidade FROM itens_estoque WHERE id = '<uuid-do-produto>';
 -- SELECT count(*) FROM vendas WHERE cliente_nome IN ('Teste concorrente A', 'Teste concorrente B');  -- esperado 2
 --
--- C6) Numero sequencial: duas vendas seguidas nao podem repetir o numero.
+-- C6) Numero sequencial: duas vendas seguidas nao podem repetir o numero
+-- (ver pendencia 1 no cabecalho: vendas.numero e UNIQUE global).
 -- SELECT numero, cliente_nome FROM vendas
 --  WHERE organization_id = public.get_user_org_id(auth.uid())
 --  ORDER BY numero DESC LIMIT 5;
@@ -348,8 +372,9 @@ $$;
 
 -- ---------------------------------------------------------------------
 -- D) CHECK de estoque - COMENTADO
--- Aplicar SOMENTE depois que ajustar_estoque estiver ativa em producao,
--- e depois de conferir que nao existe saldo negativo pendente.
+-- Aplicar SOMENTE depois que ajustar_estoque estiver em producao, depois
+-- de migrar o front para as funcoes acima, e depois de confirmar que nao
+-- existe saldo negativo pendente.
 -- ---------------------------------------------------------------------
 -- -- Conferir antes:
 -- -- SELECT id, descricao, quantidade FROM itens_estoque WHERE quantidade < 0;
