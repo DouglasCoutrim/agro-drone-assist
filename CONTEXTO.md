@@ -81,18 +81,33 @@ Código **completo e compilando** (`npx tsc --noEmit` sem erros). Faltam **somen
 
 ---
 
-## 6. Sessão 2026-11-13 — P0: venda e estoque escritos no banco
+## 6. Sessão 2026-11-12/13 — P0: venda e estoque escritos no banco
 
-**Feito e verificado**
+**Entregue**
 
-- RPCs aplicadas no Supabase: `public.ajustar_estoque(_item_id,_delta,_motivo,_origem_tipo,_origem_id)` e `public.criar_venda(_payload jsonb)` — plpgsql, SECURITY INVOKER, `search_path=public`. Migrations em `supabase/migrations/20261003130000_p0_estoque_venda_rpc.sql` e `20261003140000_p0_criar_venda_linhas_catalogo.sql`.
-- `criar_venda` cobre três tipos de linha: produto (`itens_estoque` — preço, teto de desconto, NCM, CFOP e nome do catálogo, com baixa de estoque), serviço (`servicos` — preço = GREATEST(preco, valor_fixo, valor_hora), sem estoque) e item livre (nome e preço digitados, sem estoque). Também grava `nfe_dados` e `ambiente`, senão a emissão de NF-e perde a configuração da venda.
-- `src/hooks/useVendasData.ts` migrado: `createVenda` chama a RPC e recarrega a venda gravada (mesmo retorno de antes), `ajustarEstoque` (usado por `updateVenda` e `cancelarVenda`) chama a RPC. O PDV envia `servico_id` e mostra o preço do cadastro como somente leitura; em Vendas o preço só é editável na linha livre.
-- Verificação executada: bloco `DO` assumindo um usuário real via `request.jwt.claims` criou uma venda de produto, uma de serviço e uma com item livre e abortou no fim (rollback, nada ficou gravado). Resultado: preço do catálogo venceu o valor enviado pelo navegador (2 x 1100 = 2200), desconto de 5% = 110, estoque 5 -> 3 com 1 movimentação, serviço e item livre sem estoque, item livre totalizando 15, desconto de 150% rejeitado. `tsc` sem erros nos arquivos alterados.
+- RPCs no Supabase (plpgsql, SECURITY INVOKER, `search_path=public`): `ajustar_estoque`, `criar_venda`, `venda_linha_calcular`, `editar_venda`, `cancelar_venda`. Migrations em `supabase/migrations/20261003130000_*`, `20261003140000_*`, `20261003150000_*` (teto de desconto zero) e `20261003160000_*` (edição/cancelamento).
+- `criar_venda` e `editar_venda` compartilham `venda_linha_calcular`: produto de estoque (preço, teto, NCM, CFOP e nome do catálogo, quantidade inteira, movimenta estoque), serviço (`GREATEST(preco, valor_fixo, valor_hora)`, sem estoque) e item livre (nome/preço digitados, sem estoque). Totais, `nfe_dados` e `ambiente` ficam no servidor.
+- Front migrado (`src/hooks/useVendasData.ts`, `PDV.tsx`, `Vendas.tsx`): a tela só envia as escolhas do operador, preço de catálogo é somente leitura e a quantidade de item de estoque é inteira.
+- `updateVenda`/`cancelarVenda` agora chamam `editar_venda`/`cancelar_venda`; o cancelamento é idempotente e recarrega o saldo.
 
-**Pendente (próxima fatia)**
+**Decisões tomadas nesta sessão**
 
-- `updateVenda` ainda reescreve `venda_itens` no navegador, com preços vindos da tela: precisa de uma RPC `editar_venda` para valer a mesma regra aplicada na criação.
-- Outros escritores de estoque ainda não passam por `ajustar_estoque`: a tela Estoque (grava valor absoluto), `ImportarXmlNfe` e as RPCs `transferir_estoque_tecnico`, `devolver_estoque_central`, `criar_saida_demonstracao`, `concluir_saida_demonstracao`.
-- `CHECK (quantidade >= 0)` segue comentado até todos os escritores passarem pela RPC (pré-condição conferida: nenhum item com saldo negativo hoje).
-- Sem cobertura e2e: `@playwright/test` não está instalado (dependência recusada anteriormente).
+- Teto de desconto: 0 = sem teto (até 100) nos dois caminhos. O trigger `enforce_itens_os_price` zerava o desconto quando o teto era 0, então nenhum usuário não-admin conseguia dar desconto em OS; como nenhum item tem teto configurado, a correção não afrouxa limite configurado nenhum.
+- Estoque não aceita fração: `ajustar_estoque` recusa delta fracionado e a venda recusa quantidade fracionada em item de catálogo (era arredondamento silencioso). Não havia linha de venda fracionada no banco (0 de 28).
+- `vendas.numero` segue sequencial por organização (`VND-#####`), com trava `pg_advisory_xact_lock`.
+
+**Verificado (com rollback, sem gravar nada)**
+
+- Criação: preço do catálogo vence o do navegador (2 x 1100 = 2200, total 1980 com 10%); edição: preço de 99999 enviado pela tela ignorado, total 2970 para 3 unidades.
+- Estoque 5 -> 3 (venda) -> 2 (edição de 2 para 3) -> 5 (cancelamento), com 1 movimento por alteração.
+- Recusas confirmadas: quantidade fracionada, ajuste fracionado, cancelar duas vezes, editar venda cancelada, desconto acima do teto.
+- Trigger da OS com teto 0 e usuário não-admin mantendo o desconto de 220,00.
+- `tsc` sem erros no projeto.
+
+**Pendente / próximo**
+
+1. Teste manual com as três contas (admin, técnico, consulta) no PDV e em Vendas — inclusive o perfil `consulta`, que precisa ser recusado pelo RLS. O teste de SQL rodou com papel privilegiado e não exerceu RLS.
+2. Migrar a tela de Estoque e `ImportarXmlNfe` para `ajustar_estoque` (hoje gravam saldo absoluto) junto das RPCs `transferir_estoque_tecnico`, `devolver_estoque_central`, `criar_saida_demonstracao` e `concluir_saida_demonstracao`.
+3. Ligar o `CHECK (quantidade >= 0)` só depois de (2); pré-condição conferida: nenhum saldo negativo hoje.
+4. Decidir se administrador continua podendo gravar preço/desconto livres em item de OS (o trigger libera admin sem travas).
+5. Sem cobertura e2e: `@playwright/test` não está instalado (dependência recusada antes).

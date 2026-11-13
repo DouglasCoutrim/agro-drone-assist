@@ -116,11 +116,10 @@ Ambas são `plpgsql`, **SECURITY INVOKER** (as políticas de RLS continuam valen
 
 ## 7. Pendências (próxima fatia)
 
-1. **Edição de venda ainda escreve itens no navegador.** `updateVenda` reescreve `venda_itens` com preços vindos da tela, então a brecha de preço/desconto continua aberta no caminho de edição. Correção: RPC `editar_venda` com as mesmas regras da criação.
-2. **Outros escritores de estoque não passam por `ajustar_estoque`:** tela Estoque (grava valor absoluto), `ImportarXmlNfe` e as RPCs `transferir_estoque_tecnico`, `devolver_estoque_central`, `criar_saida_demonstracao`, `concluir_saida_demonstracao`. Enquanto isso, o `CHECK (quantidade >= 0)` fica comentado.
-3. **Quantidade fracionária em item de estoque:** `itens_estoque.quantidade` é `integer` e `ajustar_estoque` recebe `numeric`, então a baixa é arredondada na gravação (comportamento herdado do código antigo). Vale decidir se itens de estoque devem aceitar quantidade quebrada na tela de Vendas.
+1. **Teste manual com as três contas** (admin, técnico, consulta) no PDV e em Vendas, incluindo a recusa do perfil `consulta` pelo RLS. Os testes de SQL rodaram com papel privilegiado e não exerceram RLS.
+2. **Escritores de estoque fora da função:** tela Estoque (grava valor absoluto), `ImportarXmlNfe` e as RPCs `transferir_estoque_tecnico`, `devolver_estoque_central`, `criar_saida_demonstracao`, `concluir_saida_demonstracao`. Enquanto existirem, o `CHECK (quantidade >= 0)` fica comentado.
+3. **Decisão em aberto:** `enforce_itens_os_price` libera administradores sem travas, enquanto as RPCs de venda aplicam preço de catálogo para todos. Unificar exige escolher entre "admin também segue o catálogo" e "admin pode sobrescrever".
 4. **Sem teste automatizado e2e:** `@playwright/test` não está instalado (dependência recusada antes). O fluxo "registrar venda no PDV" é o candidato natural ao primeiro teste.
-
 ## 8. Como testar manualmente
 
 1. **PDV, venda de produto:** adicione um item do catálogo, aplique um desconto dentro do teto e finalize com recibo. Confira em Vendas: número `VND-#####`, desconto em R$ e total iguais aos da tela, e o saldo do item baixado.
@@ -140,3 +139,20 @@ Commits da sessão (12/11/2026, branch `main`):
 - `4754b5dd` — migração do front (hook, PDV, Vendas) e documentação
 
 O rascunho `RASCUNHO_p0_estoque_venda.sql` foi criado durante a sessão e removido ao ser promovido para a migration numerada.
+
+---
+
+## 10. Revisão de 12/11/2026 e o que mudou desde este relatório
+
+Os pontos abaixo vieram de uma revisão externa do relatório. Cada um foi conferido no banco vivo antes de qualquer mudança.
+
+1. **Teto de desconto divergente (corrigido).** Confirmado: `enforce_itens_os_price` fazia `LEAST(desconto, bruto * cap / 100)` e, com `cap = 0`, zerava o desconto em silêncio, enquanto `src/lib/desconto.ts` libera até 100. Nenhum item ou serviço tem teto configurado hoje, então o efeito prático era: usuário não-admin não conseguia dar desconto em nenhuma OS. Decisão: 0 = sem teto (até 100) nos dois caminhos — migration `20261003150000_p0_desconto_zero_sem_teto.sql`.
+2. **Brecha de preço na edição (corrigida).** `updateVenda` foi substituído pela RPC `editar_venda`, que usa a mesma `venda_linha_calcular` da criação e reconcilia estoque por diferença. Verificado com preço de 99999 enviado pela tela: gravou o preço do catálogo.
+3. **RLS não exercido (em aberto).** Os testes de SQL rodaram com papel privilegiado; as policies foram conferidas por leitura (`Equipe cria vendas`, `Itens seguem a venda`, `Org admin_tecnico manage itens_os`). Falta o teste manual com as três contas (seção 8).
+4. **Outros escritores de estoque (em aberto).** Segue valendo: tela Estoque, importação de XML e as RPCs de transferência/demonstração não passam por `ajustar_estoque` — consulta ao banco confirmou que só `criar_venda` (e agora `editar_venda`/`cancelar_venda`) chamam a função. Por isso o `CHECK (quantidade >= 0)` continua comentado.
+5. **Quantidade fracionada (corrigido).** Estoque não guarda fração: `ajustar_estoque` recusa delta fracionado, a venda recusa quantidade fracionada em item de catálogo e a tela de Vendas arredonda o campo para inteiro em item de catálogo. Linhas de serviço e item livre seguem aceitando fração. Não havia linha de venda com quantidade fracionada no banco (0 de 28).
+6. **Migrations fora do fluxo (resposta).** Este projeto não tem o schema `supabase_migrations` (a consulta em `information_schema` só encontra `auth`, `storage` e `realtime`), ou seja, não existe histórico do CLI do Supabase para ficar fora de sincronia aqui: as funções foram aplicadas pelo SQL do projeto e estão em `pg_proc`. Os quatro arquivos do P0 contêm apenas `CREATE OR REPLACE FUNCTION` (conferido por busca por `ALTER TABLE`/`DROP`/`CREATE POLICY`/`CREATE INDEX`), então reaplicá-los é inofensivo caso um dia o CLI passe a gerenciar migrations.
+
+**Novo achado desta revisão (decisão em aberto):** `enforce_itens_os_price` retorna `NEW` sem nenhuma trava quando `auth.uid()` é nulo ou o usuário é admin. Ou seja, administrador ainda pode gravar preço e desconto livres em item de OS, enquanto as RPCs de venda aplicam preço de catálogo para todos. Unificar exige escolher entre "admin também segue o catálogo" e "admin pode sobrescrever" — não foi alterado por não estar no escopo do que foi decidido.
+
+**Verificação desta rodada** (mesmo método: bloco único que aborta no fim, nada gravado): criação 2 x 1100 com 10% = total 1980; edição para 3 unidades com preço falso = total 2970 e item a 1100; estoque 5 -> 3 -> 2 -> 5 com 1 movimento por alteração; recusas confirmadas para fração, ajuste fracionado, cancelamento repetido, edição de venda cancelada e desconto acima do teto; trigger da OS mantendo desconto de 220,00 com teto 0 e usuário não-admin.

@@ -243,79 +243,69 @@ export function useVendasData() {
     return novaVenda;
   };
 
-  // Caminho único de escrita de estoque: a RPC soma o delta no item e registra
-  // a movimentação na mesma transação (o saldo nunca é lido antes pelo cliente).
-  const ajustarEstoque = async (produtoId: string, delta: number, motivo: string) => {
-    if (!organization?.id || !user) throw new Error("Sem permissão");
-    const { error } = await supabase.rpc("ajustar_estoque" as any, {
-      _item_id: produtoId,
-      _delta: delta,
-      _motivo: motivo,
-      _origem_tipo: "ajuste",
-      _origem_id: null,
-    });
-    if (error) throw error;
-  };
-
   const updateVenda = async (
     id: string,
     updates: Partial<Venda> & Record<string, any>,
     itens?: (Omit<VendaItem, "id" | "venda_id" | "created_at"> & { id?: string })[],
   ) => {
-    const { data, error } = await supabase
-      .from("vendas")
-      .update(updates)
-      .eq("id", id)
-      .select()
-      .single();
-    if (error) throw error;
+    // A edição também roda no servidor (editar_venda): preço do catálogo, teto de
+    // desconto, totais e reconciliação de estoque pelas mesmas regras da criação.
+    // Campo ausente no payload fica como estava.
+    const payload: Record<string, any> = {
+      cliente_id: updates.cliente_id ?? null,
+      cliente_nome: updates.cliente_nome ?? null,
+      cliente_cpf_cnpj: updates.cliente_cpf_cnpj ?? null,
+      cliente_email: updates.cliente_email ?? null,
+      data_venda: updates.data_venda ?? null,
+      forma_pagamento: updates.forma_pagamento ?? null,
+      status_pagamento: updates.status_pagamento ?? null,
+      obs: updates.obs ?? null,
+      ambiente: updates.ambiente ?? null,
+      nfe_dados: updates.nfe_dados ?? {},
+    };
 
-    let novosItens = vendas.find((v) => v.id === id)?.itens || [];
     if (itens) {
-      const { data: antigos, error: oldErr } = await supabase.from("venda_itens").select("*").eq("venda_id", id);
-      if (oldErr) throw oldErr;
-      const { error: delErr } = await supabase.from("venda_itens").delete().eq("venda_id", id);
-      if (delErr) throw delErr;
-      const payload = itens.map(({ id: _i, ...rest }: any) => {
-        const { produto_nome, created_at, venda_id, ...clean } = rest;
-        // "manual" marca item livre na tela e não é um uuid válido para a coluna.
-        const produtoId = clean.produto_id && clean.produto_id !== "manual" ? clean.produto_id : null;
-        return { ...clean, produto_id: produtoId, venda_id: id };
-      });
-      if (payload.length) {
-        const { data: ins, error: insErr } = await supabase.from("venda_itens").insert(payload).select();
-        if (insErr) throw insErr;
-        novosItens = ins || [];
-      } else novosItens = [];
-      // Reconciliar estoque: diferença por produto, cada delta em uma transação.
-      const delta = new Map<string, number>();
-      for (const a of antigos || []) if (a.produto_id) delta.set(a.produto_id, (delta.get(a.produto_id) || 0) + Number(a.quantidade));
-      for (const n of payload) if (n.produto_id) delta.set(n.produto_id, (delta.get(n.produto_id) || 0) - Number(n.quantidade));
-      for (const [pid, d] of delta) if (d !== 0) await ajustarEstoque(pid, d, `Edição da venda ${data.numero}`);
+      payload.itens = itens.map((item) => ({
+        // "manual" é o marcador de item livre na tela e não é um uuid válido.
+        produto_id: item.produto_id && item.produto_id !== "manual" ? item.produto_id : null,
+        servico_id: (item as any).servico_id || null,
+        nome_produto: item.nome_produto || null,
+        ncm: item.ncm || null,
+        cfop: item.cfop || null,
+        quantidade: Number(item.quantidade) || 0,
+        preco_unitario: Number(item.preco_unitario) || 0,
+        desconto_percentual: Number(item.desconto_percentual) || 0,
+      }));
     }
 
-    setVendas((prev) => prev.map((v) => (v.id === id ? { ...v, ...data, itens: novosItens } : v)));
-    return data;
+    const { error: rpcErr } = await supabase.rpc("editar_venda" as any, { _venda_id: id, _payload: payload });
+    if (rpcErr) throw rpcErr;
+
+    // Recarrega a venda gravada para devolver os valores calculados no servidor.
+    const { data, error: loadErr } = await supabase
+      .from("vendas")
+      .select(`
+        *,
+        venda_itens (*)
+      `)
+      .eq("id", id)
+      .single();
+    if (loadErr) throw loadErr;
+
+    const vendaAtualizada = { ...(data as any), itens: (data as any)?.venda_itens || [] } as Venda;
+    // Mescla com a linha atual da lista para preservar o nome do cliente vindo do join.
+    setVendas((prev) => prev.map((v) => (v.id === id ? { ...v, ...vendaAtualizada } : v)));
+    return vendaAtualizada;
   };
 
+  // Estorno no servidor (cancelar_venda): devolve o estoque dos itens de catálogo
+  // e marca a venda como cancelada na mesma transação. Cancelar de novo falha em
+  // vez de devolver o estoque outra vez.
   const cancelarVenda = async (id: string) => {
-    const venda = vendas.find((v) => v.id === id);
-    if (!venda) throw new Error("Venda não encontrada");
-
-    // Devolve ao estoque apenas itens de catálogo (serviços e itens livres não
-    // movimentam estoque).
-    for (const item of venda.itens || []) {
-      if (!item.produto_id) continue;
-      await ajustarEstoque(item.produto_id, Number(item.quantidade), `Cancelamento da venda ${venda.numero}`);
-    }
-
-    const { error } = await supabase
-      .from("vendas")
-      .update({ status_pagamento: "cancelado" })
-      .eq("id", id);
+    const { error } = await supabase.rpc("cancelar_venda" as any, { _venda_id: id });
     if (error) throw error;
-
-    setVendas((prev) => prev.map((v) => (v.id === id ? { ...v, status_pagamento: "cancelado" } : v)));
+    // O estoque e as movimentações mudaram: recarrega para refletir o saldo.
+    await fetchData();
   };
 
   // ==================== NOTA FISCAL ====================

@@ -239,6 +239,9 @@ export default function Vendas() {
     setItensForm((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Estoque não guarda fração de unidade: linha de catálogo usa quantidade inteira.
+  const itemDeEstoque = (produtoId?: string | null) => !!produtoId && produtoId !== "manual";
+
   const handleItemChange = (index: number, field: string, value: any) => {
     setItensForm((prev) => {
       const updated = [...prev];
@@ -265,6 +268,11 @@ export default function Vendas() {
       }
 
       if (["quantidade", "preco_unitario", "desconto_percentual", "produto_id"].includes(field)) {
+        // O servidor recusa quantidade fracionada em item de estoque: arredonda aqui
+        // para a tela nunca enviar um valor que será rejeitado.
+        if (itemDeEstoque(item.produto_id)) {
+          item.quantidade = Math.max(1, Math.round(Number(item.quantidade) || 1));
+        }
         const percentual = limitarPercentualDesconto(item.desconto_percentual, item.desconto_maximo_percentual).percentual;
         item.desconto_percentual = percentual;
         item.desconto_valor = calcularValorDesconto(item.quantidade, item.preco_unitario, percentual);
@@ -548,7 +556,7 @@ export default function Vendas() {
                           </div>
                           <div className="grid grid-cols-[32%_14%_20%_14%_1fr] gap-1 items-center">
                             <Input value={item.nome_produto} onChange={(e) => handleItemChange(idx, "nome_produto", e.target.value)} placeholder="Nome do item" className="h-7 w-full min-w-0 px-1.5 text-[11px]" />
-                            <NumberInput value={item.quantidade} onChange={(v) => handleItemChange(idx, "quantidade", v)} step={0.001} min={0.001} placeholder="Qtd" className="h-7 w-full min-w-0 px-1.5 text-[11px] text-center" />
+                            <NumberInput value={item.quantidade} onChange={(v) => handleItemChange(idx, "quantidade", itemDeEstoque(item.produto_id) ? Math.max(1, Math.round(v)) : v)} step={itemDeEstoque(item.produto_id) ? 1 : 0.001} min={itemDeEstoque(item.produto_id) ? 1 : 0.001} placeholder="Qtd" className="h-7 w-full min-w-0 px-1.5 text-[11px] text-center" />
                             {item.produto_id && item.produto_id !== "manual" ? (
                               // Item do catálogo: o preço gravado é o do cadastro, o desconto é informado em %.
                               <div className="flex h-7 w-full min-w-0 items-center justify-end truncate px-1.5 text-[11px] tabular-nums text-muted-foreground" title="Preço do cadastro">{formatCurrency(item.preco_unitario)}</div>
