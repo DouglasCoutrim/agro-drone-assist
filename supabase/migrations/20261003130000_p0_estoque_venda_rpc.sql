@@ -6,41 +6,39 @@
 --           (ajustar_estoque) e para venda (criar_venda), com saldo
 --           recalculado dentro do UPDATE e preco vindo do catalogo.
 --
--- Estado: pronto para aplicar.
+-- Estado: APLICADA no projeto Supabase (funcoes criadas e conferidas em
+--           pg_proc). Somente as secoes A e B estao ativas; B.1, C e D
+--           continuam comentadas.
 -- Impacto no app atual: nenhum. Sao funcoes novas, com nomes novos, e
 --           nenhum codigo do app as chama ainda. O fluxo antigo
 --           (src/hooks/useVendasData.ts) continua exatamente como esta
 --           ate que o front seja migrado.
 --
--- Fatos conferidos nos arquivos de migration do repositorio:
---   vendas.data_venda            DATE DEFAULT CURRENT_DATE
---   vendas.numero                VARCHAR(20) UNIQUE NOT NULL
---   vendas.cliente_nome          VARCHAR(255) NOT NULL
---   vendas.valor_impostos        DECIMAL(12,2) DEFAULT 0  (por isso nao entra no INSERT)
---   vendas.status_pagamento      VARCHAR(50) DEFAULT 'pendente'
---   itens_estoque.quantidade     INTEGER NOT NULL DEFAULT 0
---   movimentacoes_estoque.tipo   TEXT NOT NULL CHECK (tipo IN ('entrada','saida'))
---   movimentacoes_estoque.quantidade INTEGER NOT NULL
---   movimentacoes_estoque.usuario_id UUID NOT NULL
+-- Fatos conferidos no banco vivo (nao apenas nas migrations):
+--   vendas.numero                UNIQUE (organization_id, numero)
+--   vendas.cliente_nome          text NOT NULL
+--   vendas.data_venda            date NOT NULL DEFAULT CURRENT_DATE
+--   vendas.valor_impostos        numeric NOT NULL DEFAULT 0  (nao entra no INSERT)
+--   vendas.status_pagamento      text NOT NULL DEFAULT 'pendente'
+--   vendas.ambiente              text NOT NULL DEFAULT 'producao' (nao entra no INSERT)
+--   venda_itens.produto_id       FK -> itens_estoque(id) ON DELETE SET NULL
+--   venda_itens.quantidade       numeric (aceita fracao)
+--   venda_itens.quantidade_devolvida numeric NOT NULL DEFAULT 0
+--   itens_estoque.quantidade     integer NOT NULL DEFAULT 0
+--   movimentacoes_estoque.tipo   text NOT NULL CHECK (tipo IN ('entrada','saida','devolucao_compra'))
+--   movimentacoes_estoque.quantidade integer NOT NULL
+--   movimentacoes_estoque.usuario_id uuid NOT NULL (exige sessao autenticada)
 --   funcao de organizacao        public.get_user_org_id(_user_id uuid)
 --
--- Pendencias que NAO sao resolviveis por estes arquivos e que precisam
--- de confirmacao no banco antes de ligar o front nestas funcoes:
---   1. vendas.numero e UNIQUE global (nao por organizacao). A numeracao
---      gerada aqui e por organizacao (VND-00001), igual a que o app usa
---      hoje, portanto duas organizacoes chegam ao mesmo numero.
---   2. venda_itens.produto_id foi criado como REFERENCES produtos(id)
---      (tabela paralela, nao itens_estoque). Esta funcao grava aqui o id
---      de itens_estoque, que e o que o app envia hoje. Se a FK ainda
---      existir apontando para produtos, todo INSERT em venda_itens falha.
---   3. vendas.ambiente e itens_estoque.finalidade existem no codigo e nos
---      tipos, mas nao aparecem em nenhuma migration, ou seja, foram
---      criados fora do fluxo de migrations. Nulabilidade e DEFAULT
---      desconhecidos: por isso ambiente NAO entra no INSERT.
---   4. Modo das funcoes: INVOKER (padrao), ou seja, RLS vale. Se tecnico
---      sem policy de INSERT em venda_itens/movimentacoes_estoque precisar
---      vender, avaliar SECURITY DEFINER (as checagens de organizacao ja
---      sao explicitas nas duas funcoes).
+-- Policies que sustentam o modo INVOKER (confirmadas no banco):
+--   vendas               INSERT: org = get_user_org_id(auth.uid()) AND is_admin_or_tecnico
+--   venda_itens          ALL: venda da mesma org AND (WITH CHECK) is_admin_or_tecnico
+--   movimentacoes_estoque INSERT: org = get_user_org_id(auth.uid()) AND is_admin_or_tecnico
+--   => admin e tecnico conseguem chamar as funcoes; o papel 'consulta' nao.
+--
+-- Consequencia do tipo integer em estoque: _delta numeric e convertido para
+-- integer na gravacao, ou seja, fracao de unidade em estoque e arredondada.
+-- venda_itens.quantidade guarda a fracao, mas itens_estoque.quantidade nao.
 -- =====================================================================
 
 
@@ -372,11 +370,13 @@ $$;
 
 -- ---------------------------------------------------------------------
 -- D) CHECK de estoque - COMENTADO
--- Aplicar SOMENTE depois que ajustar_estoque estiver em producao, depois
--- de migrar o front para as funcoes acima, e depois de confirmar que nao
--- existe saldo negativo pendente.
+-- Ja verificado no banco na aplicacao desta migration:
+--   SELECT id, descricao, quantidade FROM itens_estoque WHERE quantidade < 0;
+--   -> resultado vazio, nao existe saldo negativo pendente.
+-- Falta apenas migrar o front para as funcoes acima. Enquanto o front
+-- ainda usa o caminho antigo (sem validacao de saldo), ligar este CHECK
+-- trocaria o erro amigavel 'Estoque insuficiente' por um erro cru de
+-- constraint no meio da venda.
 -- ---------------------------------------------------------------------
--- -- Conferir antes:
--- -- SELECT id, descricao, quantidade FROM itens_estoque WHERE quantidade < 0;
 -- ALTER TABLE itens_estoque
 --   ADD CONSTRAINT itens_estoque_quantidade_nao_negativa CHECK (quantidade >= 0);
