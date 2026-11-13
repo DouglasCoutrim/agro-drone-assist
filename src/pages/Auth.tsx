@@ -5,6 +5,7 @@ import { useOrganization } from "@/hooks/useOrganization";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, Mail, Lock, Zap } from "lucide-react";
@@ -21,6 +22,19 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("livreos:remember");
+      if (saved) {
+        const { email, senha } = JSON.parse(saved);
+        setLoginEmail(email || "");
+        setLoginPassword(senha || "");
+        setRememberMe(!!senha);
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -67,8 +81,15 @@ export default function Auth() {
       return;
     }
     toast.success("Login realizado com sucesso!");
-    // The useEffect will handle redirection based on platform admin status
-  };
+        try {
+          if (rememberMe) {
+            localStorage.setItem("livreos:remember", JSON.stringify({ email: loginEmail, senha: loginPassword }));
+          } else {
+            localStorage.removeItem("livreos:remember");
+          }
+        } catch {}
+        // The useEffect will handle redirection based on platform admin status
+      };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted to-background p-4">
@@ -111,6 +132,16 @@ export default function Auth() {
                   required
                 />
               </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="remember-me"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked === true)}
+              />
+              <Label htmlFor="remember-me" className="text-sm font-normal cursor-pointer">
+                Lembrar-me
+              </Label>
             </div>
             <Button type="submit" className="w-full gradient-primary shadow-medium" disabled={loading}>
               {loading ? (
