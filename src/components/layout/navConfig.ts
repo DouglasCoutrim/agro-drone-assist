@@ -1,6 +1,7 @@
 import {
   LayoutDashboard, FileText, BarChart3, DollarSign, Settings, Users, CreditCard, UsersRound,
   Building2, ClipboardList, LifeBuoy, BookOpen, Bell, Wrench, Monitor, Calculator, ShoppingCart, Package, Truck,
+  History,
   type LucideIcon,
 } from "lucide-react";
 
@@ -83,6 +84,7 @@ export const navSections: NavSection[] = [
       { title: "Empresa", icon: Building2, href: "/empresa", roles: ADMIN },
       { title: "Configurações", icon: Settings, href: "/configuracoes", roles: ADMIN },
       { title: "Checklist de OS", icon: ClipboardList, href: "/admin/configuracao-os", roles: ADMIN },
+      { title: "Auditoria", icon: History, href: "/auditoria", roles: ADMIN },
     ],
   },
   {

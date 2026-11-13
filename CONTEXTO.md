@@ -3,7 +3,7 @@
 > Documento de referência para retomar o trabalho. Atualizado ao fim de cada sessão.
 > Ao reiniciar, leia este arquivo e confirme em qual etapa paramos.
 
-## Status atual (última atualização: 2026-11-13 — ver seções 6 e 7)
+## Status atual (última atualização: 2026-11-13 — ver seções 6, 7 e 8)
 
 **Em andamento — "Módulo do Técnico / Comissionamento / Oficina ao Vivo".**
 Código **completo e compilando** (`npx tsc --noEmit` sem erros). Faltam **somente** etapas de deploy/dados (abaixo).
@@ -148,3 +148,37 @@ Código **completo e compilando** (`npx tsc --noEmit` sem erros). Faltam **somen
 1. Teste manual da tela com as três contas (admin, técnico, consulta) — os testes de SQL rodaram com papel privilegiado e não exercitaram o RLS das tabelas de origem.
 2. Fase 2 do relatório: joins para trazer descrição no lugar de id, agrupamentos e totais por coluna.
 3. Sem cobertura e2e: `@playwright/test` não está instalado (dependência recusada antes).
+
+---
+
+## 8. Sessão 2026-11-13 — Auditoria: quem fez o quê
+
+**Entregue**
+
+- Tabela `public.audit_trail` (organização, tabela, registro, ação INSERT/UPDATE/DELETE, campos alterados, `antes`/`depois` em jsonb, usuário + nome/e-mail, data) com 4 índices e RLS.
+- Gatilho `public.audit_row()` (SECURITY DEFINER) instalado como `trg_audit` em **42 tabelas** de negócio, e a função de mascaramento `public.audit_valor()`.
+- Tela `/auditoria` (`src/pages/Auditoria.tsx`), restrita ao papel `admin`, no menu Configurações: filtros (período, usuário, ação, tela, busca por id do registro ou por nome do campo alterado), paginação no servidor, detalhe campo a campo em diálogo e exportação CSV. Rota em `App.tsx` e item em `navConfig.ts`.
+- Migration `supabase/migrations/20261003200000_auditoria_trilha.sql` (aplicada).
+
+**Decisões tomadas nesta sessão (definidas pelo usuário nas 5 perguntas)**
+
+- Escopo: só alterações de dados. Login, logout, troca de senha e eventos de acesso ficaram de fora desta fase.
+- Detalhe: somente os campos que mudaram, com valor antes e depois.
+- Leitura: apenas admin da própria organização (policy de platform admin criada, mas a rota exige papel `admin` na organização).
+- Sensível: CPF/CNPJ mascarados (3 primeiros + 2 últimos); credencial, token, chave, certificado, XML e payload entram como `***` sem o valor real.
+- A trilha é **append-only**: não existe policy de UPDATE nem DELETE, então nem o admin apaga ou reescreve o registrado; a escrita vem só do gatilho.
+
+**Verificado (bloco `DO` com rollback, nada ficou gravado)**
+
+- UPDATE em `clientes` gerou linha com `campos=[nome, cpf_cnpj]`, `antes`/`depois` só com esses dois campos e o documento mascarado (`123***01`); o nome do usuário foi resolvido (`Kamilly Côrtes`).
+- UPDATE em `venda_itens` (tabela sem `organization_id`) herdou a organização da venda.
+- UPDATE que só mexe em `updated_at` não gerou linha.
+- RLS: admin da organização viu 1 das 2 linhas de prova (a de fora ficou invisível) e técnico viu 0.
+- `count(*)` da trilha depois do teste: 0.
+
+**Pendente / próximo**
+
+1. A trilha começa agora: não existe histórico do que foi feito antes desta data.
+2. Tabelas sem `organization_id` ficaram fora: `user_roles`, `user_permissions`, `os_apontamentos_horas`, `patrimonio_movimentacoes`, `nota_fiscal_itens`, `segmentos` e `wiki_*`. Auditar papéis e permissões exige derivação de organização (como foi feito com `venda_itens`).
+3. Eventos de acesso (login, logout, troca de senha) precisam de instrumentação no app ou em edge function, não de gatilho de tabela.
+4. Sem cobertura e2e para a tela, pelo mesmo motivo das demais.

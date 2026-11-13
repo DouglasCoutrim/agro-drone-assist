@@ -32,6 +32,7 @@ const DevolucaoCompra = lazy(() => import("./pages/fiscal/DevolucaoCompra"));
 const NfeComplementar = lazy(() => import("./pages/fiscal/NfeComplementar"));
 const Servicos = lazy(() => import("./pages/Servicos"));
 const Relatorios = lazy(() => import("./pages/Relatorios"));
+const Auditoria = lazy(() => import("./pages/Auditoria"));
 const Financeiro = lazy(() => import("./pages/Financeiro"));
 const Clientes = lazy(() => import("./pages/Clientes"));
 const Fornecedores = lazy(() => import("./pages/Fornecedores"));
@@ -135,6 +136,7 @@ const App = () => {
                   <Route path="/vendas" element={<ProtectedRoute requiredPermission="acesso_financeiro"><Vendas /></ProtectedRoute>} />
                   <Route path="/servicos" element={<ProtectedRoute><Servicos /></ProtectedRoute>} />
                   <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
+                  <Route path="/auditoria" element={<ProtectedRoute requiredRole="admin"><Auditoria /></ProtectedRoute>} />
                   <Route path="/financeiro" element={<ProtectedRoute requiredPermission="acesso_financeiro"><Financeiro /></ProtectedRoute>} />
                   <Route path="/cobrancas" element={<ProtectedRoute requiredPermission="acesso_financeiro"><Cobrancas /></ProtectedRoute>} />
                   <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
