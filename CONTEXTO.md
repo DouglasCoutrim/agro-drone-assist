@@ -123,6 +123,7 @@ Código **completo e compilando** (`npx tsc --noEmit` sem erros). Faltam **somen
 - Migrations `supabase/migrations/20261003170000_relatorio_fontes.sql` e `20261003180000_gerar_relatorio.sql` (ambas já aplicadas no Supabase).
 - Tela: nova seção "Relatório personalizado" em `src/components/relatorios/RelatorioPersonalizado.tsx`, montada em `Relatorios.tsx` abaixo do conteúdo que já existia (nada foi removido), com fonte, período, limite, colunas, filtros, tabela de resultado, "Exportar CSV" (papaparse, cabeçalho com os rótulos em português) e "Gerar PDF".
 - PDF do relatório pelo gerador padrão do sistema (`gerarDocumentoPadrao`, cabeçalho da empresa, tabela paginada e rodapé "Página X de Y"), em **paisagem**, com largura de coluna proporcional ao conteúdo real e valores numéricos alinhados à direita. O PDF descreve os critérios usados (período e filtros) e avisa quando o resultado está limitado. `pdf-padrao` ganhou o campo opcional `orientacao`; sem ele nada muda nos PDFs já existentes (recibo, orçamento, OS).
+- Valores financeiros com R$: as colunas de dinheiro do catálogo passaram de `numero` para `moeda` (migration `20261003190000_relatorio_moeda.sql`), separando valor de quantidade. Tela, CSV e PDF usam `formatCurrency` para `moeda`; `quantidade`/`estoque_minimo` continuam número puro. O filtro em coluna de dinheiro passou a comparar como número — medido em Vendas: 20 registros com comparação numérica contra 17 se fosse comparação de texto.
 
 **Decisões tomadas nesta sessão**
 
