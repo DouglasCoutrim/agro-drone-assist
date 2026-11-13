@@ -48,13 +48,15 @@ async function buscarProdutos(organizationId: string, termo: string) {
     .limit(20);
   const { data: svcs } = await supabase
     .from("servicos")
-    .select("id,descricao,preco,desconto_maximo_percentual")
+    .select("id,descricao,preco,valor_fixo,valor_hora,desconto_maximo_percentual")
     .eq("organization_id", organizationId)
     .ilike("descricao", `%${safe}%`)
     .order("descricao")
     .limit(10);
   const servicos = (svcs || []).map((s: any) => ({
-    id: `svc:${s.id}`, codigo: "SERVIÇO", descricao: s.descricao, preco_venda: s.preco,
+    id: `svc:${s.id}`, codigo: "SERVIÇO", descricao: s.descricao,
+    // Mesma regra do servidor: o preço efetivo do serviço é o maior entre os valores cadastrados.
+    preco_venda: Math.max(Number(s.preco) || 0, Number(s.valor_fixo) || 0, Number(s.valor_hora) || 0),
     ncm: SERVICO_NCM, cfop: "", desconto_maximo_percentual: s.desconto_maximo_percentual, servico: true,
   }));
   return [...(data || []), ...servicos];
@@ -170,7 +172,8 @@ export default function PDV() {
     setSaving(true);
     try {
       const itens = linhas.map((l) => { const c = calc(l); return {
-        produto_id: l.servico ? null : l.produto_id, nome_produto: l.nome, ncm: l.servico ? SERVICO_NCM : l.ncm, cfop: l.servico ? null : l.cfop, quantidade: l.qtd, preco_unitario: l.preco,
+        produto_id: l.servico ? null : l.produto_id, servico_id: l.servico ? l.produto_id.replace("svc:", "") : null,
+        nome_produto: l.nome, ncm: l.servico ? SERVICO_NCM : l.ncm, cfop: l.servico ? null : l.cfop, quantidade: l.qtd, preco_unitario: l.preco,
         desconto_percentual: l.pct, desconto_valor: c.desc, valor_total: c.total,
         icms_percentual: null, icms_valor: null, pis_cofins_valor: null, ipi_valor: null,
       }; });
@@ -288,7 +291,8 @@ export default function PDV() {
                   </div>
                   <div className="space-y-1">
                     <span className="block text-xs uppercase tracking-wide text-slate-500 md:hidden">Preço</span>
-                    <MoneyInput value={l.preco} onChange={(v) => upd(l.key, { preco: v })} className="h-10 text-right" />
+                    {/* Preço do catálogo: a venda é gravada com o valor cadastrado, o desconto é informado em % */}
+                    <div className="flex h-10 items-center justify-end pr-1 text-sm tabular-nums text-slate-700">{formatCurrency(l.preco)}</div>
                   </div>
                   <div className="space-y-1">
                     <span className="block text-xs uppercase tracking-wide text-slate-500 md:hidden">Desc %</span>

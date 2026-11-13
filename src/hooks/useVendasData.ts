@@ -34,6 +34,7 @@ export interface VendaItem {
   id: string;
   venda_id: string;
   produto_id: string | null;
+  servico_id?: string | null;
   nome_produto: string;
   ncm: string | null;
   cfop: string | null;
@@ -184,85 +185,76 @@ export function useVendasData() {
   }, [fetchData]);
 
   // ==================== VENDAS ====================
+  // A venda inteira é gravada pela RPC criar_venda: numeração sequencial da
+  // organização, preços vindos do catálogo, teto de desconto por item, totais e
+  // baixa de estoque — tudo na mesma transação. O navegador só envia as
+  // escolhas do operador (cliente, itens, quantidades e desconto percentual);
+  // preço enviado pelo navegador é ignorado para itens de catálogo.
   const createVenda = async (
-    venda: Omit<Venda, "id" | "criado_em" | "atualizado_em" | "itens" | "cliente_nome_completo">,
-    itens: Omit<VendaItem, "id" | "venda_id" | "created_at">[]
+    venda: Omit<Venda, "id" | "criado_em" | "atualizado_em" | "itens" | "cliente_nome_completo"> & {
+      ambiente?: string | null;
+      nfe_dados?: Record<string, any> | null;
+    },
+    itens: (Omit<VendaItem, "id" | "venda_id" | "created_at"> & { servico_id?: string | null })[]
   ) => {
     if (!organization?.id || !user) throw new Error("Sem permissão");
 
-    // Gerar número sequencial
-    const { data: lastVenda } = await supabase
-      .from("vendas")
-      .select("numero")
-      .eq("organization_id", organization.id)
-      .order("criado_em", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const payload = {
+      cliente_id: venda.cliente_id || null,
+      cliente_nome: venda.cliente_nome || null,
+      cliente_cpf_cnpj: venda.cliente_cpf_cnpj || null,
+      cliente_email: venda.cliente_email || null,
+      data_venda: venda.data_venda || null,
+      forma_pagamento: venda.forma_pagamento || null,
+      status_pagamento: venda.status_pagamento || null,
+      obs: venda.obs || null,
+      ambiente: venda.ambiente || null,
+      nfe_dados: venda.nfe_dados || {},
+      itens: itens.map((item) => ({
+        // "manual" é o marcador de item livre na tela de Vendas.
+        produto_id: item.produto_id && item.produto_id !== "manual" ? item.produto_id : null,
+        servico_id: item.servico_id || null,
+        nome_produto: item.nome_produto || null,
+        ncm: item.ncm || null,
+        cfop: item.cfop || null,
+        quantidade: Number(item.quantidade) || 0,
+        preco_unitario: Number(item.preco_unitario) || 0,
+        desconto_percentual: Number(item.desconto_percentual) || 0,
+      })),
+    };
 
-    let nextNum = 1;
-    if (lastVenda?.numero) {
-      const match = lastVenda.numero.match(/(\d+)$/);
-      if (match) nextNum = parseInt(match[1]) + 1;
-    }
-    const numero = `VND-${String(nextNum).padStart(5, "0")}`;
-
-    // Calcular totais (valor_produtos é o bruto, antes dos descontos por item)
-    const valor_produtos = itens.reduce((sum, i) => sum + Number(i.quantidade) * Number(i.preco_unitario), 0);
-    const valor_desconto = itens.reduce((sum, i) => sum + Number(i.desconto_valor || 0), 0);
-    const valor_impostos = itens.reduce((sum, i) => sum + (i.icms_valor || 0) + (i.pis_cofins_valor || 0) + (i.ipi_valor || 0), 0);
-    const valor_total = valor_produtos - valor_desconto + valor_impostos;
-
-    // Criar venda
-    const { data: vendaData, error: vendaErr } = await supabase
-      .from("vendas")
-      .insert({
-        ...venda,
-        organization_id: organization.id,
-        numero,
-        valor_produtos,
-        valor_desconto,
-        valor_impostos,
-        valor_total,
-        vendido_por: user.id,
-      })
-      .select()
-      .single();
-
+    const { data: vendaId, error: vendaErr } = await supabase.rpc("criar_venda" as any, { _payload: payload });
     if (vendaErr) throw vendaErr;
 
-    // Criar itens
-    const itensComVendaId = itens.map((item) => ({ ...item, venda_id: vendaData.id }));
-    const { data: itensData, error: itensErr } = await supabase
-      .from("venda_itens")
-      .insert(itensComVendaId)
-      .select();
+    // Recarrega a venda gravada para devolver os valores calculados no servidor.
+    const { data: vendaData, error: loadErr } = await supabase
+      .from("vendas")
+      .select(`
+        *,
+        venda_itens (*)
+      `)
+      .eq("id", vendaId as unknown as string)
+      .single();
 
-    if (itensErr) throw itensErr;
+    if (loadErr) throw loadErr;
 
-    for (const item of itens) {
-      if (!item.produto_id) continue;
-      const { data: est } = await supabase.from("itens_estoque").select("quantidade").eq("id", item.produto_id).maybeSingle();
-      if (!est) continue;
-      await supabase.from("itens_estoque").update({ quantidade: est.quantidade - Number(item.quantidade) }).eq("id", item.produto_id);
-      await supabase.from("movimentacoes_estoque").insert({
-        organization_id: organization!.id, item_id: item.produto_id, tipo: "saida",
-        quantidade: Number(item.quantidade), motivo: `Venda ${numero}`, usuario_id: user!.id,
-      } as any);
-    }
-
-    const novaVenda = { ...vendaData, itens: itensData || [] };
+    const novaVenda = { ...(vendaData as any), itens: (vendaData as any)?.venda_itens || [] } as Venda;
     setVendas((prev) => [novaVenda, ...prev]);
     return novaVenda;
   };
 
+  // Caminho único de escrita de estoque: a RPC soma o delta no item e registra
+  // a movimentação na mesma transação (o saldo nunca é lido antes pelo cliente).
   const ajustarEstoque = async (produtoId: string, delta: number, motivo: string) => {
-    const { data: est } = await supabase.from("itens_estoque").select("quantidade").eq("id", produtoId).maybeSingle();
-    if (!est) return;
-    await supabase.from("itens_estoque").update({ quantidade: Number(est.quantidade) + delta }).eq("id", produtoId);
-    await supabase.from("movimentacoes_estoque").insert({
-      organization_id: organization!.id, item_id: produtoId, tipo: delta > 0 ? "entrada" : "saida",
-      quantidade: Math.abs(delta), motivo, usuario_id: user!.id,
-    } as any);
+    if (!organization?.id || !user) throw new Error("Sem permissão");
+    const { error } = await supabase.rpc("ajustar_estoque" as any, {
+      _item_id: produtoId,
+      _delta: delta,
+      _motivo: motivo,
+      _origem_tipo: "ajuste",
+      _origem_id: null,
+    });
+    if (error) throw error;
   };
 
   const updateVenda = async (
@@ -286,14 +278,16 @@ export function useVendasData() {
       if (delErr) throw delErr;
       const payload = itens.map(({ id: _i, ...rest }: any) => {
         const { produto_nome, created_at, venda_id, ...clean } = rest;
-        return { ...clean, venda_id: id };
+        // "manual" marca item livre na tela e não é um uuid válido para a coluna.
+        const produtoId = clean.produto_id && clean.produto_id !== "manual" ? clean.produto_id : null;
+        return { ...clean, produto_id: produtoId, venda_id: id };
       });
       if (payload.length) {
         const { data: ins, error: insErr } = await supabase.from("venda_itens").insert(payload).select();
         if (insErr) throw insErr;
         novosItens = ins || [];
       } else novosItens = [];
-      // Reconciliar estoque: diferença por produto
+      // Reconciliar estoque: diferença por produto, cada delta em uma transação.
       const delta = new Map<string, number>();
       for (const a of antigos || []) if (a.produto_id) delta.set(a.produto_id, (delta.get(a.produto_id) || 0) + Number(a.quantidade));
       for (const n of payload) if (n.produto_id) delta.set(n.produto_id, (delta.get(n.produto_id) || 0) - Number(n.quantidade));
@@ -308,15 +302,11 @@ export function useVendasData() {
     const venda = vendas.find((v) => v.id === id);
     if (!venda) throw new Error("Venda não encontrada");
 
+    // Devolve ao estoque apenas itens de catálogo (serviços e itens livres não
+    // movimentam estoque).
     for (const item of venda.itens || []) {
       if (!item.produto_id) continue;
-      const { data: est } = await supabase.from("itens_estoque").select("quantidade").eq("id", item.produto_id).maybeSingle();
-      if (!est) continue;
-      await supabase.from("itens_estoque").update({ quantidade: est.quantidade + Number(item.quantidade) }).eq("id", item.produto_id);
-      await supabase.from("movimentacoes_estoque").insert({
-        organization_id: organization!.id, item_id: item.produto_id, tipo: "entrada",
-        quantidade: Number(item.quantidade), motivo: `Cancelamento da venda ${venda.numero}`, usuario_id: user!.id,
-      } as any);
+      await ajustarEstoque(item.produto_id, Number(item.quantidade), `Cancelamento da venda ${venda.numero}`);
     }
 
     const { error } = await supabase

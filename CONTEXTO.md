@@ -3,7 +3,7 @@
 > Documento de referência para retomar o trabalho. Atualizado ao fim de cada sessão.
 > Ao reiniciar, leia este arquivo e confirme em qual etapa paramos.
 
-## Status atual (última atualização: 2026-08-03)
+## Status atual (última atualização: 2026-11-13 — ver seção 6)
 
 **Em andamento — "Módulo do Técnico / Comissionamento / Oficina ao Vivo".**
 Código **completo e compilando** (`npx tsc --noEmit` sem erros). Faltam **somente** etapas de deploy/dados (abaixo).
@@ -78,3 +78,21 @@ Código **completo e compilando** (`npx tsc --noEmit` sem erros). Faltam **somen
 - RPCs são SECURITY DEFINER e validam org do chamador + RBAC (próprio técnico ou admin da mesma org).
 - Policy de auto-update do perfil (`Users can update their own profile`) **preservada**; nova policy de admin é aditiva; trigger protege comissão de edição não-admin.
 - `itens_os.tipo` usa valores `'servico'`/`'produto'` — coincide com o CASE do RPC.
+
+---
+
+## 6. Sessão 2026-11-13 — P0: venda e estoque escritos no banco
+
+**Feito e verificado**
+
+- RPCs aplicadas no Supabase: `public.ajustar_estoque(_item_id,_delta,_motivo,_origem_tipo,_origem_id)` e `public.criar_venda(_payload jsonb)` — plpgsql, SECURITY INVOKER, `search_path=public`. Migrations em `supabase/migrations/20261003130000_p0_estoque_venda_rpc.sql` e `20261003140000_p0_criar_venda_linhas_catalogo.sql`.
+- `criar_venda` cobre três tipos de linha: produto (`itens_estoque` — preço, teto de desconto, NCM, CFOP e nome do catálogo, com baixa de estoque), serviço (`servicos` — preço = GREATEST(preco, valor_fixo, valor_hora), sem estoque) e item livre (nome e preço digitados, sem estoque). Também grava `nfe_dados` e `ambiente`, senão a emissão de NF-e perde a configuração da venda.
+- `src/hooks/useVendasData.ts` migrado: `createVenda` chama a RPC e recarrega a venda gravada (mesmo retorno de antes), `ajustarEstoque` (usado por `updateVenda` e `cancelarVenda`) chama a RPC. O PDV envia `servico_id` e mostra o preço do cadastro como somente leitura; em Vendas o preço só é editável na linha livre.
+- Verificação executada: bloco `DO` assumindo um usuário real via `request.jwt.claims` criou uma venda de produto, uma de serviço e uma com item livre e abortou no fim (rollback, nada ficou gravado). Resultado: preço do catálogo venceu o valor enviado pelo navegador (2 x 1100 = 2200), desconto de 5% = 110, estoque 5 -> 3 com 1 movimentação, serviço e item livre sem estoque, item livre totalizando 15, desconto de 150% rejeitado. `tsc` sem erros nos arquivos alterados.
+
+**Pendente (próxima fatia)**
+
+- `updateVenda` ainda reescreve `venda_itens` no navegador, com preços vindos da tela: precisa de uma RPC `editar_venda` para valer a mesma regra aplicada na criação.
+- Outros escritores de estoque ainda não passam por `ajustar_estoque`: a tela Estoque (grava valor absoluto), `ImportarXmlNfe` e as RPCs `transferir_estoque_tecnico`, `devolver_estoque_central`, `criar_saida_demonstracao`, `concluir_saida_demonstracao`.
+- `CHECK (quantidade >= 0)` segue comentado até todos os escritores passarem pela RPC (pré-condição conferida: nenhum item com saldo negativo hoje).
+- Sem cobertura e2e: `@playwright/test` não está instalado (dependência recusada anteriormente).

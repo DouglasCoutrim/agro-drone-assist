@@ -549,7 +549,12 @@ export default function Vendas() {
                           <div className="grid grid-cols-[32%_14%_20%_14%_1fr] gap-1 items-center">
                             <Input value={item.nome_produto} onChange={(e) => handleItemChange(idx, "nome_produto", e.target.value)} placeholder="Nome do item" className="h-7 w-full min-w-0 px-1.5 text-[11px]" />
                             <NumberInput value={item.quantidade} onChange={(v) => handleItemChange(idx, "quantidade", v)} step={0.001} min={0.001} placeholder="Qtd" className="h-7 w-full min-w-0 px-1.5 text-[11px] text-center" />
-                            <NumberInput value={item.preco_unitario} onChange={(v) => handleItemChange(idx, "preco_unitario", v)} placeholder="Preço unit." className="h-7 w-full min-w-0 px-1.5 text-[11px]" />
+                            {item.produto_id && item.produto_id !== "manual" ? (
+                              // Item do catálogo: o preço gravado é o do cadastro, o desconto é informado em %.
+                              <div className="flex h-7 w-full min-w-0 items-center justify-end truncate px-1.5 text-[11px] tabular-nums text-muted-foreground" title="Preço do cadastro">{formatCurrency(item.preco_unitario)}</div>
+                            ) : (
+                              <NumberInput value={item.preco_unitario} onChange={(v) => handleItemChange(idx, "preco_unitario", v)} placeholder="Preço unit." className="h-7 w-full min-w-0 px-1.5 text-[11px]" />
+                            )}
                             <NumberInput value={item.desconto_percentual} onChange={(v) => handleItemChange(idx, "desconto_percentual", v)} step={0.1} min={0} max={tetoDesconto(item.desconto_maximo_percentual)} placeholder="Desc %" title={`Desconto máximo: ${tetoDesconto(item.desconto_maximo_percentual)}%`} className="h-7 w-full min-w-0 px-1.5 text-[11px] text-center" />
                             <div className="h-7 flex items-center justify-end truncate px-1 text-[11px] font-semibold text-primary">{formatCurrency(item.valor_total)}</div>
                           </div>
