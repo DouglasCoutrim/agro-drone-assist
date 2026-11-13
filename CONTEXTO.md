@@ -3,7 +3,7 @@
 > Documento de referência para retomar o trabalho. Atualizado ao fim de cada sessão.
 > Ao reiniciar, leia este arquivo e confirme em qual etapa paramos.
 
-## Status atual (última atualização: 2026-11-13 — ver seção 6)
+## Status atual (última atualização: 2026-11-13 — ver seções 6 e 7)
 
 **Em andamento — "Módulo do Técnico / Comissionamento / Oficina ao Vivo".**
 Código **completo e compilando** (`npx tsc --noEmit` sem erros). Faltam **somente** etapas de deploy/dados (abaixo).
@@ -111,3 +111,37 @@ Código **completo e compilando** (`npx tsc --noEmit` sem erros). Faltam **somen
 3. Ligar o `CHECK (quantidade >= 0)` só depois de (2); pré-condição conferida: nenhum saldo negativo hoje.
 4. Decidir se administrador continua podendo gravar preço/desconto livres em item de OS (o trigger libera admin sem travas).
 5. Sem cobertura e2e: `@playwright/test` não está instalado (dependência recusada antes).
+
+---
+
+## 7. Sessão 2026-11-13 — Relatório genérico (Fase 1)
+
+**Entregue**
+
+- Catálogo `public.relatorio_fontes` (8 fontes: ordens_servico, vendas, clientes, itens_estoque, movimentacoes_estoque, financeiro, nota_fiscal_emitida, fornecedores) com `colunas` (nome/rótulo/tipo), `filtros`, `coluna_data` e `perfis`. Leitura liberada a `authenticated`; escrita só para platform admin.
+- `public.gerar_relatorio(_fonte, _colunas, _filtros, _data_inicio, _data_fim, _limite)` — SECURITY INVOKER, `search_path = public`, retorna `{fonte, rotulo, colunas, linhas, total_linhas, limitado}`.
+- Migrations `supabase/migrations/20261003170000_relatorio_fontes.sql` e `20261003180000_gerar_relatorio.sql` (ambas já aplicadas no Supabase).
+- Tela: nova seção "Relatório personalizado" em `src/components/relatorios/RelatorioPersonalizado.tsx`, montada em `Relatorios.tsx` abaixo do conteúdo que já existia (nada foi removido), com fonte, período, limite, colunas, filtros, tabela de resultado e "Exportar CSV" (papaparse, cabeçalho com os rótulos em português).
+
+**Decisões tomadas nesta sessão**
+
+- Nome de tabela e de coluna **nunca** vêm do navegador: a tela envia só o `id` da fonte e as chaves de coluna/filtro, e a função confere cada chave contra o catálogo antes de montar o SQL (`format('%I')` para identificador, `format('%L')` para valor).
+- Organização sempre por `public.get_user_org_id(auth.uid())`, nunca por parâmetro. Como a função é SECURITY INVOKER, o RLS das tabelas de origem soma-se a esse filtro.
+- Perfil sem acesso e fonte inexistente devolvem a **mesma** mensagem ("Acesso negado a esta fonte"), para não revelar o catálogo. Papéis definidos: `admin` e `tecnico` nas fontes operacionais, `consulta` **apenas** em Clientes, `admin` em Estoque/Financeiro/Notas fiscais.
+- Dados fora do catálogo por decisão: CPF/CNPJ, `asaas_id`, `custo_unitario`, `custo_pecas`/`custo_mao_obra`, `commission_*`, XML/payloads de NF-e e colunas de usuário responsável.
+- Período em coluna com hora (`timestamptz`) é convertido pelo fuso da empresa (`business_tz()`, America/Sao_Paulo); colunas `date` comparam direto.
+- Total contado com `count(*) over()` antes do limite, para `limitado` informar que a tela mostra só parte dos registros. Limite aceito entre 1 e 10000.
+- Fase 1 não faz join: `item_id`, `ordem_servico_id` etc. aparecem como id, sem descrição (fase 2).
+
+**Verificado (blocos `DO` somente leitura, sem gravar nada)**
+
+- Coluna fora do catálogo -> `Coluna inválida`; usuário `consulta` em `financeiro` -> `Acesso negado a esta fonte`; filtro em coluna não permitida -> `Filtro inválido`; operador `drop table` -> `Operador inválido`.
+- Fonte válida: 19 linhas da própria organização contra 25 no total, provando que o filtro de organização é efetivo.
+- Todos os caminhos de SQL exercitados nas 8 fontes: texto (`ilike`, `in`, `not_null`), numérico (`gt`/`gte`/`lte`), data, booleano (`eq`/`neq`), `is_null` e período em `timestamptz`. Em movimentações, 134 registros com limite 100 confirmam o total preservado antes do limite.
+- `tsc` sem erros no projeto.
+
+**Pendente / próximo**
+
+1. Teste manual da tela com as três contas (admin, técnico, consulta) — os testes de SQL rodaram com papel privilegiado e não exercitaram o RLS das tabelas de origem.
+2. Fase 2 do relatório: joins para trazer descrição no lugar de id, agrupamentos e totais por coluna.
+3. Sem cobertura e2e: `@playwright/test` não está instalado (dependência recusada antes).

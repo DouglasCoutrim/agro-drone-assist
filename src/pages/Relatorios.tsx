@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { FechamentoDia } from "@/components/relatorios/FechamentoDia";
+import { RelatorioPersonalizado } from "@/components/relatorios/RelatorioPersonalizado";
 import { usePagination } from "@/hooks/usePagination";
 import { RecordPagination } from "@/components/RecordPagination";
 import { todayDateInput } from "@/lib/formatters";
@@ -307,6 +308,8 @@ export default function Relatorios() {
             </div>
           </>
         )}
+
+        <RelatorioPersonalizado />
       </div>
     </MainLayout>
   );
