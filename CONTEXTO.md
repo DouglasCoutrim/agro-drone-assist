@@ -158,6 +158,7 @@ Código **completo e compilando** (`npx tsc --noEmit` sem erros). Faltam **somen
 - Tabela `public.audit_trail` (organização, tabela, registro, ação INSERT/UPDATE/DELETE, campos alterados, `antes`/`depois` em jsonb, usuário + nome/e-mail, data) com 4 índices e RLS.
 - Gatilho `public.audit_row()` (SECURITY DEFINER) instalado como `trg_audit` em **42 tabelas** de negócio, e a função de mascaramento `public.audit_valor()`.
 - Tela `/auditoria` (`src/pages/Auditoria.tsx`), restrita ao papel `admin`, no menu Configurações: filtros (período, usuário, ação, tela, busca por id do registro ou por nome do campo alterado), paginação no servidor, detalhe campo a campo em diálogo e exportação CSV. Rota em `App.tsx` e item em `navConfig.ts`.
+- Exportação em PDF pela mesma tela (botão "Gerar PDF"): sai pelo `gerarDocumentoPadrao` em paisagem com cabeçalho da empresa e colunas de largura fixa (Quando, Quem, Ação, Tela, Registro, Alterações), sem `ajustarLargura` — o id do registro precisa de espaço garantido e um valor longo sem espaços deformaria a medição automática. A coluna "Alterações" mostra "campo: antes → depois" por campo e resume acima de 500 caracteres (o CSV segue com o conteúdo completo). Lista, CSV e PDF compartilham o mesmo `aplicarFiltros` e a observação do PDF repete o recorte usado.
 - Migration `supabase/migrations/20261003200000_auditoria_trilha.sql` (aplicada).
 
 **Decisões tomadas nesta sessão (definidas pelo usuário nas 5 perguntas)**

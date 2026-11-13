@@ -12,9 +12,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { RecordPagination } from "@/components/RecordPagination";
 import { useOrganization } from "@/hooks/useOrganization";
 import { supabase } from "@/integrations/supabase/client";
-import { getErrorMessage } from "@/lib/formatters";
+import { formatDate, getErrorMessage } from "@/lib/formatters";
+import { gerarDocumentoPadrao, loadImageAsDataUrl, type ColunaPDF } from "@/lib/pdf-padrao";
 import { toast } from "sonner";
-import { Download, History, Loader2, Search } from "lucide-react";
+import { Download, FileText, History, Loader2, Search } from "lucide-react";
 
 interface Trilha {
   id: string;
@@ -112,6 +113,60 @@ function mostraValor(valor: unknown): string {
   return String(valor);
 }
 
+interface FiltrosAuditoria {
+  organizationId?: string;
+  de: string;
+  ate: string;
+  acao: string;
+  tabela: string;
+  usuario: string;
+  busca: string;
+}
+
+/**
+ * Recorte único da tela: lista, CSV e PDF passam por aqui, senão os três divergem
+ * com o tempo e o arquivo exportado deixa de ser o que a pessoa está vendo.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function aplicarFiltros(consulta: any, f: FiltrosAuditoria) {
+  let c = consulta;
+  if (f.organizationId) c = c.eq("organization_id", f.organizationId);
+  if (f.de) c = c.gte("created_at", `${f.de}T00:00:00`);
+  if (f.ate) c = c.lte("created_at", `${f.ate}T23:59:59`);
+  if (f.acao !== "todas") c = c.eq("acao", f.acao);
+  if (f.tabela !== "todas") c = c.eq("tabela", f.tabela);
+  if (f.usuario !== "todos") c = c.eq("usuario_id", f.usuario);
+
+  // Um campo só serve para as duas buscas: id do registro ou nome do campo alterado.
+  const termo = f.busca.trim();
+  if (UUID.test(termo)) {
+    c = c.eq("registro_id", termo);
+  } else {
+    const campo = nomeCampoBusca(termo);
+    if (campo) c = c.contains("campos", [campo]);
+  }
+  return c;
+}
+
+/** "campo: antes → depois" por campo alterado: no PDF é isso que conta a história da linha. */
+function textoAlteracoes(linha: Trilha): string {
+  const campos = linha.campos || [];
+  if (!campos.length) return "-";
+  return campos
+    .map((campo) => {
+      const rotulo = nomeCampo(campo);
+      if (linha.acao === "INSERT") return `${rotulo}: ${mostraValor(linha.depois?.[campo])}`;
+      if (linha.acao === "DELETE") return `${rotulo}: ${mostraValor(linha.antes?.[campo])}`;
+      return `${rotulo}: ${mostraValor(linha.antes?.[campo])} → ${mostraValor(linha.depois?.[campo])}`;
+    })
+    .join("; ");
+}
+
+const LIMITE_EXPORTACAO = 5000;
+
+/** Uma linha com dezenas de campos alterados viraria uma faixa de páginas: no PDF ela é resumida. */
+const LIMITE_TEXTO_PDF = 500;
+
 export default function Auditoria() {
   const { organization } = useOrganization();
   const [linhas, setLinhas] = useState<Trilha[]>([]);
@@ -121,6 +176,7 @@ export default function Auditoria() {
   const [carregando, setCarregando] = useState(true);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [detalhe, setDetalhe] = useState<Trilha | null>(null);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
 
   const [de, setDe] = useState("");
   const [ate, setAte] = useState("");
@@ -143,26 +199,10 @@ export default function Auditoria() {
     const carregar = async () => {
       setCarregando(true);
       try {
-        let consulta = supabase
-          .from("audit_trail" as any)
-          .select("*", { count: "exact" })
-          .order("created_at", { ascending: false });
-
-        if (organization?.id) consulta = consulta.eq("organization_id", organization.id);
-        if (de) consulta = consulta.gte("created_at", `${de}T00:00:00`);
-        if (ate) consulta = consulta.lte("created_at", `${ate}T23:59:59`);
-        if (acao !== "todas") consulta = consulta.eq("acao", acao);
-        if (tabela !== "todas") consulta = consulta.eq("tabela", tabela);
-        if (usuario !== "todos") consulta = consulta.eq("usuario_id", usuario);
-
-        // Um campo so serve para as duas buscas: id do registro ou nome do campo alterado.
-        const termo = busca.trim();
-        if (UUID.test(termo)) {
-          consulta = consulta.eq("registro_id", termo);
-        } else {
-          const campo = nomeCampoBusca(termo);
-          if (campo) consulta = consulta.contains("campos", [campo]);
-        }
+        const consulta = aplicarFiltros(
+          supabase.from("audit_trail" as any).select("*", { count: "exact" }).order("created_at", { ascending: false }),
+          { organizationId: organization?.id, de, ate, acao, tabela, usuario, busca },
+        );
 
         const inicio = (pagina - 1) * porPagina;
         const { data, error, count } = await consulta.range(inicio, inicio + porPagina - 1);
@@ -190,31 +230,33 @@ export default function Auditoria() {
     [],
   );
 
+  /** Mesmo recorte da tela, mas sem paginação: a exportação leva tudo o que os filtros pegam. */
+  const buscarRegistros = async (limite: number): Promise<Trilha[]> => {
+    const consulta = aplicarFiltros(
+      supabase.from("audit_trail" as any).select("*").order("created_at", { ascending: false }).limit(limite),
+      { organizationId: organization?.id, de, ate, acao, tabela, usuario, busca },
+    );
+    const { data, error } = await consulta;
+    if (error) throw error;
+    return (data || []) as unknown as Trilha[];
+  };
+
+  /** Texto que acompanha o arquivo: sem ele o PDF não diz a que recorte ele se refere. */
+  const descricaoFiltros = (): string => {
+    const dono = usuarios.find((u) => u.id === usuario);
+    return [
+      de || ate ? `Período: ${de ? formatDate(de) : "início"} a ${ate ? formatDate(ate) : "hoje"}` : "Período: todo o histórico",
+      `Ação: ${acao === "todas" ? "todas" : ACOES[acao as Trilha["acao"]]?.label || acao}`,
+      `Tela: ${tabela === "todas" ? "todas" : nomeTabela(tabela)}`,
+      `Usuário: ${usuario === "todos" ? "todos" : dono?.nome || dono?.email || usuario}`,
+      `Busca: ${busca.trim() || "nenhuma"}`,
+    ].join("  |  ");
+  };
+
   const exportar = async () => {
     try {
-      let consulta = supabase
-        .from("audit_trail" as any)
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(5000);
-
-      if (organization?.id) consulta = consulta.eq("organization_id", organization.id);
-      if (de) consulta = consulta.gte("created_at", `${de}T00:00:00`);
-      if (ate) consulta = consulta.lte("created_at", `${ate}T23:59:59`);
-      if (acao !== "todas") consulta = consulta.eq("acao", acao);
-      if (tabela !== "todas") consulta = consulta.eq("tabela", tabela);
-      if (usuario !== "todos") consulta = consulta.eq("usuario_id", usuario);
-      const termo = busca.trim();
-      if (UUID.test(termo)) consulta = consulta.eq("registro_id", termo);
-      else {
-        const campo = nomeCampoBusca(termo);
-        if (campo) consulta = consulta.contains("campos", [campo]);
-      }
-
-      const { data, error } = await consulta;
-      if (error) throw error;
-
-      const linhas = ((data || []) as unknown as Trilha[]).map((l) => ({
+      const registros = await buscarRegistros(LIMITE_EXPORTACAO);
+      const linhas = registros.map((l) => ({
         Quando: new Date(l.created_at).toLocaleString("pt-BR"),
         Quem: l.usuario_nome || "Sistema",
         "E-mail": l.usuario_email || "",
@@ -240,6 +282,73 @@ export default function Auditoria() {
     }
   };
 
+  const exportarPdf = async () => {
+    setGerandoPdf(true);
+    try {
+      const registros = await buscarRegistros(LIMITE_EXPORTACAO);
+      const { data: emp } = organization?.id
+        ? await supabase
+            .from("empresa_config")
+            .select("nome_empresa, cnpj, telefone, endereco, logo_url")
+            .eq("organization_id", organization.id)
+            .maybeSingle()
+        : { data: null };
+
+      // Largura fixa, sem `ajustarLargura`: as seis colunas são conhecidas e o id do registro
+      // precisa de espaço garantido. Um valor longo sem espaços (json, url) deformaria a
+      // medição automática e encolheria as outras colunas.
+      const colunas: ColunaPDF[] = [
+        { titulo: "Quando", largura: 34 },
+        { titulo: "Quem", largura: 45 },
+        { titulo: "Ação", largura: 16 },
+        { titulo: "Tela", largura: 30 },
+        { titulo: "Registro", largura: 64 },
+        { titulo: "Alterações", largura: 78 },
+      ];
+      let resumido = false;
+      const linhas = registros.map((l) => {
+        const alteracoes = textoAlteracoes(l);
+        if (alteracoes.length > LIMITE_TEXTO_PDF) resumido = true;
+        return [
+          new Date(l.created_at).toLocaleString("pt-BR"),
+          l.usuario_email ? `${l.usuario_nome || "Sistema"} (${l.usuario_email})` : l.usuario_nome || "Sistema",
+          ACOES[l.acao]?.label || l.acao,
+          nomeTabela(l.tabela),
+          l.registro_id || "-",
+          alteracoes.length > LIMITE_TEXTO_PDF ? `${alteracoes.slice(0, LIMITE_TEXTO_PDF)}...` : alteracoes,
+        ];
+      });
+
+      const doc = gerarDocumentoPadrao({
+        orientacao: "paisagem",
+        titulo: "Auditoria",
+        linhasCabecalho: [
+          `Emissão: ${new Date().toLocaleString("pt-BR")}`,
+          `Registros: ${registros.length}${registros.length >= LIMITE_EXPORTACAO ? ` (limite de ${LIMITE_EXPORTACAO})` : ""}`,
+        ],
+        empresa: {
+          nome: emp?.nome_empresa || organization?.name || "Empresa",
+          cnpj: emp?.cnpj,
+          telefone: emp?.telefone,
+          endereco: emp?.endereco,
+          logoDataUrl: await loadImageAsDataUrl(emp?.logo_url),
+        },
+        observacao: `${descricaoFiltros()}${resumido ? ` Alterações com mais de ${LIMITE_TEXTO_PDF} caracteres aparecem resumidas; o CSV traz o conteúdo completo.` : ""}`,
+        tabela: {
+          colunas,
+          linhas,
+          vazio: "Nenhum registro de auditoria encontrado com esses filtros.",
+        },
+        rodape: `${emp?.nome_empresa || organization?.name || ""} · Auditoria`,
+      });
+      doc.save(`auditoria_${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch (e) {
+      toast.error(getErrorMessage(e));
+    } finally {
+      setGerandoPdf(false);
+    }
+  };
+
   const camposDoDetalhe = detalhe
     ? Array.from(new Set([...(detalhe.campos || [])])).sort()
     : [];
@@ -257,10 +366,20 @@ export default function Auditoria() {
               Quem criou, alterou ou excluiu cada registro, com o que mudou antes e depois
             </p>
           </div>
-          <Button variant="outline" onClick={exportar}>
-            <Download className="mr-2 h-4 w-4" />
-            Exportar CSV
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant="outline" onClick={exportar} disabled={gerandoPdf}>
+              <Download className="mr-2 h-4 w-4" />
+              Exportar CSV
+            </Button>
+            <Button variant="outline" onClick={exportarPdf} disabled={gerandoPdf}>
+              {gerandoPdf ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileText className="mr-2 h-4 w-4" />
+              )}
+              Gerar PDF
+            </Button>
+          </div>
         </div>
 
         <Card className="shadow-soft">
