@@ -106,24 +106,6 @@ function rotuloOperador(operador: string): string {
   return OPERADORES.find((op) => op.value === operador)?.label || operador;
 }
 
-/**
- * Distribui a largura útil do PDF conforme o conteúdo real de cada coluna, em vez de
- * dividir igualmente: colunas estreitas (data, valor, sim/não) não roubam espaço das
- * colunas de texto. O resultado sempre soma exatamente a largura disponível.
- */
-function calcularLarguras(colunas: ColunaMeta[], linhas: Record<string, unknown>[], disponivel: number): number[] {
-  const pesos = colunas.map((col) => {
-    const maiorCelula = linhas.reduce(
-      (maior, linha) => Math.max(maior, valorTexto(linha[col.nome], col.tipo).length),
-      0,
-    );
-    return Math.min(40, Math.max(8, Math.max(col.rotulo.length, maiorCelula)));
-  });
-  const soma = pesos.reduce((a, b) => a + b, 0);
-  const comMinimo = pesos.map((peso) => Math.max(11, (peso / soma) * disponivel));
-  const somaMinimo = comMinimo.reduce((a, b) => a + b, 0);
-  return comMinimo.map((largura) => (largura / somaMinimo) * disponivel);
-}
 
 function baixarCsv(csv: string, nome: string) {
   const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
@@ -175,7 +157,9 @@ export function RelatorioPersonalizado() {
   );
 
   useEffect(() => {
-    setColunasSel(fonte ? fonte.colunas.map((c) => c.nome) : []);
+    // Seleção inicial enxuta: os campos principais da fonte (a mesma lista oferecida nos filtros).
+    // Marcar as 14 colunas de Vendas de saída produzia um relatório ilegível; "Selecionar todas" amplia.
+    setColunasSel(fonte ? (fonte.filtros.length ? fonte.filtros : fonte.colunas.map((c) => c.nome)) : []);
     setFiltros([]);
     setResultado(null);
     setCriterios(null);
@@ -297,10 +281,8 @@ export function RelatorioPersonalizado() {
             .maybeSingle()
         : { data: null };
 
-      const larguras = calcularLarguras(resultado.colunas, resultado.linhas, 297 - 30);
-      const colunasPdf: ColunaPDF[] = resultado.colunas.map((col, i) => ({
+      const colunasPdf: ColunaPDF[] = resultado.colunas.map((col) => ({
         titulo: col.rotulo,
-        largura: larguras[i],
         alinhar: tipoNumerico(col.tipo) ? "right" : "left",
       }));
       const linhasPdf = resultado.linhas.map((linha) =>
@@ -326,6 +308,7 @@ export function RelatorioPersonalizado() {
         tabela: {
           colunas: colunasPdf,
           linhas: linhasPdf,
+          ajustarLargura: true,
           vazio: "Nenhum registro encontrado com os critérios informados.",
         },
         rodape: `${emp?.nome_empresa || organization?.name || ""} · Relatório de ${resultado.rotulo}`,
@@ -408,7 +391,12 @@ export function RelatorioPersonalizado() {
               <>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between flex-wrap gap-2">
-                    <Label className="text-xs">Colunas</Label>
+                    <Label className="text-xs">
+                      Colunas
+                      <span className="ml-2 font-normal text-muted-foreground">
+                        menos colunas deixam a tabela e o PDF mais legíveis
+                      </span>
+                    </Label>
                     <div className="flex gap-2">
                       <Button
                         type="button"

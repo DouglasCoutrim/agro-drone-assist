@@ -15,7 +15,12 @@ export interface DocumentoPadrao {
   empresa: EmpresaPDF;
   parte?: { rotulo: string; nome: string; detalhes?: string[] };
   secoes?: { titulo: string; texto: string }[];
-  tabela?: { titulo?: string; colunas: ColunaPDF[]; linhas: string[][]; vazio?: string };
+  /**
+   * `ajustarLargura`: mede o conteúdo real e cabe as colunas na página, reduzindo o corpo
+   * da tabela se preciso. Use em tabela larga (relatório). Sem isso, a largura vem de
+   * `ColunaPDF.largura` e as colunas sem largura dividem o espaço restante igualmente.
+   */
+  tabela?: { titulo?: string; colunas: ColunaPDF[]; linhas: string[][]; vazio?: string; ajustarLargura?: boolean };
   totais?: { rotulo: string; valor: number; destaque?: boolean; negativo?: boolean }[];
   observacao?: string;
   termos?: string;
@@ -107,27 +112,82 @@ export function gerarDocumentoPadrao(d: DocumentoPadrao): jsPDF {
   // Tabela
   if (d.tabela) {
     const cols = d.tabela.colunas;
-    const fixed = cols.reduce((s, c) => s + (c.largura || 0), 0);
-    const flex = cols.filter((c) => !c.largura).length || 1;
-    const widths = cols.map((c) => c.largura || (W - 2 * M - fixed) / flex);
+    const linhas = d.tabela.linhas;
+    const usable = W - 2 * M;
+    const PAD = 4;
+    let tSize = 8.5;
+    let widths: number[];
+
+    if (d.tabela.ajustarLargura) {
+      // Medir 10.000 linhas em seis corpos custa caro e não muda a largura: a amostra basta.
+      const amostra = linhas.slice(0, 300);
+      const medir = (texto: string, size: number) => { doc.setFont("helvetica", "normal").setFontSize(size); return doc.getTextWidth(texto || ""); };
+      const medirTitulo = (texto: string, size: number) => { doc.setFont("helvetica", "bold").setFontSize(size); return doc.getTextWidth(texto || ""); };
+
+      // Coluna alinhada à direita (valor, data, quantidade) não pode quebrar:
+      // "R$ 3.049,44" partido em duas linhas é ilegível.
+      const minimo = (size: number) => cols.map((c, i) => {
+        const cabecalho = medirTitulo(c.titulo, size);
+        const maior = amostra.reduce((m, row) => {
+          const valor = row[i] ?? "";
+          if (c.alinhar === "right") return Math.max(m, medir(valor, size));
+          const pedacos = valor.split(/\s+/).filter(Boolean);
+          return Math.max(m, ...(pedacos.length ? pedacos.map((p) => medir(p, size)) : [0]));
+        }, 0);
+        return Math.max(cabecalho, maior) + PAD;
+      });
+      const desejado = (size: number) => cols.map((c, i) =>
+        amostra.reduce((m, row) => Math.max(m, medir(row[i] ?? "", size)), medirTitulo(c.titulo, size)) + PAD);
+
+      // Maior corpo em que todas as colunas cabem sem quebrar nada.
+      let minimos = minimo(tSize);
+      for (const size of [8.5, 8, 7.5, 7, 6.5, 6]) {
+        tSize = size;
+        minimos = minimo(size);
+        if (minimos.reduce((a, b) => a + b, 0) <= usable) break;
+      }
+      const somaMinimos = minimos.reduce((a, b) => a + b, 0);
+      if (somaMinimos <= usable) {
+        // A sobra vai para quem ainda precisa (texto longo), em vez de dividir igual.
+        const faltas = desejado(tSize).map((dw, i) => Math.max(0, dw - minimos[i]));
+        const somaFaltas = faltas.reduce((a, b) => a + b, 0) || 1;
+        const sobra = usable - somaMinimos;
+        widths = minimos.map((mn, i) => mn + (sobra * faltas[i]) / somaFaltas);
+      } else {
+        // Nem no menor corpo caberia: reduz tudo proporcionalmente. Aí o texto volta a
+        // quebrar, e a saída é a pessoa marcar menos colunas.
+        widths = minimos.map((mn) => (mn / somaMinimos) * usable);
+      }
+    } else {
+      const fixed = cols.reduce((s, c) => s + (c.largura || 0), 0);
+      const flex = cols.filter((c) => !c.largura).length || 1;
+      widths = cols.map((c) => c.largura || (usable - fixed) / flex);
+    }
+
     const xs: number[] = []; let acc = M;
     widths.forEach((w) => { xs.push(acc); acc += w; });
     const colX = (i: number) => (cols[i].alinhar === "right" ? xs[i] + widths[i] - 2 : xs[i] + 2);
+    // Largura útil de texto: nunca zero ou negativa, senão quebrar linha entra em laço.
+    const ancho = (i: number) => Math.max(6, widths[i] - PAD);
     const header = () => {
-      doc.setFillColor(243, 244, 246).rect(M, y - 4, W - 2 * M, 6, "F");
-      doc.setTextColor(60).setFont("helvetica", "bold").setFontSize(8.5);
-      cols.forEach((c, i) => doc.text(c.titulo, colX(i), y, { align: c.alinhar === "right" ? "right" : "left" }));
-      y += 5.5;
+      const titulos = cols.map((c, i) => split(c.titulo, ancho(i), tSize));
+      const altura = Math.max(...titulos.map((l) => l.length));
+      const avanco = altura <= 1 ? 5.5 : altura * 3.5 + 1.5;
+      doc.setFillColor(243, 244, 246).rect(M, y - 4, usable, altura <= 1 ? 6 : avanco, "F");
+      doc.setTextColor(60).setFont("helvetica", "bold").setFontSize(tSize);
+      titulos.forEach((l, i) => doc.text(l, colX(i), y, { align: cols[i].alinhar === "right" ? "right" : "left" }));
+      y += avanco;
     };
     ensure(20);
     if (d.tabela.titulo) sectionTitle(d.tabela.titulo);
     header();
-    if (!d.tabela.linhas.length) { doc.setFont("helvetica", "normal").setTextColor(130).text(d.tabela.vazio || "Sem itens.", M + 2, y); y += 6; }
-    for (const row of d.tabela.linhas) {
-      const cells = row.map((v, i) => split(v ?? "", widths[i] - 4, 8.5));
-      const h = Math.max(6, Math.max(...cells.map((c) => c.length)) * LINE + 1.8);
+    if (!linhas.length) { doc.setFont("helvetica", "normal").setTextColor(130).text(d.tabela.vazio || "Sem itens.", M + 2, y); y += 6; }
+    const rowLine = Math.max(3.2, LINE * (tSize / 8.5));
+    for (const row of linhas) {
+      const cells = row.map((v, i) => split(v ?? "", ancho(i), tSize));
+      const h = Math.max(6, Math.max(...cells.map((c) => c.length)) * rowLine + 1.8);
       if (y + h > BOTTOM) { newPage(); header(); }
-      doc.setFont("helvetica", "normal").setFontSize(8.5).setTextColor(30);
+      doc.setFont("helvetica", "normal").setFontSize(tSize).setTextColor(30);
       cells.forEach((c, i) => doc.text(c, colX(i), y, { align: cols[i].alinhar === "right" ? "right" : "left" }));
       doc.setDrawColor(235).setLineWidth(0.2).line(M, y + h - 4, W - M, y + h - 4);
       y += h;
