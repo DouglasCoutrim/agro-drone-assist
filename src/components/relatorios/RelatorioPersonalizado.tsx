@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrganization } from "@/hooks/useOrganization";
 import { formatDate, getErrorMessage } from "@/lib/formatters";
+import { gerarDocumentoPadrao, loadImageAsDataUrl, type ColunaPDF } from "@/lib/pdf-padrao";
 import { toast } from "sonner";
 import { AlertBox } from "@/components/premium/AlertBox";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, FileSpreadsheet, Loader2, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, Loader2, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 
 type AppRole = "admin" | "tecnico" | "consulta";
 type TipoColuna = "texto" | "numero" | "data" | "booleano";
@@ -49,6 +51,13 @@ interface ResultadoRelatorio {
   limitado: boolean;
 }
 
+/** Critérios usados na geração, para o PDF descrever exatamente o que está na tela. */
+interface Criterios {
+  dataInicio: string;
+  dataFim: string;
+  filtros: LinhaFiltro[];
+}
+
 const OPERADORES: { value: string; label: string }[] = [
   { value: "eq", label: "Igual a" },
   { value: "neq", label: "Diferente de" },
@@ -80,6 +89,29 @@ function protegerPlanilha(valor: string): string {
   return /^[=+\-@\t\r]/.test(valor) ? `'${valor}` : valor;
 }
 
+function rotuloOperador(operador: string): string {
+  return OPERADORES.find((op) => op.value === operador)?.label || operador;
+}
+
+/**
+ * Distribui a largura útil do PDF conforme o conteúdo real de cada coluna, em vez de
+ * dividir igualmente: colunas estreitas (data, valor, sim/não) não roubam espaço das
+ * colunas de texto. O resultado sempre soma exatamente a largura disponível.
+ */
+function calcularLarguras(colunas: ColunaMeta[], linhas: Record<string, unknown>[], disponivel: number): number[] {
+  const pesos = colunas.map((col) => {
+    const maiorCelula = linhas.reduce(
+      (maior, linha) => Math.max(maior, valorTexto(linha[col.nome], col.tipo).length),
+      0,
+    );
+    return Math.min(40, Math.max(8, Math.max(col.rotulo.length, maiorCelula)));
+  });
+  const soma = pesos.reduce((a, b) => a + b, 0);
+  const comMinimo = pesos.map((peso) => Math.max(11, (peso / soma) * disponivel));
+  const somaMinimo = comMinimo.reduce((a, b) => a + b, 0);
+  return comMinimo.map((largura) => (largura / somaMinimo) * disponivel);
+}
+
 function baixarCsv(csv: string, nome: string) {
   const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -92,6 +124,7 @@ function baixarCsv(csv: string, nome: string) {
 
 export function RelatorioPersonalizado() {
   const { roles } = useAuth();
+  const { organization } = useOrganization();
   const [fontes, setFontes] = useState<FonteRelatorio[] | null>(null);
   const [fonteId, setFonteId] = useState("");
   const [colunasSel, setColunasSel] = useState<string[]>([]);
@@ -100,7 +133,9 @@ export function RelatorioPersonalizado() {
   const [dataFim, setDataFim] = useState("");
   const [limite, setLimite] = useState(String(LIMITE_PADRAO));
   const [gerando, setGerando] = useState(false);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
   const [resultado, setResultado] = useState<ResultadoRelatorio | null>(null);
+  const [criterios, setCriterios] = useState<Criterios | null>(null);
 
   useEffect(() => {
     const carregar = async () => {
@@ -130,6 +165,7 @@ export function RelatorioPersonalizado() {
     setColunasSel(fonte ? fonte.colunas.map((c) => c.nome) : []);
     setFiltros([]);
     setResultado(null);
+    setCriterios(null);
   }, [fonte]);
 
   const toggleColuna = (nome: string, marcado: boolean) => {
@@ -166,24 +202,31 @@ export function RelatorioPersonalizado() {
       return;
     }
 
+    const filtrosUsados = filtros
+      .filter((f) => f.campo && f.operador)
+      .map((f) => ({
+        campo: f.campo,
+        operador: f.operador,
+        valor: SEM_VALOR.includes(f.operador) ? "" : f.valor,
+      }));
+
     setGerando(true);
     try {
       const { data, error } = await supabase.rpc("gerar_relatorio" as any, {
         _fonte: fonte.id,
         _colunas: colunasSel,
-        _filtros: filtros
-          .filter((f) => f.campo && f.operador)
-          .map((f) => ({
-            campo: f.campo,
-            operador: f.operador,
-            valor: SEM_VALOR.includes(f.operador) ? "" : f.valor,
-          })),
+        _filtros: filtrosUsados,
         _data_inicio: dataInicio || null,
         _data_fim: dataFim || null,
         _limite: Math.min(limiteNumero, LIMITE_MAXIMO),
       });
       if (error) throw error;
       setResultado(data as unknown as ResultadoRelatorio);
+      setCriterios({
+        dataInicio,
+        dataFim,
+        filtros: filtrosUsados.map((f) => ({ ...f, id: 0 })),
+      });
     } catch (e) {
       toast.error(getErrorMessage(e));
     } finally {
@@ -202,6 +245,81 @@ export function RelatorioPersonalizado() {
     });
     const csv = Papa.unparse(linhas, { columns: resultado.colunas.map((c) => c.rotulo) });
     baixarCsv(csv, `relatorio_${resultado.fonte}_${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+
+  const descricaoPeriodo = (c: Criterios | null): string => {
+    if (!c || (!c.dataInicio && !c.dataFim)) return "Período: todos os registros";
+    const de = c.dataInicio ? formatDate(c.dataInicio) : "início";
+    return `Período: ${de} a ${c.dataFim ? formatDate(c.dataFim) : "hoje"}`;
+  };
+
+  const descricaoFiltros = (c: Criterios | null): string => {
+    const aplicados = c?.filtros?.filter((f) => f.campo && f.operador) || [];
+    const resumo = aplicados.length
+      ? `Filtros: ${aplicados
+          .map((f) =>
+            SEM_VALOR.includes(f.operador)
+              ? `${rotuloDoCampo(f.campo)} ${rotuloOperador(f.operador).toLowerCase()}`
+              : `${rotuloDoCampo(f.campo)} ${rotuloOperador(f.operador).toLowerCase()} ${f.valor}`,
+          )
+          .join("; ")}`
+      : "Filtros: nenhum";
+    return resultado?.limitado
+      ? `${resumo}. Atenção: exibindo as primeiras ${resultado.linhas.length} de ${resultado.total_linhas} linhas encontradas.`
+      : `${resumo}.`;
+  };
+
+  const handleGerarPdf = async () => {
+    if (!resultado) return;
+    setGerandoPdf(true);
+    try {
+      const { data: emp } = organization?.id
+        ? await supabase
+            .from("empresa_config")
+            .select("nome_empresa, cnpj, telefone, endereco, logo_url")
+            .eq("organization_id", organization.id)
+            .maybeSingle()
+        : { data: null };
+
+      const larguras = calcularLarguras(resultado.colunas, resultado.linhas, 297 - 30);
+      const colunasPdf: ColunaPDF[] = resultado.colunas.map((col, i) => ({
+        titulo: col.rotulo,
+        largura: larguras[i],
+        alinhar: col.tipo === "numero" ? "right" : "left",
+      }));
+      const linhasPdf = resultado.linhas.map((linha) =>
+        resultado.colunas.map((col) => valorTexto(linha[col.nome], col.tipo)),
+      );
+
+      const doc = gerarDocumentoPadrao({
+        orientacao: "paisagem",
+        titulo: resultado.rotulo,
+        linhasCabecalho: [
+          `Emissão: ${new Date().toLocaleString("pt-BR")}`,
+          descricaoPeriodo(criterios),
+          `Registros: ${resultado.linhas.length}${resultado.limitado ? ` de ${resultado.total_linhas}` : ""}`,
+        ],
+        empresa: {
+          nome: emp?.nome_empresa || organization?.name || "Empresa",
+          cnpj: emp?.cnpj,
+          telefone: emp?.telefone,
+          endereco: emp?.endereco,
+          logoDataUrl: await loadImageAsDataUrl(emp?.logo_url),
+        },
+        observacao: descricaoFiltros(criterios),
+        tabela: {
+          colunas: colunasPdf,
+          linhas: linhasPdf,
+          vazio: "Nenhum registro encontrado com os critérios informados.",
+        },
+        rodape: `${emp?.nome_empresa || organization?.name || ""} · Relatório de ${resultado.rotulo}`,
+      });
+      doc.save(`relatorio_${resultado.fonte}_${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch (e) {
+      toast.error(getErrorMessage(e));
+    } finally {
+      setGerandoPdf(false);
+    }
   };
 
   return (
@@ -421,10 +539,20 @@ export function RelatorioPersonalizado() {
                     Gerar relatório
                   </Button>
                   {resultado && (
-                    <Button variant="outline" onClick={handleExportar}>
-                      <Download className="mr-2 h-4 w-4" />
-                      Exportar CSV
-                    </Button>
+                    <>
+                      <Button variant="outline" onClick={handleExportar} disabled={gerandoPdf}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Exportar CSV
+                      </Button>
+                      <Button variant="outline" onClick={handleGerarPdf} disabled={gerandoPdf}>
+                        {gerandoPdf ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <FileText className="mr-2 h-4 w-4" />
+                        )}
+                        Gerar PDF
+                      </Button>
+                    </>
                   )}
                 </div>
               </>

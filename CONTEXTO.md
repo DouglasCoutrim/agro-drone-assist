@@ -121,7 +121,8 @@ Código **completo e compilando** (`npx tsc --noEmit` sem erros). Faltam **somen
 - Catálogo `public.relatorio_fontes` (8 fontes: ordens_servico, vendas, clientes, itens_estoque, movimentacoes_estoque, financeiro, nota_fiscal_emitida, fornecedores) com `colunas` (nome/rótulo/tipo), `filtros`, `coluna_data` e `perfis`. Leitura liberada a `authenticated`; escrita só para platform admin.
 - `public.gerar_relatorio(_fonte, _colunas, _filtros, _data_inicio, _data_fim, _limite)` — SECURITY INVOKER, `search_path = public`, retorna `{fonte, rotulo, colunas, linhas, total_linhas, limitado}`.
 - Migrations `supabase/migrations/20261003170000_relatorio_fontes.sql` e `20261003180000_gerar_relatorio.sql` (ambas já aplicadas no Supabase).
-- Tela: nova seção "Relatório personalizado" em `src/components/relatorios/RelatorioPersonalizado.tsx`, montada em `Relatorios.tsx` abaixo do conteúdo que já existia (nada foi removido), com fonte, período, limite, colunas, filtros, tabela de resultado e "Exportar CSV" (papaparse, cabeçalho com os rótulos em português).
+- Tela: nova seção "Relatório personalizado" em `src/components/relatorios/RelatorioPersonalizado.tsx`, montada em `Relatorios.tsx` abaixo do conteúdo que já existia (nada foi removido), com fonte, período, limite, colunas, filtros, tabela de resultado, "Exportar CSV" (papaparse, cabeçalho com os rótulos em português) e "Gerar PDF".
+- PDF do relatório pelo gerador padrão do sistema (`gerarDocumentoPadrao`, cabeçalho da empresa, tabela paginada e rodapé "Página X de Y"), em **paisagem**, com largura de coluna proporcional ao conteúdo real e valores numéricos alinhados à direita. O PDF descreve os critérios usados (período e filtros) e avisa quando o resultado está limitado. `pdf-padrao` ganhou o campo opcional `orientacao`; sem ele nada muda nos PDFs já existentes (recibo, orçamento, OS).
 
 **Decisões tomadas nesta sessão**
 

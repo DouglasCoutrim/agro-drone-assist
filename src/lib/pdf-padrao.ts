@@ -21,9 +21,10 @@ export interface DocumentoPadrao {
   termos?: string;
   assinaturas?: [string, string];
   rodape?: string;
+  /** Retrato (padrão) ou paisagem; paisagem serve para tabelas largas, como relatórios. */
+  orientacao?: "retrato" | "paisagem";
 }
 
-const W = 210, H = 297, M = 15, TOP = 18, BOTTOM = H - 18, LINE = 4.2;
 export const PDF_GREEN: [number, number, number] = [11, 122, 85];
 
 export async function loadImageAsDataUrl(url?: string | null): Promise<string | undefined> {
@@ -42,7 +43,9 @@ export async function loadImageAsDataUrl(url?: string | null): Promise<string | 
 }
 
 export function gerarDocumentoPadrao(d: DocumentoPadrao): jsPDF {
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const paisagem = d.orientacao === "paisagem";
+  const W = paisagem ? 297 : 210, H = paisagem ? 210 : 297, M = 15, TOP = 18, BOTTOM = H - 18, LINE = 4.2;
+  const doc = new jsPDF({ unit: "mm", format: "a4", orientation: paisagem ? "landscape" : "portrait" });
   let y = M;
   const newPage = () => { doc.addPage(); y = TOP; };
   const ensure = (h: number) => { if (y + h > BOTTOM) { newPage(); return true; } return false; };
