@@ -128,12 +128,12 @@ export default function Auth() {
       <div className="relative z-10 mx-auto grid w-full max-w-[1600px] flex-1 grid-cols-1 items-center gap-10 px-5 py-10 sm:px-8 lg:grid-cols-[1.05fr_minmax(440px,560px)] lg:gap-16 lg:px-16 lg:py-14">
         {/* Área institucional */}
         <section className="order-2 flex flex-col gap-8 lg:order-1 lg:gap-14">
-          {/* Marca centralizada: tamanho normal em lg e ampliada (2x) a partir de xl */}
+          {/* Marca centralizada (com leve deslocamento à esquerda): tamanho normal em lg e ampliada (2x) a partir de xl */}
           <div className="hidden justify-center lg:flex xl:hidden">
-            <LivreOSLogo size="lg" tone="onDark" />
+            <LivreOSLogo size="lg" tone="onDark" className="-translate-x-6" />
           </div>
           <div className="hidden justify-center xl:flex">
-            <LivreOSLogo size="xl" tone="onDark" />
+            <LivreOSLogo size="xl" tone="onDark" className="-translate-x-6" />
           </div>
 
           <div className="space-y-7">
