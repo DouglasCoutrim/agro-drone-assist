@@ -2,15 +2,19 @@ import { useEffect, useState } from "react";
 import logoIcon from "@/assets/logo-icon.png";
 import { cn } from "@/lib/utils";
 
-type LogoSize = "xs" | "sm" | "md" | "lg";
+type LogoSize = "xs" | "sm" | "md" | "lg" | "xl";
 type LogoTone = "onDark" | "onLight";
 
-/** O ícone é dimensionado em ~1,3x a altura do bloco de texto, como na marca oficial. */
+/**
+ * O ícone é dimensionado em ~1,3x a altura do bloco de texto, como na marca oficial.
+ * `xl` é exatamente 2x o `lg` (ícone, nome e assinatura), para uso em destaque.
+ */
 const ICON_CLASS: Record<LogoSize, string> = {
   xs: "h-9 w-9",
   sm: "h-11 w-11",
   md: "h-14 w-14",
   lg: "h-[4.5rem] w-[4.5rem]",
+  xl: "h-36 w-36",
 };
 
 const TITLE_CLASS: Record<LogoSize, string> = {
@@ -18,6 +22,7 @@ const TITLE_CLASS: Record<LogoSize, string> = {
   sm: "text-lg",
   md: "text-[22px]",
   lg: "text-3xl",
+  xl: "text-6xl",
 };
 
 const SUBTITLE_CLASS: Record<LogoSize, string> = {
@@ -25,6 +30,7 @@ const SUBTITLE_CLASS: Record<LogoSize, string> = {
   sm: "text-[10px]",
   md: "text-xs",
   lg: "text-sm",
+  xl: "text-[1.75rem]",
 };
 
 const TONE_CLASS: Record<LogoTone, { title: string; subtitle: string }> = {
