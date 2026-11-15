@@ -288,7 +288,7 @@ iframe[src*="lovable"] {
     --accent-foreground: 160 83% 26%;
     --border: 225 21% 93%;
     --border-subtle: 220 22% 95%;
-    --input: 225 18% 88%;
+    --input: 152 18% 86%;
     --ring: 160 84% 34%;
     --sidebar-background: 158 72% 13%;
     --sidebar-foreground: 150 30% 92%;
@@ -368,8 +368,8 @@ iframe[src*="lovable"] {
   --lo-glass-bg: rgba(255, 255, 255, 0.74);
   --lo-glass-border: rgba(255, 255, 255, 0.68);
   --lo-input-bg: rgba(231, 243, 250, 0.94);
-  --lo-input-border: #c8dce8;
-  --lo-focus: #39a9e8;
+  --lo-input-border: #c7e0d2;
+  --lo-focus: #0b4f34;
   --lo-glass-blur: 20px;
   --lo-glass-radius: 26px;
   --lo-glass-shadow: 0 24px 70px rgba(0, 12, 18, 0.32);
@@ -396,12 +396,6 @@ iframe[src*="lovable"] {
   color: #7d97a3;
 }
 
-.livreos-login .livreos-login__input:focus-visible {
-  border-color: var(--lo-focus);
-  outline: 3px solid var(--lo-focus);
-  outline-offset: 2px;
-}
-
 .livreos-login .livreos-login__button {
   background: linear-gradient(100deg, #08c83f 0%, #007a38 100%);
   color: #ffffff;
@@ -417,14 +411,14 @@ iframe[src*="lovable"] {
 }
 
 .livreos-login .livreos-login__button:focus-visible {
-  outline: 3px solid var(--lo-focus);
-  outline-offset: 2px;
+  outline: 2px solid var(--lo-focus);
+  outline-offset: 1px;
 }
 
 .livreos-login a:focus-visible,
 .livreos-login button:focus-visible {
-  outline: 3px solid var(--lo-focus);
-  outline-offset: 2px;
+  outline: 2px solid var(--lo-focus);
+  outline-offset: 1px;
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -450,4 +444,20 @@ iframe[src*="lovable"] {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ===== Foco dos campos (global) =====
+   Linha de foco fina e verde em todos os campos, no lugar do anel de 2px
+   + offset dos componentes shadcn. O !important é necessário porque esse
+   anel vem de utilities do Tailwind dentro de src/components/ui/*, que
+   este projeto não edita. Checkbox/radio/range/color ficam de fora porque
+   já usam a borda verde da marca. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="combobox"]:focus-visible {
+  border-color: var(--lo-focus, hsl(var(--ring))) !important;
+  outline: 1px solid var(--lo-focus, hsl(var(--ring))) !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
 }
