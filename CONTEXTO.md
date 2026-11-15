@@ -192,9 +192,8 @@ Código **completo e compilando** (`npx tsc --noEmit` sem erros). Faltam **somen
 
 - `src/pages/Auth.tsx` reescrito como composição de página inteira com duas áreas:
   - **Painel institucional:** marca `LivreOSLogo` (`tone="onDark"`), acento em verde-limão, título "ERP Completo para Assistência Técnica", descrição e cinco cartões de segmentos (Assistência Técnica, Drones Agrícolas, Mobilidade Elétrica, Carros Elétricos, Máquinas Agrícolas) com ícones do `lucide-react`.
-  - **Formulário em glassmorphism:** cartão translúcido com a marca (`tone="onLight"`), subtítulo, campos Email/Senha, Lembrar-me, "Esqueci minha senha", botão Entrar e rodapé "Criar conta grátis".
-  - Fundo cinematográfico em CSS (gradientes, brilhos verdes, faixas diagonais e grade sutil), puramente decorativo e marcado com `aria-hidden`.
-- `src/index.css`: bloco escopado `.livreos-login*` no fim do arquivo com os tokens do kit de design (paleta, transparência, blur, raio, foco), fallback `@supports not (backdrop-filter)` e `prefers-reduced-motion`.
+  - **Painel de login em vidro líquido:** formulário translúcido com campos Email/Senha, opção Lembrar-me, link "Esqueci minha senha", botão Entrar e rodapé "Criar conta grátis". O painel usa efeito Liquid Glass com backdrop-filter, gotas discretas e bordas luminosas. Nota: a imagem de fundo `public/paisagem_digital_verde_com_ondas_de_vidro.png` ainda não foi adicionada ao repositório; sem ela o painel cai no fundo escuro #001b18 com veils sutis.
+- `src/index.css`: bloco escopado `.livreos-login*` no fim do arquivo com os tokens do kit de design (paleta esmeralda, transparências, blur 26px, raios 32px/20px/15px, saturação 165%), fallback `@supports not (backdrop-filter)` para navegadores sem suporte e `prefers-reduced-motion`. O visual do vidro (gotas, reflexos em `::before`/`::after` com `z-index: -1` sob `isolation: isolate`) vive nestas classes escopadas, nunca em utilitário global, para não afetar o restante do ERP.
 - Detalhe de usabilidade: botão de mostrar/ocultar senha (ícone `Eye`/`EyeOff`), coerente com a referência visual.
 
 **Preservado / verificado**
@@ -206,6 +205,7 @@ Código **completo e compilando** (`npx tsc --noEmit` sem erros). Faltam **somen
 
 **Pendente / próximo**
 
-1. Conferência visual manual nos tamanhos 1440×900, 1280×720, 768×1024, 390×844 e 360×800 (sem ambiente de execução no fluxo desta sessão).
+1. Imagem de fundo `public/paisagem_digital_verde_com_ondas_de_vidro.png` ainda não adicionada ao repositório — sem ela o fundo usa #001b18 com veils graduais.
 2. Teste manual de login real com as três contas (admin, técnico, consulta), campos vazios, e-mail inválido, envio por botão e por Enter.
-3. Build/lint locais não executados por decisão do usuário (ver seção 3).
+3. Build/lint locais não executados por decisão do usuário (ver seção 3 do CONTEXTO.md).
+4. Cobertura e2e: `@playwright/test` não está instalado (dependência recusada anteriormente). Verificar se o ambiente de teste será disponibilizado futuramente.
