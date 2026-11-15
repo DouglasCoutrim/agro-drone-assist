@@ -290,6 +290,7 @@ iframe[src*="lovable"] {
     --border-subtle: 220 22% 95%;
     --input: 152 18% 86%;
     --ring: 160 84% 34%;
+    --field-focus: #009b3c;
     --sidebar-background: 158 72% 13%;
     --sidebar-foreground: 150 30% 92%;
     --sidebar-primary: 152 62% 34%;
@@ -369,7 +370,6 @@ iframe[src*="lovable"] {
   --lo-glass-border: rgba(255, 255, 255, 0.68);
   --lo-input-bg: rgba(231, 243, 250, 0.94);
   --lo-input-border: #c7e0d2;
-  --lo-focus: #0b4f34;
   --lo-glass-blur: 20px;
   --lo-glass-radius: 26px;
   --lo-glass-shadow: 0 24px 70px rgba(0, 12, 18, 0.32);
@@ -411,13 +411,13 @@ iframe[src*="lovable"] {
 }
 
 .livreos-login .livreos-login__button:focus-visible {
-  outline: 2px solid var(--lo-focus);
-  outline-offset: 1px;
+  outline: 2px solid var(--field-focus);
+  outline-offset: 2px;
 }
 
 .livreos-login a:focus-visible,
 .livreos-login button:focus-visible {
-  outline: 2px solid var(--lo-focus);
+  outline: 2px solid var(--field-focus);
   outline-offset: 1px;
 }
 
@@ -456,8 +456,8 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="
 textarea:focus-visible,
 select:focus-visible,
 [role="combobox"]:focus-visible {
-  border-color: var(--lo-focus, hsl(var(--ring))) !important;
-  outline: 1px solid var(--lo-focus, hsl(var(--ring))) !important;
+  border-color: var(--field-focus, hsl(var(--ring))) !important;
+  outline: 1px solid var(--field-focus, hsl(var(--ring))) !important;
   outline-offset: 0 !important;
   box-shadow: none !important;
 }
