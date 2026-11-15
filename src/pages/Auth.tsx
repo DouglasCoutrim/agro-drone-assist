@@ -165,11 +165,6 @@ export default function Auth() {
         <section className="order-1 flex w-full justify-center lg:order-2 lg:justify-end">
           <div className="livreos-login__glass w-full max-w-[560px] p-6 sm:p-8 lg:p-10">
             <div className="flex flex-col gap-6">
-              <div className="flex flex-col items-center gap-3 text-center">
-                <LivreOSLogo size="md" tone="onLight" />
-                <p className="text-sm text-[#4a6470]">Gestão completa para sua assistência técnica</p>
-              </div>
-
               <form onSubmit={handleLogin} className="flex flex-col gap-5">
                 <div className="space-y-2">
                   <Label htmlFor="login-email" className="text-[#09232b]">
