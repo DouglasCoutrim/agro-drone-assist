@@ -472,29 +472,20 @@ iframe[src*="lovable"] {
 }
 
 .livreos-login .livreos-login__button {
-  /* Camada de cima = reflexo superior; camada de baixo = gradiente verde da marca. */
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.05) 42%, rgba(255, 255, 255, 0) 72%),
-    linear-gradient(180deg, #14d94f 0%, #00a83c 52%, #007a38 100%);
+  background: linear-gradient(180deg, #00c83f 0%, #007a38 100%);
   color: #ffffff;
   border: 0;
   border-radius: 14px;
   min-height: 52px;
   font-weight: 700;
-  box-shadow:
-    0 12px 28px -10px rgba(0, 140, 55, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -2px 6px rgba(0, 60, 25, 0.25);
+  box-shadow: 0 10px 24px -12px rgba(0, 140, 55, 0.55);
   transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 .livreos-login .livreos-login__button:hover:not(:disabled) {
-  filter: brightness(1.06);
+  filter: brightness(1.07);
   transform: translateY(-1px);
-  box-shadow:
-    0 16px 32px -10px rgba(0, 165, 65, 0.65),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -2px 6px rgba(0, 60, 25, 0.25);
+  box-shadow: 0 14px 28px -12px rgba(0, 165, 65, 0.6);
 }
 
 .livreos-login .livreos-login__button:active:not(:disabled) {
@@ -621,4 +612,58 @@ select:focus-visible,
   outline: 1px solid var(--field-focus, hsl(var(--ring))) !important;
   outline-offset: 0 !important;
   box-shadow: none !important;
+}
+
+/* ===== Reflexo de luz na marca (light sweep) =====
+   A faixa é recortada em duas etapas: overflow:hidden prende ao quadrado do
+   símbolo e a máscara (aplicada em linha pelo componente, com a própria
+   transparência do emblema) prende ao desenho. Assim a luz nunca invade o
+   fundo nem o texto da marca. A marca em si não se move: só a faixa desliza. */
+.livreos-logo__sweep {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.livreos-logo__sweep-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 55%;
+  background-image: linear-gradient(
+    105deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(214, 255, 232, 0.35) 40%,
+    rgba(255, 255, 255, 0.92) 50%,
+    rgba(214, 255, 232, 0.35) 60%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: livreos-light-sweep 6s ease-in-out infinite;
+}
+
+/* Ciclo de 6s: a travessia dura 0,9s (76% -> 91%) e o resto é a pausa. */
+@keyframes livreos-light-sweep {
+  0%,
+  76% {
+    transform: translateX(-160%);
+  }
+  91%,
+  100% {
+    transform: translateX(240%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .livreos-logo__sweep {
+    display: none;
+  }
 }

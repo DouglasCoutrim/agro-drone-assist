@@ -120,13 +120,13 @@ export default function Auth() {
         <div className="absolute inset-0 bg-gradient-to-b from-[#001116]/65 via-[#001116]/20 to-[#001116]/45 lg:bg-gradient-to-r lg:from-[#001116]/50 lg:via-[#001116]/10 lg:to-transparent" />
       </div>
 
-      <div className="relative z-10 mx-auto grid w-full max-w-[1600px] flex-1 grid-cols-1 content-start items-center gap-8 px-5 py-9 sm:gap-10 sm:px-8 lg:grid-cols-[1fr_minmax(400px,540px)] lg:content-center lg:gap-x-12 lg:gap-y-12 lg:px-10 lg:py-12 xl:grid-cols-[1.05fr_minmax(440px,560px)] xl:gap-x-16 xl:px-16 xl:py-14">
+      <div className="relative z-10 mx-auto grid w-full max-w-[1600px] flex-1 grid-cols-1 content-start items-center gap-8 px-5 py-9 sm:gap-10 sm:px-8 lg:grid-cols-[1fr_minmax(400px,540px)] lg:content-center lg:gap-x-12 lg:gap-y-12 lg:px-10 lg:py-12 xl:grid-cols-[1.05fr_minmax(420px,500px)] xl:gap-x-16 xl:px-16 xl:py-14">
         {/* 1. Marca + título (desktop: coluna esquerda, linha 1) */}
         <section className="flex flex-col gap-6 lg:col-start-1 lg:row-start-1 lg:gap-8">
           <div className="flex justify-center lg:-translate-x-6">
             <LivreOSLogo size="md" tone="onDark" className="lg:hidden" />
             <LivreOSLogo size="lg" tone="onDark" className="hidden lg:flex xl:hidden" />
-            <LivreOSLogo size="xl" tone="onDark" className="hidden xl:flex" />
+            <LivreOSLogo size="2xl" tone="onDark" className="hidden xl:flex" />
           </div>
 
           <div className="space-y-6">
