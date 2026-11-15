@@ -134,7 +134,7 @@ export default function Auth() {
 
           <div className="space-y-7">
             <span aria-hidden="true" className="block h-1 w-16 rounded-full bg-[#7cff00]" />
-            <h1 className="max-w-[18ch] text-3xl font-extrabold leading-[1.18] tracking-tight text-white sm:text-4xl lg:text-[3.4rem]">
+            <h1 className="max-w-[18ch] text-3xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-4xl sm:leading-[1.15] lg:text-[3.4rem] lg:leading-[1.15]">
               ERP Completo para Assistência Técnica
             </h1>
             <p className="max-w-xl text-base text-white/75 sm:text-lg lg:text-xl">
