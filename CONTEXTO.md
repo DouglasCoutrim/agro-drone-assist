@@ -183,3 +183,29 @@ Código **completo e compilando** (`npx tsc --noEmit` sem erros). Faltam **somen
 2. Tabelas sem `organization_id` ficaram fora: `user_roles`, `user_permissions`, `os_apontamentos_horas`, `patrimonio_movimentacoes`, `nota_fiscal_itens`, `segmentos` e `wiki_*`. Auditar papéis e permissões exige derivação de organização (como foi feito com `venda_itens`).
 3. Eventos de acesso (login, logout, troca de senha) precisam de instrumentação no app ou em edge function, não de gatilho de tabela.
 4. Sem cobertura e2e para a tela, pelo mesmo motivo das demais.
+
+---
+
+## 9. Sessão — Redesign visual da tela de login (LivreOS Enterprise)
+
+**Entregue (somente visual — nenhuma regra de negócio alterada)**
+
+- `src/pages/Auth.tsx` reescrito como composição de página inteira com duas áreas:
+  - **Painel institucional:** marca `LivreOSLogo` (`tone="onDark"`), acento em verde-limão, título "ERP Completo para Assistência Técnica", descrição e cinco cartões de segmentos (Assistência Técnica, Drones Agrícolas, Mobilidade Elétrica, Carros Elétricos, Máquinas Agrícolas) com ícones do `lucide-react`.
+  - **Formulário em glassmorphism:** cartão translúcido com a marca (`tone="onLight"`), subtítulo, campos Email/Senha, Lembrar-me, "Esqueci minha senha", botão Entrar e rodapé "Criar conta grátis".
+  - Fundo cinematográfico em CSS (gradientes, brilhos verdes, faixas diagonais e grade sutil), puramente decorativo e marcado com `aria-hidden`.
+- `src/index.css`: bloco escopado `.livreos-login*` no fim do arquivo com os tokens do kit de design (paleta, transparência, blur, raio, foco), fallback `@supports not (backdrop-filter)` e `prefers-reduced-motion`.
+- Detalhe de usabilidade: botão de mostrar/ocultar senha (ícone `Eye`/`EyeOff`), coerente com a referência visual.
+
+**Preservado / verificado**
+
+- Toda a lógica de autenticação permaneceu idêntica: validação com Zod (`emailSchema`/`passwordSchema`), `signIn`, mensagens de erro/sucesso, `livreos:remember` (lembrar-me), aviso de sessão expirada (`?expired=1`) e redirecionamento por perfil (platform admin → `/admin/dashboard`; demais → `/dashboard`).
+- Destinos dos links inalterados: `/reset-password` e `/cadastro-empresa`.
+- Acessibilidade: labels associados (`htmlFor`/`id`), ícones decorativos com `aria-hidden`, foco visível, `aria-label` no botão de senha, atributos `name`/`autocomplete`/`type`/`required` mantidos.
+- Responsivo: desktop em duas colunas, tablet com cartões quebrando linha e mobile priorizando o formulário (a área institucional vai para baixo via `order`), sem overflow horizontal.
+
+**Pendente / próximo**
+
+1. Conferência visual manual nos tamanhos 1440×900, 1280×720, 768×1024, 390×844 e 360×800 (sem ambiente de execução no fluxo desta sessão).
+2. Teste manual de login real com as três contas (admin, técnico, consulta), campos vazios, e-mail inválido, envio por botão e por Enter.
+3. Build/lint locais não executados por decisão do usuário (ver seção 3).
