@@ -365,7 +365,7 @@ iframe[src*="lovable"] {
   --lo-navy-deep: #001116;
   --lo-text: #09232b;
   --lo-muted: #6b8790;
-  --lo-glass-bg: rgba(255, 255, 255, 0.82);
+  --lo-glass-bg: rgba(255, 255, 255, 0.74);
   --lo-glass-border: rgba(255, 255, 255, 0.68);
   --lo-input-bg: rgba(231, 243, 250, 0.94);
   --lo-input-border: #c8dce8;
@@ -435,7 +435,7 @@ iframe[src*="lovable"] {
 
 @media (max-width: 767px) {
   .livreos-login {
-    --lo-glass-bg: rgba(255, 255, 255, 0.92);
+    --lo-glass-bg: rgba(255, 255, 255, 0.86);
     --lo-glass-blur: 14px;
     --lo-glass-radius: 20px;
   }
