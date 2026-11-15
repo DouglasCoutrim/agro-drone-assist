@@ -357,7 +357,7 @@ iframe[src*="lovable"] {
   body { background: #fff !important; color: #000 !important; }
 }
 
-/* ===== Login LivreOS Enterprise (escopo isolado) ===== */
+/* ===== Login LivreOS Enterprise — Liquid Glass (escopo isolado) ===== */
 .livreos-login {
   --lo-green: #00c83f;
   --lo-green-dark: #007a38;
@@ -366,56 +366,139 @@ iframe[src*="lovable"] {
   --lo-navy-deep: #001116;
   --lo-text: #09232b;
   --lo-muted: #6b8790;
-  --lo-glass-border: rgba(255, 255, 255, 0.7);
-  --lo-input-bg: rgba(231, 243, 250, 0.94);
-  --lo-input-border: #c7e0d2;
-  --lo-glass-blur: 24px;
-  --lo-glass-radius: 26px;
-  --lo-glass-shadow: 0 24px 70px rgba(0, 12, 18, 0.32);
+  --lo-glass-radius: 28px;
+  --lo-glass-blur: 26px;
+  --lo-glass-saturate: 165%;
+  --lo-glass-border: rgba(255, 255, 255, 0.82);
+  --lo-glass-shadow: 0 24px 70px -22px rgba(0, 10, 16, 0.62);
+  --lo-input-bg-top: rgba(247, 252, 255, 0.74);
+  --lo-input-bg-bottom: rgba(226, 240, 249, 0.52);
+  --lo-input-border: rgba(255, 255, 255, 0.72);
+  --lo-chip-radius: 18px;
+  --lo-chip-blur: 16px;
+}
+
+/* Foto de fundo oficial — cobre a tela sem distorcer, preservando as ondas e as gotas. */
+.livreos-login .livreos-login__photo {
+  background-image: url("/paisagem_digital_verde_com_ondas_de_vidro.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .livreos-login .livreos-login__glass {
-  /* Camada de cima = reflexo diagonal; camada de baixo = tinta do vidro. */
-  background:
-    linear-gradient(120deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0) 46%),
-    linear-gradient(155deg, rgba(255, 255, 255, 0.84) 0%, rgba(255, 255, 255, 0.78) 48%, rgba(236, 250, 243, 0.74) 100%);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  /* Tinta do vidro: mais clara na entrada de luz (canto superior esquerdo). */
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.78) 0%,
+    rgba(255, 255, 255, 0.66) 46%,
+    rgba(255, 255, 255, 0.72) 100%
+  );
   border: 1px solid var(--lo-glass-border);
-  border-top-color: rgba(255, 255, 255, 0.94);
-  border-bottom-color: rgba(255, 255, 255, 0.42);
+  border-top-color: rgba(255, 255, 255, 0.95);
+  border-bottom-color: rgba(255, 255, 255, 0.55);
   border-radius: var(--lo-glass-radius);
   box-shadow:
     var(--lo-glass-shadow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -70px 80px -70px rgba(0, 200, 63, 0.28);
-  -webkit-backdrop-filter: blur(var(--lo-glass-blur)) saturate(180%) brightness(1.04);
-  backdrop-filter: blur(var(--lo-glass-blur)) saturate(180%) brightness(1.04);
+    inset 0 1px 2px rgba(255, 255, 255, 0.9),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.25),
+    inset 0 -90px 100px -90px rgba(0, 200, 63, 0.22);
+  -webkit-backdrop-filter: blur(var(--lo-glass-blur)) saturate(var(--lo-glass-saturate));
+  backdrop-filter: blur(var(--lo-glass-blur)) saturate(var(--lo-glass-saturate));
+}
+
+/* Reflexo especular: luz ampla entrando pelo canto superior esquerdo. */
+.livreos-login .livreos-login__glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(130% 70% at 6% -12%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 58%),
+    radial-gradient(80% 55% at 100% 0%, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 60%),
+    linear-gradient(118deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0) 40%);
+}
+
+/* Gotas de água e pontos de refração espalhados pela superfície. */
+.livreos-login .livreos-login__glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.8;
+  background-image:
+    radial-gradient(circle 7px at 87% 8%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.32) 45%, rgba(255, 255, 255, 0) 72%),
+    radial-gradient(circle 4px at 74% 14%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.25) 45%, rgba(255, 255, 255, 0) 75%),
+    radial-gradient(circle 3px at 93% 17%, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 72%),
+    radial-gradient(circle 6px at 9% 46%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.18) 48%, rgba(255, 255, 255, 0) 74%),
+    radial-gradient(circle 3px at 20% 39%, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 70%),
+    radial-gradient(circle 5px at 94% 72%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 72%),
+    radial-gradient(circle 3px at 84% 80%, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 70%),
+    radial-gradient(circle 4px at 12% 90%, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 72%);
 }
 
 .livreos-login .livreos-login__input {
-  background: var(--lo-input-bg);
+  background: linear-gradient(180deg, var(--lo-input-bg-top) 0%, var(--lo-input-bg-bottom) 100%);
   border: 1px solid var(--lo-input-border);
-  border-radius: 12px;
+  border-radius: 14px;
   color: var(--lo-text);
   min-height: 48px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 3px rgba(0, 10, 16, 0.08);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .livreos-login .livreos-login__input::placeholder {
-  color: #7d97a3;
+  color: #6f8b99;
+}
+
+/* Foco: linha verde fina + iluminação suave ao redor do campo. */
+.livreos-login .livreos-login__input:focus-visible {
+  border-color: var(--field-focus) !important;
+  outline: 1px solid var(--field-focus) !important;
+  outline-offset: 0 !important;
+  box-shadow:
+    0 0 0 4px rgba(0, 155, 60, 0.14),
+    0 6px 18px -6px rgba(0, 155, 60, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
 }
 
 .livreos-login .livreos-login__button {
-  background: linear-gradient(100deg, #08c83f 0%, #007a38 100%);
+  /* Camada de cima = reflexo superior; camada de baixo = gradiente verde da marca. */
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.05) 42%, rgba(255, 255, 255, 0) 72%),
+    linear-gradient(180deg, #14d94f 0%, #00a83c 52%, #007a38 100%);
   color: #ffffff;
   border: 0;
-  border-radius: 12px;
+  border-radius: 14px;
   min-height: 52px;
-  box-shadow: 0 8px 22px rgba(0, 140, 55, 0.28);
   font-weight: 700;
+  box-shadow:
+    0 12px 28px -10px rgba(0, 140, 55, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -2px 6px rgba(0, 60, 25, 0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 .livreos-login .livreos-login__button:hover:not(:disabled) {
   filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow:
+    0 16px 32px -10px rgba(0, 165, 65, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -2px 6px rgba(0, 60, 25, 0.25);
+}
+
+.livreos-login .livreos-login__button:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .livreos-login .livreos-login__button:focus-visible {
@@ -429,16 +512,79 @@ iframe[src*="lovable"] {
   outline-offset: 1px;
 }
 
+/* --- Placas de vidro dos segmentos --- */
+.livreos-login .livreos-login__chip {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: linear-gradient(160deg, rgba(3, 27, 34, 0.58) 0%, rgba(3, 27, 34, 0.32) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: var(--lo-chip-radius);
+  box-shadow:
+    0 14px 32px -18px rgba(0, 10, 16, 0.75),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26);
+  -webkit-backdrop-filter: blur(var(--lo-chip-blur)) saturate(150%);
+  backdrop-filter: blur(var(--lo-chip-blur)) saturate(150%);
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Reflexo luminoso na parte superior da placa. */
+.livreos-login .livreos-login__chip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(120% 60% at 20% -20%, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 46%);
+}
+
+/* Pontos de luz simulando gotas sobre a placa. */
+.livreos-login .livreos-login__chip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.75;
+  background-image:
+    radial-gradient(circle 3px at 78% 22%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 72%),
+    radial-gradient(circle 2px at 86% 30%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 70%),
+    radial-gradient(circle 2.5px at 16% 76%, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 72%);
+}
+
+.livreos-login .livreos-login__chip:hover {
+  transform: translateY(-3px);
+  border-color: rgba(124, 255, 0, 0.6);
+  box-shadow:
+    0 20px 40px -18px rgba(0, 10, 16, 0.8),
+    0 0 28px -6px rgba(124, 255, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* Fallback: sem backdrop-filter o vidro vira uma superfície opaca legível. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .livreos-login .livreos-login__glass {
-    background: rgba(255, 255, 255, 0.96);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.92) 100%);
+  }
+  .livreos-login .livreos-login__chip {
+    background: rgba(3, 27, 34, 0.82);
   }
 }
 
+/* Telas pequenas: desfoque e raios menores, mantendo o vidro. */
 @media (max-width: 767px) {
   .livreos-login {
-    --lo-glass-blur: 14px;
-    --lo-glass-radius: 20px;
+    --lo-glass-blur: 16px;
+    --lo-glass-radius: 22px;
+    --lo-chip-radius: 16px;
+    --lo-chip-blur: 12px;
+  }
+  .livreos-login .livreos-login__glass::after {
+    opacity: 0.6;
   }
 }
 
@@ -451,6 +597,10 @@ iframe[src*="lovable"] {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+  .livreos-login .livreos-login__chip:hover,
+  .livreos-login .livreos-login__button:hover:not(:disabled) {
+    transform: none;
+  }
 }
 
 /* ===== Foco dos campos (global) =====
@@ -458,8 +608,12 @@ iframe[src*="lovable"] {
    + offset dos componentes shadcn. O !important é necessário porque esse
    anel vem de utilities do Tailwind dentro de src/components/ui/*, que
    este projeto não edita. Checkbox/radio/range/color ficam de fora porque
-   já usam a borda verde da marca. */
-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):focus-visible,
+   já usam a borda verde da marca.
+
+   O seletor vai dentro de :where() para ficar com especificidade baixa:
+   assim telas específicas (a de login, por exemplo) conseguem sobrescrever
+   este foco com um brilho próprio sem precisar de seletores artificiais. */
+input:where(:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"])):focus-visible,
 textarea:focus-visible,
 select:focus-visible,
 [role="combobox"]:focus-visible {

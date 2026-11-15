@@ -114,56 +114,35 @@ export default function Auth() {
 
   return (
     <div className="livreos-login relative flex min-h-[100svh] w-full flex-col overflow-hidden bg-[#031b22] text-white">
-      {/* Fundo cinematográfico (puramente decorativo) */}
+      {/* Fundo: foto oficial + véu de contraste (puramente decorativo) */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(120%_100%_at_12%_0%,#0a3a2c_0%,#031b22_45%,#001116_100%)]" />
-        <div className="absolute -left-40 top-1/4 h-[38rem] w-[38rem] rounded-full bg-[#00c83f]/20 blur-[140px]" />
-        <div className="absolute -right-32 -top-24 h-[34rem] w-[34rem] rounded-full bg-[#7cff00]/10 blur-[130px]" />
-        <div className="absolute -bottom-40 left-1/3 h-[30rem] w-[30rem] rounded-full bg-[#007a38]/25 blur-[130px]" />
-        <div className="absolute -left-24 top-[36%] h-[3px] w-[72%] -rotate-6 bg-gradient-to-r from-transparent via-[#7cff00]/70 to-transparent" />
-        <div className="absolute -right-24 top-[58%] h-[2px] w-[58%] rotate-3 bg-gradient-to-r from-transparent via-[#00c83f]/60 to-transparent" />
-        <div className="absolute inset-0 opacity-[0.10] [background-image:linear-gradient(rgba(255,255,255,0.6)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.6)_1px,transparent_1px)] [background-size:64px_64px]" />
+        <div className="livreos-login__photo absolute inset-0" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#001116]/65 via-[#001116]/20 to-[#001116]/45 lg:bg-gradient-to-r lg:from-[#001116]/50 lg:via-[#001116]/10 lg:to-transparent" />
       </div>
 
-      <div className="relative z-10 mx-auto grid w-full max-w-[1600px] flex-1 grid-cols-1 items-center gap-10 px-5 py-10 sm:px-8 lg:grid-cols-[1.05fr_minmax(440px,560px)] lg:gap-16 lg:px-16 lg:py-14">
-        {/* Área institucional */}
-        <section className="order-2 flex flex-col gap-8 lg:order-1 lg:gap-14">
-          {/* Marca centralizada (com leve deslocamento à esquerda): tamanho normal em lg e ampliada (2x) a partir de xl */}
-          <div className="hidden justify-center lg:flex xl:hidden">
-            <LivreOSLogo size="lg" tone="onDark" className="-translate-x-6" />
-          </div>
-          <div className="hidden justify-center xl:flex">
-            <LivreOSLogo size="xl" tone="onDark" className="-translate-x-6" />
+      <div className="relative z-10 mx-auto grid w-full max-w-[1600px] flex-1 grid-cols-1 content-start items-center gap-8 px-5 py-9 sm:gap-10 sm:px-8 lg:grid-cols-[1fr_minmax(400px,540px)] lg:content-center lg:gap-x-12 lg:gap-y-12 lg:px-10 lg:py-12 xl:grid-cols-[1.05fr_minmax(440px,560px)] xl:gap-x-16 xl:px-16 xl:py-14">
+        {/* 1. Marca + título (desktop: coluna esquerda, linha 1) */}
+        <section className="flex flex-col gap-6 lg:col-start-1 lg:row-start-1 lg:gap-8">
+          <div className="flex justify-center lg:-translate-x-6">
+            <LivreOSLogo size="md" tone="onDark" className="lg:hidden" />
+            <LivreOSLogo size="lg" tone="onDark" className="hidden lg:flex xl:hidden" />
+            <LivreOSLogo size="xl" tone="onDark" className="hidden xl:flex" />
           </div>
 
-          <div className="space-y-7">
+          <div className="space-y-6">
             <span aria-hidden="true" className="block h-1 w-16 rounded-full bg-[#7cff00]" />
-            <h1 className="max-w-[18ch] text-3xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-4xl sm:leading-[1.15] lg:text-[3.4rem] lg:leading-[1.15]">
+            <h1 className="max-w-[18ch] text-[clamp(1.75rem,3.2vw,3.4rem)] font-extrabold leading-[1.15] tracking-tight text-white">
               ERP Completo para Assistência Técnica
             </h1>
-            <p className="max-w-xl text-base text-white/75 sm:text-lg lg:text-xl">
+            <p className="max-w-xl text-base text-white/80 sm:text-lg lg:text-xl">
               Gestão, atendimento, serviços, estoque e financeiro em um só lugar.
             </p>
           </div>
-
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 lg:gap-4">
-            {SEGMENTOS.map(({ label, Icon }) => (
-              <li
-                key={label}
-                className="flex flex-col items-center gap-2 rounded-2xl border border-[#00c83f]/35 bg-gradient-to-b from-white/[0.14] to-white/[0.03] px-3 py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.22)] backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:border-[#7cff00]/60 hover:from-white/[0.2] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_14px_34px_-16px_rgba(124,255,0,0.55)]"
-              >
-                <Icon className="h-6 w-6 text-[#7cff00]" aria-hidden="true" />
-                <span className="text-[0.7rem] font-semibold uppercase leading-tight tracking-wide text-white/85">
-                  {label}
-                </span>
-              </li>
-            ))}
-          </ul>
         </section>
 
-        {/* Área do formulário */}
-        <section className="order-1 flex w-full justify-center lg:order-2 lg:justify-end">
-          <div className="livreos-login__glass w-full max-w-[560px] p-6 sm:p-8 lg:p-10">
+        {/* 2. Formulário (desktop: coluna direita, ocupando as duas linhas) */}
+        <section className="flex w-full justify-center lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:justify-end">
+          <div className="livreos-login__glass w-full max-w-[560px] p-5 sm:p-8 lg:p-9 xl:p-10">
             <div className="flex flex-col gap-6">
               <form onSubmit={handleLogin} className="flex flex-col gap-5">
                 <div className="space-y-2">
@@ -173,7 +152,7 @@ export default function Auth() {
                   <div className="relative">
                     <Mail
                       aria-hidden="true"
-                      className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7d97a3]"
+                      className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5f8391]"
                     />
                     <Input
                       id="login-email"
@@ -196,7 +175,7 @@ export default function Auth() {
                   <div className="relative">
                     <Lock
                       aria-hidden="true"
-                      className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7d97a3]"
+                      className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5f8391]"
                     />
                     <Input
                       id="login-password"
@@ -262,7 +241,7 @@ export default function Auth() {
                 </Button>
               </form>
 
-              <div className="border-t border-[#09232b]/10 pt-5 text-center text-sm text-[#4a6470]">
+              <div className="border-t border-[#09232b]/10 pt-5 text-center text-sm text-[#3f5a66]">
                 Quer cadastrar sua empresa?{" "}
                 <a
                   href="/cadastro-empresa"
@@ -273,6 +252,23 @@ export default function Auth() {
               </div>
             </div>
           </div>
+        </section>
+
+        {/* 3. Segmentos (desktop: coluna esquerda, linha 2) */}
+        <section className="lg:col-start-1 lg:row-start-2">
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 lg:gap-3 xl:gap-4">
+            {SEGMENTOS.map(({ label, Icon }) => (
+              <li
+                key={label}
+                className="livreos-login__chip flex flex-col items-center gap-2 px-2.5 py-4 text-center sm:px-3"
+              >
+                <Icon className="h-6 w-6 text-[#7cff00]" aria-hidden="true" />
+                <span className="text-[0.7rem] font-semibold uppercase leading-tight tracking-wide text-white/90">
+                  {label}
+                </span>
+              </li>
+            ))}
+          </ul>
         </section>
       </div>
     </div>
