@@ -366,22 +366,30 @@ iframe[src*="lovable"] {
   --lo-navy-deep: #001116;
   --lo-text: #09232b;
   --lo-muted: #6b8790;
-  --lo-glass-bg: rgba(255, 255, 255, 0.74);
-  --lo-glass-border: rgba(255, 255, 255, 0.68);
+  --lo-glass-border: rgba(255, 255, 255, 0.7);
   --lo-input-bg: rgba(231, 243, 250, 0.94);
   --lo-input-border: #c7e0d2;
-  --lo-glass-blur: 20px;
+  --lo-glass-blur: 24px;
   --lo-glass-radius: 26px;
   --lo-glass-shadow: 0 24px 70px rgba(0, 12, 18, 0.32);
 }
 
 .livreos-login .livreos-login__glass {
-  background: var(--lo-glass-bg);
+  /* Camada de cima = reflexo diagonal; camada de baixo = tinta do vidro. */
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0) 46%),
+    linear-gradient(155deg, rgba(255, 255, 255, 0.84) 0%, rgba(255, 255, 255, 0.78) 48%, rgba(236, 250, 243, 0.74) 100%);
   border: 1px solid var(--lo-glass-border);
+  border-top-color: rgba(255, 255, 255, 0.94);
+  border-bottom-color: rgba(255, 255, 255, 0.42);
   border-radius: var(--lo-glass-radius);
-  box-shadow: var(--lo-glass-shadow);
-  -webkit-backdrop-filter: blur(var(--lo-glass-blur)) saturate(135%);
-  backdrop-filter: blur(var(--lo-glass-blur)) saturate(135%);
+  box-shadow:
+    var(--lo-glass-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -70px 80px -70px rgba(0, 200, 63, 0.28);
+  -webkit-backdrop-filter: blur(var(--lo-glass-blur)) saturate(180%) brightness(1.04);
+  backdrop-filter: blur(var(--lo-glass-blur)) saturate(180%) brightness(1.04);
 }
 
 .livreos-login .livreos-login__input {
@@ -429,7 +437,6 @@ iframe[src*="lovable"] {
 
 @media (max-width: 767px) {
   .livreos-login {
-    --lo-glass-bg: rgba(255, 255, 255, 0.86);
     --lo-glass-blur: 14px;
     --lo-glass-radius: 20px;
   }

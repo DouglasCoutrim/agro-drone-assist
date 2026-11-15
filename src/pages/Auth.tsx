@@ -150,7 +150,7 @@ export default function Auth() {
             {SEGMENTOS.map(({ label, Icon }) => (
               <li
                 key={label}
-                className="flex flex-col items-center gap-2 rounded-2xl border border-[#00c83f]/35 bg-white/5 px-3 py-4 text-center transition-colors hover:border-[#7cff00]/60 hover:bg-white/10"
+                className="flex flex-col items-center gap-2 rounded-2xl border border-[#00c83f]/35 bg-gradient-to-b from-white/[0.14] to-white/[0.03] px-3 py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.22)] backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:border-[#7cff00]/60 hover:from-white/[0.2] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_14px_34px_-16px_rgba(124,255,0,0.55)]"
               >
                 <Icon className="h-6 w-6 text-[#7cff00]" aria-hidden="true" />
                 <span className="text-[0.7rem] font-semibold uppercase leading-tight tracking-wide text-white/85">
