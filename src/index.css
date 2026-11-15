@@ -472,24 +472,17 @@ iframe[src*="lovable"] {
 }
 
 .livreos-login .livreos-login__button {
-  background: linear-gradient(180deg, #00c83f 0%, #007a38 100%);
+  background: linear-gradient(100deg, #08c83f 0%, #007a38 100%);
   color: #ffffff;
   border: 0;
-  border-radius: 14px;
+  border-radius: 12px;
   min-height: 52px;
+  box-shadow: 0 8px 22px rgba(0, 140, 55, 0.28);
   font-weight: 700;
-  box-shadow: 0 10px 24px -12px rgba(0, 140, 55, 0.55);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 .livreos-login .livreos-login__button:hover:not(:disabled) {
-  filter: brightness(1.07);
-  transform: translateY(-1px);
-  box-shadow: 0 14px 28px -12px rgba(0, 165, 65, 0.6);
-}
-
-.livreos-login .livreos-login__button:active:not(:disabled) {
-  transform: translateY(0);
+  filter: brightness(1.06);
 }
 
 .livreos-login .livreos-login__button:focus-visible {
@@ -588,8 +581,7 @@ iframe[src*="lovable"] {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
-  .livreos-login .livreos-login__chip:hover,
-  .livreos-login .livreos-login__button:hover:not(:disabled) {
+  .livreos-login .livreos-login__chip:hover {
     transform: none;
   }
 }
