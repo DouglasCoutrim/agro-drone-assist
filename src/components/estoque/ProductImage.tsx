@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ImageOff, ImageIcon, Loader2, Search, Trash2 } from "lucide-react";
+import { ImageOff, ImageIcon, Loader2, Link2, Search, Trash2 } from "lucide-react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { toast } from "sonner";
@@ -53,17 +54,26 @@ export function ProductPhotoPanel({ itemId, descricao, url, onChange }: { itemId
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [opts, setOpts] = useState<string[]>([]);
+  const [manual, setManual] = useState("");
+  const [salvando, setSalvando] = useState(false);
 
   const salvar = async (u: string | null) => {
+    setSalvando(true);
     const { error } = await supabase.from("itens_estoque").update({ imagem_url: u }).eq("id", itemId);
+    setSalvando(false);
     if (error) return toast.error("Não foi possível salvar a foto.");
-    onChange(u); setOpen(false);
+    onChange(u); setOpen(false); setManual("");
   };
   const buscar = async () => {
     setOpen(true); setLoading(true); setOpts([]);
-    try { const r = await buscarFotos(descricao); setOpts(r); if (!r.length) toast.info("Nenhuma foto encontrada."); }
+    try { const r = await buscarFotos(descricao); setOpts(r); }
     catch (e: any) { toast.error(e.message); }
     finally { setLoading(false); }
+  };
+  const usarUrl = () => {
+    const u = manual.trim();
+    if (!/^https?:\/\//i.test(u)) return toast.error("Informe um endereço de imagem começando com http(s)://");
+    salvar(u);
   };
 
   return (
@@ -77,13 +87,33 @@ export function ProductPhotoPanel({ itemId, descricao, url, onChange }: { itemId
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Escolha a foto</DialogTitle><DialogDescription>{descricao}</DialogDescription></DialogHeader>
           {loading ? <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin" /></div> : (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {opts.map((u) => (
-                <button key={u} type="button" onClick={() => salvar(u)} className="rounded-md border p-1 hover:border-primary">
-                  <SafeImg src={u} className="h-28 w-full" />
-                </button>
-              ))}
-            </div>
+            <>
+              {opts.length ? (
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {opts.map((u) => (
+                    <button key={u} type="button" disabled={salvando} onClick={() => salvar(u)} className="rounded-md border p-1 hover:border-primary">
+                      <SafeImg src={u} className="h-28 w-full" />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+                  Nenhuma foto encontrada para esta descrição. Encurte o nome (ex.: "Bateria DJI Agras T40") e busque de novo, ou cole o link da foto abaixo.
+                </p>
+              )}
+              <div className="flex gap-2">
+                <Input
+                  value={manual}
+                  onChange={(e) => setManual(e.target.value)}
+                  placeholder="https://... (link da foto)"
+                  className="h-9"
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); usarUrl(); } }}
+                />
+                <Button type="button" size="sm" variant="outline" onClick={usarUrl} disabled={salvando || !manual.trim()}>
+                  <Link2 className="mr-1 h-4 w-4" />Usar
+                </Button>
+              </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
