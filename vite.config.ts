@@ -3,6 +3,33 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import dyadComponentTagger from '@dyad-sh/react-vite-component-tagger';
+import { generatePwaIcons } from "./scripts/generate-pwa-icons";
+
+/**
+ * Refaz os ícones de instalação do PWA a partir de `src/assets/logo-icon.png`
+ * (emblema da marca) sempre que o servidor de desenvolvimento ou o build começa.
+ */
+function iconesPwa() {
+  const gerar = async (contexto: string) => {
+    try {
+      const arquivos = await generatePwaIcons();
+      if (arquivos.length > 0) {
+        console.log(
+          `[pwa-icons] ${arquivos.length} ícones gerados de src/assets/logo-icon.png (${contexto}).`,
+        );
+      }
+    } catch (erro) {
+      // Nunca derruba o app por causa de ícone: mantém os arquivos já existentes.
+      console.warn(`[pwa-icons] falha ao gerar os ícones (${contexto}):`, erro);
+    }
+  };
+
+  return {
+    name: "livreos-pwa-icons",
+    configureServer: () => gerar("dev"),
+    buildStart: () => gerar("build"),
+  };
+}
 
 // Both values are public browser credentials. Use the managed environment when
 // available; the fallback prevents a publication missing .env from going blank.
@@ -23,8 +50,9 @@ export default defineConfig(({ mode }) => {
     host: "::",
     port: 8080,
   },
-  plugins: [dyadComponentTagger(), 
+  plugins: [dyadComponentTagger(),
     react(),
+    iconesPwa(),
     mode === "development" && componentTagger(),
   ].filter(Boolean),
   resolve: {
