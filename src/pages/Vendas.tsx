@@ -670,7 +670,7 @@ export default function Vendas() {
                   <Button type="button" variant="outline" disabled={formTab === FORM_TABS[0][0]} onClick={() => setFormTab(FORM_TABS[Math.max(0, FORM_TABS.findIndex((t) => t[0] === formTab) - 1)][0])}>Anterior</Button>
                   {formTab !== FORM_TABS[FORM_TABS.length - 1][0]
                     ? <Button type="button" onClick={() => setFormTab(FORM_TABS[FORM_TABS.findIndex((t) => t[0] === formTab) + 1][0])}>Próxima</Button>
-                    : <Button type="submit" form="venda-form" disabled={formLoading}>Salvar</Button>}
+                    : <Button type="submit" form="venda-form" disabled={formLoading}>{nfeDados.emitir_nota ? "Salvar e emitir Nota" : "Salvar"}</Button>}
                 </div>
                 </Tabs>
               </div>
