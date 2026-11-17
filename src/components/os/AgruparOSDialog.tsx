@@ -28,18 +28,6 @@ const TIPO: Record<string, string> = {
   drone_agricola: "Drone Agrícola", drone_convencional: "Drone", controle: "Controle Remoto", bateria: "Bateria", outro: "Outro",
 };
 const CLOSED = ["entregue", "cancelada", "finalizada"];
-const STATUS_OPTIONS = [
-  { value: "recebido", label: "Recebido" },
-  { value: "aguardando_diagnostico", label: "Diagnóstico" },
-  { value: "aguardando_aprovacao", label: "Aprovação" },
-  { value: "aprovado", label: "Aprovado" },
-  { value: "em_reparo", label: "Em Reparo" },
-  { value: "em_testes", label: "Testes" },
-  { value: "pronto_retirada", label: "Pronto" },
-  { value: "entregue", label: "Entregue" },
-  { value: "finalizada", label: "Finalizada" },
-  { value: "cancelada", label: "Cancelada" },
-];
 const FORMAS = [
   { value: "dinheiro", label: "Dinheiro" }, { value: "pix", label: "PIX" },
   { value: "debito", label: "Débito" }, { value: "credito", label: "Crédito" },
@@ -60,17 +48,17 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
   const { config: empresa } = useEmpresaConfig();
   const [clientes, setClientes] = useState<{ id: string; nome: string; telefone: string }[]>([]);
     const [clienteId, setClienteId] = useState("");
-    const [statusFilter, setStatusFilter] = useState("");
-    const [osList, setOsList] = useState<OSRow[]>([]);
-    const [showAll, setShowAll] = useState(false);
-    const [selected, setSelected] = useState<Set<string>>(new Set());
-    const [itemsByOS, setItemsByOS] = useState<Record<string, any[]>>({});
-    const [loadingOS, setLoadingOS] = useState(false);
-    const [desconto, setDesconto] = useState(0);
-    const [validade, setValidade] = useState(todayDateInput(new Date(Date.now() + 15 * 86400000)));
-    const [observacao, setObservacao] = useState("");
-    const [busy, setBusy] = useState(false);
-    const [forma, setForma] = useState("dinheiro");
+        const [showClosed, setShowClosed] = useState(false);
+        const [showOpen, setShowOpen] = useState(true);
+        const [osList, setOsList] = useState<OSRow[]>([]);
+        const [selected, setSelected] = useState<Set<string>>(new Set());
+        const [itemsByOS, setItemsByOS] = useState<Record<string, any[]>>({});
+        const [loadingOS, setLoadingOS] = useState(false);
+        const [desconto, setDesconto] = useState(0);
+        const [validade, setValidade] = useState(todayDateInput(new Date(Date.now() + 15 * 86400000)));
+        const [observacao, setObservacao] = useState("");
+        const [busy, setBusy] = useState(false);
+        const [forma, setForma] = useState("dinheiro");
   const { user } = useAuth();
 
   useEffect(() => {
@@ -107,12 +95,15 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
   }, [clienteId, organization?.id]);
 
   const visible = useMemo(() => {
-      let list = showAll ? osList : osList.filter(o => !CLOSED.includes(o.status));
-      if (statusFilter) {
-        list = list.filter(o => o.status === statusFilter);
-      }
-      return list;
-    }, [osList, showAll, statusFilter]);
+        let list = osList;
+        if (showClosed && !showOpen) {
+          list = list.filter(o => CLOSED.includes(o.status));
+        } else if (showOpen && !showClosed) {
+          list = list.filter(o => !CLOSED.includes(o.status));
+        }
+        // If both are true or both false, show all
+        return list;
+      }, [osList, showClosed, showOpen]);
   const cliente = clientes.find(c => c.id === clienteId);
 
   const grupos: ConsolidadoGrupo[] = useMemo(() => osList.filter(o => selected.has(o.id)).map(o => {
@@ -231,24 +222,24 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
             <SmartSelect options={clientes.map(c => ({ id: c.id, label: c.nome, sublabel: c.telefone }))} value={clienteId} onSelect={(o) => setClienteId(o.id)} onClear={() => setClienteId("")} placeholder="Buscar cliente..." />
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Status da OS</Label>
-            <Select value={statusFilter || "todos"} onValueChange={(v) => setStatusFilter(v === "todos" ? "" : v)}>
-              <SelectTrigger><SelectValue placeholder="Todos os status" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os status</SelectItem>
-                {STATUS_OPTIONS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="space-y-2">
+            <Label>Filtrar OS</Label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox checked={showOpen} onCheckedChange={(v) => setShowOpen(!!v)} />
+                <span>Em aberto na loja</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox checked={showClosed} onCheckedChange={(v) => setShowClosed(!!v)} />
+                <span>Já entregues e finalizadas</span>
+              </label>
+            </div>
           </div>
 
           {clienteId && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Ordens de serviço</Label>
-                <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Checkbox checked={showAll} onCheckedChange={(v) => setShowAll(!!v)} />Mostrar entregues/finalizadas
-                </label>
               </div>
               {loadingOS ? <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin" /></div>
                 : visible.length === 0 ? <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma OS encontrada para este cliente.</p>
