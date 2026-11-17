@@ -10,9 +10,21 @@ import { toast } from "sonner";
 export async function buscarFotos(query: string): Promise<string[]> {
   const { data, error } = await supabase.functions.invoke("buscar-imagem-produto", { body: { query } });
   if (error) {
-    const d = error instanceof FunctionsHttpError ? await error.context.text() : error.message;
-    throw new Error(d.includes("402") || d.includes("Credit") ? "Sem créditos para buscar fotos." : "Não foi possível buscar fotos.");
+    // Mostra o motivo real devolvido pela função (chave ausente, falha do provedor etc.).
+    let detalhe = error.message;
+    if (error instanceof FunctionsHttpError) {
+      try {
+        const texto = await error.context.text();
+        try {
+          const corpo = JSON.parse(texto);
+          detalhe = corpo?.detalhe || corpo?.error || texto;
+        } catch { detalhe = texto; }
+      } catch { /* sem corpo legível */ }
+    }
+    if (/402|credit/i.test(detalhe)) throw new Error("Sem créditos para buscar fotos.");
+    throw new Error(`Não foi possível buscar fotos: ${String(detalhe).slice(0, 200)}`);
   }
+  if (data?.aviso) toast.info(data.aviso);
   return data?.urls || [];
 }
 
