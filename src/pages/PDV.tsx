@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useVendasData } from "@/hooks/useVendasData";
@@ -8,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calculator, FileText, Loader2, Receipt, Search, ShoppingCart, Trash2 } from "lucide-react";
+import { ArrowLeft, Calculator, FileText, Loader2, Receipt, Search, ShoppingCart, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatCurrency, todayDateInput } from "@/lib/formatters";
 import { limitarPercentualDesconto, calcularValorDesconto, calcularTotalComDesconto, tetoDesconto } from "@/lib/desconto";
@@ -65,6 +66,7 @@ async function buscarProdutos(organizationId: string, termo: string) {
 interface Linha { key: string; produto_id: string; codigo: string; nome: string; ncm: string; cfop: string; qtd: number; preco: number; pct: number; max: number; servico?: boolean; }
 
 export default function PDV() {
+  const navigate = useNavigate();
   const { organization } = useOrganization();
   const { createVenda, fetchData } = useVendasData();
   const [clientes, setClientes] = useState<any[]>([]);
@@ -235,7 +237,13 @@ export default function PDV() {
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto pb-24 bg-slate-100 min-h-screen">
-      <div className="flex items-center gap-2"><Calculator className="h-6 w-6 text-primary" /><h1 className="text-2xl font-bold">PDV — Nova venda</h1></div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2"><Calculator className="h-6 w-6 text-primary" /><h1 className="text-2xl font-bold">PDV — Nova venda</h1></div>
+        <Button variant="outline" className="gap-2" onClick={() => navigate("/dashboard")} title="Voltar ao Dashboard">
+          <ArrowLeft className="h-4 w-4" />
+          Sair do PDV
+        </Button>
+      </div>
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white shadow-sm p-4 space-y-2">
           <div className="relative">
