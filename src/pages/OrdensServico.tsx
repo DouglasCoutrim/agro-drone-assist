@@ -1272,11 +1272,15 @@ export default function OrdensServico() {
                   return <span className="font-bold text-primary text-sm">{os.numero}</span>;
                 case "status":
                                   return (
-                                    <div className="flex items-center gap-1">
-                                      <Badge variant={statusConfig.variant} className="text-[10px]">
+                                    <div className="flex items-center gap-1.5">
+                                      <Badge variant={statusConfig.variant} className="text-[10px] whitespace-nowrap">
                                         {statusConfig.label}
                                       </Badge>
-                                      {pagoOSIds.has(os.id) && <Badge className="bg-green-600 text-white text-[9px]">Pago</Badge>}
+                                      {pagoOSIds.has(os.id) && (
+                                        <span className="inline-flex shrink-0 items-center rounded-full bg-green-600 px-1.5 py-px text-[9px] font-semibold leading-none text-white">
+                                          Pago
+                                        </span>
+                                      )}
                                     </div>
                                   );
                 case "cliente":
