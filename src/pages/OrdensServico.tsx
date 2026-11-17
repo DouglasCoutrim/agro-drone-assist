@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download, UserPlus, CreditCard, Clock, Wrench, CheckCircle2, XCircle, ChevronRight, MoreVertical, ArrowRight, Trash2, Printer, Check } from "lucide-react";
+import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download, UserPlus, CreditCard, Clock, Wrench, CheckCircle2, XCircle, ChevronRight, Settings2, Trash2, Printer, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
@@ -123,6 +123,9 @@ const getTypeDisplayLabel = (os: any, segs: string[], customs: CustomType[], con
   return TIPO_EQUIPAMENTO[os.tipo_equipamento] || os.tipo_equipamento;
 };
 
+/** Mostra apenas o número da OS, sem o prefixo "OS-" (ex.: "OS-00036" → "00036"). */
+const formatOSNumber = (numero?: string | null) => (numero || "").replace(/^OS-?\s*/i, "");
+
 export default function OrdensServico() {
   const { user, canEdit, isAdmin, isTecnico } = useAuth();
   const { organization, isPlatformAdmin, loading: orgLoading } = useOrganization();
@@ -163,6 +166,7 @@ export default function OrdensServico() {
     nextStatus: string | null;
     saving: boolean;
   }>({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
+  const [pagoOSIds, setPagoOSIds] = useState<Set<string>>(new Set());
 
   // Wizard step
   const [wizardStep, setWizardStep] = useState(0);
@@ -243,14 +247,27 @@ export default function OrdensServico() {
   }, [editingOS, formData, mobilityData, osItems.length, uiCategory, configCheckbox]);
 
   useEffect(() => {
-    if (orgLoading) return;
-    if (!isPlatformAdmin && !organization?.id) {
-      setLoading(false);
-      return;
-    }
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organization?.id, isPlatformAdmin, orgLoading]);
+      if (orgLoading) return;
+      if (!isPlatformAdmin && !organization?.id) {
+        setLoading(false);
+        return;
+      }
+      fetchData();
+      fetchPaidOS();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [organization?.id, isPlatformAdmin, orgLoading]);
+  
+    const fetchPaidOS = async () => {
+      try {
+        let query = supabase.from("financeiro").select("ordem_servico_id");
+        if (organization?.id && !isPlatformAdmin) query = query.eq("organization_id", organization.id);
+        const { data, error } = await query;
+        if (error) { console.error("Erro ao buscar OS pagas:", error); return; }
+        setPagoOSIds(new Set((data || []).map((r: any) => r.ordem_servico_id).filter(Boolean)));
+      } catch (err) {
+        console.error("Erro ao buscar OS pagas:", err);
+      }
+    };
 
   const fetchData = async () => {
     let didToast = false;
@@ -554,7 +571,7 @@ export default function OrdensServico() {
       } catch (err: any) {
         console.error("Erro ao calcular comissão:", err);
       }
-      toast.success(editingOS ? "OS atualizada com sucesso!" : `OS ${createdOS?.numero} criada com sucesso!`);
+      toast.success(editingOS ? "OS atualizada com sucesso!" : `OS ${formatOSNumber(createdOS?.numero)} criada com sucesso!`);
       if (createdOS) {
         setLastCreatedOS(createdOS);
         setTermsDialogOpen(true);
@@ -765,13 +782,17 @@ export default function OrdensServico() {
         acao: `Status alterado para ${getStatusLabel(newStatus)}`,
       }).then(() => {});
     }
+    // Atualizar o set de OS pagas quando a OS for finalizada
+    if (newStatus === "finalizada") {
+      setPagoOSIds(prev => new Set(prev).add(osId));
+    }
   };
 
   const handleStatusChange = async (osId: string, newStatus: string): Promise<boolean> => {
     const os = ordens.find(o => o.id === osId);
     const isReview = (os as any)?.tipo_os === "revisao";
-    if (newStatus === "finalizada" && os && os.tecnico_id !== user?.id) {
-      toast.error("Somente o técnico responsável pode finalizar esta OS.");
+    if (newStatus === "finalizada" && os && !canUserManageOS(os, user?.id, isAdmin)) {
+      toast.error("Somente usuários com permissão podem finalizar esta OS.");
       return false;
     }
 
@@ -841,7 +862,7 @@ export default function OrdensServico() {
         usuario_id: user?.id || null,
         tipo: "receita" as any,
         categoria: "Serviços",
-        descricao: `Recebimento OS ${paymentDialog.osNumero}`,
+        descricao: `Recebimento OS ${formatOSNumber(paymentDialog.osNumero)}`,
         valor: data.valor,
         data_transacao: todayDateInput(),
         observacoes: [`Forma: ${data.forma_pagamento}`, data.observacoes].filter(Boolean).join(" | "),
@@ -871,8 +892,9 @@ export default function OrdensServico() {
       }
 
       toast.success("Recebimento registrado no Financeiro!");
-      setPaymentDialog({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
-      fetchData();
+            setPagoOSIds(prev => new Set(prev).add(paymentDialog.osId!));
+            setPaymentDialog({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
+            fetchData();
     } catch (err: any) {
       toast.error(getErrorMessage(err));
       setPaymentDialog(p => ({ ...p, saving: false }));
@@ -917,7 +939,7 @@ export default function OrdensServico() {
   const handleDeleteOS = async (os: OrdemServico) => {
     if (!isAdmin) { toast.error("Apenas administradores podem deletar ordens de serviço."); return; }
     const ok = await confirm({
-      title: `Deletar OS ${os.numero}?`,
+      title: `Deletar OS ${formatOSNumber(os.numero)}?`,
       description: "Tem certeza que deseja deletar esta Ordem de Serviço? Esta ação não poderá ser desfeita e removerá itens, histórico e anexos vinculados.",
       variant: "destructive",
       confirmText: "Sim, deletar OS",
@@ -926,7 +948,7 @@ export default function OrdensServico() {
     try {
       const { error } = await supabase.from("ordens_servico").delete().eq("id", os.id);
       if (error) throw error;
-      toast.success(`OS ${os.numero} deletada.`);
+      toast.success(`OS ${formatOSNumber(os.numero)} deletada.`);
       if (editingOS?.id === os.id) { setDialogOpen(false); resetForm(); }
       if (viewingOS?.id === os.id) { setViewDialogOpen(false); setViewingOS(null); }
       fetchData();
@@ -982,7 +1004,7 @@ export default function OrdensServico() {
     const cliente = clientes.find(c => c.id === viewingOS.cliente_id);
     if (!cliente?.telefone) { toast.error("Cliente sem telefone cadastrado"); return; }
     const osData: WhatsAppOS = {
-      numero: viewingOS.numero,
+      numero: formatOSNumber(viewingOS.numero),
       clienteNome: viewingOS.clientes?.nome || "Cliente",
       equipamento: getTypeDisplayLabel(viewingOS, orgSegmentos, orgCustomTypes, configTipos),
       modelo: viewingOS.modelo_equipamento || undefined,
@@ -1006,7 +1028,7 @@ export default function OrdensServico() {
     const marca = os.marca || os.modelo_equipamento || "-";
     const defeito = os.descricao_problema || "-";
     const nome = cliente?.nome || os.clientes?.nome || "cliente";
-    return `Olá, ${nome}! 👋\nAqui é da ${nomeEmpresa}.\n\nSua Ordem de Serviço foi gerada com sucesso!\n\n🛠️ OS: ${os.numero}\n📱 Equipamento: ${tipo} - ${marca}\n🔧 Defeito Relatado: ${defeito}\n\nSegue em anexo o PDF detalhado com o diagnóstico, valores, prazos e nossos termos de serviço para sua conferência.\n\nQualquer dúvida, estamos à disposição! 🔧`;
+    return `Olá, ${nome}! 👋\nAqui é da ${nomeEmpresa}.\n\nSua Ordem de Serviço foi gerada com sucesso!\n\n🛠️ OS: ${formatOSNumber(os.numero)}\n📱 Equipamento: ${tipo} - ${marca}\n🔧 Defeito Relatado: ${defeito}\n\nSegue em anexo o PDF detalhado com o diagnóstico, valores, prazos e nossos termos de serviço para sua conferência.\n\nQualquer dúvida, estamos à disposição! 🔧`;
   };
 
   const shareOsAsPdf = async (os: any, cliente: any) => {
@@ -1022,7 +1044,7 @@ export default function OrdensServico() {
       const técnico = tecnicos.find(t => t.id === os.tecnico_id);
       const html = generateOSPDF(osComCliente, itemsForPdf, empresaForPdf, técnico?.nome);
       const { htmlToPdfBlob, sharePdfOnWhatsApp } = await import("@/lib/os-pdf-share");
-      const filename = `OS_${os.numero}.pdf`;
+      const filename = `OS_${formatOSNumber(os.numero)}.pdf`;
       const blob = await htmlToPdfBlob(html);
       const msg = buildShareMessage(os, cliente);
       const result = await sharePdfOnWhatsApp({ blob, filename, telefone: cliente.telefone, message: msg });
@@ -1057,7 +1079,7 @@ export default function OrdensServico() {
         body: {
           action: 'create_payment',
           customer: asaasId, billingType: "PIX", value: viewingOS.valor_orcamento, dueDate: dueDateStr,
-          description: `OS ${viewingOS.numero}`, externalReference: viewingOS.id,
+          description: `OS ${formatOSNumber(viewingOS.numero)}`, externalReference: viewingOS.id,
         },
       });
       if (error) throw error;
@@ -1074,7 +1096,7 @@ export default function OrdensServico() {
             invoiceLink = linkData?.invoiceUrl || "";
           } catch {}
         }
-        const texto = `Olá, *${viewingOS.clientes?.nome}*! 👋\n\n*${empresa.nome_empresa || "LivreOS"}*\n\n📋 *OS:* ${viewingOS.numero}\n💰 *Valor:* ${fmtCurLocal(viewingOS.valor_orcamento)}\n📅 *Vencimento:* ${new Date(dueDateStr + "T00:00:00").toLocaleDateString("pt-BR")}\n⚡ Pix${invoiceLink ? `\n\n🔗 ${invoiceLink}` : ""}`;
+        const texto = `Olá, *${viewingOS.clientes?.nome}*! 👋\n\n*${empresa.nome_empresa || "LivreOS"}*\n\n📋 *OS:* ${formatOSNumber(viewingOS.numero)}\n💰 *Valor:* ${fmtCurLocal(viewingOS.valor_orcamento)}\n📅 *Vencimento:* ${new Date(dueDateStr + "T00:00:00").toLocaleDateString("pt-BR")}\n⚡ Pix${invoiceLink ? `\n\n🔗 ${invoiceLink}` : ""}`;
         openWhatsApp(telefone, texto);
       } else {
         toast.error("Erro ao criar cobrança");
@@ -1250,13 +1272,20 @@ export default function OrdensServico() {
               const statusConfig = STATUS_CONFIG[os.status] || { label: os.status, variant: "outline" as const };
               switch (columnKey) {
                 case "numero":
-                  return <span className="font-bold text-primary text-sm">{os.numero}</span>;
+                  return <span className="font-bold text-primary text-sm">{formatOSNumber(os.numero)}</span>;
                 case "status":
-                  return (
-                    <Badge variant={statusConfig.variant} className="text-[10px]">
-                      {statusConfig.label}
-                    </Badge>
-                  );
+                                  return (
+                                    <div className="flex items-center gap-1.5">
+                                      <Badge variant={statusConfig.variant} className="text-[10px] whitespace-nowrap">
+                                        {statusConfig.label}
+                                      </Badge>
+                                      {pagoOSIds.has(os.id) && (
+                                        <span className="inline-flex shrink-0 items-center rounded-full bg-green-600 px-1.5 py-px text-[9px] font-semibold leading-none text-white">
+                                          Pago
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
                 case "cliente":
                   return (
                     <div>
@@ -1290,30 +1319,14 @@ export default function OrdensServico() {
                 case "actions":
                   return (
                     <div className="flex items-center justify-end gap-1">
-                      {getNextStatus(os.status) && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7"
-                          title={`Avançar para ${getStatusLabel(getNextStatus(os.status)!)}`}
-                          onClick={(e) => { e.stopPropagation(); handleAdvanceStatus(os); }}
-                        >
-                          <ChevronRight className="h-4 w-4 text-primary" />
-                        </Button>
-                      )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button size="icon" variant="ghost" className="h-7 w-7"><MoreVertical className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" aria-label={`Ações da OS ${formatOSNumber(os.numero)}`}><Settings2 className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleView(os); }}><Eye className="mr-2 h-3.5 w-3.5" />Ver detalhes</DropdownMenuItem>
                           {canEdit && canUserManageOS(os, user?.id, isAdmin) && (
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEdit(os); }}><Edit className="mr-2 h-3.5 w-3.5" />Editar OS</DropdownMenuItem>
-                          )}
-                          {canEdit && canUserManageOS(os, user?.id, isAdmin) && getNextStatus(os.status) && (
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAdvanceStatus(os); }}>
-                              <ArrowRight className="mr-2 h-3.5 w-3.5" />Avançar para {getStatusLabel(getNextStatus(os.status)!)}
-                            </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setViewingOS(os); handleWhatsAppTemplate("statusUpdate"); }}>
@@ -1357,7 +1370,7 @@ export default function OrdensServico() {
             onEscapeKeyDown={(e) => e.preventDefault()}
           >
             <DialogHeader className="p-4 border-b shrink-0">
-              <DialogTitle>{editingOS ? `Editar OS ${editingOS.numero}` : "Nova Ordem de Serviço"}</DialogTitle>
+              <DialogTitle>{editingOS ? `Editar OS ${formatOSNumber(editingOS.numero)}` : "Nova Ordem de Serviço"}</DialogTitle>
               <DialogDescription className="text-xs">
                 Preencha os dados abaixo. Você pode salvar a qualquer momento.
               </DialogDescription>
@@ -1679,11 +1692,12 @@ export default function OrdensServico() {
             <DialogHeader className="p-4 sm:p-6 border-b shrink-0">
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <DialogTitle className="text-lg font-bold flex items-center gap-2">
-                    OS {viewingOS?.numero}
-                    {viewingOS && <Badge className={STATUS_CONFIG[viewingOS.status]?.variant === 'destructive' ? 'bg-destructive' : 'bg-primary'}>{getStatusLabel(viewingOS.status)}</Badge>}
-                  </DialogTitle>
+                              <div className="space-y-1">
+                                <DialogTitle className="text-lg font-bold flex items-center gap-2">
+                                  OS {formatOSNumber(viewingOS?.numero)}
+                                  {viewingOS && <Badge className={STATUS_CONFIG[viewingOS.status]?.variant === 'destructive' ? 'bg-destructive' : 'bg-primary'}>{getStatusLabel(viewingOS.status)}</Badge>}
+                                  {viewingOS && pagoOSIds.has(viewingOS.id) && <Badge className="bg-green-600 text-white text-[10px]">Pago</Badge>}
+                                </DialogTitle>
                   <DialogDescription className="text-xs">
                     Criada em {formatDate(viewingOS?.created_at || null)}
                   </DialogDescription>
@@ -1885,7 +1899,7 @@ export default function OrdensServico() {
               <div className="space-y-3">
                 {lastCreatedOS && (
                   <div className="p-3 rounded-md bg-muted/30 border text-sm space-y-1">
-                    <p><span className="text-muted-foreground">OS:</span> <span className="font-bold text-primary">{lastCreatedOS.numero}</span></p>
+                    <p><span className="text-muted-foreground">OS:</span> <span className="font-bold text-primary">{formatOSNumber(lastCreatedOS.numero)}</span></p>
                     <p><span className="text-muted-foreground">Cliente:</span> {clientes.find(c => c.id === lastCreatedOS.cliente_id)?.nome || "-"}</p>
                   </div>
                 )}

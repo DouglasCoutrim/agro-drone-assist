@@ -183,3 +183,30 @@ Código **completo e compilando** (`npx tsc --noEmit` sem erros). Faltam **somen
 2. Tabelas sem `organization_id` ficaram fora: `user_roles`, `user_permissions`, `os_apontamentos_horas`, `patrimonio_movimentacoes`, `nota_fiscal_itens`, `segmentos` e `wiki_*`. Auditar papéis e permissões exige derivação de organização (como foi feito com `venda_itens`).
 3. Eventos de acesso (login, logout, troca de senha) precisam de instrumentação no app ou em edge function, não de gatilho de tabela.
 4. Sem cobertura e2e para a tela, pelo mesmo motivo das demais.
+
+---
+
+## 9. Sessão — Redesign visual da tela de login (LivreOS Enterprise)
+
+**Entregue (somente visual — nenhuma regra de negócio alterada)**
+
+- `src/pages/Auth.tsx` reescrito como composição de página inteira com duas áreas:
+  - **Painel institucional:** marca `LivreOSLogo` (`tone="onDark"`), acento em verde-limão, título "ERP Completo para Assistência Técnica", descrição e cinco cartões de segmentos (Assistência Técnica, Drones Agrícolas, Mobilidade Elétrica, Carros Elétricos, Máquinas Agrícolas) com ícones do `lucide-react`.
+  - **Painel de login em vidro líquido:** formulário translúcido com campos Email/Senha, opção Lembrar-me, link "Esqueci minha senha", botão Entrar e rodapé "Criar conta grátis". O painel usa efeito Liquid Glass com backdrop-filter, gotas discretas e bordas luminosas. Nota: a imagem de fundo `public/paisagem_digital_verde_com_ondas_de_vidro.png` ainda não foi adicionada ao repositório; sem ela o painel cai no fundo escuro #001b18 com veils sutis.
+- `src/index.css`: bloco escopado `.livreos-login*` no fim do arquivo com os tokens do kit de design (paleta esmeralda, transparências, blur 26px, raios 32px/20px/15px, saturação 165%), fallback `@supports not (backdrop-filter)` para navegadores sem suporte e `prefers-reduced-motion`. O visual do vidro (gotas, reflexos em `::before`/`::after` com `z-index: -1` sob `isolation: isolate`) vive nestas classes escopadas, nunca em utilitário global, para não afetar o restante do ERP.
+- **Sistema inteiro no tema claro (light theme):** `:root` em `src/index.css` restaurado para tokens de cor claros (fundo cinza bem claro, texto escuro, bordas claras), mantendo `.dark` para compatibilidade. Utilitários `.livreos-glass` e `.livreos-glass-strong` removidos do CSS global (eram exclusivos do tema escuro). `PremiumCard`, `KpiCard`, `PremiumTable` e `MainLayout` voltaram a usar classes semânticas do tema claro (`bg-card`, `bg-white`, `border border-border`, `shadow-sm`, etc.).
+- Detalhe de usabilidade: botão de mostrar/ocultar senha (ícone `Eye`/`EyeOff`), coerente com a referência visual.
+
+**Preservado / verificado**
+
+- Toda a lógica de autenticação permaneceu idêntica: validação com Zod (`emailSchema`/`passwordSchema`), `signIn`, mensagens de erro/sucesso, `livreos:remember` (lembrar-me), aviso de sessão expirada (`?expired=1`) e redirecionamento por perfil (platform admin → `/admin/dashboard`; demais → `/dashboard`).
+- Destinos dos links inalterados: `/reset-password` e `/cadastro-empresa`.
+- Acessibilidade: labels associados (`htmlFor`/`id`), ícones decorativos com `aria-hidden`, foco visível, `aria-label` no botão de senha, atributos `name`/`autocomplete`/`type`/`required` mantidos.
+- Responsivo: desktop em duas colunas, tablet com cartões quebrando linha e mobile priorizando o formulário (a área institucional vai para baixo via `order`), sem overflow horizontal.
+
+**Pendente / próximo**
+
+1. Imagem de fundo `public/paisagem_digital_verde_com_ondas_de_vidro.png` ainda não adicionada ao repositório — sem ela o fundo usa #001b18 com veils graduais.
+2. Teste manual de login real com as três contas (admin, técnico, consulta), campos vazios, e-mail inválido, envio por botão e por Enter.
+3. Build/lint locais não executados por decisão do usuário (ver seção 3 do CONTEXTO.md).
+4. Cobertura e2e: `@playwright/test` não está instalado (dependência recusada anteriormente). Verificar se o ambiente de teste será disponibilizado futuramente.

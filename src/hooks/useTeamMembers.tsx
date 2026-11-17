@@ -68,9 +68,9 @@ export function useTeamMembers() {
     fetchMembers();
   }, [organization?.id, isPlatformAdmin, orgLoading]);
 
-  // Quem executa serviço: papel técnico ou admin (admins também atendem OS).
-  // Perfis apenas "consulta" nunca entram na lista de responsáveis técnicos.
-  const tecnicos = members.filter((m) => m.roles.includes("tecnico") || m.roles.includes("admin"));
+  // Somente quem tem o papel "Técnico" é listado como responsável técnico na OS.
+  // Perfis de administrador ou atendimento não entram nesta lista.
+  const tecnicos = members.filter((m) => m.roles.includes("tecnico"));
   const vendedores = members.filter((m) => m.roles.includes("admin") || m.roles.includes("tecnico"));
 
   return { members, tecnicos, vendedores, loading: loading || orgLoading };

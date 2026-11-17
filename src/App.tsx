@@ -43,6 +43,7 @@ const Vendas = lazy(() => import("./pages/Vendas"));
 const PDV = lazy(() => import("./pages/PDV"));
 
 const Equipe = lazy(() => import("./pages/Equipe"));
+const Permissoes = lazy(() => import("./pages/Permissoes"));
 const ConfiguracaoOS = lazy(() => import("./pages/ConfiguracaoOS"));
 const EmpresaConfig = lazy(() => import("./pages/EmpresaConfig"));
 const Orcamentos = lazy(() => import("./pages/Orcamentos"));
@@ -147,6 +148,7 @@ const App = () => {
                   <Route path="/configuracoes" element={<ProtectedRoute requiredRole="admin"><Configuracoes /></ProtectedRoute>} />
                   <Route path="/admin/configuracao-os" element={<ProtectedRoute requiredRole="admin"><ConfiguracaoOS /></ProtectedRoute>} />
                   <Route path="/equipe" element={<ProtectedRoute requiredRole="admin"><Equipe /></ProtectedRoute>} />
+                                    <Route path="/permissoes" element={<ProtectedRoute requiredRole="admin"><Permissoes /></ProtectedRoute>} />
                   <Route path="/compras" element={<ProtectedRoute><PedidosCompra /></ProtectedRoute>} />
                   <Route path="/patrimonio" element={<ProtectedRoute requiredRole="admin"><Patrimonio /></ProtectedRoute>} />
                   <Route path="/meu-estoque" element={<ProtectedRoute><Patrimonio meu /></ProtectedRoute>} />

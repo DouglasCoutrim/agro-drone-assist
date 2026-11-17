@@ -2,15 +2,21 @@ import { useEffect, useState } from "react";
 import logoIcon from "@/assets/logo-icon.png";
 import { cn } from "@/lib/utils";
 
-type LogoSize = "xs" | "sm" | "md" | "lg";
+type LogoSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 type LogoTone = "onDark" | "onLight";
 
-/** O ícone é dimensionado em ~1,3x a altura do bloco de texto, como na marca oficial. */
+/**
+ * O ícone é dimensionado em ~1,3x a altura do bloco de texto, como na marca oficial.
+ * `xl` é exatamente 2x o `lg` (ícone, nome e assinatura) e `2xl` é o tamanho de
+ * destaque do desktop, usado na tela de login.
+ */
 const ICON_CLASS: Record<LogoSize, string> = {
   xs: "h-9 w-9",
   sm: "h-11 w-11",
   md: "h-14 w-14",
   lg: "h-[4.5rem] w-[4.5rem]",
+  xl: "h-36 w-36",
+  "2xl": "h-48 w-48",
 };
 
 const TITLE_CLASS: Record<LogoSize, string> = {
@@ -18,6 +24,8 @@ const TITLE_CLASS: Record<LogoSize, string> = {
   sm: "text-lg",
   md: "text-[22px]",
   lg: "text-3xl",
+  xl: "text-6xl",
+  "2xl": "text-7xl",
 };
 
 const SUBTITLE_CLASS: Record<LogoSize, string> = {
@@ -25,6 +33,8 @@ const SUBTITLE_CLASS: Record<LogoSize, string> = {
   sm: "text-[10px]",
   md: "text-xs",
   lg: "text-sm",
+  xl: "text-[1.75rem]",
+  "2xl": "text-[2rem]",
 };
 
 const TONE_CLASS: Record<LogoTone, { title: string; subtitle: string }> = {
@@ -149,14 +159,28 @@ export function LivreOSLogo({
 
   return (
     <span className={cn("inline-flex items-center gap-3", className)}>
-      <span className={cn("flex shrink-0 items-center justify-center", ICON_CLASS[size])}>
+      <span className={cn("relative isolate flex shrink-0 items-center justify-center", ICON_CLASS[size])}>
         {emblema ? (
-          <img
-            src={emblema}
-            alt=""
-            aria-hidden="true"
-            className="h-full w-full object-contain"
-          />
+          <>
+            <img
+              src={emblema}
+              alt=""
+              aria-hidden="true"
+              className="h-full w-full object-contain"
+            />
+            {/*
+              Reflexo de luz (light sweep). A máscara é a transparência do próprio
+              emblema, então a faixa só existe dentro do desenho do símbolo —
+              nunca sobre o fundo ou sobre o texto da marca.
+            */}
+            <span
+              aria-hidden="true"
+              className="livreos-logo__sweep"
+              style={{ WebkitMaskImage: `url(${emblema})`, maskImage: `url(${emblema})` }}
+            >
+              <span className="livreos-logo__sweep-band" />
+            </span>
+          </>
         ) : null}
       </span>
       <span className="flex flex-col justify-center text-left leading-tight">

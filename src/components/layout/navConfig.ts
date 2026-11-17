@@ -60,6 +60,7 @@ export const navSections: NavSection[] = [
     title: "Fiscal",
     items: [
       { title: "Notas Fiscais", icon: FileText, href: "/fiscal/notas", roles: STAFF },
+      { title: "Nova NF-e", icon: FileText, href: "/vendas?nova=1&nfe=1", roles: STAFF },
       { title: "NF-e de venda", icon: FileText, href: "/fiscal/nfe/venda", roles: STAFF },
       { title: "Devolução de venda", icon: FileText, href: "/fiscal/nfe/devolucao-venda", roles: ADMIN },
       { title: "Devolução de compra", icon: FileText, href: "/fiscal/nfe/devolucao-compra", roles: ADMIN },

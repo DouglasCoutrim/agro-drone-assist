@@ -4,7 +4,10 @@ import { getStatusLabel } from "@/components/os/StatusPipeline";
 import { getLegalTermsHTML } from "@/components/os/LegalTermsFooter";
 import { EmpresaConfig } from "@/hooks/useEmpresaConfig";
 
-type OrdemServico = Tables<"ordens_servico"> & { 
+/** Número da OS sem o prefixo "OS-" redundante (ex.: "OS-00036" → "00036"). */
+const formatOSNumber = (numero?: string | number | null) => String(numero ?? "").replace(/^OS-?\s*/i, "");
+
+type OrdemServico = Tables<"ordens_servico"> & {
   clientes: { nome: string; telefone?: string } | null,
   tecnico?: { nome: string } | null
 };
@@ -121,7 +124,7 @@ export const generateOSPDF = (
   return `<!DOCTYPE html>
 <html>
 <head>
-  <title>OS ${escapeHTML(viewingOS.numero || "Sem número")}</title>
+  <title>OS ${escapeHTML(formatOSNumber(viewingOS.numero) || "Sem número")}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: Arial, sans-serif; padding: 30px; color: #333; max-width: 210mm; margin: 0 auto; font-size: 12px; }
@@ -155,7 +158,7 @@ export const generateOSPDF = (
       </div>
     </div>
     <div style="text-align:right">
-      <div style="font-size:18px;font-weight:bold;">OS ${escapeHTML(viewingOS.numero || "Sem número")}</div>
+      <div style="font-size:18px;font-weight:bold;">OS ${escapeHTML(formatOSNumber(viewingOS.numero) || "Sem número")}</div>
       <div class="status-badge">${escapeHTML(getStatusLabel(viewingOS.status) || "Status não informado")}</div>
     </div>
   </div>

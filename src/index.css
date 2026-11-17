@@ -6,26 +6,25 @@
   :root {
     /* Backgrounds */
     --background: 150 14% 97%;
-    --foreground: 222 47% 11%;
+    --foreground: 215 35% 21%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 215 35% 21%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 215 35% 21%;
 
     /* Primary - Green */
-    --primary: 158 84% 26%;
-    --primary-glow: 145 63% 42%;
+    --primary: 160 83% 26%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary */
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 152 47% 94%;
+    --secondary-foreground: 160 83% 26%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 220 22% 95%;
+    --muted-foreground: 215 16% 45%;
 
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 152 47% 94%;
+    --accent-foreground: 160 83% 26%;
 
     /* Status */
     --success: 142 72% 37%;
@@ -36,15 +35,16 @@
     --destructive-foreground: 0 0% 100%;
 
     /* Interface */
-    --border: 214 32% 91%;
-    --border-subtle: 210 40% 96%;
-    --input: 215 25% 84%;
-    --ring: 158 84% 26%;
+    --border: 225 21% 93%;
+    --border-subtle: 220 22% 95%;
+    --input: 152 18% 86%;
+    --ring: 160 84% 34%;
+    --field-focus: #009b3c;
     --radius: 0.75rem;
 
     /* Sidebar - always dark */
     --sidebar-background: 158 72% 13%;
-    --sidebar-foreground: 0 0% 100%;
+    --sidebar-foreground: 150 30% 92%;
     --sidebar-primary: 152 62% 34%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 158 55% 18%;
@@ -70,6 +70,12 @@
     --slate-light: 210 40% 96%;
     --slate-text: 215 25% 27%;
 
+    /* KPI tones — cores sólidas (light theme) */
+    --kg-bg: #EAF7F1; --kg-bd: #CDEBDD; --kg-tx: #0B7A55;
+    --kb-bg: #EAF1FF; --kb-bd: #CFE0FF; --kb-tx: #1D4ED8;
+    --ko-bg: #FFF3E3; --ko-bd: #FBDDB5; --ko-tx: #B45309;
+    --kp-bg: #F3EBFF; --kp-bd: #E2D0FB; --kp-tx: #7E22CE;
+
     /* Shadows */
     --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
@@ -83,6 +89,39 @@
     --bottom-nav-height: 64px;
   }
 
+  .dark {
+    --background: 154 20% 7%;
+    --foreground: 137 17% 92%;
+    --card: 150 18% 11%;
+    --card-foreground: 137 17% 92%;
+    --popover: 150 18% 11%;
+    --popover-foreground: 137 17% 92%;
+    --primary: 149 58% 49%;
+    --primary-foreground: 154 20% 7%;
+    --secondary: 159 51% 14%;
+    --secondary-foreground: 152 68% 62%;
+    --muted: 154 17% 16%;
+    --muted-foreground: 141 8% 63%;
+    --accent: 159 51% 14%;
+    --accent-foreground: 152 68% 62%;
+    --border: 152 15% 17%;
+    --border-subtle: 154 17% 16%;
+    --input: 152 15% 20%;
+    --ring: 149 58% 49%;
+    --sidebar-background: 158 60% 8%;
+    --sidebar-foreground: 142 10% 74%;
+    --sidebar-primary: 160 85% 29%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 158 45% 14%;
+    --sidebar-accent-foreground: 137 17% 92%;
+    --sidebar-border: 152 15% 17%;
+    --sidebar-ring: 149 58% 49%;
+    /* KPI tones — dark theme */
+    --kg-bg: #12372A; --kg-bd: #1D5A43; --kg-tx: #5EE0A8;
+    --kb-bg: #16294A; --kb-bd: #24407A; --kb-tx: #93C5FD;
+    --ko-bg: #3A2E12; --ko-bd: #5C4A1E; --ko-tx: #FCD34D;
+    --kp-bg: #2A1C4A; --kp-bd: #46307A; --kp-tx: #D8B4FE;
+  }
 
   * {
     @apply border-border;
@@ -269,75 +308,6 @@ iframe[src*="lovable"] {
   overflow: hidden !important;
 }
 
-/* ===== Tema LivreOS v1.1 (esmeralda) ===== */
-@layer base {
-  :root {
-    --background: 150 14% 97%;
-    --foreground: 215 35% 21%;
-    --card: 0 0% 100%;
-    --card-foreground: 215 35% 21%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 215 35% 21%;
-    --primary: 160 83% 26%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 152 47% 94%;
-    --secondary-foreground: 160 83% 26%;
-    --muted: 220 22% 95%;
-    --muted-foreground: 215 16% 45%;
-    --accent: 152 47% 94%;
-    --accent-foreground: 160 83% 26%;
-    --border: 225 21% 93%;
-    --border-subtle: 220 22% 95%;
-    --input: 225 18% 88%;
-    --ring: 160 84% 34%;
-    --sidebar-background: 158 72% 13%;
-    --sidebar-foreground: 150 30% 92%;
-    --sidebar-primary: 152 62% 34%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 158 55% 19%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 158 45% 21%;
-    --sidebar-ring: 160 84% 34%;
-    --kg-bg: #EAF7F1; --kg-bd: #CDEBDD; --kg-tx: #0B7A55;
-    --kb-bg: #EAF1FF; --kb-bd: #CFE0FF; --kb-tx: #1D4ED8;
-    --ko-bg: #FFF3E3; --ko-bd: #FBDDB5; --ko-tx: #B45309;
-    --kp-bg: #F3EBFF; --kp-bd: #E2D0FB; --kp-tx: #7E22CE;
-  }
-  .dark {
-    --background: 154 20% 7%;
-    --foreground: 137 17% 92%;
-    --card: 150 18% 11%;
-    --card-foreground: 137 17% 92%;
-    --popover: 150 18% 11%;
-    --popover-foreground: 137 17% 92%;
-    --primary: 149 58% 49%;
-    --primary-foreground: 154 20% 7%;
-    --secondary: 159 51% 14%;
-    --secondary-foreground: 152 68% 62%;
-    --muted: 154 17% 16%;
-    --muted-foreground: 141 8% 63%;
-    --accent: 159 51% 14%;
-    --accent-foreground: 152 68% 62%;
-    --border: 152 15% 17%;
-    --border-subtle: 154 17% 16%;
-    --input: 152 15% 20%;
-    --ring: 149 58% 49%;
-    --sidebar-background: 158 60% 8%;
-    --sidebar-foreground: 142 10% 74%;
-    --sidebar-primary: 160 85% 29%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 158 45% 14%;
-    --sidebar-accent-foreground: 137 17% 92%;
-    --sidebar-border: 152 15% 17%;
-    --sidebar-ring: 149 58% 49%;
-    --kg-bg: #12372A; --kg-bd: #1D5A43; --kg-tx: #5EE0A8;
-    --kb-bg: #16294A; --kb-bd: #24407A; --kb-tx: #93C5FD;
-    --ko-bg: #3A2E12; --ko-bd: #5C4A1E; --ko-tx: #FCD34D;
-    --kp-bg: #2A1C4A; --kp-bd: #46307A; --kp-tx: #D8B4FE;
-  }
-  body { font-family: 'Plus Jakarta Sans', 'DM Sans', sans-serif; }
-}
-
 @layer components {
   .kpi-icon-green { background: var(--kg-bg); color: var(--kg-tx); }
   .kpi-icon-blue { background: var(--kb-bg); color: var(--kb-tx); }
@@ -354,4 +324,658 @@ iframe[src*="lovable"] {
 @media print {
   .no-print { display: none !important; }
   body { background: #fff !important; color: #000 !important; }
+}
+
+/* ===== Login LivreOS Enterprise — Liquid Glass / Water Droplet =====
+   Escopado na tela de login (`src/pages/Auth.tsx`). Reproduz a composicao
+   aprovada (referencia 1612x975): marca, titulo e descricao no alto a esquerda,
+   os cinco segmentos na base dessa coluna e o painel de vidro verde-menta a
+   direita. Nao reutilizar estas classes no restante do ERP. */
+.livreos-login {
+  --lo-bg: #001b18;
+  --lo-deep-teal: #002a27;
+  --lo-green: #00c83f;
+  --lo-green-dark: #007a38;
+  --lo-lime: #7cff00;
+  --lo-mint: #cfffe9;
+  --lo-crystal: #f7fffc;
+  --lo-text-light: #f7fbf9;
+  --lo-text-dark: #12332d;
+  --lo-muted: #55766f;
+
+  --lo-radius-panel: 32px;
+  --lo-radius-card: 20px;
+  --lo-radius-field: 15px;
+  --lo-blur-panel: 26px;
+  --lo-blur-card: 17px;
+  --lo-saturate: 165%;
+
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100svh;
+  overflow-x: clip;
+  color: var(--lo-text-light);
+  background-color: var(--lo-bg);
+  /* Fundo oficial em cover. O veu e leve de proposito: sustenta o texto da
+     esquerda sem apagar as ondas nem as gotas da imagem. */
+  background-image:
+    radial-gradient(115% 95% at 4% 46%, rgba(0, 17, 22, 0.46) 0%, rgba(0, 17, 22, 0) 62%),
+    linear-gradient(180deg, rgba(0, 17, 22, 0.24) 0%, rgba(0, 17, 22, 0.04) 38%, rgba(0, 17, 22, 0.26) 100%),
+    url("/livreos_login_background_clean.png");
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: auto, auto, cover;
+}
+
+/* --- Coluna esquerda: marca, titulo e descricao --- */
+.livreos-login .livreos-login__brand {
+  min-width: 0;
+}
+
+.livreos-login .livreos-login__intro {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.livreos-login .livreos-login__accent {
+  display: block;
+  width: clamp(56px, 5.2vw, 92px);
+  height: 5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--lo-lime) 0%, var(--lo-green) 62%, rgba(0, 200, 63, 0) 100%);
+}
+
+.livreos-login .livreos-login__headline {
+  margin: 18px 0 0;
+  font-size: clamp(2rem, 3.2vw, 3.4rem);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.livreos-login .livreos-login__description {
+  margin: 16px 0 0;
+  max-width: 44ch;
+  font-size: clamp(1rem, 1.15vw, 1.2rem);
+  line-height: 1.5;
+  color: rgba(247, 251, 249, 0.84);
+}
+
+/* --- Painel de login: a peca de vidro principal --- */
+.livreos-login .livreos-login__panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(20px, 2vw, 30px);
+  width: 100%;
+  padding: clamp(26px, 2.6vw, 42px);
+  color: var(--lo-text-dark);
+  border: 1.5px solid rgba(255, 255, 255, 0.82);
+  border-radius: var(--lo-radius-panel);
+  background:
+    radial-gradient(ellipse at 84% 8%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 38%),
+    linear-gradient(135deg, rgba(235, 255, 247, 0.72) 0%, rgba(170, 235, 207, 0.52) 52%, rgba(225, 255, 242, 0.68) 100%);
+  -webkit-backdrop-filter: blur(var(--lo-blur-panel)) saturate(var(--lo-saturate));
+  backdrop-filter: blur(var(--lo-blur-panel)) saturate(var(--lo-saturate));
+  box-shadow:
+    0 24px 70px -22px rgba(0, 10, 16, 0.6),
+    0 0 22px rgba(98, 255, 190, 0.22),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.92),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.36);
+}
+
+/* Reflexo especular entrando pela diagonal + gotas discretas presas aos cantos
+   (nunca sobre os campos do formulario). */
+.livreos-login .livreos-login__panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image:
+    radial-gradient(circle 8px at 89% 7%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.3) 42%, rgba(255, 255, 255, 0) 72%),
+    radial-gradient(circle 4px at 76% 13%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 74%),
+    radial-gradient(circle 3px at 95% 16%, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0) 72%),
+    radial-gradient(circle 6px at 7% 86%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 74%),
+    radial-gradient(circle 3px at 17% 93%, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 70%),
+    linear-gradient(118deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.08) 24%, rgba(255, 255, 255, 0) 44%, rgba(111, 255, 190, 0.14) 100%);
+}
+
+/* Aresta luminosa no topo do vidro. */
+.livreos-login .livreos-login__panel::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 8%;
+  width: 70%;
+  height: 1.5px;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.96) 50%, rgba(255, 255, 255, 0) 100%);
+}
+
+.livreos-login .livreos-login__form {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 1.3vw, 20px);
+}
+
+.livreos-login .livreos-login__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.livreos-login .livreos-login__label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--lo-text-dark);
+}
+
+.livreos-login .livreos-login__control {
+  position: relative;
+  display: block;
+}
+
+.livreos-login .livreos-login__field-icon {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  width: 1rem;
+  height: 1rem;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #6b8790;
+}
+
+/* Campos translucidos, claros e legiveis. */
+.livreos-login .livreos-login__input {
+  width: 100%;
+  min-height: 48px;
+  padding-left: 42px;
+  padding-right: 16px;
+  color: var(--lo-text-dark);
+  background: rgba(240, 255, 251, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  border-radius: var(--lo-radius-field);
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.88),
+    0 3px 10px rgba(0, 30, 24, 0.06);
+}
+
+.livreos-login .livreos-login__input--password {
+  padding-right: 44px;
+}
+
+.livreos-login .livreos-login__input::placeholder {
+  color: #6f8b99;
+}
+
+/* Foco: linha verde fina colada na borda + brilho suave ao redor. */
+.livreos-login .livreos-login__input:focus-visible {
+  border-color: var(--field-focus) !important;
+  outline: 1px solid var(--field-focus) !important;
+  outline-offset: 0 !important;
+  box-shadow:
+    0 0 0 4px rgba(0, 155, 60, 0.14),
+    0 6px 18px -6px rgba(0, 155, 60, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+.livreos-login .livreos-login__reveal {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  padding: 6px;
+  transform: translateY(-50%);
+  color: var(--lo-muted);
+  background: transparent;
+}
+
+.livreos-login .livreos-login__reveal-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.livreos-login .livreos-login__reveal:hover {
+  color: var(--lo-text-dark);
+}
+
+.livreos-login .livreos-login__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.livreos-login .livreos-login__remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.livreos-login .livreos-login__remember-label {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--lo-text-dark);
+  cursor: pointer;
+}
+
+.livreos-login .livreos-login__link {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--lo-green-dark);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+.livreos-login .livreos-login__link:hover {
+  text-decoration: underline;
+}
+
+.livreos-login .livreos-login__link--strong {
+  font-weight: 700;
+}
+
+/* Botao Entrar: verde intenso, sem vidro. */
+.livreos-login .livreos-login__submit {
+  width: 100%;
+  min-height: 52px;
+  margin-top: clamp(2px, 0.4vw, 8px);
+  color: #ffffff;
+  font-weight: 700;
+  border: 1px solid rgba(153, 255, 195, 0.9);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 36%),
+    linear-gradient(105deg, #00d94b 0%, #008c3c 70%, #006b32 100%);
+  box-shadow:
+    0 8px 22px rgba(0, 132, 55, 0.32),
+    inset 0 1px 1px rgba(255, 255, 255, 0.68);
+  transition: filter 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.livreos-login .livreos-login__submit:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow:
+    0 10px 26px rgba(0, 170, 65, 0.36),
+    inset 0 1px 1px rgba(255, 255, 255, 0.82);
+}
+
+.livreos-login .livreos-login__submit-icon {
+  width: 1rem;
+  height: 1rem;
+  margin-right: 8px;
+}
+
+.livreos-login a:focus-visible,
+.livreos-login button:focus-visible {
+  outline: 2px solid var(--field-focus);
+  outline-offset: 1px;
+}
+
+.livreos-login .livreos-login__submit:focus-visible {
+  outline: 2px solid var(--field-focus);
+  outline-offset: 2px;
+}
+
+.livreos-login .livreos-login__footer {
+  padding-top: clamp(16px, 1.5vw, 22px);
+  border-top: 1px solid rgba(18, 51, 45, 0.12);
+  text-align: center;
+  font-size: 0.85rem;
+  color: #3f5a66;
+}
+
+/* --- Cinco placas de vidro esmeralda --- */
+.livreos-login .livreos-login__segments {
+  min-width: 0;
+}
+
+.livreos-login .livreos-login__segment-list {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(10px, 1.2vw, 20px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.livreos-login .livreos-login__segment {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: clamp(92px, 8.6vw, 132px);
+  padding: clamp(14px, 1.2vw, 20px) 8px;
+  text-align: center;
+  color: #ffffff;
+  border: 1px solid rgba(82, 255, 164, 0.7);
+  border-radius: var(--lo-radius-card);
+  background:
+    radial-gradient(ellipse at 18% 0%, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 44%),
+    linear-gradient(145deg, rgba(0, 95, 62, 0.7) 0%, rgba(0, 35, 32, 0.68) 100%);
+  -webkit-backdrop-filter: blur(var(--lo-blur-card)) saturate(155%);
+  backdrop-filter: blur(var(--lo-blur-card)) saturate(155%);
+  box-shadow:
+    0 10px 26px -14px rgba(0, 10, 8, 0.75),
+    inset 0 1px 1px rgba(255, 255, 255, 0.48);
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+/* Reflexo na aresta de cima + gotas discretas sobre a placa. */
+.livreos-login .livreos-login__segment::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image:
+    radial-gradient(circle 3px at 78% 20%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 72%),
+    radial-gradient(circle 2px at 87% 29%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 70%),
+    radial-gradient(circle 2.5px at 16% 78%, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 72%),
+    linear-gradient(125deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 34%, rgba(255, 255, 255, 0) 76%, rgba(0, 255, 128, 0.12) 100%);
+}
+
+.livreos-login .livreos-login__segment:hover {
+  transform: translateY(-3px);
+  border-color: rgba(130, 255, 190, 0.96);
+  box-shadow:
+    0 16px 32px -16px rgba(0, 15, 10, 0.8),
+    0 0 18px -2px rgba(0, 255, 110, 0.45),
+    inset 0 1px 1px rgba(255, 255, 255, 0.62);
+}
+
+.livreos-login .livreos-login__segment-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--lo-lime);
+}
+
+.livreos-login .livreos-login__segment-label {
+  font-size: clamp(0.6rem, 0.68vw, 0.72rem);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* Ancoragem proporcional da referencia aprovada (1612x975). Abaixo disso o
+   layout volta ao fluxo para nao colidir. */
+@media (min-width: 1440px) and (min-height: 720px) {
+  .livreos-login {
+    display: block;
+  }
+
+  .livreos-login .livreos-login__brand {
+    position: absolute;
+    top: 19%;
+    left: 12.5%;
+    width: min(34%, 560px);
+  }
+
+  .livreos-login .livreos-login__intro {
+    position: absolute;
+    top: 41.5%;
+    left: 5.2%;
+    width: min(48%, 720px);
+  }
+
+  .livreos-login .livreos-login__segments {
+    position: absolute;
+    top: 71.5%;
+    left: 5.2%;
+    width: min(51%, 840px);
+  }
+
+  .livreos-login .livreos-login__panel {
+    position: absolute;
+    top: 23.5%;
+    left: 58%;
+    width: min(38%, 620px);
+    min-height: 54svh;
+  }
+}
+
+/* Notebook: duas areas lado a lado, painel centrado na coluna da direita. */
+@media (max-width: 1439px) {
+  .livreos-login {
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 0.95fr);
+    grid-template-rows: auto auto auto;
+    align-items: start;
+    align-content: center;
+    column-gap: clamp(28px, 4vw, 64px);
+    row-gap: clamp(20px, 3vw, 40px);
+    padding: clamp(28px, 4vw, 56px);
+  }
+
+  .livreos-login .livreos-login__brand {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .livreos-login .livreos-login__intro {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .livreos-login .livreos-login__segments {
+    grid-column: 1;
+    grid-row: 3;
+    align-self: end;
+  }
+
+  .livreos-login .livreos-login__panel {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: center;
+    justify-self: end;
+    max-width: 520px;
+  }
+}
+
+/* Tablet: uma coluna, cards em 3 + 2. */
+@media (max-width: 1023px) {
+  .livreos-login {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    justify-items: center;
+    align-content: start;
+    row-gap: clamp(22px, 4vw, 34px);
+    padding: 40px 28px 52px;
+    background-position: center center, center center, 58% center;
+  }
+
+  .livreos-login .livreos-login__brand,
+  .livreos-login .livreos-login__intro,
+  .livreos-login .livreos-login__segments,
+  .livreos-login .livreos-login__panel {
+    grid-column: 1;
+    grid-row: auto;
+    align-self: auto;
+    justify-self: center;
+    width: 100%;
+    max-width: 720px;
+  }
+
+  .livreos-login .livreos-login__brand,
+  .livreos-login .livreos-login__intro {
+    text-align: center;
+  }
+
+  .livreos-login .livreos-login__intro {
+    align-items: center;
+  }
+
+  .livreos-login .livreos-login__segment-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .livreos-login .livreos-login__panel {
+    max-width: 560px;
+  }
+}
+
+/* Mobile: marca, titulo, formulario e cards em duas colunas. */
+@media (max-width: 767px) {
+  .livreos-login {
+    --lo-blur-panel: 18px;
+    --lo-blur-card: 13px;
+    --lo-radius-panel: 24px;
+    --lo-radius-card: 17px;
+    row-gap: 22px;
+    padding: 28px 18px 40px;
+    background-position: center center, center center, 62% center;
+  }
+
+  .livreos-login .livreos-login__brand {
+    max-width: 300px;
+  }
+
+  .livreos-login .livreos-login__headline {
+    font-size: clamp(1.7rem, 8vw, 2.3rem);
+  }
+
+  .livreos-login .livreos-login__segment-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .livreos-login .livreos-login__panel {
+    padding: 22px;
+  }
+}
+
+/* Mobile estreito. */
+@media (max-width: 389px) {
+  .livreos-login {
+    padding: 22px 14px 34px;
+  }
+
+  .livreos-login .livreos-login__panel {
+    padding: 18px;
+  }
+
+  .livreos-login .livreos-login__segment-list {
+    gap: 9px;
+  }
+}
+
+/* Fallback: sem backdrop-filter o vidro vira uma superficie opaca legivel. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .livreos-login .livreos-login__panel {
+    background: linear-gradient(135deg, rgba(235, 255, 247, 0.96) 0%, rgba(190, 240, 216, 0.94) 100%);
+  }
+
+  .livreos-login .livreos-login__segment {
+    background: linear-gradient(145deg, rgba(0, 70, 48, 0.96) 0%, rgba(0, 35, 32, 0.96) 100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .livreos-login *,
+  .livreos-login *::before,
+  .livreos-login *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .livreos-login .livreos-login__segment:hover {
+    transform: none;
+  }
+}
+
+/* ===== Foco dos campos (global) =====
+   Linha de foco fina e verde em todos os campos, no lugar do anel de 2px
+   + offset dos componentes shadcn. O !important é necessário porque esse
+   anel vem de utilities do Tailwind dentro de src/components/ui/*, que
+   este projeto não edita. Checkbox/radio/range/color ficam de fora porque
+   já usam a borda verde da marca.
+
+   O seletor vai dentro de :where() para ficar com especificidade baixa:
+   assim telas específicas (a de login, por exemplo) conseguem sobrescrever
+   este foco com um brilho próprio sem precisar de seletores artificiais. */
+input:where(:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"])):focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="combobox"]:focus-visible {
+  border-color: var(--field-focus, hsl(var(--ring))) !important;
+  outline: 1px solid var(--field-focus, hsl(var(--ring))) !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+}
+
+/* ===== Reflexo de luz na marca (light sweep) =====
+   A faixa é recortada em duas etapas: overflow:hidden prende ao quadrado do
+   símbolo e a máscara (aplicada em linha pelo componente, com a própria
+   transparência do emblema) prende ao desenho. Assim a luz nunca invade o
+   fundo nem o texto da marca. A marca em si não se move: só a faixa desliza. */
+.livreos-logo__sweep {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.livreos-logo__sweep-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 55%;
+  background-image: linear-gradient(
+    105deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(214, 255, 232, 0.35) 40%,
+    rgba(255, 255, 255, 0.92) 50%,
+    rgba(214, 255, 232, 0.35) 60%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: livreos-light-sweep 6s ease-in-out infinite;
+}
+
+/* Ciclo de 6s: a travessia dura 0,9s (76% -> 91%) e o resto é a pausa. */
+@keyframes livreos-light-sweep {
+  0%,
+  76% {
+    transform: translateX(-160%);
+  }
+  91%,
+  100% {
+    transform: translateX(240%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .livreos-logo__sweep {
+    display: none;
+  }
 }

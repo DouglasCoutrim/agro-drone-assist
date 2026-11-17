@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useVendasData } from "@/hooks/useVendasData";
@@ -8,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calculator, FileText, Loader2, Receipt, Search, ShoppingCart, Trash2 } from "lucide-react";
+import { ArrowLeft, Calculator, FileText, Loader2, Receipt, Search, ShoppingCart, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatCurrency, todayDateInput } from "@/lib/formatters";
 import { limitarPercentualDesconto, calcularValorDesconto, calcularTotalComDesconto, tetoDesconto } from "@/lib/desconto";
@@ -65,6 +66,7 @@ async function buscarProdutos(organizationId: string, termo: string) {
 interface Linha { key: string; produto_id: string; codigo: string; nome: string; ncm: string; cfop: string; qtd: number; preco: number; pct: number; max: number; servico?: boolean; }
 
 export default function PDV() {
+  const navigate = useNavigate();
   const { organization } = useOrganization();
   const { createVenda, fetchData } = useVendasData();
   const [clientes, setClientes] = useState<any[]>([]);
@@ -74,6 +76,8 @@ export default function PDV() {
   const [cliente, setCliente] = useState<any | null>(null);
   const [forma, setForma] = useState("dinheiro");
   const [recebido, setRecebido] = useState(0);
+  // Usado só no crédito: 1x = à vista no cartão; acima disso vira parcelamento na NF-e.
+  const [parcelas, setParcelas] = useState(1);
   const [saving, setSaving] = useState(false);
   const buscaRef = useRef<HTMLInputElement>(null);
 
@@ -158,7 +162,7 @@ export default function PDV() {
         { rotulo: "TOTAL PAGO", valor: total, destaque: true },
         ...(troco > 0 ? [{ rotulo: "Valor recebido", valor: recebido }, { rotulo: "Troco", valor: troco }] : []),
       ],
-      observacao: `Forma de pagamento: ${FORMAS.find((f) => f.value === forma)?.label}`,
+      observacao: `Forma de pagamento: ${FORMAS.find((f) => f.value === forma)?.label}${forma === "credito" && parcelas > 1 ? ` — ${parcelas}x de ${formatCurrency(total / parcelas)}` : ""}`,
       assinaturas: [e?.nome_empresa || organization?.name || "Empresa", venda.cliente_nome],
     });
     doc.save(`recibo-${venda.numero}.pdf`);
@@ -184,7 +188,14 @@ export default function PDV() {
         forma_pagamento: forma, status_pagamento: "pago",
         obs: emitirNotaFiscal ? "Venda PDV" : "Venda PDV (recibo, sem nota fiscal)",
         nf_numero: null, nf_chave: null, nf_emitida_em: null, nf_provider: null,
-        nfe_dados: { emitir_nota: emitirNotaFiscal, origem: "pdv" },
+        nfe_dados: {
+          emitir_nota: emitirNotaFiscal,
+          origem: "pdv",
+          // Crédito parcelado: a emissão da NF-e gera as duplicatas a partir destes campos.
+          tipo_pagamento: forma === "credito" && parcelas > 1 ? "1" : "0",
+          parcelas: forma === "credito" ? parcelas : 1,
+          intervalo_dias: 30,
+        },
       } as any, itens as any);
 
       if (emitirNotaFiscal) {
@@ -206,7 +217,7 @@ export default function PDV() {
         await gerarRecibo(venda);
         toast.success(`Venda ${venda.numero} registrada e recibo gerado`);
       }
-      setLinhas([]); setCliente(null); setRecebido(0);
+      setLinhas([]); setCliente(null); setRecebido(0); setParcelas(1);
     } catch (err: any) {
       toast.error(err?.message || "Não foi possível finalizar a venda");
     } finally { setSaving(false); }
@@ -226,7 +237,13 @@ export default function PDV() {
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto pb-24 bg-slate-100 min-h-screen">
-      <div className="flex items-center gap-2"><Calculator className="h-6 w-6 text-primary" /><h1 className="text-2xl font-bold">PDV — Nova venda</h1></div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2"><Calculator className="h-6 w-6 text-primary" /><h1 className="text-2xl font-bold">PDV — Nova venda</h1></div>
+        <Button variant="outline" className="gap-2" onClick={() => navigate("/dashboard")} title="Voltar ao Dashboard">
+          <ArrowLeft className="h-4 w-4" />
+          Sair do PDV
+        </Button>
+      </div>
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white shadow-sm p-4 space-y-2">
           <div className="relative">
@@ -317,6 +334,26 @@ export default function PDV() {
             <Select value={forma} onValueChange={setForma}><SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{FORMAS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}</SelectContent></Select>
           </div>
+          {forma === "credito" && (
+            <div>
+              <Label>Parcelas</Label>
+              <Select value={String(parcelas)} onValueChange={(v) => setParcelas(Number(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n === 1 ? "À vista (1x)" : `${n}x de ${formatCurrency(total / n)}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {parcelas > 1 && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {parcelas} parcelas de {formatCurrency(total / parcelas)} — primeira parcela em 30 dias.
+                </p>
+              )}
+            </div>
+          )}
           {forma === "dinheiro" && <div><Label>Valor recebido</Label><MoneyInput value={recebido} onChange={setRecebido} className="h-10 pl-7 pr-3" /></div>}
           <div className="space-y-1 text-sm">
             <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>

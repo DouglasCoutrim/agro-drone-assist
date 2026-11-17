@@ -275,7 +275,11 @@ export default function Estoque() {
       } catch (e: any) { toast.error(e.message); break; }
     }
     setLoteLoading(false);
-    toast.success(`${ok} de ${semFoto.length} produtos receberam foto. Confira e troque as que vierem erradas.`);
+    if (ok === 0) {
+      toast.info("Nenhuma foto encontrada. Tente encurtar a descrição do produto ou cole o link da foto no cadastro do item.");
+    } else {
+      toast.success(`${ok} de ${semFoto.length} produtos receberam foto. Confira e troque as que vierem erradas.`);
+    }
   };
   const categorias = useMemo(() => [...new Set(itens.map(i => i.categoria).filter(Boolean))], [itens]);
   const fornecedores = useMemo(() => [...new Set(itens.map(i => i.fornecedor).filter(Boolean) as string[])], [itens]);
