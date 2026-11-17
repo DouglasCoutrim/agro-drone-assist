@@ -88,7 +88,7 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
           for (const it of its || []) (map[(it as any).ordem_servico_id] ||= []).push(it);
         }
         setItemsByOS(map);
-        setSelected(new Set(list.filter(o => !CLOSED.includes(o.status)).map(o => o.id)));
+        setSelected(new Set());
       } catch (e) { toast.error("Erro ao carregar OS: " + getErrorMessage(e)); }
       finally { setLoadingOS(false); }
     })();
