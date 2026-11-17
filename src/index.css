@@ -6,26 +6,25 @@
   :root {
     /* Backgrounds */
     --background: 150 14% 97%;
-    --foreground: 222 47% 11%;
+    --foreground: 215 35% 21%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 215 35% 21%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 215 35% 21%;
 
     /* Primary - Green */
-    --primary: 158 84% 26%;
-    --primary-glow: 145 63% 42%;
+    --primary: 160 83% 26%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary */
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 152 47% 94%;
+    --secondary-foreground: 160 83% 26%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 220 22% 95%;
+    --muted-foreground: 215 16% 45%;
 
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 152 47% 94%;
+    --accent-foreground: 160 83% 26%;
 
     /* Status */
     --success: 142 72% 37%;
@@ -36,15 +35,16 @@
     --destructive-foreground: 0 0% 100%;
 
     /* Interface */
-    --border: 214 32% 91%;
-    --border-subtle: 210 40% 96%;
-    --input: 215 25% 84%;
-    --ring: 158 84% 26%;
+    --border: 225 21% 93%;
+    --border-subtle: 220 22% 95%;
+    --input: 152 18% 86%;
+    --ring: 160 84% 34%;
+    --field-focus: #009b3c;
     --radius: 0.75rem;
 
     /* Sidebar - always dark */
     --sidebar-background: 158 72% 13%;
-    --sidebar-foreground: 0 0% 100%;
+    --sidebar-foreground: 150 30% 92%;
     --sidebar-primary: 152 62% 34%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 158 55% 18%;
@@ -70,6 +70,12 @@
     --slate-light: 210 40% 96%;
     --slate-text: 215 25% 27%;
 
+    /* KPI tones — cores sólidas (light theme) */
+    --kg-bg: #EAF7F1; --kg-bd: #CDEBDD; --kg-tx: #0B7A55;
+    --kb-bg: #EAF1FF; --kb-bd: #CFE0FF; --kb-tx: #1D4ED8;
+    --ko-bg: #FFF3E3; --ko-bd: #FBDDB5; --ko-tx: #B45309;
+    --kp-bg: #F3EBFF; --kp-bd: #E2D0FB; --kp-tx: #7E22CE;
+
     /* Shadows */
     --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
@@ -83,6 +89,39 @@
     --bottom-nav-height: 64px;
   }
 
+  .dark {
+    --background: 154 20% 7%;
+    --foreground: 137 17% 92%;
+    --card: 150 18% 11%;
+    --card-foreground: 137 17% 92%;
+    --popover: 150 18% 11%;
+    --popover-foreground: 137 17% 92%;
+    --primary: 149 58% 49%;
+    --primary-foreground: 154 20% 7%;
+    --secondary: 159 51% 14%;
+    --secondary-foreground: 152 68% 62%;
+    --muted: 154 17% 16%;
+    --muted-foreground: 141 8% 63%;
+    --accent: 159 51% 14%;
+    --accent-foreground: 152 68% 62%;
+    --border: 152 15% 17%;
+    --border-subtle: 154 17% 16%;
+    --input: 152 15% 20%;
+    --ring: 149 58% 49%;
+    --sidebar-background: 158 60% 8%;
+    --sidebar-foreground: 142 10% 74%;
+    --sidebar-primary: 160 85% 29%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 158 45% 14%;
+    --sidebar-accent-foreground: 137 17% 92%;
+    --sidebar-border: 152 15% 17%;
+    --sidebar-ring: 149 58% 49%;
+    /* KPI tones — dark theme */
+    --kg-bg: #12372A; --kg-bd: #1D5A43; --kg-tx: #5EE0A8;
+    --kb-bg: #16294A; --kb-bd: #24407A; --kb-tx: #93C5FD;
+    --ko-bg: #3A2E12; --ko-bd: #5C4A1E; --ko-tx: #FCD34D;
+    --kp-bg: #2A1C4A; --kp-bd: #46307A; --kp-tx: #D8B4FE;
+  }
 
   * {
     @apply border-border;
@@ -269,81 +308,6 @@ iframe[src*="lovable"] {
   overflow: hidden !important;
 }
 
-/* ===== Tema LivreOS Enterprise — Dark Emerald Glass (sistema inteiro) =====
-   Mesma paleta da tela de login: fundo esmeralda escuro, vidro líquido,
-   contornos neon e texto claro. O `:root` define os tokens do sistema; o
-   `.dark` é mantido para compatibilidade, mas o tema é fixo no escuro. */
-@layer base {
-  :root {
-    /* Paleta oficial LivreOS Enterprise (login) */
-    --background: 160 35% 7%;          /* #001b18 deep emerald */
-    --foreground: 150 30% 92%;         /* #f7fbf9 text light */
-    --card: 158 28% 13%;               /* vidro escuro para superfícies */
-    --card-foreground: 150 30% 92%;
-    --popover: 158 28% 13%;
-    --popover-foreground: 150 30% 92%;
-    --primary: 144 100% 46%;           /* #00c83f green primary */
-    --primary-foreground: 150 30% 7%;
-    --secondary: 158 50% 20%;          /* vidro verde-escuro */
-    --secondary-foreground: 150 30% 92%;
-    --muted: 158 25% 18%;
-    --muted-foreground: 150 20% 65%;
-    --accent: 144 100% 46%;
-    --accent-foreground: 150 30% 7%;
-    --border: 158 40% 24%;             /* contorno vidro */
-    --border-subtle: 158 30% 20%;
-    --input: 158 25% 22%;
-    --ring: 144 100% 46%;
-    --field-focus: #00c83c;
-    /* Sidebar — já escura, mantém tom de marca */
-    --sidebar-background: 158 72% 13%;
-    --sidebar-foreground: 150 30% 92%;
-    --sidebar-primary: 152 62% 34%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 158 55% 19%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 158 45% 21%;
-    --sidebar-ring: 160 84% 34%;
-    /* KPI tones — vidro colorido */
-    --kg-bg: rgba(0, 200, 63, 0.12); --kg-bd: rgba(0, 200, 63, 0.35); --kg-tx: #7cff00;
-    --kb-bg: rgba(41, 128, 185, 0.12); --kb-bd: rgba(41, 128, 185, 0.35); --kb-tx: #5dade2;
-    --ko-bg: rgba(243, 156, 18, 0.12); --ko-bd: rgba(243, 156, 18, 0.35); --ko-tx: #f39c12;
-    --kp-bg: rgba(142, 68, 173, 0.12); --kp-bd: rgba(142, 68, 173, 0.35); --kp-tx: #af7ac5;
-  }
-
-  /* Dark é o tema padrão — mantido para componentes que usam .dark */
-  .dark {
-    --background: 160 35% 7%;
-    --foreground: 150 30% 92%;
-    --card: 158 28% 13%;
-    --card-foreground: 150 30% 92%;
-    --popover: 158 28% 13%;
-    --popover-foreground: 150 30% 92%;
-    --primary: 144 100% 46%;
-    --primary-foreground: 150 30% 7%;
-    --secondary: 158 50% 20%;
-    --secondary-foreground: 150 30% 92%;
-    --muted: 158 25% 18%;
-    --muted-foreground: 150 20% 65%;
-    --accent: 144 100% 46%;
-    --accent-foreground: 150 30% 7%;
-    --border: 158 40% 24%;
-    --border-subtle: 158 30% 20%;
-    --input: 158 25% 22%;
-    --ring: 144 100% 46%;
-    --sidebar-background: 158 72% 13%;
-    --sidebar-foreground: 150 30% 92%;
-    --sidebar-primary: 152 62% 34%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 158 55% 19%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 158 45% 21%;
-    --sidebar-ring: 160 84% 34%;
-  }
-
-  body { font-family: 'Plus Jakarta Sans', 'DM Sans', sans-serif; }
-}
-
 @layer components {
   .kpi-icon-green { background: var(--kg-bg); color: var(--kg-tx); }
   .kpi-icon-blue { background: var(--kb-bg); color: var(--kb-tx); }
@@ -360,99 +324,6 @@ iframe[src*="lovable"] {
 @media print {
   .no-print { display: none !important; }
   body { background: #fff !important; color: #000 !important; }
-}
-
-/* ===== Liquid Glass — utilitários de superfície para todo o sistema =====
-   Reutilizam a mesma paleta e o mesmo efeito da tela de login: vidro
-   translúcido, contorno luminoso, reflexo superior e gotas discretas.
-   Escopados em `.livreos-glass*` para não colidir com o resto do ERP. */
-.livreos-glass {
-  position: relative;
-  isolation: isolate;
-  background:
-    radial-gradient(ellipse at 84% 8%, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 38%),
-    linear-gradient(135deg, rgba(235, 255, 247, 0.08) 0%, rgba(170, 235, 207, 0.05) 52%, rgba(225, 255, 242, 0.08) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius);
-  box-shadow:
-    0 10px 30px -12px rgba(0, 0, 0, 0.5),
-    inset 0 1px 1px rgba(255, 255, 255, 0.08);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
-  backdrop-filter: blur(18px) saturate(150%);
-}
-
-.livreos-glass::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  border-radius: inherit;
-  background-image:
-    radial-gradient(circle 6px at 89% 7%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 72%),
-    radial-gradient(circle 3px at 76% 13%, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 74%),
-    linear-gradient(118deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.02) 24%, rgba(255, 255, 255, 0) 44%, rgba(111, 255, 190, 0.06) 100%);
-}
-
-.livreos-glass::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 8%;
-  width: 70%;
-  height: 1px;
-  pointer-events: none;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.5) 50%, rgba(255, 255, 255, 0) 100%);
-}
-
-.livreos-glass-strong {
-  background:
-    radial-gradient(ellipse at 84% 8%, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 38%),
-    linear-gradient(135deg, rgba(235, 255, 247, 0.12) 0%, rgba(170, 235, 207, 0.08) 52%, rgba(225, 255, 242, 0.12) 100%);
-  border: 1.5px solid rgba(255, 255, 255, 0.18);
-  border-radius: 1rem;
-  box-shadow:
-    0 24px 70px -22px rgba(0, 10, 16, 0.6),
-    0 0 22px rgba(98, 255, 190, 0.12),
-    inset 0 1.5px 2px rgba(255, 255, 255, 0.12),
-    inset 0 -1px 2px rgba(255, 255, 255, 0.05);
-  -webkit-backdrop-filter: blur(26px) saturate(165%);
-  backdrop-filter: blur(26px) saturate(165%);
-}
-
-.livreos-glass-strong::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  border-radius: inherit;
-  background-image:
-    radial-gradient(circle 8px at 89% 7%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 72%),
-    radial-gradient(circle 4px at 76% 13%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 74%),
-    radial-gradient(circle 3px at 95% 16%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 72%),
-    radial-gradient(circle 6px at 7% 86%, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 74%),
-    radial-gradient(circle 3px at 17% 93%, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 70%),
-    linear-gradient(118deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.03) 24%, rgba(255, 255, 255, 0) 44%, rgba(111, 255, 190, 0.1) 100%);
-}
-
-.livreos-glass-strong::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 8%;
-  width: 70%;
-  height: 1.5px;
-  pointer-events: none;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.7) 50%, rgba(255, 255, 255, 0) 100%);
-}
-
-/* Fallback: sem backdrop-filter o vidro vira uma superfície opaca legível. */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .livreos-glass,
-  .livreos-glass-strong {
-    background: linear-gradient(135deg, rgba(0, 42, 39, 0.96) 0%, rgba(0, 27, 24, 0.94) 100%);
-  }
 }
 
 /* ===== Login LivreOS Enterprise — Liquid Glass / Water Droplet =====

@@ -14,7 +14,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   useInactivityLogout();
   useSoundNotifications();
   return (
-    <div className="flex h-[100dvh] w-full max-w-[100vw] overflow-hidden bg-background livreos-glass">
+    <div className="flex h-[100dvh] w-full max-w-[100vw] overflow-hidden bg-background">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:block sticky top-0 h-[100dvh] z-50">
         <Sidebar />

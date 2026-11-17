@@ -14,10 +14,10 @@ interface AlertBoxProps {
 }
 
 const typeMap = {
-  error: { bg: "bg-destructive/10", border: "border-destructive/30", icon: "bg-destructive/15 text-destructive", title: "text-destructive", text: "text-destructive/90" },
-  warning: { bg: "bg-warning/10", border: "border-warning/30", icon: "bg-warning/15 text-warning", title: "text-warning", text: "text-warning/90" },
-  info: { bg: "bg-primary/10", border: "border-primary/30", icon: "bg-primary/15 text-primary", title: "text-primary", text: "text-primary/90" },
-  success: { bg: "bg-success/10", border: "border-success/30", icon: "bg-success/15 text-success", title: "text-success", text: "text-success/90" },
+  error: { bg: "bg-red-50", border: "border-red-200", icon: "bg-red-100 text-red-600", title: "text-red-900", text: "text-red-700" },
+  warning: { bg: "bg-yellow-50", border: "border-yellow-200", icon: "bg-yellow-100 text-yellow-600", title: "text-yellow-900", text: "text-yellow-700" },
+  info: { bg: "bg-blue-50", border: "border-blue-200", icon: "bg-blue-100 text-blue-600", title: "text-blue-900", text: "text-blue-700" },
+  success: { bg: "bg-green-50", border: "border-green-200", icon: "bg-green-100 text-green-600", title: "text-green-900", text: "text-green-700" },
 };
 
 export function AlertBox({
@@ -41,7 +41,7 @@ export function AlertBox({
   return (
     <div
       className={cn(
-        "livreos-glass border rounded-lg p-4 hover:shadow-md transition-all duration-300",
+        "bg-white border rounded-lg p-4 hover:shadow-sm transition-all duration-300",
         styles.border,
         className,
         visible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-95"
@@ -63,7 +63,7 @@ export function AlertBox({
             <div className="mt-2 space-y-1">
               {items.map((item, idx) => (
                 <p key={idx} className={cn("text-sm", styles.text)}>
-                  <span className="font-medium text-foreground">{item.label}</span>
+                  <span className="font-medium text-gray-900">{item.label}</span>
                   {" — "}{item.value}
                 </p>
               ))}
