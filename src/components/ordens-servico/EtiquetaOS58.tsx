@@ -85,7 +85,7 @@ export function EtiquetaOS58({ os, tecnicoNome, baseUrl }: EtiquetaOS58Props) {
       <style>{ESTILOS_ETIQUETA}</style>
       <div id="etiqueta-os" className="w-[58mm] bg-white p-[2mm] text-black" style={{ fontFamily: "Arial, sans-serif" }}>
         <div className="flex items-start justify-between gap-[2mm]">
-          <p className="text-[16pt] font-bold leading-none">OS-{os.numero}</p>
+          <p className="text-[16pt] font-bold leading-none">OS-{String(os.numero).replace(/^OS-?\s*/i, "")}</p>
           {qrCode ? (
             <img src={qrCode} alt={`QR code da OS ${os.numero}`} className="h-[22mm] w-[22mm] shrink-0" />
           ) : (
