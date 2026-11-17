@@ -104,6 +104,9 @@ export default function Vendas() {
   const [viewingNF, setViewingNF] = useState<NotaFiscalEmitida | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const isSubmittingRef = useRef(false);
+  // Marcado apenas pelo botão "Salvar e emitir Nota" (rodapé). O "Salvar" do
+  // topo grava a venda e deixa a nota como "Emissão pendente".
+  const emitirAoSalvarRef = useRef(false);
 
   // Form state para nova venda
   const [vendaFormData, setVendaFormData] = useState({
@@ -291,6 +294,8 @@ export default function Vendas() {
   const handleSubmitVenda = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmittingRef.current) return;
+    const emitirAposSalvar = emitirAoSalvarRef.current;
+    emitirAoSalvarRef.current = false;
     if (!organization?.id || !user) {
       toast.error("Sem permissão");
       return;
@@ -332,15 +337,23 @@ export default function Vendas() {
         nfe_dados: nfeDados,
       };
 
+      let vendaSalva: Venda | null = null;
       if (editingVenda) {
         const { numero: _n, ...updates } = completeVendaData;
-        await updateVenda(editingVenda.id, updates, itensForm);
+        vendaSalva = await updateVenda(editingVenda.id, updates, itensForm);
         toast.success("Venda atualizada!");
       } else {
-        await createVenda(completeVendaData, itensForm);
+        vendaSalva = await createVenda(completeVendaData, itensForm);
         toast.success("Venda criada com sucesso!");
       }
       closeVendaForm();
+      if (nfeDados.emitir_nota && vendaSalva && !vendaSalva.nf_numero) {
+        if (emitirAposSalvar) {
+          await handleEmitirNFe(vendaSalva.id);
+        } else {
+          toast.info("Venda salva. Nota fiscal com emissão pendente.");
+        }
+      }
     } catch (err: any) {
       toast.error("Erro ao salvar venda: " + err.message);
     } finally {
@@ -443,7 +456,13 @@ export default function Vendas() {
                   </div>
                   <div className="flex gap-2">
                     <Button type="button" variant="outline" onClick={closeVendaForm}>Voltar</Button>
-                    <Button type="submit" form="venda-form" disabled={formLoading}>{formLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}</Button>
+                    <Button
+                      type="submit"
+                      form="venda-form"
+                      disabled={formLoading}
+                      onClick={() => { emitirAoSalvarRef.current = false; }}
+                      title="Salva a venda e deixa a nota como Emissão pendente"
+                    >{formLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}</Button>
                   </div>
                 </div>
                 <Tabs value={formTab} onValueChange={setFormTab}>
@@ -670,7 +689,13 @@ export default function Vendas() {
                   <Button type="button" variant="outline" disabled={formTab === FORM_TABS[0][0]} onClick={() => setFormTab(FORM_TABS[Math.max(0, FORM_TABS.findIndex((t) => t[0] === formTab) - 1)][0])}>Anterior</Button>
                   {formTab !== FORM_TABS[FORM_TABS.length - 1][0]
                     ? <Button type="button" onClick={() => setFormTab(FORM_TABS[FORM_TABS.findIndex((t) => t[0] === formTab) + 1][0])}>Próxima</Button>
-                    : <Button type="submit" form="venda-form" disabled={formLoading}>{nfeDados.emitir_nota ? "Salvar e emitir Nota" : "Salvar"}</Button>}
+                    : <Button
+                        type="submit"
+                        form="venda-form"
+                        disabled={formLoading}
+                        onClick={() => { emitirAoSalvarRef.current = nfeDados.emitir_nota; }}
+                        title={nfeDados.emitir_nota ? "Salva a venda e envia a nota para emissão" : "Salva a venda"}
+                      >{formLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfeDados.emitir_nota ? "Salvar e emitir Nota" : "Salvar"}</Button>}
                 </div>
                 </Tabs>
               </div>
@@ -746,6 +771,13 @@ export default function Vendas() {
                     return (
                       <Badge variant="outline" className="bg-green-50 text-green-700 cursor-pointer" onClick={() => setViewingNF(notasFiscais.find((n) => n.venda_id === item.id)!)}>
                         <FileCheck className="h-3 w-3 mr-1" />{item.nf_numero}
+                      </Badge>
+                    );
+                  }
+                  if ((item as any).nfe_dados?.emitir_nota === true && item.status_pagamento !== "cancelado") {
+                    return (
+                      <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 whitespace-nowrap">
+                        <AlertTriangle className="h-3 w-3 mr-1" />Emissão pendente
                       </Badge>
                     );
                   }
