@@ -158,8 +158,13 @@ export default function Configuracoes() {
         </div>
 
         <Button variant="outline" asChild>
-          <Link to="/equipe"><Users className="mr-2 h-4 w-4" />Gerenciar equipe</Link>
-        </Button>
+                  <Link to="/equipe"><Users className="mr-2 h-4 w-4" />Gerenciar equipe</Link>
+                </Button>
+                {role === "admin" && (
+                  <Button variant="outline" asChild>
+                    <Link to="/permissoes"><Shield className="mr-2 h-4 w-4" />Permissões de OS</Link>
+                  </Button>
+                )}
 
         <SegmentosCard />
 

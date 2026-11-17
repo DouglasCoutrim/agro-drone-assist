@@ -163,6 +163,7 @@ export default function OrdensServico() {
     nextStatus: string | null;
     saving: boolean;
   }>({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
+  const [pagoOSIds, setPagoOSIds] = useState<Set<string>>(new Set());
 
   // Wizard step
   const [wizardStep, setWizardStep] = useState(0);
@@ -243,14 +244,27 @@ export default function OrdensServico() {
   }, [editingOS, formData, mobilityData, osItems.length, uiCategory, configCheckbox]);
 
   useEffect(() => {
-    if (orgLoading) return;
-    if (!isPlatformAdmin && !organization?.id) {
-      setLoading(false);
-      return;
-    }
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organization?.id, isPlatformAdmin, orgLoading]);
+      if (orgLoading) return;
+      if (!isPlatformAdmin && !organization?.id) {
+        setLoading(false);
+        return;
+      }
+      fetchData();
+      fetchPaidOS();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [organization?.id, isPlatformAdmin, orgLoading]);
+  
+    const fetchPaidOS = async () => {
+      try {
+        let query = supabase.from("financeiro").select("ordem_servico_id");
+        if (organization?.id && !isPlatformAdmin) query = query.eq("organization_id", organization.id);
+        const { data, error } = await query;
+        if (error) { console.error("Erro ao buscar OS pagas:", error); return; }
+        setPagoOSIds(new Set((data || []).map((r: any) => r.ordem_servico_id).filter(Boolean)));
+      } catch (err) {
+        console.error("Erro ao buscar OS pagas:", err);
+      }
+    };
 
   const fetchData = async () => {
     let didToast = false;
@@ -765,13 +779,17 @@ export default function OrdensServico() {
         acao: `Status alterado para ${getStatusLabel(newStatus)}`,
       }).then(() => {});
     }
+    // Atualizar o set de OS pagas quando a OS for finalizada
+    if (newStatus === "finalizada") {
+      setPagoOSIds(prev => new Set(prev).add(osId));
+    }
   };
 
   const handleStatusChange = async (osId: string, newStatus: string): Promise<boolean> => {
     const os = ordens.find(o => o.id === osId);
     const isReview = (os as any)?.tipo_os === "revisao";
-    if (newStatus === "finalizada" && os && os.tecnico_id !== user?.id) {
-      toast.error("Somente o técnico responsável pode finalizar esta OS.");
+    if (newStatus === "finalizada" && os && !canUserManageOS(os, user?.id, isAdmin)) {
+      toast.error("Somente usuários com permissão podem finalizar esta OS.");
       return false;
     }
 
@@ -871,8 +889,9 @@ export default function OrdensServico() {
       }
 
       toast.success("Recebimento registrado no Financeiro!");
-      setPaymentDialog({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
-      fetchData();
+            setPagoOSIds(prev => new Set(prev).add(paymentDialog.osId!));
+            setPaymentDialog({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
+            fetchData();
     } catch (err: any) {
       toast.error(getErrorMessage(err));
       setPaymentDialog(p => ({ ...p, saving: false }));
@@ -1252,11 +1271,14 @@ export default function OrdensServico() {
                 case "numero":
                   return <span className="font-bold text-primary text-sm">{os.numero}</span>;
                 case "status":
-                  return (
-                    <Badge variant={statusConfig.variant} className="text-[10px]">
-                      {statusConfig.label}
-                    </Badge>
-                  );
+                                  return (
+                                    <div className="flex items-center gap-1">
+                                      <Badge variant={statusConfig.variant} className="text-[10px]">
+                                        {statusConfig.label}
+                                      </Badge>
+                                      {pagoOSIds.has(os.id) && <Badge className="bg-green-600 text-white text-[9px]">Pago</Badge>}
+                                    </div>
+                                  );
                 case "cliente":
                   return (
                     <div>
@@ -1679,11 +1701,12 @@ export default function OrdensServico() {
             <DialogHeader className="p-4 sm:p-6 border-b shrink-0">
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <DialogTitle className="text-lg font-bold flex items-center gap-2">
-                    OS {viewingOS?.numero}
-                    {viewingOS && <Badge className={STATUS_CONFIG[viewingOS.status]?.variant === 'destructive' ? 'bg-destructive' : 'bg-primary'}>{getStatusLabel(viewingOS.status)}</Badge>}
-                  </DialogTitle>
+                              <div className="space-y-1">
+                                <DialogTitle className="text-lg font-bold flex items-center gap-2">
+                                  OS {viewingOS?.numero}
+                                  {viewingOS && <Badge className={STATUS_CONFIG[viewingOS.status]?.variant === 'destructive' ? 'bg-destructive' : 'bg-primary'}>{getStatusLabel(viewingOS.status)}</Badge>}
+                                  {viewingOS && pagoOSIds.has(viewingOS.id) && <Badge className="bg-green-600 text-white text-[10px]">Pago</Badge>}
+                                </DialogTitle>
                   <DialogDescription className="text-xs">
                     Criada em {formatDate(viewingOS?.created_at || null)}
                   </DialogDescription>
