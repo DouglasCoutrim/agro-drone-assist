@@ -3,89 +3,88 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
-import { useTeamMembers } from "@/hooks/useTeamMembers";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Users, Shield, CheckCircle, X, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Users, Shield, CheckCircle, X, Loader2, Save } from "lucide-react";
 
-type UserPermission = {
-  user_id: string;
-  user_name: string;
-  role: "admin" | "tecnico" | "consulta";
-  can_finalize_os: boolean;
-};
+type AppRole = "admin" | "tecnico" | "consulta";
+
+interface UserWithPerms {
+  id: string;
+  nome: string;
+  email: string;
+  role: AppRole;
+  roles: AppRole[];
+  pode_finalizar_os: boolean;
+}
 
 export default function Permissoes() {
   const { user, role, isAdmin } = useAuth();
-  const { organization, isPlatformAdmin } = useOrganization();
-  const [teamMembers, setTeamMembers] = useState<Array<{ id: string; nome: string; role: string }>>([]);
-  const [permissions, setPermissions] = useState<Map<string, boolean>>(new Map());
+  const { organization, isPlatformAdmin: isPlatformAdminOrg } = useOrganization();
+  const [users, setUsers] = useState<UserWithPerms[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetchTeamMembers();
-    fetchPermissions();
+    fetchUsers();
   }, []);
 
-  const fetchTeamMembers = async () => {
-    if (!organization?.id || isPlatformAdmin) {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, nome, role")
-        .eq("organization_id", organization?.id)
-        .order("nome");
-      if (error) throw error;
-      setTeamMembers(data || []);
-      return;
-    }
-    // For platform admin, fetch all
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, nome, role")
-      .order("nome");
-    if (error) throw error;
-    setTeamMembers(data || []);
-  };
-
-  const fetchPermissions = async () => {
+  const fetchUsers = async () => {
+    setLoading(true);
     try {
-      // Try to get existing permissions from a config table or create default
-      let { data, error } = await supabase
-        .from("os_permissions")
-        .select("*")
-        .eq("organization_id", organization?.id);
-
-      if (error || !data || data.length === 0) {
-        // Create default permissions: admins can finalize, technicians can finalize, consulta cannot
-        const defaultPerms = teamMembers.map((tm: any) => ({
-          organization_id: organization?.id,
-          user_id: tm.id,
-          role: tm.role,
-          can_finalize_os: tm.role === "admin" || tm.role === "tecnico",
-        }));
-        
-        const { error: insError } = await supabase
-          .from("os_permissions")
-          .insert(defaultPerms);
-        
-        if (insError) throw insError;
-        setPermissions(new Map(defaultPerms.map(p => [p.user_id, p.can_finalize_os])));
-        return;
+      // Buscar perfis
+      let profilesQuery = supabase.from("profiles").select("id, nome, email, organization_id");
+      if (organization?.id && !isPlatformAdminOrg) {
+        profilesQuery = profilesQuery.eq("organization_id", organization.id);
       }
+      const { data: profiles, error: profilesError } = await profilesQuery.order("nome");
+      if (profilesError) throw profilesError;
 
-      setPermissions(new Map(data.map((p: any) => [p.user_id, p.can_finalize_os])));
-    } catch (err: any) {
-      console.error("Erro ao buscar permissões:", err);
-      toast.error("Erro ao carregar permissões");
+      // Buscar roles
+      const { data: rolesData, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id, role");
+      if (rolesError) throw rolesError;
+
+      // Buscar permissões
+      const { data: permsData, error: permsError } = await supabase
+        .from("user_permissions")
+        .select("*");
+      if (permsError) throw permsError;
+
+      const usersData: UserWithPerms[] = (profiles || []).map((p: any) => {
+        const assignedRoles = (rolesData || [])
+          .filter((r: any) => r.user_id === p.id)
+          .map((r: any) => r.role as AppRole);
+        const effectiveRole = (["admin", "tecnico", "consulta"] as AppRole[]).find((c) =>
+          assignedRoles.includes(c)
+        ) ?? "consulta";
+
+        const permData = (permsData || []).find((pm: any) => pm.user_id === p.id);
+        // Usar cast para acessar pode_finalizar_os que pode não existir no tipo
+        const podeFinalizar = (permData as any)?.pode_finalizar_os ?? 
+          (effectiveRole === "admin" || effectiveRole === "tecnico");
+
+        return {
+          id: p.id,
+          nome: p.nome,
+          email: p.email,
+          role: effectiveRole,
+          roles: assignedRoles.length ? assignedRoles : ["consulta"],
+          pode_finalizar_os: podeFinalizar,
+        };
+      });
+
+      setUsers(usersData);
+    } catch (error: any) {
+      console.error("Erro ao buscar usuários:", error);
+      toast.error("Erro ao carregar usuários");
     } finally {
       setLoading(false);
     }
@@ -95,47 +94,38 @@ export default function Permissoes() {
     if (!organization?.id) return;
     setSaving(true);
     try {
-      // First, delete existing permissions for this organization
-      await supabase
-        .from("os_permissions")
-        .delete()
-        .eq("organization_id", organization.id);
-      
-      // Then insert updated permissions
-      const permData = Array.from(permissions.entries()).map(([user_id, canFinalize]) => ({
-        organization_id: organization.id,
-        user_id: user_id,
-        can_finalize_os: canFinalize,
-      }));
-      
-      const { error } = await supabase
-        .from("os_permissions")
-        .insert(permData);
-      
-      if (error) throw error;
-      
+      // Atualizar permissões para cada usuário
+      for (const u of users) {
+        const { error } = await supabase
+          .from("user_permissions")
+          .upsert({
+            user_id: u.id,
+            organization_id: organization.id,
+            pode_finalizar_os: u.pode_finalizar_os,
+          } as any, { onConflict: "user_id" });
+        if (error) throw error;
+      }
       toast.success("Permissões salvas com sucesso!");
-      setSaving(false);
     } catch (err: any) {
       console.error("Erro ao salvar permissões:", err);
       toast.error("Erro ao salvar permissões: " + err.message);
+    } finally {
       setSaving(false);
     }
   };
 
   const togglePermission = (userId: string) => {
-    setPermissions(prev => {
-      const newPerms = new Map(prev);
-      newPerms.set(userId, !newPerms.get(userId)!);
-      return newPerms;
-    });
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId ? { ...u, pode_finalizar_os: !u.pode_finalizar_os } : u
+      )
+    );
   };
 
   const canUserFinalize = (userId: string): boolean => {
-    // Admin always can
-    if (isAdmin || isPlatformAdmin) return true;
-    // Check explicit permission
-    return permissions.get(userId) === true;
+    if (isAdmin || isPlatformAdminOrg) return true;
+    const u = users.find((x) => x.id === userId);
+    return u?.pode_finalizar_os === true;
   };
 
   return (
@@ -143,8 +133,12 @@ export default function Permissoes() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2"><Shield className="h-8 w-8 text-primary" />Permissões de OS</h1>
-            <p className="text-muted-foreground">Configure quem pode finalizar ordens de serviço</p>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Shield className="h-8 w-8 text-primary" />Permissões de OS
+            </h1>
+            <p className="text-muted-foreground">
+              Configure quem pode finalizar ordens de serviço
+            </p>
           </div>
           {isAdmin && (
             <Button
@@ -155,7 +149,9 @@ export default function Permissoes() {
             >
               {saving ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : <Save className="mr-2 h-4 w-4" />}
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
               Salvar
             </Button>
           )}
@@ -165,7 +161,7 @@ export default function Permissoes() {
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        ) : teamMembers.length === 0 ? (
+        ) : users.length === 0 ? (
           <Card className="shadow-soft">
             <CardContent className="py-16 text-center space-y-3">
               <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
@@ -187,31 +183,39 @@ export default function Permissoes() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {teamMembers.map((member: any) => (
+              {users.map((member) => (
                 <div
                   key={member.id}
                   className="flex items-center gap-3 border-b last:border-0 py-3"
                 >
                   <div className="flex items-center gap-2">
                     <Badge
-                      variant={member.role === "admin" ? "primary" : member.role === "tecnico" ? "secondary" : "outline"}
-                    >
+                                          variant={
+                                            member.role === "admin"
+                                              ? "default"
+                                              : member.role === "tecnico"
+                                              ? "secondary"
+                                              : "outline"
+                                          }
+                                        >
                       {member.role}
                     </Badge>
                     <span className="font-medium">{member.nome}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {member.email}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 ml-auto">
                     <Switch
                       checked={canUserFinalize(member.id)}
-                      onCheckedChange={(v) => togglePermission(member.id)}
-                      disabled={isPlatformAdmin}
+                      onCheckedChange={() => togglePermission(member.id)}
+                      disabled={isPlatformAdminOrg}
                       aria-label={`Permitir que ${member.nome} finalize OS`}
                     />
                     {canUserFinalize(member.id) && (
-                      <Badge
-                        className="bg-green-600 text-white text-[9px]"
-                        >Pode finalizar OS</Badge
-                      >
+                      <Badge className="bg-green-600 text-white text-[9px]">
+                        Pode finalizar OS
+                      </Badge>
                     )}
                   </div>
                 </div>
