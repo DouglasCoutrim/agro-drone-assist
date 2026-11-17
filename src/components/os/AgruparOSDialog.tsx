@@ -28,6 +28,18 @@ const TIPO: Record<string, string> = {
   drone_agricola: "Drone Agrícola", drone_convencional: "Drone", controle: "Controle Remoto", bateria: "Bateria", outro: "Outro",
 };
 const CLOSED = ["entregue", "cancelada", "finalizada"];
+const STATUS_OPTIONS = [
+  { value: "recebido", label: "Recebido" },
+  { value: "aguardando_diagnostico", label: "Diagnóstico" },
+  { value: "aguardando_aprovacao", label: "Aprovação" },
+  { value: "aprovado", label: "Aprovado" },
+  { value: "em_reparo", label: "Em Reparo" },
+  { value: "em_testes", label: "Testes" },
+  { value: "pronto_retirada", label: "Pronto" },
+  { value: "entregue", label: "Entregue" },
+  { value: "finalizada", label: "Finalizada" },
+  { value: "cancelada", label: "Cancelada" },
+];
 const FORMAS = [
   { value: "dinheiro", label: "Dinheiro" }, { value: "pix", label: "PIX" },
   { value: "debito", label: "Débito" }, { value: "credito", label: "Crédito" },
@@ -47,17 +59,18 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
   const { organization } = useOrganization();
   const { config: empresa } = useEmpresaConfig();
   const [clientes, setClientes] = useState<{ id: string; nome: string; telefone: string }[]>([]);
-  const [clienteId, setClienteId] = useState("");
-  const [osList, setOsList] = useState<OSRow[]>([]);
-  const [showAll, setShowAll] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [itemsByOS, setItemsByOS] = useState<Record<string, any[]>>({});
-  const [loadingOS, setLoadingOS] = useState(false);
-  const [desconto, setDesconto] = useState(0);
-  const [validade, setValidade] = useState(todayDateInput(new Date(Date.now() + 15 * 86400000)));
-  const [observacao, setObservacao] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [forma, setForma] = useState("dinheiro");
+    const [clienteId, setClienteId] = useState("");
+    const [statusFilter, setStatusFilter] = useState("");
+    const [osList, setOsList] = useState<OSRow[]>([]);
+    const [showAll, setShowAll] = useState(false);
+    const [selected, setSelected] = useState<Set<string>>(new Set());
+    const [itemsByOS, setItemsByOS] = useState<Record<string, any[]>>({});
+    const [loadingOS, setLoadingOS] = useState(false);
+    const [desconto, setDesconto] = useState(0);
+    const [validade, setValidade] = useState(todayDateInput(new Date(Date.now() + 15 * 86400000)));
+    const [observacao, setObservacao] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [forma, setForma] = useState("dinheiro");
   const { user } = useAuth();
 
   useEffect(() => {
@@ -93,7 +106,13 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
     })();
   }, [clienteId, organization?.id]);
 
-  const visible = useMemo(() => showAll ? osList : osList.filter(o => !CLOSED.includes(o.status)), [osList, showAll]);
+  const visible = useMemo(() => {
+      let list = showAll ? osList : osList.filter(o => !CLOSED.includes(o.status));
+      if (statusFilter) {
+        list = list.filter(o => o.status === statusFilter);
+      }
+      return list;
+    }, [osList, showAll, statusFilter]);
   const cliente = clientes.find(c => c.id === clienteId);
 
   const grupos: ConsolidadoGrupo[] = useMemo(() => osList.filter(o => selected.has(o.id)).map(o => {
@@ -210,6 +229,17 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
           <div className="space-y-1.5">
             <Label>Cliente</Label>
             <SmartSelect options={clientes.map(c => ({ id: c.id, label: c.nome, sublabel: c.telefone }))} value={clienteId} onSelect={(o) => setClienteId(o.id)} onClear={() => setClienteId("")} placeholder="Buscar cliente..." />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Status da OS</Label>
+            <Select value={statusFilter || "todos"} onValueChange={(v) => setStatusFilter(v === "todos" ? "" : v)}>
+              <SelectTrigger><SelectValue placeholder="Todos os status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os status</SelectItem>
+                {STATUS_OPTIONS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
 
           {clienteId && (
