@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
         urls = await buscarFirecrawl(fk, query);
       } catch (e) {
         // Chave inválida/sem créditos: registra e tenta a reserva em vez de derrubar a busca.
-        console.error("Firecrawl falhou:", String(e));
+        console.error("[buscar-imagem-produto] Firecrawl falhou:", String(e));
         aviso = "Busca de imagens indisponível; exibindo resultados alternativos.";
       }
     } else {
@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
 
     return json({ urls, ...(aviso ? { aviso } : {}) });
   } catch (e) {
-    console.error(e);
-    return json({ error: String(e) }, 500);
+    console.error("[buscar-imagem-produto] erro inesperado:", String(e));
+    return json({ error: "Falha na busca de fotos", detalhe: String(e) }, 500);
   }
 });
