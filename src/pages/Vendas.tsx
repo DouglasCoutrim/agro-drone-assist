@@ -124,7 +124,10 @@ export default function Vendas() {
     modalidade_frete: "9", por_transportadora: false, transportadora_id: "",
     tipo_pagamento: "0", parcelas: 1, intervalo_dias: 30, obs_complementares: "",
   };
-  const [nfeDados, setNfeDados] = useState<typeof NFE_DEFAULT>(NFE_DEFAULT);
+  const [nfeDados, setNfeDados] = useState<typeof NFE_DEFAULT>(() =>
+    new URLSearchParams(window.location.search).get("nfe") === "1"
+      ? { ...NFE_DEFAULT, emitir_nota: true }
+      : NFE_DEFAULT);
   const [formTab, setFormTab] = useState("dados");
   const nf = (k: keyof typeof NFE_DEFAULT, v: any) => setNfeDados((p) => ({ ...p, [k]: v }));
 
@@ -170,6 +173,7 @@ export default function Vendas() {
     const q = new URLSearchParams(location.search);
     setActiveTab(q.get("tab") === "notas" ? "notas" : "vendas");
     resetVendaForm();
+    if (q.get("nfe") === "1") setNfeDados({ ...NFE_DEFAULT, emitir_nota: true });
     setDialogOpen(q.get("nova") === "1");
     window.scrollTo(0, 0);
   }, [location.key, location.search]);
