@@ -49,7 +49,7 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
   const [clientes, setClientes] = useState<{ id: string; nome: string; telefone: string }[]>([]);
     const [clienteId, setClienteId] = useState("");
         const [showClosed, setShowClosed] = useState(false);
-        const [showOpen, setShowOpen] = useState(true);
+        const [showOpen, setShowOpen] = useState(false);
         const [osList, setOsList] = useState<OSRow[]>([]);
         const [selected, setSelected] = useState<Set<string>>(new Set());
         const [itemsByOS, setItemsByOS] = useState<Record<string, any[]>>({});
@@ -100,8 +100,13 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
           list = list.filter(o => CLOSED.includes(o.status));
         } else if (showOpen && !showClosed) {
           list = list.filter(o => !CLOSED.includes(o.status));
+        } else if (showOpen && showClosed) {
+          // Both filters selected, show all
+          list = list;
+        } else {
+          // No filter selected, show nothing
+          list = [];
         }
-        // If both are true or both false, show all
         return list;
       }, [osList, showClosed, showOpen]);
   const cliente = clientes.find(c => c.id === clienteId);
