@@ -719,45 +719,10 @@ iframe[src*="lovable"] {
   color: rgba(255, 255, 255, 0.95);
 }
 
-/* Ancoragem proporcional da referencia aprovada (1612x975). Abaixo disso o
-   layout volta ao fluxo para nao colidir. */
-@media (min-width: 1440px) and (min-height: 720px) {
-  .livreos-login {
-    display: block;
-  }
-
-  .livreos-login .livreos-login__brand {
-    position: absolute;
-    top: 19%;
-    left: 12.5%;
-    width: min(34%, 560px);
-  }
-
-  .livreos-login .livreos-login__intro {
-    position: absolute;
-    top: 41.5%;
-    left: 5.2%;
-    width: min(48%, 720px);
-  }
-
-  .livreos-login .livreos-login__segments {
-    position: absolute;
-    top: 71.5%;
-    left: 5.2%;
-    width: min(51%, 840px);
-  }
-
-  .livreos-login .livreos-login__panel {
-    position: absolute;
-    top: 23.5%;
-    left: 58%;
-    width: min(38%, 620px);
-    min-height: 54svh;
-  }
-}
-
-/* Notebook: duas areas lado a lado, painel centrado na coluna da direita. */
-@media (max-width: 1439px) {
+/* Desktop/notebook: duas areas lado a lado (marca, titulo e segmentos na
+   esquerda; painel de vidro na direita). Vale para qualquer tela >= 1024px,
+   independente da altura, para nunca cair no empilhamento de coluna unica. */
+@media (min-width: 1024px) {
   .livreos-login {
     grid-template-columns: minmax(0, 1fr) minmax(340px, 0.95fr);
     grid-template-rows: auto auto auto;
@@ -790,6 +755,43 @@ iframe[src*="lovable"] {
     align-self: center;
     justify-self: end;
     max-width: 520px;
+  }
+}
+
+/* Ancoragem proporcional da referencia aprovada (1612x975). Precisa vir depois
+   do grid acima para sobrescreve-lo nas telas grandes e altas. */
+@media (min-width: 1440px) and (min-height: 720px) {
+  .livreos-login {
+    display: block;
+  }
+
+  .livreos-login .livreos-login__brand {
+    position: absolute;
+    top: 19%;
+    left: 12.5%;
+    width: min(34%, 560px);
+  }
+
+  .livreos-login .livreos-login__intro {
+    position: absolute;
+    top: 41.5%;
+    left: 5.2%;
+    width: min(48%, 720px);
+  }
+
+  .livreos-login .livreos-login__segments {
+    position: absolute;
+    top: 71.5%;
+    left: 5.2%;
+    width: min(51%, 840px);
+  }
+
+  .livreos-login .livreos-login__panel {
+    position: absolute;
+    top: 23.5%;
+    left: 58%;
+    width: min(38%, 620px);
+    min-height: 54svh;
   }
 }
 
