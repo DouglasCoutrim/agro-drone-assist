@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatDate, getErrorMessage } from "@/lib/formatters";
 import { gerarDocumentoPadrao, loadImageAsDataUrl, type ColunaPDF } from "@/lib/pdf-padrao";
 import { toast } from "sonner";
-import { Download, FileText, History, Loader2, Search } from "lucide-react";
+import { Download, FileText, History, Loader2, RotateCcw, Search } from "lucide-react";
 
 interface Trilha {
   id: string;
@@ -353,6 +353,33 @@ export default function Auditoria() {
     ? Array.from(new Set([...(detalhe.campos || [])])).sort()
     : [];
 
+  const [desfazendoId, setDesfazendoId] = useState<string | null>(null);
+    const [confirmarDesfazer, setConfirmarDesfazer] = useState<Trilha | null>(null);
+  
+    const desfazer = async (linha: Trilha) => {
+      setDesfazendoId(linha.id);
+      try {
+        const { error } = await supabase.rpc("reverter_alteracao", { audit_id: linha.id });
+        if (error) throw error;
+        toast.success("Alteração desfeita com sucesso");
+        setConfirmarDesfazer(null);
+        setDetalhe(null);
+        // Recarrega a lista após a reversão
+        const consulta = aplicarFiltros(
+          supabase.from("audit_trail" as any).select("*", { count: "exact" }).order("created_at", { ascending: false }),
+          { organizationId: organization?.id, de, ate, acao, tabela, usuario, busca },
+        );
+        const { data, error: err2, count } = await consulta.range((pagina - 1) * porPagina, pagina * porPagina - 1);
+        if (err2) throw err2;
+        setLinhas((data || []) as unknown as Trilha[]);
+        setTotal(count || 0);
+      } catch (e) {
+        toast.error(getErrorMessage(e));
+      } finally {
+        setDesfazendoId(null);
+      }
+    };
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -478,57 +505,73 @@ export default function Auditoria() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-40">Quando</TableHead>
-                      <TableHead className="w-48">Quem</TableHead>
-                      <TableHead className="w-24">Ação</TableHead>
-                      <TableHead className="w-56">Tela / registro</TableHead>
-                      <TableHead>Campos alterados</TableHead>
+                                            <TableHead className="w-48">Quem</TableHead>
+                                            <TableHead className="w-24">Ação</TableHead>
+                                            <TableHead className="w-56">Tela / registro</TableHead>
+                                            <TableHead>Campos alterados</TableHead>
+                                            <TableHead className="w-10 text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {linhas.map((linha) => (
-                      <TableRow
-                        key={linha.id}
-                        className="cursor-pointer"
-                        onClick={() => setDetalhe(linha)}
-                      >
-                        <TableCell className="whitespace-nowrap px-3 py-2 text-xs">
-                          <div>{new Date(linha.created_at).toLocaleDateString("pt-BR")}</div>
-                          <div className="text-muted-foreground">
-                            {new Date(linha.created_at).toLocaleTimeString("pt-BR")}
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-3 py-2 text-xs">
-                          <div className="font-medium">{linha.usuario_nome || "Sistema"}</div>
-                          <div className="text-muted-foreground">{linha.usuario_email || "-"}</div>
-                        </TableCell>
-                        <TableCell className="px-3 py-2">
-                          <Badge variant="outline" className={ACOES[linha.acao]?.classe}>
-                            {ACOES[linha.acao]?.label || linha.acao}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="px-3 py-2 text-xs">
-                          <div className="font-medium">{nomeTabela(linha.tabela)}</div>
-                          <div className="font-mono text-[10px] text-muted-foreground">
-                            {linha.registro_id ? `${linha.registro_id.slice(0, 8)}...` : "-"}
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-3 py-2">
-                          <div className="flex flex-wrap gap-1">
-                            {(linha.campos || []).slice(0, 6).map((campo) => (
-                              <Badge key={campo} variant="secondary" className="text-[10px]">
-                                {nomeCampo(campo)}
-                              </Badge>
-                            ))}
-                            {(linha.campos || []).length > 6 && (
-                              <Badge variant="secondary" className="text-[10px]">
-                                +{(linha.campos || []).length - 6}
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
+                                      {linhas.map((linha) => (
+                                        <TableRow
+                                          key={linha.id}
+                                          className="cursor-pointer"
+                                          onClick={() => setDetalhe(linha)}
+                                        >
+                                          <TableCell className="whitespace-nowrap px-3 py-2 text-xs">
+                                            <div>{new Date(linha.created_at).toLocaleDateString("pt-BR")}</div>
+                                            <div className="text-muted-foreground">
+                                              {new Date(linha.created_at).toLocaleTimeString("pt-BR")}
+                                            </div>
+                                          </TableCell>
+                                          <TableCell className="px-3 py-2 text-xs">
+                                            <div className="font-medium">{linha.usuario_nome || "Sistema"}</div>
+                                            <div className="text-muted-foreground">{linha.usuario_email || "-"}</div>
+                                          </TableCell>
+                                          <TableCell className="px-3 py-2">
+                                            <Badge variant="outline" className={ACOES[linha.acao]?.classe}>
+                                              {ACOES[linha.acao]?.label || linha.acao}
+                                            </Badge>
+                                          </TableCell>
+                                          <TableCell className="px-3 py-2 text-xs">
+                                            <div className="font-medium">{nomeTabela(linha.tabela)}</div>
+                                            <div className="font-mono text-[10px] text-muted-foreground">
+                                              {linha.registro_id ? `${linha.registro_id.slice(0, 8)}...` : "-"}
+                                            </div>
+                                          </TableCell>
+                                          <TableCell className="px-3 py-2">
+                                            <div className="flex flex-wrap gap-1">
+                                              {(linha.campos || []).slice(0, 6).map((campo) => (
+                                                <Badge key={campo} variant="secondary" className="text-[10px]">
+                                                  {nomeCampo(campo)}
+                                                </Badge>
+                                              ))}
+                                              {(linha.campos || []).length > 6 && (
+                                                <Badge variant="secondary" className="text-[10px]">
+                                                  +{(linha.campos || []).length - 6}
+                                                </Badge>
+                                              )}
+                                            </div>
+                                          </TableCell>
+                                          <TableCell className="px-3 py-2 text-right">
+                                            {desfazendoId === linha.id ? (
+                                              <Loader2 className="h-4 w-4 animate-spin text-sm" />
+                                            ) : (
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => desfazer(linha)}
+                                                title="Desfazer alteração"
+                                                disabled={linha.acao === 'DELETE'}
+                                              >
+                                                <RotateCcw className="h-4 w-4" />
+                                              </Button>
+                                            )}
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
                 </Table>
               </div>
             )}
@@ -590,6 +633,39 @@ export default function Auditoria() {
               </Table>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!confirmarDesfazer} onOpenChange={(aberto) => !aberto && setConfirmarDesfazer(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar desfazer alteração</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja desfazer esta alteração? Os valores anteriores serão restaurados na
+              tabela <strong>{nomeTabela(confirmarDesfazer?.tabela)}</strong> e uma nova linha será gravada na
+              auditoria registrando a reversão.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setConfirmarDesfazer(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setConfirmarDesfazer(null);
+                if (confirmarDesfazer) desfazer(confirmarDesfazer);
+              }}
+              disabled={desfazendoId === confirmarDesfazer?.id}
+            >
+              {desfazendoId === confirmarDesfazer?.id ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RotateCcw className="mr-2 h-4 w-4" />
+              )}
+              Desfazer
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </MainLayout>
