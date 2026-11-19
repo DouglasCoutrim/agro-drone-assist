@@ -24,10 +24,12 @@ const STATUS_MAP: Record<string, string> = {
 interface StatusPipelineProps {
   currentStatus: string;
   onStatusChange?: (newStatus: string) => void;
+  /** Quando informado, só os passos permitidos ficam clicáveis (ex.: quem só pode finalizar). */
+  canChangeTo?: (status: string) => boolean;
   compact?: boolean;
 }
 
-export function StatusPipeline({ currentStatus, onStatusChange, compact }: StatusPipelineProps) {
+export function StatusPipeline({ currentStatus, onStatusChange, canChangeTo, compact }: StatusPipelineProps) {
   const normalizedStatus = STATUS_MAP[currentStatus] || currentStatus;
   const currentIndex = STATUS_FLOW.findIndex(s => s.key === normalizedStatus);
 
@@ -45,17 +47,21 @@ export function StatusPipeline({ currentStatus, onStatusChange, compact }: Statu
       {STATUS_FLOW.map((step, index) => {
         const isDone = index < currentIndex;
         const isCurrent = index === currentIndex;
+        const permitido = !canChangeTo || canChangeTo(step.key);
+        const clicavel = !!onStatusChange && permitido;
 
         return (
           <div key={step.key} className="flex items-center">
             <button
               type="button"
-              onClick={() => onStatusChange?.(step.key)}
-              disabled={!onStatusChange}
+              onClick={() => clicavel && onStatusChange?.(step.key)}
+              disabled={!clicavel}
+              title={!permitido ? "Sua permissão permite apenas finalizar (fechar) a OS" : undefined}
               className={cn(
                 "flex flex-col items-center gap-1 min-w-0 transition-all",
-                onStatusChange && "cursor-pointer hover:opacity-80",
-                !onStatusChange && "cursor-default"
+                clicavel && "cursor-pointer hover:opacity-80",
+                !clicavel && "cursor-default",
+                !permitido && "opacity-40"
               )}
             >
               <div

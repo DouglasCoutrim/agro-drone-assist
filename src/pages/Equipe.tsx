@@ -49,6 +49,8 @@ interface UserWithRoleAndPerms extends Profile {
     acesso_notificacoes: boolean;
     acesso_wiki: boolean;
     acesso_suporte: boolean;
+    /** Pode fechar OS de qualquer técnico da organização (admin e técnico já podem). */
+    pode_finalizar_os: boolean;
   };
 }
 
@@ -173,8 +175,9 @@ export default function Equipe() {
             acesso_notificacoes: permData.acesso_notificacoes ?? true,
             acesso_wiki: permData.acesso_wiki ?? true,
             acesso_suporte: permData.acesso_suporte ?? true,
+            pode_finalizar_os: permData.pode_finalizar_os ?? false,
             rotas_bloqueadas: permData.rotas_bloqueadas ?? [],
-          } : { acesso_dashboard: true, acesso_os: true, acesso_meu_painel: true, acesso_oficina_vivo: true, acesso_clientes: true, acesso_estoque: true, acesso_servicos: true, acesso_financeiro: false, acesso_cobrancas: false, acesso_orcamentos: true, acesso_rotas: true, acesso_relatorios: true, acesso_equipe: true, acesso_empresa: true, acesso_configuracoes: true, acesso_checklist: true, acesso_notificacoes: true, acesso_wiki: true, acesso_suporte: true }
+          } : { acesso_dashboard: true, acesso_os: true, acesso_meu_painel: true, acesso_oficina_vivo: true, acesso_clientes: true, acesso_estoque: true, acesso_servicos: true, acesso_financeiro: false, acesso_cobrancas: false, acesso_orcamentos: true, acesso_rotas: true, acesso_relatorios: true, acesso_equipe: true, acesso_empresa: true, acesso_configuracoes: true, acesso_checklist: true, acesso_notificacoes: true, acesso_wiki: true, acesso_suporte: true, pode_finalizar_os: false }
         };
       });
       setUsers(usersData);
@@ -465,6 +468,29 @@ export default function Equipe() {
               </div>
               <PermissionTree roles={u.roles} blocked={(u.permissions as any)?.rotas_bloqueadas ?? []}
                 onChange={(next) => handleTogglePermission(u.id, 'rotas_bloqueadas', next as any)} />
+
+              {(() => {
+                // Admin e técnico já finalizam OS; o interruptor só muda algo para os outros papéis.
+                const semprePode = u.roles.includes('admin') || u.roles.includes('tecnico');
+                const marcado = semprePode || u.permissions?.pode_finalizar_os === true;
+                return (
+                  <div className="space-y-1 rounded-lg border border-border p-2.5">
+                    <label className="flex cursor-pointer items-center justify-between gap-2 text-sm font-medium">
+                      <span>Pode finalizar OS</span>
+                      <Switch
+                        checked={marcado}
+                        disabled={semprePode}
+                        onCheckedChange={(v) => handleTogglePermission(u.id, 'pode_finalizar_os', v === true)}
+                      />
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      {semprePode
+                        ? "Administrador finaliza qualquer OS e o técnico finaliza as OS designadas a ele."
+                        : "Permite fechar a OS de qualquer técnico. Não dá acesso à edição dos outros dados da OS."}
+                    </p>
+                  </div>
+                );
+              })()}
 
                     {isAdmin && u.roles.includes('tecnico') && (
                       <div className="space-y-3">

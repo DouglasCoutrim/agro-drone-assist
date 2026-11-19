@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
 import { useUsageLimits } from "@/hooks/useUsageLimits";
 import { UpgradePlanModal } from "@/components/UpgradePlanModal";
@@ -99,7 +100,7 @@ const TIPO_EQUIPAMENTO: Record<string, string> = {
 const MOBILITY_CATEGORIES = ["patinete_eletrico", "bicicleta_eletrica", "moto_eletrica", "outros_autopropelidos"];
 const LOCK_CLOSED_STATUSES = new Set(["pronto_retirada", "concluida", "entregue", "finalizada"]);
 
-// Helper: verifica se o usuário pode editar/fechar esta OS
+// Helper: verifica se o usuário pode editar esta OS
 // Admin pode tudo; Técnico só se for o responsável (tecnico_id === user.id)
 const canUserManageOS = (os: OrdemServico, userId: string | undefined, isAdminUser: boolean): boolean => {
   if (isAdminUser) return true;
@@ -132,6 +133,10 @@ const formatOSNumber = (numero?: string | null) => (numero || "").replace(/^OS-?
 
 export default function OrdensServico() {
   const { user, canEdit, isAdmin, isTecnico } = useAuth();
+  const { permissions } = usePermissions();
+  // "Pode finalizar OS" (Equipe → Papéis e permissões): fecha OS de qualquer técnico. Não
+  // dá direito de editar a OS — quem tem só essa permissão grava pelo RPC `finalizar_os`.
+  const podeFinalizarOs = permissions?.pode_finalizar_os === true;
   const { organization, isPlatformAdmin, loading: orgLoading } = useOrganization();
   const { config: empresa } = useEmpresaConfig();
   const aliquotaNfse = useNfseAliquota();
@@ -383,6 +388,19 @@ export default function OrdensServico() {
 
   const selectedCliente = clientes.find(c => c.id === formData.cliente_id);
   const readOnlyOsMessage = "Seu perfil tem acesso de consulta ao módulo de OS, mas não pode criar ou alterar ordens de serviço.";
+  const readOnlyFecharMessage = "Seu perfil só pode finalizar (fechar) ordens de serviço — não pode criar, editar nem reabrir OS.";
+
+  /** Quem pode fechar a OS: admin, o técnico responsável ou quem tem a permissão "Pode finalizar OS". */
+  const podeFecharOS = (os?: OrdemServico | null): boolean =>
+    podeFinalizarOs || (!!os && canUserManageOS(os, user?.id, isAdmin));
+
+  /** "Avançar" para quem só tem a permissão só faz sentido quando o próximo passo fecha a OS. */
+  const podeAvancarOS = (os?: OrdemServico | null): boolean => {
+    if (!os || !podeFecharOS(os)) return false;
+    if (canEdit) return true;
+    const proximo = getNextStatus(os.status);
+    return !!proximo && LOCK_CLOSED_STATUSES.has(proximo);
+  };
 
   // Wizard validation
   const canAdvance = (step: number): boolean => {
@@ -762,15 +780,29 @@ export default function OrdensServico() {
   };
 
   const applyStatusUpdate = async (osId: string, newStatus: string) => {
-    if (!canEdit) throw new Error(readOnlyOsMessage);
     const os = ordens.find(o => o.id === osId);
-    if (os && !canUserManageOS(os, user?.id, isAdmin)) throw new Error("Você só pode alterar status de OSs designadas a você.");
+    // Perfil sem permissão de editar OS: fecha pelo RPC `finalizar_os` (só status e datas).
+    const viaRpc = !canEdit;
+    if (viaRpc) {
+      if (!podeFinalizarOs) throw new Error(readOnlyOsMessage);
+      if (!LOCK_CLOSED_STATUSES.has(newStatus)) throw new Error("Sua permissão permite apenas finalizar (fechar) a OS.");
+    } else if (os && !canUserManageOS(os, user?.id, isAdmin)) {
+      throw new Error("Você só pode alterar status de OSs designadas a você.");
+    }
     if (LOCK_CLOSED_STATUSES.has(newStatus)) {
       const pending = await getPendingRequiredChecklist(osId, os?.organization_id || organization?.id);
       if (pending.length > 0) {
         throw new Error(`Itens obrigatórios pendentes no checklist de revisão: ${pending.slice(0, 3).join("; ")}${pending.length > 3 ? "…" : ""}.`);
       }
     }
+    if (viaRpc) {
+      // O RPC valida a permissão, grava status/datas, congela a comissão e escreve o histórico.
+      const { error } = await supabase.rpc("finalizar_os", { _os_id: osId, _status: newStatus });
+      if (error) throw error;
+      if (newStatus === "finalizada") setPagoOSIds(prev => new Set(prev).add(osId));
+      return;
+    }
+
     const updateData: any = { status: newStatus };
     if (newStatus === "pronto_retirada" || newStatus === "concluida" || newStatus === "finalizada") updateData.data_conclusao = new Date().toISOString();
     if (newStatus === "entregue") updateData.data_entrega = new Date().toISOString();
@@ -797,8 +829,8 @@ export default function OrdensServico() {
   const handleStatusChange = async (osId: string, newStatus: string): Promise<boolean> => {
     const os = ordens.find(o => o.id === osId);
     const isReview = (os as any)?.tipo_os === "revisao";
-    if (newStatus === "finalizada" && os && !canUserManageOS(os, user?.id, isAdmin)) {
-      toast.error("Somente usuários com permissão podem finalizar esta OS.");
+    if (newStatus === "finalizada" && os && !podeFecharOS(os)) {
+      toast.error("Somente o técnico responsável, um administrador ou quem tem a permissão \"Pode finalizar OS\" pode finalizar esta OS.");
       return false;
     }
 
@@ -1388,7 +1420,7 @@ export default function OrdensServico() {
             >
               {!canEdit && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                  {readOnlyOsMessage}
+                  {podeFinalizarOs ? readOnlyFecharMessage : readOnlyOsMessage}
                 </div>
               )}
               {/* Cliente */}
@@ -1745,6 +1777,7 @@ export default function OrdensServico() {
                 {/* Status Pipeline */}
                 <StatusPipeline
                   currentStatus={viewingOS.status}
+                  canChangeTo={(s) => canEdit || (podeFinalizarOs && LOCK_CLOSED_STATUSES.has(s))}
                   onStatusChange={async (s) => {
                     const ok = await handleStatusChange(viewingOS.id, s);
                     if (ok) setViewingOS({ ...viewingOS, status: s as any });
@@ -1917,7 +1950,7 @@ export default function OrdensServico() {
               </div>
               )}
             </div>
-            {viewingOS && viewingOS.status !== "entregue" && viewingOS.status !== "cancelada" && canUserManageOS(viewingOS, user?.id, isAdmin) && (
+            {viewingOS && viewingOS.status !== "entregue" && viewingOS.status !== "cancelada" && podeFecharOS(viewingOS) && (
               <DialogFooter className="shrink-0 border-t bg-background">
                 <div className="p-4">
                   <Button className="w-full gradient-primary" onClick={() => handleAdvanceStatus(viewingOS)}>

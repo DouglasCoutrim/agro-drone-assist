@@ -67,8 +67,8 @@ export default function Permissoes() {
         ) ?? "consulta";
 
         const permData = (permsData || []).find((pm: any) => pm.user_id === p.id);
-        // Usar cast para acessar pode_finalizar_os que pode não existir no tipo
-        const podeFinalizar = (permData as any)?.pode_finalizar_os ?? 
+        // Sem linha em user_permissions o padrão é o papel: admin e técnico já finalizam OS.
+        const podeFinalizar = permData?.pode_finalizar_os ??
           (effectiveRole === "admin" || effectiveRole === "tecnico");
 
         return {
@@ -96,13 +96,13 @@ export default function Permissoes() {
     try {
       // Atualizar permissões para cada usuário
       for (const u of users) {
+        // user_permissions não tem organization_id: a organização vem do próprio usuário.
         const { error } = await supabase
           .from("user_permissions")
           .upsert({
             user_id: u.id,
-            organization_id: organization.id,
             pode_finalizar_os: u.pode_finalizar_os,
-          } as any, { onConflict: "user_id" });
+          }, { onConflict: "user_id" });
         if (error) throw error;
       }
       toast.success("Permissões salvas com sucesso!");
@@ -122,11 +122,9 @@ export default function Permissoes() {
     );
   };
 
-  const canUserFinalize = (userId: string): boolean => {
-    if (isAdmin || isPlatformAdminOrg) return true;
-    const u = users.find((x) => x.id === userId);
-    return u?.pode_finalizar_os === true;
-  };
+  /** Admin e técnico já finalizam OS — o interruptor só muda algo para os outros papéis. */
+  const semprePodeFinalizar = (u: UserWithPerms) => u.roles.includes("admin") || u.roles.includes("tecnico");
+  const canUserFinalize = (u: UserWithPerms) => semprePodeFinalizar(u) || u.pode_finalizar_os === true;
 
   return (
     <MainLayout>
@@ -207,14 +205,14 @@ export default function Permissoes() {
                   </div>
                   <div className="flex items-center gap-2 ml-auto">
                     <Switch
-                      checked={canUserFinalize(member.id)}
+                      checked={canUserFinalize(member)}
                       onCheckedChange={() => togglePermission(member.id)}
-                      disabled={isPlatformAdminOrg}
+                      disabled={isPlatformAdminOrg || semprePodeFinalizar(member)}
                       aria-label={`Permitir que ${member.nome} finalize OS`}
                     />
-                    {canUserFinalize(member.id) && (
+                    {canUserFinalize(member) && (
                       <Badge className="bg-green-600 text-white text-[9px]">
-                        Pode finalizar OS
+                        {semprePodeFinalizar(member) ? "Finaliza pelo papel" : "Pode finalizar OS"}
                       </Badge>
                     )}
                   </div>

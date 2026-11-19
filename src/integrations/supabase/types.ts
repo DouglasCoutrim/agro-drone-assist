@@ -3302,6 +3302,7 @@ export type Database = {
           acesso_wiki: boolean
           created_at: string
           id: string
+          pode_finalizar_os: boolean
           rotas_bloqueadas: string[]
           updated_at: string
           user_id: string
@@ -3328,6 +3329,7 @@ export type Database = {
           acesso_wiki?: boolean
           created_at?: string
           id?: string
+          pode_finalizar_os?: boolean
           rotas_bloqueadas?: string[]
           updated_at?: string
           user_id: string
@@ -3354,6 +3356,7 @@ export type Database = {
           acesso_wiki?: boolean
           created_at?: string
           id?: string
+          pode_finalizar_os?: boolean
           rotas_bloqueadas?: string[]
           updated_at?: string
           user_id?: string
@@ -3720,6 +3723,13 @@ export type Database = {
       }
       create_technician_payout_invoice: {
         Args: { _adjustment_ids?: string[]; _notes?: string; _os_ids: string[] }
+        Returns: Json
+      }
+      finalizar_os: {
+        Args: {
+          _os_id: string
+          _status: string
+        }
         Returns: Json
       }
       get_nfse_aliquota: {
