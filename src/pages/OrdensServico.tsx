@@ -39,6 +39,7 @@ import type { CustomType } from "@/lib/equipment-segments";
 import { useChecklistConfig } from "@/hooks/useChecklistConfig";
 import type { ChecklistItem, ChecklistTipo } from "@/hooks/useChecklistConfig";
 import { AgruparOSDialog } from "@/components/os/AgruparOSDialog";
+import { CommissionBreakdown, rateioDaOS } from "@/components/os/CommissionBreakdown";
 import { PaymentConfirmDialog, PaymentData } from "@/components/os/PaymentConfirmDialog";
 import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 
@@ -61,6 +62,7 @@ const mapDbItemsToOSItems = (data: ItemOSRow[] | null | undefined): OSItem[] =>
     desconto_percentual: Number((d as any).desconto_percentual) || 0,
     desconto_valor: Number((d as any).desconto_valor) || 0,
     desconto_maximo_percentual: Number((d as any).desconto_maximo_percentual) || 0,
+    custo_servico: Number((d as any).custo_servico) || 0,
   }));
 
 const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
@@ -530,6 +532,7 @@ export default function OrdensServico() {
             desconto_percentual: Number(item.desconto_percentual) || 0,
             desconto_valor: Number(item.desconto_valor) || 0,
             desconto_maximo_percentual: Number(item.desconto_maximo_percentual) || 0,
+            custo_servico: Math.max(0, Number(item.custo_servico) || 0),
             organization_id: editingOS?.organization_id || organizationId,
           });
         for (const item of changedItems.filter(item => item.id)) {
@@ -1823,13 +1826,31 @@ export default function OrdensServico() {
                         </div>
                       </div>
                       <Separator />
+                      {/* Rateio da comissão: o valor da OS é o que o técnico vai receber */}
+                      {(() => {
+                        const valorCobrado = viewItemsTotal > 0
+                          ? viewItemsTotal - (Number((viewingOS as any).desconto) || 0)
+                          : Number(viewingOS.valor_final) || Number(viewingOS.valor_orcamento) || 0;
+                        const rateio = rateioDaOS(viewingOS as any, valorCobrado);
+                        const avisos: string[] = [];
+                        const congelado = rateio.congeladoEm ? new Date(rateio.congeladoEm) : null;
+                        if (congelado && viewingOS.updated_at && new Date(viewingOS.updated_at) > congelado) {
+                          avisos.push("A OS foi alterada depois do congelamento da comissão. Use “Conferência da comissão” para revisar.");
+                        }
+                        const semCusto = viewOsItems.some((i) => i.tipo === "servico") && viewOsItems.every((i) => !Number(i.custo_servico));
+                        if (semCusto && LOCK_CLOSED_STATUSES.has(String(viewingOS.status))) {
+                          avisos.push("OS concluída sem custo de serviço lançado. Se você repassou peças, informe o custo para a comissão sair certa.");
+                        }
+                        return <CommissionBreakdown data={{ ...rateio, avisos }} />;
+                      })()}
+                      <Separator />
                       {/* Items da OS */}
                       {viewOsItemsLoading ? (
                         <div className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
                           <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando itens, peças e serviços...
                         </div>
                       ) : viewOsItems.length > 0 ? (
-                        <OSItemsSection items={viewOsItems} onChange={() => {}} disabled />
+                        <OSItemsSection items={viewOsItems} onChange={() => {}} disabled costDisabled={!isAdmin} />
                       ) : (
                         <div className="rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
                           Nenhuma peça ou serviço detalhado foi cadastrado nesta OS. O valor exibido é o orçamento salvo.

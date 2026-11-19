@@ -224,6 +224,62 @@ export type Database = {
           },
         ]
       }
+      commission_adjustments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          invoice_id: string | null
+          new_amount: number | null
+          organization_id: string
+          os_id: string | null
+          previous_amount: number | null
+          reason: string
+          settled_at: string | null
+          technician_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          invoice_id?: string | null
+          new_amount?: number | null
+          organization_id: string
+          os_id?: string | null
+          previous_amount?: number | null
+          reason: string
+          settled_at?: string | null
+          technician_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          invoice_id?: string | null
+          new_amount?: number | null
+          organization_id?: string
+          os_id?: string | null
+          previous_amount?: number | null
+          reason?: string
+          settled_at?: string | null
+          technician_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_adjustments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "technician_payout_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contas_pagar: {
         Row: {
           categoria: string
@@ -334,6 +390,7 @@ export type Database = {
       empresa_config: {
         Row: {
           cnpj: string | null
+          commission_no_note_fee: number
           cor_primaria: string | null
           cor_secundaria: string | null
           created_at: string
@@ -359,6 +416,7 @@ export type Database = {
         }
         Insert: {
           cnpj?: string | null
+          commission_no_note_fee?: number
           cor_primaria?: string | null
           cor_secundaria?: string | null
           created_at?: string
@@ -384,6 +442,7 @@ export type Database = {
         }
         Update: {
           cnpj?: string | null
+          commission_no_note_fee?: number
           cor_primaria?: string | null
           cor_secundaria?: string | null
           created_at?: string
@@ -846,6 +905,7 @@ export type Database = {
           desconto_percentual: number
           desconto_valor: number
           descricao: string
+          custo_servico: number
           id: string
           item_estoque_id: string | null
           ordem_servico_id: string
@@ -865,6 +925,7 @@ export type Database = {
           desconto_percentual?: number
           desconto_valor?: number
           descricao: string
+          custo_servico?: number
           id?: string
           item_estoque_id?: string | null
           ordem_servico_id: string
@@ -884,6 +945,7 @@ export type Database = {
           desconto_percentual?: number
           desconto_valor?: number
           descricao?: string
+          custo_servico?: number
           id?: string
           item_estoque_id?: string | null
           ordem_servico_id?: string
@@ -1461,9 +1523,18 @@ export type Database = {
           commission_assistants_fixed: number
           commission_assistants_percentage: number
           commission_assistants_total: number
+          commission_base: number
+          commission_company: number
           commission_computed_at: string | null
+          commission_cost: number
+          commission_frozen_at: string | null
+          commission_no_note_fee: number
+          commission_paid_at: string | null
           commission_products: number
+          commission_rate: number
           commission_services: number
+          commission_tax: number
+          commission_tax_rate: number
           commission_total: number
           condicao_visual: string | null
           created_at: string
@@ -1485,6 +1556,7 @@ export type Database = {
           numero_serie: string | null
           observacoes: string | null
           organization_id: string | null
+          payout_invoice_id: string | null
           prioridade: string
           recebida_em: string | null
           repasses_automaticos: number
@@ -1513,9 +1585,18 @@ export type Database = {
           commission_assistants_fixed?: number
           commission_assistants_percentage?: number
           commission_assistants_total?: number
+          commission_base?: number
+          commission_company?: number
           commission_computed_at?: string | null
+          commission_cost?: number
+          commission_frozen_at?: string | null
+          commission_no_note_fee?: number
+          commission_paid_at?: string | null
           commission_products?: number
+          commission_rate?: number
           commission_services?: number
+          commission_tax?: number
+          commission_tax_rate?: number
           commission_total?: number
           condicao_visual?: string | null
           created_at?: string
@@ -1537,6 +1618,7 @@ export type Database = {
           numero_serie?: string | null
           observacoes?: string | null
           organization_id?: string | null
+          payout_invoice_id?: string | null
           prioridade?: string
           recebida_em?: string | null
           repasses_automaticos?: number
@@ -1565,9 +1647,18 @@ export type Database = {
           commission_assistants_fixed?: number
           commission_assistants_percentage?: number
           commission_assistants_total?: number
+          commission_base?: number
+          commission_company?: number
           commission_computed_at?: string | null
+          commission_cost?: number
+          commission_frozen_at?: string | null
+          commission_no_note_fee?: number
+          commission_paid_at?: string | null
           commission_products?: number
+          commission_rate?: number
           commission_services?: number
+          commission_tax?: number
+          commission_tax_rate?: number
           commission_total?: number
           condicao_visual?: string | null
           created_at?: string
@@ -1589,6 +1680,7 @@ export type Database = {
           numero_serie?: string | null
           observacoes?: string | null
           organization_id?: string | null
+          payout_invoice_id?: string | null
           prioridade?: string
           recebida_em?: string | null
           repasses_automaticos?: number
@@ -2230,6 +2322,8 @@ export type Database = {
           nivel_tecnico: number | null
           nome: string
           organization_id: string | null
+          pix_key: string | null
+          pix_key_type: string | null
           product_commission_type: string
           product_commission_value: number
           responsabilidades: string
@@ -2249,6 +2343,8 @@ export type Database = {
           nivel_tecnico?: number | null
           nome: string
           organization_id?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
           product_commission_type?: string
           product_commission_value?: number
           responsabilidades?: string
@@ -2268,6 +2364,8 @@ export type Database = {
           nivel_tecnico?: number | null
           nome?: string
           organization_id?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
           product_commission_type?: string
           product_commission_value?: number
           responsabilidades?: string
@@ -2863,6 +2961,135 @@ export type Database = {
           },
           {
             foreignKeyName: "technician_expenses_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      technician_payout_invoice_items: {
+        Row: {
+          adjustment_id: string | null
+          amount: number
+          description: string
+          id: string
+          invoice_id: string
+          kind: string
+          os_id: string | null
+          reference_date: string | null
+          snapshot: Json
+        }
+        Insert: {
+          adjustment_id?: string | null
+          amount: number
+          description: string
+          id?: string
+          invoice_id: string
+          kind?: string
+          os_id?: string | null
+          reference_date?: string | null
+          snapshot?: Json
+        }
+        Update: {
+          adjustment_id?: string | null
+          amount?: number
+          description?: string
+          id?: string
+          invoice_id?: string
+          kind?: string
+          os_id?: string | null
+          reference_date?: string | null
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "technician_payout_invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "technician_payout_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "technician_payout_invoice_items_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      technician_payout_invoices: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          notes: string | null
+          numero: string
+          organization_id: string
+          paid_at: string | null
+          paid_by: string | null
+          period_end: string | null
+          period_start: string | null
+          pix_key: string | null
+          pix_key_type: string | null
+          rejected_reason: string | null
+          sent_at: string | null
+          status: string
+          technician_id: string
+          total: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          numero: string
+          organization_id: string
+          paid_at?: string | null
+          paid_by?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
+          rejected_reason?: string | null
+          sent_at?: string | null
+          status?: string
+          technician_id: string
+          total?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          numero?: string
+          organization_id?: string
+          paid_at?: string | null
+          paid_by?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
+          rejected_reason?: string | null
+          sent_at?: string | null
+          status?: string
+          technician_id?: string
+          total?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "technician_payout_invoices_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "technician_payout_invoices_technician_id_fkey"
             columns: ["technician_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -3487,7 +3714,22 @@ export type Database = {
         Args: { _dias?: number; _org: string }
         Returns: Json
       }
-      get_technician_dashboard: { Args: { _tecnico_id: string }; Returns: Json }
+      cancel_technician_payout_invoice: {
+        Args: { _invoice_id: string }
+        Returns: Json
+      }
+      create_technician_payout_invoice: {
+        Args: { _adjustment_ids?: string[]; _notes?: string; _os_ids: string[] }
+        Returns: Json
+      }
+      get_technician_dashboard: {
+        Args: {
+          _period_end?: string
+          _period_start?: string
+          _tecnico_id?: string
+        }
+        Returns: Json
+      }
       get_technician_financial_dashboard: {
         Args: {
           _period_end?: string
@@ -3570,12 +3812,33 @@ export type Database = {
         }
         Returns: undefined
       }
+      os_commission_calc: { Args: { _os_id: string }; Returns: Json }
+      os_commission_core: {
+        Args: { _force?: boolean; _os_id: string }
+        Returns: undefined
+      }
       processar_demonstracoes_vencidas: { Args: never; Returns: number }
+      recalcular_comissoes_em_lote: {
+        Args: { _somente_nao_pagas?: boolean }
+        Returns: Json
+      }
       recalc_os_commission_internal: {
         Args: { _os_id: string }
         Returns: undefined
       }
+      relatorio_impacto_comissao: {
+        Args: { _period_end: string; _period_start: string }
+        Returns: Json
+      }
       repassar_os_sem_recebimento: { Args: never; Returns: number }
+      send_technician_payout_invoice: {
+        Args: { _invoice_id: string }
+        Returns: Json
+      }
+      settle_technician_payout_invoice: {
+        Args: { _invoice_id: string; _paid: boolean; _reason?: string }
+        Returns: Json
+      }
       reservar_numero_nfe: {
         Args: { _org: string }
         Returns: {

@@ -26,6 +26,8 @@ export interface OSItem {
   desconto_percentual?: number;
   desconto_valor?: number;
   desconto_maximo_percentual?: number;
+  /** Peças/insumos repassados pelo técnico nesta linha de serviço (R$). */
+  custo_servico?: number;
 }
 
 interface CatalogItem {
@@ -44,6 +46,8 @@ interface OSItemsSectionProps {
   onChange: (items: OSItem[]) => void;
   organizationId?: string | null;
   disabled?: boolean;
+  /** Só o admin mexe no custo depois que a OS foi concluída. */
+  costDisabled?: boolean;
 }
 
 function ItemSearchRow({
@@ -187,12 +191,14 @@ function ItemCard({
   onUpdate,
   onRemove,
   disabled,
+  costDisabled,
 }: {
   item: OSItem;
   index: number;
   onUpdate: (field: keyof OSItem, value: any) => void;
   onRemove: () => void;
   disabled?: boolean;
+  costDisabled?: boolean;
 }) {
   return (
     <div className="rounded-md border border-border/60 bg-card/50 px-2 py-1.5 space-y-1">
@@ -236,6 +242,21 @@ function ItemCard({
           {formatCurrency(item.valor_total)}
         </div>
       </div>
+      {item.tipo === "servico" && (
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[10px] text-muted-foreground">Custo do serviço (R$)</span>
+          <NumberInput
+            step="0.01"
+            min="0"
+            value={item.custo_servico ?? 0}
+            onChange={(v) => onUpdate("custo_servico", Math.max(0, v))}
+            className="h-7 text-[11px] px-1.5 w-24 min-w-0 text-right"
+            disabled={costDisabled ?? disabled}
+            placeholder="0,00"
+            title="Peças e insumos que você repassou neste serviço. Não é preço ao cliente."
+          />
+        </div>
+      )}
       {(item.desconto_valor ?? 0) > 0 && (
         <p className="text-[10px] text-muted-foreground text-right">
           Desconto: - {formatCurrency(item.desconto_valor ?? 0)} ({item.desconto_percentual ?? 0}%)
@@ -245,7 +266,7 @@ function ItemCard({
   );
 }
 
-export function OSItemsSection({ items, onChange, organizationId, disabled }: OSItemsSectionProps) {
+export function OSItemsSection({ items, onChange, organizationId, disabled, costDisabled }: OSItemsSectionProps) {
   const produtos = items.filter(i => i.tipo === "produto");
   const servicos = items.filter(i => i.tipo === "servico");
   const existingIds = new Set(items.map(i => i.item_estoque_id || i.produto_id || i.servico_id || "").filter(Boolean));
@@ -317,6 +338,7 @@ export function OSItemsSection({ items, onChange, organizationId, disabled }: OS
                 onUpdate={(field, value) => updateItem(globalIdx, field, value)}
                 onRemove={() => removeItem(globalIdx)}
                 disabled={disabled}
+                costDisabled={costDisabled}
               />
             );
           })}
@@ -400,6 +422,17 @@ export function OSItemsSection({ items, onChange, organizationId, disabled }: OS
                   disabled={disabled}
                   placeholder={`Desconto % (máx ${tetoDesconto(item.desconto_maximo_percentual)}%)`}
                 />
+                {item.tipo === "servico" && (
+                  <NumberInput
+                    step="0.01"
+                    min="0"
+                    value={item.custo_servico ?? 0}
+                    onChange={(v) => updateItem(globalIdx, "custo_servico", Math.max(0, v))}
+                    className="h-9 w-full px-2 text-[12px]"
+                    disabled={costDisabled ?? disabled}
+                    placeholder="Custo do serviço (R$)"
+                  />
+                )}
                 <div className="flex h-9 items-center justify-end text-[12px] font-semibold text-primary">
                   {formatCurrency(item.valor_total)}
                 </div>
