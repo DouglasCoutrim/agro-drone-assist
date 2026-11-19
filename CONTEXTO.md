@@ -210,3 +210,25 @@ Código **completo e compilando** (`npx tsc --noEmit` sem erros). Faltam **somen
 2. Teste manual de login real com as três contas (admin, técnico, consulta), campos vazios, e-mail inválido, envio por botão e por Enter.
 3. Build/lint locais não executados por decisão do usuário (ver seção 3 do CONTEXTO.md).
 4. Cobertura e2e: `@playwright/test` não está instalado (dependência recusada anteriormente). Verificar se o ambiente de teste será disponibilizado futuramente.
+
+---
+
+## 10. Sessão 2026-11-19 — Comissão correta + painel de ganhos com faturas de saque
+
+**Entregue**
+
+- **Regra única da comissão** em SQL (`drizzle/migrations/0024_commission_rateio_e_faturas.sql`): `os_commission_calc(_os_id)` (leitura) e `os_commission_core(_os_id, _force)` (grava). Base só de serviços com o desconto do cabeçalho rateado por proporção, imposto lido de `nfe_config.nfse_aliquota` (só quando há nota), menos `itens_os.custo_servico`, dividido 50/50 com a parte do técnico ficando com o resto da divisão; sem nota, 3,5% sobre a parte do técnico (`empresa_config.commission_no_note_fee`, configurável). `src/lib/commission.ts` faz a prévia na tela e `src/lib/commission.test.ts` trava os dois lados nos mesmos exemplos (800 com nota 5% = 380,00; 6% = 376,00; 900 + custo 150 com nota 6% = 348,00; sem nota = 361,88; 2.500 com desconto 750 sem nota = 1.206,25).
+- **Congelamento do rateio** na OS: novas colunas `commission_base/tax/cost/no_note_fee/company/rate/tax_rate/frozen_at/paid_at` e `payout_invoice_id`. `commission_total` continua sendo a comissão do técnico (já líquida). Reabrir a OS antes de existir fatura limpa o congelamento; com fatura, só ajuste.
+- **Imposto com uma fonte só:** `nfe_config.nfse_aliquota`. `empresa_config.tax_percentage_nfe` deixou de ser lido (comentado no banco) e `tax_retention_ledger` não é mais escrito — a retenção de 6 meses morreu. `vw_comissoes_tecnico` foi reescrita para ler as colunas da OS (antes o imposto vinha do ledger).
+- **Rateio visível na OS:** `src/components/os/CommissionBreakdown.tsx` (com `rateioDaOS()`) renderizado no detalhe da OS e no `OSSummaryDialog`, com selo "Nota emitida"/"Sem nota", aviso de custo não lançado e aviso de divergência. `OSItemsSection` ganhou o campo "Custo do serviço (R$)" por linha de serviço, bloqueado para não-admin em OS concluída pelo trigger `protect_itens_os_custo`.
+- **Painel do técnico** (`/technician/financeiro`) reconstruído: cartão de chave PIX (obrigatória para faturar), quatro cartões clicáveis (A receber / Aguardando cliente / Recebido / Divergência) que filtram o extrato, totais do período, gráfico recharts de comissão por dia, extrato com seleção por checkbox e coluna de comissão preenchida, lista de faturas com PDF/WhatsApp/cancelar e as despesas de sempre. Abas de período Hoje · Semana · Mês · Ano (+ intervalo personalizado) em `PeriodFilterBar`.
+- **Faturas de saque:** `technician_payout_invoices` + `technician_payout_invoice_items` (com `snapshot` do rateio), numeração `FAT-0001` por organização sob advisory lock, PIX do técnico, status rascunho → enviada → paga | recusada | cancelada. `PayoutInvoiceDialog` cria, baixa PDF (`src/lib/payout-invoice-pdf.ts`, mesmo `gerarDocumentoPadrao`) e envia; ao enviar o admin recebe notificação. Uma OS só entra em uma fatura ativa.
+- **Área do gestor** `/comissoes` (admin, menu Financeiro): faturas por técnico e status com "Marcar como paga" (grava `commission_paid_at` e lança `financeiro` tipo `comissao`) e "Recusar" com motivo, mais a aba "Conferência da comissão" (`relatorio_impacto_comissao` + `recalcular_comissoes_em_lote`), que mostra comissão antiga × nova por OS e lança ajuste (`commission_adjustments`) nas já pagas em vez de corrigir em silêncio.
+- **Configuração:** `CommissionConfigCard` em `/empresa` edita a "Taxa sem nota (%)" e exibe a alíquota do ISS em leitura, avisando que é a fonte única. `get_technician_dashboard(uuid)` (sobrecarga antiga) foi removida; a tela chama a de 3 argumentos explicitamente.
+- **Testes:** unitário `src/lib/commission.test.ts` (Vitest, `npm test`); integração `src/lib/technician-financials.integration.test.ts` ajustada ao payload novo; e2e `e2e-tests/comissoes.spec.ts` (Playwright) confirma que `/comissoes` exige autenticação — passando.
+
+**Pendente / próximo**
+
+1. `nfe_config.nfse_aliquota` está 0 na organização principal: enquanto não for configurada, OS com nota não geram imposto (comportamento esperado, mas vale conferir na tela fiscal).
+2. Conferir manualmente OS-031, 027, 002, 005 e 023 no relatório de impacto e decidir o recálculo em lote.
+3. O botão "Enviar por WhatsApp" usa Web Share (celular) e cai em download + instrução no desktop, porque o técnico não pode ler o telefone do gestor por RLS.

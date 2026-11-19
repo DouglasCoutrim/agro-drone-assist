@@ -12,7 +12,7 @@ export type CommissionAdjustment = Database["public"]["Tables"]["commission_adju
 
 export type SituacaoComissao = "A_RECEBER" | "AGUARDANDO_CLIENTE" | "RECEBIDO" | "DIVERGENCIA";
 
-export type PeriodPreset = "hoje" | "semana" | "mes" | "ano";
+export type PeriodPreset = "hoje" | "semana" | "mes" | "ano" | "custom";
 
 export interface PeriodRange {
   start: Date;
@@ -74,6 +74,7 @@ export const PERIOD_LABELS: Record<PeriodPreset, string> = {
   semana: "Semana",
   mes: "Mês",
   ano: "Ano",
+  custom: "Período",
 };
 
 export function getPeriodRange(preset: PeriodPreset): PeriodRange {
@@ -81,7 +82,9 @@ export function getPeriodRange(preset: PeriodPreset): PeriodRange {
   const fim = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
   let inicio = new Date(fim);
 
-  if (preset === "semana") {
+  if (preset === "custom") {
+    inicio = new Date(fim.getFullYear(), fim.getMonth(), 1);
+  } else if (preset === "semana") {
     const diaSemana = (fim.getDay() + 6) % 7; // segunda = 0
     inicio = new Date(fim.getFullYear(), fim.getMonth(), fim.getDate() - diaSemana);
   } else if (preset === "mes") {
