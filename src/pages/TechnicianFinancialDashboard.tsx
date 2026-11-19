@@ -261,6 +261,12 @@ export default function TechnicianFinancialDashboard() {
     [osStatement, situacaoFiltro],
   );
 
+  /** Ajustes de comissão que ainda não entraram em nenhuma fatura. */
+  const ajustesPendentes = useMemo(
+    () => adjustments.filter((a) => !a.invoice_id && !a.settled_at),
+    [adjustments],
+  );
+
   const serie = useMemo(
     () =>
       (financialData?.serie_diaria || []).map((p) => ({
@@ -727,6 +733,7 @@ export default function TechnicianFinancialDashboard() {
           onOpenChange={(v) => !v && setFaturaAberta(null)}
           osIds={faturaAberta?.osIds || []}
           items={faturaAberta?.items || []}
+          adjustments={ajustesPendentes}
           pixKey={financialData?.pix_key}
           pixKeyType={financialData?.pix_key_type}
           tecnicoNome={perfil?.nome}

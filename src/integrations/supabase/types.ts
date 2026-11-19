@@ -3722,6 +3722,10 @@ export type Database = {
         Args: { _adjustment_ids?: string[]; _notes?: string; _os_ids: string[] }
         Returns: Json
       }
+      get_nfse_aliquota: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       get_technician_dashboard: {
         Args: {
           _period_end?: string

@@ -10,6 +10,7 @@ import { AlertTriangle, BadgeDollarSign, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
+import { useNfseAliquota } from "@/hooks/useNfseAliquota";
 import { useOrganization } from "@/hooks/useOrganization";
 import { getErrorMessage } from "@/lib/formatters";
 
@@ -21,23 +22,13 @@ import { getErrorMessage } from "@/lib/formatters";
 export function CommissionConfigCard() {
   const { config, refetch } = useEmpresaConfig();
   const { organization } = useOrganization();
+  const aliquota = useNfseAliquota();
   const [taxa, setTaxa] = useState("3.5");
-  const [aliquota, setAliquota] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setTaxa(String(config.commission_no_note_fee ?? 3.5));
   }, [config.commission_no_note_fee]);
-
-  useEffect(() => {
-    if (!organization?.id) return;
-    supabase
-      .from("nfe_config" as any)
-      .select("nfse_aliquota")
-      .eq("organization_id", organization.id)
-      .maybeSingle()
-      .then(({ data }) => setAliquota(data ? Number((data as any).nfse_aliquota) || 0 : null));
-  }, [organization?.id]);
 
   const salvar = async () => {
     if (!organization?.id) return;

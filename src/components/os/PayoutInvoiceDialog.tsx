@@ -6,8 +6,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, Download, KeyRound, Loader2, MessageCircle, Receipt, Send } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,7 +17,7 @@ import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
 import { formatCurrency, formatDate, getErrorMessage } from "@/lib/formatters";
 import { gerarFaturaSaquePDF, compartilharFaturaSaquePDF } from "@/lib/payout-invoice-pdf";
 import {
-  fetchPayoutInvoiceItems, usePayoutInvoices, type OSStatementItem,
+  fetchPayoutInvoiceItems, usePayoutInvoices, type OSStatementItem, type CommissionAdjustment,
 } from "@/hooks/useTechnicianFinancials";
 
 interface PayoutInvoiceDialogProps {
@@ -25,6 +27,8 @@ interface PayoutInvoiceDialogProps {
   osIds: string[];
   /** Linhas do extrato correspondentes, para a prévia. */
   items: OSStatementItem[];
+  /** Ajustes de comissão ainda sem fatura, que podem entrar junto. */
+  adjustments?: CommissionAdjustment[];
   pixKey?: string | null;
   pixKeyType?: string | null;
   tecnicoNome?: string | null;
@@ -42,7 +46,7 @@ const totalSelecionado = (items: OSStatementItem[]) =>
   items.reduce((soma, i) => soma + Number(i.comissao || 0), 0);
 
 export function PayoutInvoiceDialog({
-  open, onOpenChange, osIds, items, pixKey, pixKeyType, tecnicoNome, tecnicoTelefone, onCreated,
+  open, onOpenChange, osIds, items, adjustments = [], pixKey, pixKeyType, tecnicoNome, tecnicoTelefone, onCreated,
 }: PayoutInvoiceDialogProps) {
   const { user } = useAuth();
   const { config: empresa } = useEmpresaConfig();
@@ -51,14 +55,32 @@ export function PayoutInvoiceDialog({
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [criada, setCriada] = useState<Criada | null>(null);
+  const [ajustesSelecionados, setAjustesSelecionados] = useState<Set<string>>(new Set());
 
-  const total = useMemo(() => totalSelecionado(items), [items]);
+  const totalOs = useMemo(() => totalSelecionado(items), [items]);
+  const totalAjustes = useMemo(
+    () =>
+      adjustments
+        .filter((a) => ajustesSelecionados.has(a.id))
+        .reduce((soma, a) => soma + Number(a.amount || 0), 0),
+    [adjustments, ajustesSelecionados],
+  );
+  const total = totalOs + totalAjustes;
   const temPix = Boolean(pixKey && pixKey.trim());
+
+  const alternarAjuste = (id: string) =>
+    setAjustesSelecionados((atual) => {
+      const proximo = new Set(atual);
+      if (proximo.has(id)) proximo.delete(id);
+      else proximo.add(id);
+      return proximo;
+    });
 
   const fechar = (v: boolean) => {
     if (!v) {
       setCriada(null);
       setNotes("");
+      setAjustesSelecionados(new Set());
     }
     onOpenChange(v);
   };
@@ -70,7 +92,7 @@ export function PayoutInvoiceDialog({
     }
     setBusy(true);
     try {
-      const resultado = await createInvoice(osIds, notes.trim() || undefined);
+      const resultado = await createInvoice(osIds, notes.trim() || undefined, Array.from(ajustesSelecionados));
       setCriada({ id: resultado.id, numero: resultado.numero, total: Number(resultado.total) || 0 });
       onCreated?.();
       toast.success(`Fatura ${resultado.numero} criada como rascunho.`);
@@ -201,11 +223,59 @@ export function PayoutInvoiceDialog({
                 </div>
               ))}
             </div>
+            {ajustesSelecionados.size > 0 && (
+              <div className="divide-y divide-border/40 border-t border-border">
+                {adjustments
+                  .filter((a) => ajustesSelecionados.has(a.id))
+                  .map((a) => (
+                    <div key={a.id} className="grid grid-cols-[1fr_90px] gap-2 px-3 py-2 text-sm">
+                      <span className="min-w-0 truncate">
+                        <Badge variant="outline" className="mr-2 text-[10px]">Ajuste</Badge>
+                        {a.description || a.reason}
+                      </span>
+                      <span className="text-right font-mono tabular-nums">
+                        {formatCurrency(Number(a.amount) || 0)}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            )}
             <div className="flex items-center justify-between border-t border-border bg-muted/30 px-3 py-2.5">
-              <span className="text-sm font-semibold">Total ({items.length} OS)</span>
+              <span className="text-sm font-semibold">
+                Total ({items.length} OS{ajustesSelecionados.size > 0 ? ` + ${ajustesSelecionados.size} ajuste(s)` : ""})
+              </span>
               <span className="font-mono text-base font-bold text-primary">{formatCurrency(total)}</span>
             </div>
           </div>
+
+          {!criada && adjustments.length > 0 && (
+            <div className="space-y-2 rounded-lg border border-border p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Ajustes de comissão sem fatura
+              </p>
+              {adjustments.map((a) => (
+                <label key={a.id} className="flex cursor-pointer items-start gap-2 text-sm">
+                  <Checkbox
+                    checked={ajustesSelecionados.has(a.id)}
+                    onCheckedChange={() => alternarAjuste(a.id)}
+                    className="mt-0.5"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">{a.description || a.reason}</span>
+                    <span className="text-xs text-muted-foreground">{formatDate(a.created_at)}</span>
+                  </span>
+                  <span
+                    className={cn(
+                      "font-mono tabular-nums",
+                      Number(a.amount) >= 0 ? "text-emerald-600" : "text-destructive",
+                    )}
+                  >
+                    {formatCurrency(Number(a.amount) || 0)}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
 
           <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs">
             <KeyRound className="h-4 w-4 text-muted-foreground" />

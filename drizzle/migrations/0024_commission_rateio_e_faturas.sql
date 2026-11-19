@@ -150,6 +150,12 @@ COMMENT ON COLUMN public.empresa_config.tax_percentage_nfe IS
 GRANT SELECT ON TABLE public.technician_payout_invoices TO authenticated;
 GRANT SELECT ON TABLE public.technician_payout_invoice_items TO authenticated;
 GRANT SELECT ON TABLE public.commission_adjustments TO authenticated;
+
+-- Os privilégios padrão do banco concedem ALL a anon em tabelas novas; estas são dados
+-- financeiros de tenant, então nenhum acesso anônimo.
+REVOKE ALL ON TABLE public.technician_payout_invoices FROM anon;
+REVOKE ALL ON TABLE public.technician_payout_invoice_items FROM anon;
+REVOKE ALL ON TABLE public.commission_adjustments FROM anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.technician_payout_invoices TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.technician_payout_invoice_items TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.commission_adjustments TO service_role;
@@ -622,6 +628,26 @@ begin
   );
 end $function$;
 
+-- Alíquota do ISS para quem não é admin: `nfe_config` guarda os tokens da Focus NFe e é
+-- restrita a admin, então o técnico lê só o número, pelo RPC.
+CREATE OR REPLACE FUNCTION public.get_nfse_aliquota()
+RETURNS numeric
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path TO 'public'
+AS $function$
+  select coalesce(
+    (select c.nfse_aliquota
+       from public.nfe_config c
+      where c.organization_id = public.get_user_org_id(auth.uid())
+      limit 1), 0);
+$function$;
+
+REVOKE EXECUTE ON FUNCTION public.get_nfse_aliquota() FROM public;
+GRANT EXECUTE ON FUNCTION public.get_nfse_aliquota() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_nfse_aliquota() TO service_role;
+
 CREATE OR REPLACE FUNCTION public.get_technician_os_statement(_tecnico_id uuid, _period_start date, _period_end date)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -673,6 +699,9 @@ begin
       'fatura_numero', inv.numero,
       'fatura_status', inv.status,
       'cliente_pagou', f.pago,
+      -- Sem congelamento = rateio ainda não gravado pela regra nova (OS antiga ou em aberto).
+      -- A tela mostra "—" nas colunas de rateio em vez de zeros que não somam.
+      'sem_rateio', (os.commission_frozen_at is null),
       'situacao', case
         when os.commission_paid_at is not null and f.pago then 'RECEBIDO'
         when os.commission_paid_at is not null then 'DIVERGENCIA'

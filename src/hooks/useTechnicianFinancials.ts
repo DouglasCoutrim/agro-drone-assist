@@ -62,6 +62,8 @@ export interface OSStatementItem {
   status_os: string;
   congelado_em: string | null;
   pago_em: string | null;
+  /** OS calculada pela regra antiga: tem comissão, mas o rateio não foi gravado. */
+  sem_rateio: boolean;
   fatura_id: string | null;
   fatura_numero: string | null;
   fatura_status: string | null;
@@ -220,14 +222,15 @@ export function usePayoutInvoices() {
   }, [fetchData]);
 
   const createInvoice = useCallback(
-    async (osIds: string[], notes?: string) => {
+    async (osIds: string[], notes?: string, adjustmentIds?: string[]) => {
       const { data, error } = await supabase.rpc("create_technician_payout_invoice", {
         _os_ids: osIds,
         _notes: notes ?? undefined,
+        _adjustment_ids: adjustmentIds?.length ? adjustmentIds : undefined,
       });
       if (error) throw error;
       await fetchData();
-      return data as unknown as { id: string; numero: string; total: number };
+      return data as unknown as { id: string; numero: string; total: number; ajustes?: number };
     },
     [fetchData],
   );

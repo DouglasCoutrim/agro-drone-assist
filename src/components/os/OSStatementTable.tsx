@@ -128,6 +128,9 @@ export function OSStatementTable({ data, loading = false, onGenerateInvoice }: O
             {data.map((item) => {
               const saldo = Number(item.commission_base || 0) - Number(item.imposto || 0) - Number(item.custo || 0);
               const situacao = SITUACAO[item.situacao] ?? SITUACAO.AGUARDANDO_CLIENTE;
+              // OS antiga sem rateio gravado: não inventar zeros — mostra "—" até o recálculo.
+              const semRateio = item.sem_rateio;
+              const traco = <span className="text-muted-foreground/60">—</span>;
               return (
                 <tr key={item.os_id} className="hover:bg-accent/40 transition-colors">
                   <td className="px-3 py-2.5">
@@ -146,10 +149,23 @@ export function OSStatementTable({ data, loading = false, onGenerateInvoice }: O
                   </td>
                   <td className="px-3 py-2.5 text-muted-foreground">{formatDate(item.data_conclusao)}</td>
                   <td className="px-3 py-2.5 text-right font-medium text-foreground">{formatCurrency(Number(item.valor_os || 0))}</td>
-                  <td className="px-3 py-2.5 text-right text-muted-foreground">{formatCurrency(Number(item.imposto || 0))}</td>
-                  <td className="px-3 py-2.5 text-right text-muted-foreground">{formatCurrency(Number(item.custo || 0))}</td>
-                  <td className="px-3 py-2.5 text-right text-muted-foreground">{formatCurrency(saldo)}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold text-primary">{formatCurrency(Number(item.comissao || 0))}</td>
+                  <td className="px-3 py-2.5 text-right text-muted-foreground">
+                    {semRateio ? traco : formatCurrency(Number(item.imposto || 0))}
+                  </td>
+                  <td className="px-3 py-2.5 text-right text-muted-foreground">
+                    {semRateio ? traco : formatCurrency(Number(item.custo || 0))}
+                  </td>
+                  <td className="px-3 py-2.5 text-right text-muted-foreground">
+                    {semRateio ? traco : formatCurrency(saldo)}
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-semibold text-primary">
+                    {formatCurrency(Number(item.comissao || 0))}
+                    {semRateio && (
+                      <span className="ml-1 text-[10px] font-normal text-amber-600" title="Calculada pela regra antiga — aguarda recálculo em Comissões.">
+                        antiga
+                      </span>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5">
                     <Badge variant="outline" className={cn("text-[10px]", situacao.className)}>{situacao.label}</Badge>
                   </td>

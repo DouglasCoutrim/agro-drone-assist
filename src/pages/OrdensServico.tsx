@@ -40,6 +40,8 @@ import { useChecklistConfig } from "@/hooks/useChecklistConfig";
 import type { ChecklistItem, ChecklistTipo } from "@/hooks/useChecklistConfig";
 import { AgruparOSDialog } from "@/components/os/AgruparOSDialog";
 import { CommissionBreakdown, rateioDaOS } from "@/components/os/CommissionBreakdown";
+import { calcularRateio } from "@/lib/commission";
+import { useNfseAliquota } from "@/hooks/useNfseAliquota";
 import { PaymentConfirmDialog, PaymentData } from "@/components/os/PaymentConfirmDialog";
 import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 
@@ -132,6 +134,7 @@ export default function OrdensServico() {
   const { user, canEdit, isAdmin, isTecnico } = useAuth();
   const { organization, isPlatformAdmin, loading: orgLoading } = useOrganization();
   const { config: empresa } = useEmpresaConfig();
+  const aliquotaNfse = useNfseAliquota();
   const [agruparOpen, setAgruparOpen] = useState(false);
   const { tecnicos } = useTeamMembers();
   const confirm = useConfirm();
@@ -1828,10 +1831,13 @@ export default function OrdensServico() {
                       <Separator />
                       {/* Rateio da comissão: o valor da OS é o que o técnico vai receber */}
                       {(() => {
-                        const valorCobrado = viewItemsTotal > 0
-                          ? viewItemsTotal - (Number((viewingOS as any).desconto) || 0)
-                          : Number(viewingOS.valor_final) || Number(viewingOS.valor_orcamento) || 0;
-                        const rateio = rateioDaOS(viewingOS as any, valorCobrado);
+                        // Mesma resolução de valor cobrado que o SQL usa: valor_final manda; sem ele, itens − desconto.
+                        const descontoOs = Number((viewingOS as any).desconto) || 0;
+                        const valorFinalOs = Number((viewingOS as any).valor_final) || 0;
+                        const valorParaRateio = valorFinalOs !== 0
+                          ? valorFinalOs
+                          : Math.max(0, viewItemsTotal - descontoOs);
+                        const rateio = rateioDaOS(viewingOS as any, valorParaRateio);
                         const avisos: string[] = [];
                         const congelado = rateio.congeladoEm ? new Date(rateio.congeladoEm) : null;
                         if (congelado && viewingOS.updated_at && new Date(viewingOS.updated_at) > congelado) {
@@ -1841,7 +1847,22 @@ export default function OrdensServico() {
                         if (semCusto && LOCK_CLOSED_STATUSES.has(String(viewingOS.status))) {
                           avisos.push("OS concluída sem custo de serviço lançado. Se você repassou peças, informe o custo para a comissão sair certa.");
                         }
-                        return <CommissionBreakdown data={{ ...rateio, avisos }} />;
+                        // OS antiga sem rateio gravado: mostra a regra nova como prévia, sem alterar o valor.
+                        const previa = rateio.semRateio
+                          ? calcularRateio({
+                              valorOs: valorParaRateio,
+                              desconto: descontoOs,
+                              itens: viewOsItems.map((i) => ({
+                                tipo: i.tipo,
+                                valorTotal: Number(i.valor_total) || 0,
+                                custoServico: Number(i.custo_servico) || 0,
+                              })),
+                              aliquota: aliquotaNfse,
+                              nfeEmitida: Boolean(viewingOS.nfe_emitida),
+                              taxaSemNota: empresa.commission_no_note_fee,
+                            })
+                          : null;
+                        return <CommissionBreakdown data={{ ...rateio, previa, avisos }} />;
                       })()}
                       <Separator />
                       {/* Items da OS */}
