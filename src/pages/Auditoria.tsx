@@ -30,6 +30,7 @@ interface Trilha {
   usuario_nome: string | null;
   usuario_email: string | null;
   created_at: string;
+  descricao: string | null;
 }
 
 interface Usuario {
@@ -508,6 +509,7 @@ export default function Auditoria() {
                                             <TableHead className="w-48">Quem</TableHead>
                                             <TableHead className="w-24">Ação</TableHead>
                                             <TableHead className="w-56">Tela / registro</TableHead>
+                                            <TableHead>O que aconteceu</TableHead>
                                             <TableHead>Campos alterados</TableHead>
                                             <TableHead className="w-10 text-right">Ações</TableHead>
                     </TableRow>
@@ -535,25 +537,28 @@ export default function Auditoria() {
                                             </Badge>
                                           </TableCell>
                                           <TableCell className="px-3 py-2 text-xs">
-                                            <div className="font-medium">{nomeTabela(linha.tabela)}</div>
-                                            <div className="font-mono text-[10px] text-muted-foreground">
-                                              {linha.registro_id ? `${linha.registro_id.slice(0, 8)}...` : "-"}
-                                            </div>
-                                          </TableCell>
-                                          <TableCell className="px-3 py-2">
-                                            <div className="flex flex-wrap gap-1">
-                                              {(linha.campos || []).slice(0, 6).map((campo) => (
-                                                <Badge key={campo} variant="secondary" className="text-[10px]">
-                                                  {nomeCampo(campo)}
-                                                </Badge>
-                                              ))}
-                                              {(linha.campos || []).length > 6 && (
-                                                <Badge variant="secondary" className="text-[10px]">
-                                                  +{(linha.campos || []).length - 6}
-                                                </Badge>
-                                              )}
-                                            </div>
-                                          </TableCell>
+                                                                    <div className="font-medium">{nomeTabela(linha.tabela)}</div>
+                                                                    <div className="font-mono text-[10px] text-muted-foreground">
+                                                                      {linha.registro_id ? `${linha.registro_id.slice(0, 8)}...` : "-"}
+                                                                    </div>
+                                                                  </TableCell>
+                                                                  <TableCell className="px-3 py-2 text-xs">
+                                                                    {linha.descricao || "-"}
+                                                                  </TableCell>
+                                                                  <TableCell className="px-3 py-2">
+                                                                    <div className="flex flex-wrap gap-1">
+                                                                      {(linha.campos || []).slice(0, 6).map((campo) => (
+                                                                        <Badge key={campo} variant="secondary" className="text-[10px]">
+                                                                          {nomeCampo(campo)}
+                                                                        </Badge>
+                                                                      ))}
+                                                                      {(linha.campos || []).length > 6 && (
+                                                                        <Badge variant="secondary" className="text-[10px]">
+                                                                          +{(linha.campos || []).length - 6}
+                                                                        </Badge>
+                                                                      )}
+                                                                    </div>
+                                                                  </TableCell>
                                           <TableCell className="px-3 py-2 text-right">
                                             {desfazendoId === linha.id ? (
                                               <Loader2 className="h-4 w-4 animate-spin text-sm" />
@@ -591,19 +596,26 @@ export default function Auditoria() {
       <Dialog open={!!detalhe} onOpenChange={(aberto) => !aberto && setDetalhe(null)}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {detalhe ? `${ACOES[detalhe.acao]?.label} em ${nomeTabela(detalhe.tabela)}` : "Detalhe"}
-            </DialogTitle>
-            <DialogDescription>
-              {detalhe && (
-                <>
-                  {new Date(detalhe.created_at).toLocaleString("pt-BR")} por{" "}
-                  <span className="font-medium">{detalhe.usuario_nome || "Sistema"}</span>
-                  {detalhe.registro_id ? ` · registro ${detalhe.registro_id}` : ""}
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
+                      <DialogTitle>
+                        {detalhe ? `${ACOES[detalhe.acao]?.label} em ${nomeTabela(detalhe.tabela)}` : "Detalhe"}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {detalhe && (
+                          <>
+                            {new Date(detalhe.created_at).toLocaleString("pt-BR")} por{" "}
+                            <span className="font-medium">{detalhe.usuario_nome || "Sistema"}</span>
+                            {detalhe.registro_id ? ` · registro ${detalhe.registro_id}` : ""}
+                          </>
+                        )}
+                      </DialogDescription>
+                    </DialogHeader>
+          
+                    {detalhe && detalhe.descricao && (
+                      <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+                        <p className="text-sm font-medium">Descrição:</p>
+                        <p className="text-sm text-muted-foreground">{detalhe.descricao}</p>
+                      </div>
+                    )}
 
           {detalhe && camposDoDetalhe.length === 0 ? (
             <p className="text-sm text-muted-foreground">Registro sem campos alterados.</p>
