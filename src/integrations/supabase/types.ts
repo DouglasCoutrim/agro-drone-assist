@@ -1529,6 +1529,10 @@ export type Database = {
           commission_cost: number
           commission_frozen_at: string | null
           commission_no_note_fee: number
+          commission_override: number | null
+          commission_override_at: string | null
+          commission_override_by: string | null
+          commission_override_reason: string | null
           commission_paid_at: string | null
           commission_products: number
           commission_rate: number
@@ -1591,6 +1595,10 @@ export type Database = {
           commission_cost?: number
           commission_frozen_at?: string | null
           commission_no_note_fee?: number
+          commission_override?: number | null
+          commission_override_at?: string | null
+          commission_override_by?: string | null
+          commission_override_reason?: string | null
           commission_paid_at?: string | null
           commission_products?: number
           commission_rate?: number
@@ -1653,6 +1661,10 @@ export type Database = {
           commission_cost?: number
           commission_frozen_at?: string | null
           commission_no_note_fee?: number
+          commission_override?: number | null
+          commission_override_at?: string | null
+          commission_override_by?: string | null
+          commission_override_reason?: string | null
           commission_paid_at?: string | null
           commission_products?: number
           commission_rate?: number
@@ -3684,6 +3696,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ajustar_comissao_os: {
+        Args: { _os_id: string; _valor: number | null; _motivo?: string | null }
+        Returns: Json
+      }
       batch_release_technician_retentions: {
         Args: { _technician_id: string }
         Returns: Json

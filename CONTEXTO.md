@@ -289,3 +289,23 @@ Resultado verificado: **0 OS divergentes** em qualquer grupo (`commission_total`
 
 1. `npm test` e a checagem de tipos (`npm run build` / `tsc`) — sem runner nesta sessão.
 2. Confirmar na tela: abrir uma OS concluída e ver o rateio gravado (sem aviso), e logar como um usuário "Atendimento" com a permissão marcada para fechar uma OS de outro técnico.
+
+---
+
+## 12. Sessão 2026-11-19 (3) — Ajuste manual do valor da comissão (só admin)
+
+Pedido: "poder alterar o valor da cobrança de comissão" — o admin define à mão a comissão de **uma OS específica** (ex.: 275,03 → 300,00), para mais ou para menos.
+
+**Onde o valor mora.** O ajuste ficou em `ordens_servico.commission_override` (+ `_reason`, `_by`, `_at`) e não em `commission_adjustments`. Motivo: `commission_total` é a fonte de tudo que é exibido (rateio da OS, extrato, dashboard, fatura), então gravar o valor ajustado ali faz o ajuste aparecer em todos esses lugares sem nenhum encanamento novo. Se o ajuste fosse só o delta em `commission_adjustments`, a OS continuaria mostrando o valor calculado (275,03) e a soma com o delta dobraria o valor num erro de leitura.
+
+**Soma fechada.** Com o override, `os_commission_calc` devolve `comissao = coalesce(override, calculada)` e refaz `loja = saldo − comissão`, com `taxa_sem_nota = 0` (o valor digitado já é o líquido do técnico). Assim `saldo = loja + comissão` continua verdadeiro e os relatórios que somam `commission_company` (loja) não ficam errados. O JSON ganhou `comissao_calculada`, `ajuste_manual` e `ajuste_ativo` para a tela mostrar as três linhas.
+
+**Não desfaz nem acusa divergência.** Como o ajuste entra no valor *gravado*, `recalcular_comissoes_em_lote` (que compara `os_commission_calc` com `commission_total`) e `relatorio_impacto_comissao` veem diferença zero — o recálculo em lote não apaga o ajuste e a Conferência da comissão não marca a OS como divergente. Antes de gravar, o RPC exige `admin`, mesma organização, técnico definido, OS não cancelada, e recusa OS já em fatura de saque (`payout_invoice_id`) ou já paga (`commission_paid_at`) — nos dois casos `os_commission_core` não regravaria o rateio e o override ficaria inconsistente com o valor cobrado. Remover o ajuste é o mesmo RPC com `_valor = null`.
+
+**Trava.** `trg_os_protect_commission_override` (`protect_commission_override`) recusa alteração das quatro colunas por quem não é admin — a policy de UPDATE de `ordens_servico` é por organização, então uma escrita direta pelo Data API passaria. Sem JWT (`auth.uid()` nulo) a trava libera, para service_role e rotinas internas. `REVOKE` de `anon`/`PUBLIC` + `GRANT` só para `authenticated` no `ajustar_comissao_os`.
+
+**Tela.** `CommissionOverrideDialog` (valor + motivo, com aviso quando o valor passa do saldo a dividir e botão "Remover ajuste") aberto pelo botão "Ajustar comissão" no detalhe da OS, visível só para admin. `CommissionBreakdown` ganhou o selo `Ajuste manual`, as linhas `Comissão pela regra` / `Ajuste manual (admin) ±` / `Sua comissão ajustada`, o motivo e o rótulo `Loja (absorve o ajuste)`; a taxa sem nota some nesse caso. O cálculo da regra é passado sempre (`calculada`), inclusive para o técnico no `OSSummaryDialog`, que é onde ele vê o motivo do ajuste.
+
+**Verificação.** Teste no banco (com o trigger de auditoria desligado e a OS restaurada em seguida): OS-037 com 200 de serviço, sem nota — sem ajuste `comissao 96,50 / loja 100,00 / taxa 3,50`; com `commission_override = 300` → `comissao 300,00 / loja −100,00 / taxa 0 / ajuste_manual 203,50`, gravado igual na OS; removendo o ajuste, valores idênticos aos originais (total, loja, taxa, base). Depois do teste: triggers todos ativos e **0 OS divergentes** da regra.
+
+**Pendente:** `npm test` / checagem de tipos (sem runner) e a conferência na tela (abrir uma OS, ajustar, ver o rateio e o extrato do técnico).

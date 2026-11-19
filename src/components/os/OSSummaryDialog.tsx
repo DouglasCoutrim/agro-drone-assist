@@ -31,7 +31,7 @@ export function OSSummaryDialog({ osId, onOpenChange }: Props) {
       setOs(null); setItems([]); setTecnico(null);
       const { data } = await supabase
         .from("ordens_servico")
-        .select("id, numero, status, created_at, updated_at, data_conclusao, tipo_equipamento, marca, modelo_equipamento, descricao_problema, valor_final, valor_orcamento, desconto, commission_base, commission_tax, commission_cost, commission_no_note_fee, commission_company, commission_tax_rate, commission_total, commission_frozen_at, tecnico_id, nfe_emitida, clientes(nome, telefone)")
+        .select("id, numero, status, created_at, updated_at, data_conclusao, tipo_equipamento, marca, modelo_equipamento, descricao_problema, valor_final, valor_orcamento, desconto, commission_base, commission_tax, commission_cost, commission_no_note_fee, commission_company, commission_tax_rate, commission_total, commission_frozen_at, commission_override, commission_override_reason, tecnico_id, nfe_emitida, clientes(nome, telefone)")
         .eq("id", osId)
         .maybeSingle();
       const [{ data: its }, prof] = await Promise.all([
@@ -111,25 +111,27 @@ export function OSSummaryDialog({ osId, onOpenChange }: Props) {
                 ? valorFinalOs
                 : Math.max(0, total - descontoOs);
               const rateio = rateioDaOS(os, valorCobrado);
-              const previa = rateio.semRateio
-                ? calcularRateio({
-                    valorOs: valorCobrado,
-                    desconto: descontoOs,
-                    itens: items.map((i) => ({
-                      tipo: i.tipo,
-                      valorTotal: Number(i.valor_total) || Number(i.quantidade) * Number(i.valor_unitario) || 0,
-                      custoServico: Number(i.custo_servico) || 0,
-                    })),
-                    aliquota: aliquotaNfse,
-                    nfeEmitida: Boolean(os.nfe_emitida),
-                    taxaSemNota: empresa.commission_no_note_fee,
-                  })
-                : null;
+              // O que a regra calcula hoje — prévia (OS sem rateio gravado) e referência do
+              // ajuste manual feito pelo administrador.
+              const calculoRegra = calcularRateio({
+                valorOs: valorCobrado,
+                desconto: descontoOs,
+                itens: items.map((i) => ({
+                  tipo: i.tipo,
+                  valorTotal: Number(i.valor_total) || Number(i.quantidade) * Number(i.valor_unitario) || 0,
+                  custoServico: Number(i.custo_servico) || 0,
+                })),
+                aliquota: aliquotaNfse,
+                nfeEmitida: Boolean(os.nfe_emitida),
+                taxaSemNota: empresa.commission_no_note_fee,
+              });
+              const previa = rateio.semRateio ? calculoRegra : null;
               return (
                 <CommissionBreakdown
                   data={{
                     ...rateio,
                     previa,
+                    calculada: calculoRegra.comissao,
                     taxaPercentual: empresa.commission_no_note_fee,
                     avisos:
                       os.commission_frozen_at && os.updated_at && new Date(os.updated_at) > new Date(os.commission_frozen_at)

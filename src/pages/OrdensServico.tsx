@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download, UserPlus, CreditCard, Clock, Wrench, CheckCircle2, XCircle, ChevronRight, Settings2, Trash2, Printer, Check } from "lucide-react";
+import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download, UserPlus, CreditCard, Clock, Wrench, CheckCircle2, XCircle, ChevronRight, Settings2, Trash2, Printer, Check, SlidersHorizontal } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
@@ -41,6 +41,7 @@ import { useChecklistConfig } from "@/hooks/useChecklistConfig";
 import type { ChecklistItem, ChecklistTipo } from "@/hooks/useChecklistConfig";
 import { AgruparOSDialog } from "@/components/os/AgruparOSDialog";
 import { CommissionBreakdown, rateioDaOS } from "@/components/os/CommissionBreakdown";
+import { CommissionOverrideDialog } from "@/components/os/CommissionOverrideDialog";
 import { calcularRateio } from "@/lib/commission";
 import { useNfseAliquota } from "@/hooks/useNfseAliquota";
 import { PaymentConfirmDialog, PaymentData } from "@/components/os/PaymentConfirmDialog";
@@ -157,6 +158,7 @@ export default function OrdensServico() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingOS, setViewingOS] = useState<OrdemServico | null>(null);
+  const [commissionDialogOpen, setCommissionDialogOpen] = useState(false);
   const [editingOS, setEditingOS] = useState<OrdemServico | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [quickClientOpen, setQuickClientOpen] = useState(false);
@@ -696,6 +698,7 @@ export default function OrdensServico() {
     setViewOsItems([]);
     setViewOsItemsLoading(true);
     setViewConfigChecklist([]);
+    setCommissionDialogOpen(false);
     setViewDialogOpen(true);
     try {
       setViewOsItems(await fetchOSItems(os.id, os.organization_id));
@@ -720,6 +723,21 @@ export default function OrdensServico() {
     } finally {
       setViewOsItemsLoading(false);
     }
+  };
+
+  /** Relê a OS aberta (o rateio já vem com o ajuste) e atualiza a lista. */
+  const recarregarOSVisualizada = async (osId: string) => {
+    const { data, error } = await supabase
+      .from("ordens_servico")
+      .select("*, clientes(nome, telefone)")
+      .eq("id", osId)
+      .maybeSingle();
+    if (error) {
+      toast.error(getErrorMessage(error));
+      return;
+    }
+    if (data) setViewingOS(data as OrdemServico);
+    fetchData();
   };
 
   // Deep link: /ordens-servico?os=<id> abre a OS correspondente e limpa o parâmetro da URL.
@@ -1725,7 +1743,7 @@ export default function OrdensServico() {
         </Dialog>
 
         {/* View OS Dialog */}
-        <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <Dialog open={viewDialogOpen} onOpenChange={(o) => { setViewDialogOpen(o); if (!o) setCommissionDialogOpen(false); }}>
           <DialogContent className="max-w-4xl w-[95vw] sm:w-[90vw] h-[90vh] sm:h-[80vh] flex flex-col p-0 overflow-hidden rounded-xl">
             <DialogHeader className="p-4 sm:p-6 border-b shrink-0">
 
@@ -1880,22 +1898,58 @@ export default function OrdensServico() {
                         if (semCusto && LOCK_CLOSED_STATUSES.has(String(viewingOS.status))) {
                           avisos.push("OS concluída sem custo de serviço lançado. Se você repassou peças, informe o custo para a comissão sair certa.");
                         }
+                        // O que a regra calcula hoje — serve tanto de prévia (OS sem rateio gravado)
+                        // quanto de referência quando o administrador ajusta a comissão à mão.
+                        const calculoRegra = calcularRateio({
+                          valorOs: valorParaRateio,
+                          desconto: descontoOs,
+                          itens: viewOsItems.map((i) => ({
+                            tipo: i.tipo,
+                            valorTotal: Number(i.valor_total) || 0,
+                            custoServico: Number(i.custo_servico) || 0,
+                          })),
+                          aliquota: aliquotaNfse,
+                          nfeEmitida: Boolean(viewingOS.nfe_emitida),
+                          taxaSemNota: empresa.commission_no_note_fee,
+                        });
                         // OS antiga sem rateio gravado: mostra a regra nova como prévia, sem alterar o valor.
-                        const previa = rateio.semRateio
-                          ? calcularRateio({
-                              valorOs: valorParaRateio,
-                              desconto: descontoOs,
-                              itens: viewOsItems.map((i) => ({
-                                tipo: i.tipo,
-                                valorTotal: Number(i.valor_total) || 0,
-                                custoServico: Number(i.custo_servico) || 0,
-                              })),
-                              aliquota: aliquotaNfse,
-                              nfeEmitida: Boolean(viewingOS.nfe_emitida),
-                              taxaSemNota: empresa.commission_no_note_fee,
-                            })
-                          : null;
-                        return <CommissionBreakdown data={{ ...rateio, previa, avisos }} />;
+                        const itensCarregados = !viewOsItemsLoading;
+                        const previa = rateio.semRateio && itensCarregados ? calculoRegra : null;
+                        return (
+                          <>
+                            <CommissionBreakdown
+                              data={{
+                                ...rateio,
+                                previa,
+                                calculada: itensCarregados ? calculoRegra.comissao : null,
+                                avisos,
+                              }}
+                            />
+                            {isAdmin && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-2 w-full"
+                                onClick={() => setCommissionDialogOpen(true)}
+                              >
+                                <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5" />
+                                Ajustar comissão
+                              </Button>
+                            )}
+                            <CommissionOverrideDialog
+                              open={commissionDialogOpen}
+                              onOpenChange={setCommissionDialogOpen}
+                              osId={viewingOS.id}
+                              osNumero={formatOSNumber(viewingOS.numero)}
+                              comissaoAtual={rateio.comissao}
+                              override={rateio.override}
+                              motivoAtual={rateio.overrideMotivo}
+                              calculada={itensCarregados ? calculoRegra.comissao : null}
+                              saldo={rateio.saldo}
+                              onSaved={() => recarregarOSVisualizada(viewingOS.id)}
+                            />
+                          </>
+                        );
                       })()}
                       <Separator />
                       {/* Items da OS */}

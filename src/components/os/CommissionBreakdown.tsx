@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { TAXA_SEM_NOTA_PADRAO, type Rateio } from "@/lib/commission";
-import { AlertTriangle, Lock, Shield } from "lucide-react";
+import { AlertTriangle, Lock, Shield, SlidersHorizontal } from "lucide-react";
 
 export interface CommissionBreakdownData {
   /** Valor efetivamente cobrado da OS (valor_final ou itens - desconto). */
@@ -20,6 +20,12 @@ export interface CommissionBreakdownData {
   taxaPercentual?: number;
   congeladoEm?: string | null;
   semTecnico?: boolean;
+  /** Valor do ajuste manual (admin) gravado na OS; `null` quando a comissão segue a regra. */
+  override?: number | null;
+  /** Motivo informado pelo administrador ao ajustar a comissão. */
+  overrideMotivo?: string | null;
+  /** Comissão que a regra produziria agora — usada para mostrar a diferença do ajuste. */
+  calculada?: number | null;
   /**
    * O rateio ainda não foi gravado pela regra nova (`commission_frozen_at` nulo): OS antiga,
    * calculada pela regra anterior, ou OS em aberto. Nada é corrigido em silêncio — o gestor
@@ -34,7 +40,12 @@ export interface CommissionBreakdownData {
 
 /** Lê o rateio gravado na OS (`ordens_servico.commission_*`). */
 export function rateioDaOS(os: Record<string, unknown> | null | undefined, valorOs?: number | null): CommissionBreakdownData {
-  const numero = (chave: string) => Number((os as Record<string, unknown> | null)?.[chave]) || 0;
+  const registro = os as Record<string, unknown> | null;
+  const numero = (chave: string) => Number(registro?.[chave]) || 0;
+  const opcional = (chave: string) => {
+    const bruto = registro?.[chave];
+    return bruto === null || bruto === undefined || bruto === "" ? null : Number(bruto);
+  };
   const base = numero("commission_base");
   const comissao = numero("commission_total");
   return {
@@ -48,11 +59,13 @@ export function rateioDaOS(os: Record<string, unknown> | null | undefined, valor
     comissao,
     aliquota: numero("commission_tax_rate"),
     taxaPercentual: TAXA_SEM_NOTA_PADRAO,
-    nfeEmitida: Boolean((os as Record<string, unknown> | null)?.nfe_emitida),
-    congeladoEm: ((os as Record<string, unknown> | null)?.commission_frozen_at as string | null) ?? null,
-    semTecnico: !(os as Record<string, unknown> | null)?.tecnico_id,
+    nfeEmitida: Boolean(registro?.nfe_emitida),
+    congeladoEm: (registro?.commission_frozen_at as string | null) ?? null,
+    semTecnico: !registro?.tecnico_id,
+    override: opcional("commission_override"),
+    overrideMotivo: (registro?.commission_override_reason as string | null) ?? null,
     // Sem congelamento = o rateio ainda não foi gravado pela regra nova (OS antiga ou em aberto).
-    semRateio: !((os as Record<string, unknown> | null)?.commission_frozen_at),
+    semRateio: !registro?.commission_frozen_at,
   };
 }
 
@@ -92,8 +105,14 @@ export function CommissionBreakdown({ data, className }: { data: CommissionBreak
     );
   }
 
+  // Ajuste manual (admin): a OS tem um valor de comissão definido à mão. Nesse caso o rateio
+  // gravado já inclui o ajuste (a loja absorve a diferença), então ele é a fonte da verdade.
+  const ajustado = data.override != null;
+  const calculada = ajustado ? data.calculada ?? null : null;
+  const ajuste = calculada != null ? Math.round((Number(data.comissao || 0) - calculada) * 100) / 100 : null;
+
   // Sem rateio gravado e sem prévia não há o que abrir: mostra o valor gravado, sem inventar linhas.
-  if (data.semRateio && !data.previa) {
+  if (data.semRateio && !data.previa && !ajustado) {
     return (
       <div className={cn("rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 space-y-2 text-sm", className)}>
         <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Rateio ainda não gravado</p>
@@ -112,8 +131,9 @@ export function CommissionBreakdown({ data, className }: { data: CommissionBreak
   // Com prévia, as linhas mostram a regra nova (o que a OS passa a valer) e a linha da regra
   // antiga fica à parte — mas só quando o valor gravado realmente difere da prévia. Depois do
   // recálculo em lote o gravado já é a regra nova, e repetir o mesmo número só confunde.
+  // Com ajuste manual a prévia não se aplica: o valor gravado é a decisão do administrador.
   const p = data.previa;
-  const usandoPrevia = Boolean(data.semRateio && p);
+  const usandoPrevia = Boolean(data.semRateio && p && !ajustado);
   const divergenteDaPrevia = usandoPrevia && !!p
     && Math.abs(Number(data.comissao || 0) - p.comissao) >= 0.005;
   const d = usandoPrevia && p
@@ -135,19 +155,26 @@ export function CommissionBreakdown({ data, className }: { data: CommissionBreak
     <div className={cn("rounded-lg border border-border bg-muted/20 p-3 space-y-1.5 text-sm", className)}>
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rateio do serviço</p>
-        {usandoPrevia ? (
-          <Badge variant="outline" className="gap-1 border-amber-500/40 text-amber-600">
-            <AlertTriangle className="h-3 w-3" /> Prévia — regra nova
-          </Badge>
-        ) : d.nfeEmitida ? (
-          <Badge variant="outline" className="gap-1 border-emerald-500/40 text-emerald-600">
-            <Shield className="h-3 w-3" /> Nota emitida
-          </Badge>
-        ) : (
-          <Badge variant="outline" className="gap-1 border-amber-500/40 text-amber-600">
-            <AlertTriangle className="h-3 w-3" /> Sem nota
-          </Badge>
-        )}
+        <div className="flex items-center gap-1.5">
+          {ajustado && (
+            <Badge variant="outline" className="gap-1 border-primary/50 text-primary">
+              <SlidersHorizontal className="h-3 w-3" /> Ajuste manual
+            </Badge>
+          )}
+          {usandoPrevia ? (
+            <Badge variant="outline" className="gap-1 border-amber-500/40 text-amber-600">
+              <AlertTriangle className="h-3 w-3" /> Prévia — regra nova
+            </Badge>
+          ) : d.nfeEmitida ? (
+            <Badge variant="outline" className="gap-1 border-emerald-500/40 text-emerald-600">
+              <Shield className="h-3 w-3" /> Nota emitida
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="gap-1 border-amber-500/40 text-amber-600">
+              <AlertTriangle className="h-3 w-3" /> Sem nota
+            </Badge>
+          )}
+        </div>
       </div>
 
       {d.valorOs != null && <Linha rotulo="Valor cobrado da OS" valor={d.valorOs} />}
@@ -161,27 +188,39 @@ export function CommissionBreakdown({ data, className }: { data: CommissionBreak
       <Linha rotulo="Saldo a dividir" valor={d.saldo} sinal="=" destaque />
       <div className="pl-4 space-y-1 text-xs text-muted-foreground">
         <div className="flex items-center justify-between gap-2">
-          <span>Loja (50%)</span>
+          <span>{ajustado ? "Loja (absorve o ajuste)" : "Loja (50%)"}</span>
           <span className="font-mono tabular-nums">{formatCurrency(d.loja)}</span>
         </div>
         <div className="flex items-center justify-between gap-2">
-          <span>Você (50%)</span>
+          <span>{ajustado ? "Você" : "Você (50%)"}</span>
           <span className="font-mono tabular-nums">{formatCurrency(d.saldo - d.loja)}</span>
         </div>
       </div>
-      <Linha
-        rotulo="Taxa sem nota"
-        valor={d.taxaSemNota}
-        sinal="−"
-        sufixo={
-          !d.nfeEmitida ? (
-            <span className="text-xs">({(d.taxaPercentual ?? TAXA_SEM_NOTA_PADRAO).toLocaleString("pt-BR")}%)</span>
-          ) : null
-        }
-      />
-      <div className="border-t border-border pt-1.5">
+      {!ajustado && (
         <Linha
-          rotulo={usandoPrevia ? "Sua comissão pela regra nova" : "Sua comissão"}
+          rotulo="Taxa sem nota"
+          valor={d.taxaSemNota}
+          sinal="−"
+          sufixo={
+            !d.nfeEmitida ? (
+              <span className="text-xs">({(d.taxaPercentual ?? TAXA_SEM_NOTA_PADRAO).toLocaleString("pt-BR")}%)</span>
+            ) : null
+          }
+        />
+      )}
+      <div className="border-t border-border pt-1.5">
+        {ajustado && calculada != null && (
+          <Linha rotulo="Comissão pela regra" valor={calculada} sufixo={<span className="text-xs">(não aplicada)</span>} />
+        )}
+        {ajustado && ajuste != null && (
+          <Linha
+            rotulo="Ajuste manual (admin)"
+            valor={Math.abs(ajuste)}
+            sinal={ajuste >= 0 ? "+" : "−"}
+          />
+        )}
+        <Linha
+          rotulo={usandoPrevia ? "Sua comissão pela regra nova" : ajustado ? "Sua comissão ajustada" : "Sua comissão"}
           valor={d.comissao}
           sinal="="
           destaque
@@ -194,6 +233,14 @@ export function CommissionBreakdown({ data, className }: { data: CommissionBreak
           }
         />
       </div>
+
+      {ajustado && (
+        <p className="text-xs text-muted-foreground">
+          {data.overrideMotivo
+            ? `Motivo do ajuste: ${data.overrideMotivo}`
+            : "Comissão definida manualmente por um administrador."}
+        </p>
+      )}
 
       {divergenteDaPrevia && (
         <div className="space-y-1.5 border-t border-amber-500/30 pt-1.5">
