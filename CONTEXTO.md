@@ -227,8 +227,30 @@ Código **completo e compilando** (`npx tsc --noEmit` sem erros). Faltam **somen
 - **Configuração:** `CommissionConfigCard` em `/empresa` edita a "Taxa sem nota (%)" e exibe a alíquota do ISS em leitura, avisando que é a fonte única. `get_technician_dashboard(uuid)` (sobrecarga antiga) foi removida; a tela chama a de 3 argumentos explicitamente.
 - **Testes:** unitário `src/lib/commission.test.ts` (Vitest, `npm test`); integração `src/lib/technician-financials.integration.test.ts` ajustada ao payload novo; e2e `e2e-tests/comissoes.spec.ts` (Playwright) confirma que `/comissoes` exige autenticação — passando.
 
+**Fechamento (mesma sessão): dados antigos, prévia e travas**
+
+O banco tem 42 OS e **nenhuma** tinha rateio gravado pela regra nova (`com_rateio = 0`): 28 carregam `commission_total` da regra antiga com `commission_base = 0`. O bloco de rateio abria com base/imposto/custo/saldo zerados e "Sua comissão" com valor — um rateio que não soma.
+
+- **`sem_rateio` = `commission_frozen_at is null`** (não `base = 0`): OS concluída sem serviço comissionável tem rateio gravado e base zero, e isso não é dado antigo. No banco (`get_technician_os_statement`) e no `rateioDaOS`.
+- **OS sem rateio mostra a regra nova como prévia:** selo `Prévia — regra nova`, linhas com o cálculo novo e, embaixo, `Comissão gravada (regra antiga)` + aviso para usar a Conferência. Nada é corrigido em silêncio; o valor gravado continua intacto.
+- **Extrato** mostra `—` em imposto/custo/saldo quando não há rateio e marca a comissão como `antiga`, em vez de zeros que não somam; o cabeçalho conta quantas OS do período estão assim (`N pela regra antiga`), para o técnico entender por que o total está baixo.
+- **Prévia idêntica ao SQL:** o valor cobrado da prévia resolve igual ao banco (`valor_final` manda; sem ele, itens − desconto). Antes a tela preferia o total dos itens e divergia — OS `2026-00010` (570 no banco × 600 na tela).
+- **Alíquota do ISS para não-admin** pelo RPC `get_nfse_aliquota()` (`SECURITY DEFINER`, `EXECUTE` só para `authenticated`; `PUBLIC`/`anon` revogados). `nfe_config` é restrita a admin porque guarda os tokens da Focus NFe e RLS não esconde coluna — não abrir SELECT na tabela para resolver isso. `useNfseAliquota` lê por esse RPC e o `CommissionConfigCard` reusa o hook.
+- **Grants:** as três tabelas novas herdaram os privilégios padrão do banco, que dão `ALL` a `anon` — revogado (no banco e na migration). Políticas são **só de SELECT**: toda escrita passa por RPC `SECURITY DEFINER`, então o técnico não consegue marcar a própria fatura como paga nem mexer em ajuste.
+- **Ajuste entra na fatura:** `create_technician_payout_invoice(_os_ids, _notes, _adjustment_ids)` aceita ajustes pendentes (ganham `invoice_id` e `settled_at`), com checkboxes no `PayoutInvoiceDialog`. Ajuste não forma fatura sozinho.
+- **Recusar não prende o trabalho:** `settle(..., paid := false)` agora devolve as OS (`payout_invoice_id = null`) e os ajustes (`invoice_id`/`settled_at` = null) ao técnico, mantendo os itens da fatura como histórico. Sem isso a OS ficava presa em uma fatura encerrada para sempre — só se fatura OS com `payout_invoice_id` nulo e `cancel` não aceita `recusada`.
+
+**Verificado nesta rodada**
+
+- Fórmula SQL × TS nos seis exemplos do plano (800 com nota 5% = 380,00; 6% = 376,00; 900 + custo 150 com nota 6% = 348,00 e sem nota = 361,88; 2.500 com desconto 750 sem nota = 1.206,25; 900 sem nota = 275,03), com `os_commission_calc` lido do banco e conferido linha a linha.
+- A query do extrato rodada contra OS reais devolve `sem_rateio = true` nas legadas.
+- Assinaturas dos RPCs conferidas contra o banco; grants e políticas auditados; `trg_audit` existe em `itens_os` (mudança de `custo_servico` cai na Auditoria).
+- Sem runner de comandos nesta sessão: a checagem de tipos e o build não foram executados (verificar no editor e com `npm test`).
+
 **Pendente / próximo**
 
-1. `nfe_config.nfse_aliquota` está 0 na organização principal: enquanto não for configurada, OS com nota não geram imposto (comportamento esperado, mas vale conferir na tela fiscal).
-2. Conferir manualmente OS-031, 027, 002, 005 e 023 no relatório de impacto e decidir o recálculo em lote.
-3. O botão "Enviar por WhatsApp" usa Web Share (celular) e cai em download + instrução no desktop, porque o técnico não pode ler o telefone do gestor por RLS.
+1. `npm test` (Vitest) — sem runner nesta sessão.
+2. `nfe_config.nfse_aliquota` está 0 na organização principal (e `habilitado = false`): enquanto não for configurada, OS com nota não geram imposto (comportamento esperado, mas vale conferir na tela fiscal).
+3. Conferir manualmente OS-031, 027, 002, 005 e 023 no relatório de impacto e decidir o recálculo em lote (as 28 legadas aparecem no relatório; nada foi alterado).
+4. O botão "Enviar por WhatsApp" usa Web Share (celular) e cai em download + instrução no desktop, porque o técnico não pode ler o telefone do gestor por RLS.
+5. Fora do escopo desta sessão: `src/pages/Auditoria.tsx` chama o RPC `reverter_alteracao`, que não existe no banco nem nos tipos — o botão "Desfazer" não funciona. Não afeta o build (`vite build` não roda `tsc`), mas está pendente.

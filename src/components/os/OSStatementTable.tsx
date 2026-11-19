@@ -61,6 +61,9 @@ export function OSStatementTable({ data, loading = false, onGenerateInvoice }: O
     { valor_os: 0, imposto: 0, custo: 0, comissao: 0 },
   );
 
+  // OS cujo rateio ainda não foi gravado pela regra nova: o gestor recalcula em Comissões.
+  const antigas = data.filter((item) => item.sem_rateio).length;
+
   if (loading) {
     return (
       <div className="rounded-lg border border-border/50 overflow-hidden">
@@ -98,7 +101,17 @@ export function OSStatementTable({ data, loading = false, onGenerateInvoice }: O
     <div className="rounded-lg border border-border/50 overflow-hidden">
       <div className="px-4 py-3 border-b border-border/50 bg-muted/30 flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-foreground">Extrato de Serviços</h3>
-        <span className="text-xs text-muted-foreground">{data.length} OS(s)</span>
+        <span className="text-xs text-muted-foreground">
+          {data.length} OS(s)
+          {antigas > 0 && (
+            <span
+              className="text-amber-600"
+              title="Estas OS ainda estão com a comissão da regra antiga. O gestor recalcula em Comissões → Conferência da comissão."
+            >
+              {" "}· {antigas} pela regra antiga
+            </span>
+          )}
+        </span>
       </div>
 
       <div className="overflow-x-auto">

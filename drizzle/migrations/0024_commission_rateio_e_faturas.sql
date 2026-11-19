@@ -945,6 +945,13 @@ begin
      set status = 'recusada', rejected_reason = _reason, updated_at = now()
    where id = _invoice_id;
 
+  -- Recusar é terminal para a fatura, não para o trabalho: devolve as OS e os ajustes ao
+  -- técnico, senão elas ficam presas em uma fatura encerrada e nunca mais podem ser faturadas
+  -- (só é possível faturar OS com payout_invoice_id nulo, e cancelar não aceita 'recusada').
+  -- Os itens da fatura ficam como histórico.
+  update public.ordens_servico set payout_invoice_id = null where payout_invoice_id = _invoice_id;
+  update public.commission_adjustments set invoice_id = null, settled_at = null where invoice_id = _invoice_id;
+
   perform public.notify_org_role(
     v_inv.organization_id, 'admin'::public.app_role, 'payout_invoice',
     'Fatura de saque ' || v_inv.numero || ' recusada',
