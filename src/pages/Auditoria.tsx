@@ -509,7 +509,7 @@ export default function Auditoria() {
                                             <TableHead className="w-48">Quem</TableHead>
                                             <TableHead className="w-24">Ação</TableHead>
                                             <TableHead className="w-56">Tela / registro</TableHead>
-                                            <TableHead>O que aconteceu</TableHead>
+                                                                                        <TableHead className="w-64">O que aconteceu</TableHead>
                                             <TableHead>Campos alterados</TableHead>
                                             <TableHead className="w-10 text-right">Ações</TableHead>
                     </TableRow>
