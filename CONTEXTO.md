@@ -3,7 +3,7 @@
 > Documento de referência para retomar o trabalho. Atualizado ao fim de cada sessão.
 > Ao reiniciar, leia este arquivo e confirme em qual etapa paramos.
 
-## Status atual (última atualização: 2026-11-13 — ver seções 6, 7 e 8)
+## Status atual (última atualização: 2026-11-19 — ver seções 10 e 11)
 
 **Em andamento — "Módulo do Técnico / Comissionamento / Oficina ao Vivo".**
 Código **completo e compilando** (`npx tsc --noEmit` sem erros). Faltam **somente** etapas de deploy/dados (abaixo).
@@ -251,6 +251,41 @@ O banco tem 42 OS e **nenhuma** tinha rateio gravado pela regra nova (`com_ratei
 
 1. `npm test` (Vitest) — sem runner nesta sessão.
 2. `nfe_config.nfse_aliquota` está 0 na organização principal (e `habilitado = false`): enquanto não for configurada, OS com nota não geram imposto (comportamento esperado, mas vale conferir na tela fiscal).
-3. Conferir manualmente OS-031, 027, 002, 005 e 023 no relatório de impacto e decidir o recálculo em lote (as 28 legadas aparecem no relatório; nada foi alterado).
-4. O botão "Enviar por WhatsApp" usa Web Share (celular) e cai em download + instrução no desktop, porque o técnico não pode ler o telefone do gestor por RLS.
-5. Fora do escopo desta sessão: `src/pages/Auditoria.tsx` chama o RPC `reverter_alteracao`, que não existe no banco nem nos tipos — o botão "Desfazer" não funciona. Não afeta o build (`vite build` não roda `tsc`), mas está pendente.
+3. O botão "Enviar por WhatsApp" usa Web Share (celular) e cai em download + instrução no desktop, porque o técnico não pode ler o telefone do gestor por RLS.
+4. Fora do escopo desta sessão: `src/pages/Auditoria.tsx` chama o RPC `reverter_alteracao`, que não existe no banco nem nos tipos — o botão "Desfazer" não funciona. Não afeta o build (`vite build` não roda `tsc`), mas está pendente.
+5. `os_commission_core` e `os_commission_calc` têm `EXECUTE` para `anon`/`authenticated` (privilégio padrão do banco, igual a outras funções da migration 0024). São SECURITY DEFINER sem checagem de organização: um autenticado pode forçar o recálculo de OS de outra organização (mexe em dado, não lê). Vale um `REVOKE ... FROM anon` e uma checagem de org quando essas funções forem mexidas de novo.
+
+---
+
+## 11. Sessão 2026-11-19 (2) — Permissão "Pode finalizar OS" + recálculo de todas as OS
+
+**Permissão "Pode finalizar OS"** (migration `drizzle/migrations/0025_pode_finalizar_os.sql`)
+
+O problema real: `os_assignment_rules` levantava `'Somente o técnico responsável pode finalizar esta OS.'` para qualquer autenticado que não fosse o técnico da OS — **inclusive o administrador**, porque a condição olhava só `auth.uid() <> tecnico_id`. Não existia coluna de permissão.
+
+- `user_permissions.pode_finalizar_os` (padrão `false`) + predicado `public.pode_finalizar_os(_user_id)` (não é SECURITY DEFINER de propósito: dentro das policies o invocador lê a própria linha).
+- `os_assignment_rules` passou a liberar admin, admin da plataforma e quem tem a permissão.
+- Quem só tem a permissão fecha pelo RPC `finalizar_os(_os_id, _status)`: valida organização, aceita apenas status de fechamento (`pronto_retirada`, `concluida`, `entregue`, `finalizada`), grava status/datas, congela o rateio (`os_commission_core`) e escreve `os_historico`. **Não** foi aberto UPDATE em `ordens_servico` para essa permissão: a policy continua exigindo admin ou técnico, e o limite de campos fica no RPC. (A primeira tentativa foi abrir a policy + um trigger de guarda de colunas; o guarda não funcionou porque dentro de uma função SECURITY DEFINER `current_user` é o dono, não o usuário do JWT — daí o desenho por RPC.)
+- `calculate_os_commission` também libera quem tem a permissão (senão a OS fecharia com a comissão em prévia).
+- Frontend: `usePermissions`/`types.ts` expõem `pode_finalizar_os`; `Equipe → Papéis e permissões` ganhou o interruptor (desabilitado para admin/técnico, que já podem); `OrdensServico` usa `podeFecharOS`/`podeAvancarOS` e manda quem não edita pelo RPC; `StatusPipeline` ganhou `canChangeTo` e deixa só os passos permitidos clicáveis.
+- Correções na tela `Permissões de OS` (`/permissoes`, link em Configurações): o interruptor aparecia **ligado para todos** quando quem abria era admin (`canUserFinalize` curto-circuitava pelo usuário logado) e o upsert mandava `organization_id`, coluna que não existe em `user_permissions` — salvar falhava.
+
+**Recálculo de todas as OS (pedido do usuário)**
+
+Nenhuma das 43 OS tinha rateio gravado e 28 divergiam da regra nova. Rodado `recalcular_comissoes_em_lote(false)` como o admin de cada organização (e31fe856: 24 OS; f42c8ddd: 7 OS) e, na sequência, `os_commission_core(id, true)` para as OS ainda abertas (7 + 5), que guardam o rateio sem congelar.
+
+| Organização | Grupo | Antes | Depois | Congeladas |
+|---|---|---|---|---|
+| e31fe856 | Concluída | 13.294,21 | **12.147,55** | 24 de 24 |
+| e31fe856 | Aberta | 3.287,00 | **2.952,91** | — (prévia) |
+| f42c8ddd | Concluída | 0,00 | **696,38** | 7 de 7 |
+| f42c8ddd | Aberta | 0,00 | **4.535,51** | — (prévia) |
+
+Resultado verificado: **0 OS divergentes** em qualquer grupo (`commission_total` = `os_commission_calc`). Nenhuma OS estava paga nem em fatura, então não houve ajuste retroativo. Daqui para frente o cálculo se mantém: OS aberta recalcula a cada mudança de item (`trg_itens_os_recalc_commission`), OS concluída congela no fechamento.
+
+**Textos ajustados** para não mentir depois do recálculo: `CommissionBreakdown` só mostra a linha `Comissão gravada (fora da regra nova)` + aviso quando o valor gravado realmente difere da prévia; o extrato trocou o rótulo `antiga` por `sem rateio` (`N sem rateio gravado` no cabeçalho).
+
+**Pendente desta sessão**
+
+1. `npm test` e a checagem de tipos (`npm run build` / `tsc`) — sem runner nesta sessão.
+2. Confirmar na tela: abrir uma OS concluída e ver o rateio gravado (sem aviso), e logar como um usuário "Atendimento" com a permissão marcada para fechar uma OS de outro técnico.

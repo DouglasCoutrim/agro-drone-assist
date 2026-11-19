@@ -96,19 +96,26 @@ export function CommissionBreakdown({ data, className }: { data: CommissionBreak
   if (data.semRateio && !data.previa) {
     return (
       <div className={cn("rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 space-y-2 text-sm", className)}>
-        <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Rateio ainda não detalhado</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Rateio ainda não gravado</p>
         <div className="flex items-center justify-between gap-2">
-          <span className="text-muted-foreground">Comissão gravada (regra antiga)</span>
+          <span className="text-muted-foreground">Comissão gravada</span>
           <span className="font-mono tabular-nums">{formatCurrency(data.comissao)}</span>
         </div>
-        <AvisoRecalculo />
+        <p className="flex items-start gap-1.5 text-xs text-amber-700">
+          <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+          O rateio é gravado quando a OS é concluída — até lá o valor é uma prévia.
+        </p>
       </div>
     );
   }
 
-  // Com prévia, as linhas mostram a regra nova (o que a OS passa a valer) e a linha da regra antiga fica à parte.
+  // Com prévia, as linhas mostram a regra nova (o que a OS passa a valer) e a linha da regra
+  // antiga fica à parte — mas só quando o valor gravado realmente difere da prévia. Depois do
+  // recálculo em lote o gravado já é a regra nova, e repetir o mesmo número só confunde.
   const p = data.previa;
   const usandoPrevia = Boolean(data.semRateio && p);
+  const divergenteDaPrevia = usandoPrevia && !!p
+    && Math.abs(Number(data.comissao || 0) - p.comissao) >= 0.005;
   const d = usandoPrevia && p
     ? {
         valorOs: data.valorOs,
@@ -188,9 +195,9 @@ export function CommissionBreakdown({ data, className }: { data: CommissionBreak
         />
       </div>
 
-      {usandoPrevia && (
+      {divergenteDaPrevia && (
         <div className="space-y-1.5 border-t border-amber-500/30 pt-1.5">
-          <Linha rotulo="Comissão gravada (regra antiga)" valor={data.comissao} />
+          <Linha rotulo="Comissão gravada (fora da regra nova)" valor={data.comissao} />
           <AvisoRecalculo />
         </div>
       )}
@@ -209,9 +216,8 @@ function AvisoRecalculo() {
   return (
     <p className="flex items-start gap-1.5 text-xs text-amber-700">
       <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
-      Esta OS ainda mostra a comissão pela regra antiga. O valor passa a valer quando a OS é
-      concluída ou quando o gestor recalcular em lote em Comissões → Conferência da comissão;
-      nada é alterado sem essa ação.
+      O valor gravado nesta OS está fora da regra nova. O gestor recalcula em lote em
+      Comissões → Conferência da comissão; nada é alterado sem essa ação.
     </p>
   );
 }

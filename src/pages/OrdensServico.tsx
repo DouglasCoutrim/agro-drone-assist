@@ -1950,7 +1950,7 @@ export default function OrdensServico() {
               </div>
               )}
             </div>
-            {viewingOS && viewingOS.status !== "entregue" && viewingOS.status !== "cancelada" && podeFecharOS(viewingOS) && (
+            {viewingOS && viewingOS.status !== "entregue" && viewingOS.status !== "cancelada" && podeAvancarOS(viewingOS) && (
               <DialogFooter className="shrink-0 border-t bg-background">
                 <div className="p-4">
                   <Button className="w-full gradient-primary" onClick={() => handleAdvanceStatus(viewingOS)}>

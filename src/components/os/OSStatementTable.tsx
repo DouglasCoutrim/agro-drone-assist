@@ -61,8 +61,8 @@ export function OSStatementTable({ data, loading = false, onGenerateInvoice }: O
     { valor_os: 0, imposto: 0, custo: 0, comissao: 0 },
   );
 
-  // OS cujo rateio ainda não foi gravado pela regra nova: o gestor recalcula em Comissões.
-  const antigas = data.filter((item) => item.sem_rateio).length;
+  // OS cujo rateio ainda não foi gravado (não congelado): o gestor recalcula em Comissões.
+  const semRateioCount = data.filter((item) => item.sem_rateio).length;
 
   if (loading) {
     return (
@@ -103,12 +103,12 @@ export function OSStatementTable({ data, loading = false, onGenerateInvoice }: O
         <h3 className="text-sm font-semibold text-foreground">Extrato de Serviços</h3>
         <span className="text-xs text-muted-foreground">
           {data.length} OS(s)
-          {antigas > 0 && (
+          {semRateioCount > 0 && (
             <span
               className="text-amber-600"
-              title="Estas OS ainda estão com a comissão da regra antiga. O gestor recalcula em Comissões → Conferência da comissão."
+              title="Estas OS ainda estão sem o rateio gravado pela regra nova. O gestor recalcula em Comissões → Conferência da comissão."
             >
-              {" "}· {antigas} pela regra antiga
+              {" "}· {semRateioCount} sem rateio gravado
             </span>
           )}
         </span>
@@ -174,8 +174,8 @@ export function OSStatementTable({ data, loading = false, onGenerateInvoice }: O
                   <td className="px-3 py-2.5 text-right font-semibold text-primary">
                     {formatCurrency(Number(item.comissao || 0))}
                     {semRateio && (
-                      <span className="ml-1 text-[10px] font-normal text-amber-600" title="Calculada pela regra antiga — aguarda recálculo em Comissões.">
-                        antiga
+                      <span className="ml-1 text-[10px] font-normal text-amber-600" title="Rateio ainda não gravado — aguarda conclusão ou recálculo em Comissões.">
+                        sem rateio
                       </span>
                     )}
                   </td>
