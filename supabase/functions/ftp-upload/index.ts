@@ -184,14 +184,26 @@ serve(async (req) => {
       return new Response("File too large (max 5MB)", { status: 400, headers: corsHeaders })
     }
 
-    const config: FTPConfig = {
-      host: Deno.env.get("FTP_HOST") || "",
-      port: parseInt(Deno.env.get("FTP_PORT") || "21", 10),
-      username: Deno.env.get("FTP_USERNAME") || "",
-      password: Deno.env.get("FTP_PASSWORD") || "",
-      basePath: Deno.env.get("FTP_BASE_PATH") || "/uploads",
-      publicBase: Deno.env.get("FTP_PUBLIC_URL") || "",
-    }
+    // Configuração do FTP: prioriza a tabela public.ftp_config (lida com a service
+        // role, nunca exposta ao cliente) e recorre a variáveis de ambiente se faltar.
+        const admin = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        )
+        const { data: ftpRow } = await admin
+          .from("ftp_config")
+          .select("*")
+          .eq("id", 1)
+          .maybeSingle()
+    
+        const config: FTPConfig = {
+          host: ftpRow?.host || Deno.env.get("FTP_HOST") || "",
+          port: ftpRow?.port || parseInt(Deno.env.get("FTP_PORT") || "21", 10),
+          username: ftpRow?.username || Deno.env.get("FTP_USERNAME") || "",
+          password: ftpRow?.password || Deno.env.get("FTP_PASSWORD") || "",
+          basePath: ftpRow?.base_path || Deno.env.get("FTP_BASE_PATH") || "/uploads",
+          publicBase: ftpRow?.public_url || Deno.env.get("FTP_PUBLIC_URL") || "",
+        }
 
     if (!config.host || !config.username || !config.password) {
       console.error("[ftp-upload] faltam variáveis FTP", { host: config.host, username: config.username })
