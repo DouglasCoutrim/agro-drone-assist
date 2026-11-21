@@ -95,9 +95,11 @@ texto puro e da tabela de backup (SQL aprovado, depois de 7 dias sem uso do cami
    checar organização) — SQL a preparar quando você pedir.
 3. Decidir sobre as 11 funções com CORS `*` via import.
 4. Fase 5 (migrations) e Fase 6 (branch de segurança) ainda não iniciadas.
-5. Exclusão do arquivo `supabase/functions/mercadolivre-import/index.ts` e da função implantada
-   (alteração de implantação — aguardando sua aprovação).
-6. Migration que fixa o estado atual dos planos (aguardando conferência dos valores finais).
+5. **Aplicar** `supabase/APROVACAO_planos_estado_atual.sql` — aprovado e escrito, ainda não
+   executado no banco.
+6. **Aplicar** `supabase/APROVACAO_revogar_anon_subscription_plans.sql` — aprovado e escrito, ainda
+   não executado no banco.
+7. Landing pública sem planos para visitante anônimo (não há policy `TO anon`) — decisão pendente.
 
 ---
 
@@ -153,14 +155,59 @@ recursos de plano são decisão de negócio e precisam da sua aprovação sobre 
 ### Edge Functions
 
 - Nada em `src/` chama `mercadolivre-import` (verificado): a chamada antiga em `Estoque.tsx` já não
-  existe. Só restam referências em documentação (`AGENTS.md`, `roadmap.md`, `auditoria/*`).
-- O arquivo segue no repositório e a função segue implantada. A remoção foi **segurada**: apagar a
-  pasta provavelmente dispara a exclusão da função implantada na reconciliação (precedente da
-  função `mercadolivre`), e isso é a alteração de implantação que você quer aprovar antes.
+  existe e `grep` em `src/` não acha nem a palavra "mercadolivre". Só restam referências em
+  documentação (`AGENTS.md`, `roadmap.md`, `auditoria/*`).
+- O arquivo `supabase/functions/mercadolivre-import/index.ts` (único da pasta) foi **removido** do
+  repositório, com sua aprovação. A função implantada no Supabase tende a ser excluída na
+  reconciliação de deploy, pelo mesmo caminho que já removeu `mercadolivre`; este ambiente não tem
+  terminal para rodar `supabase functions delete` nem para confirmar o resultado depois. Se aparecer
+  nos logs uma chamada `DELETE /v1/projects/.../functions/mercadolivre-import`, é esse caminho.
 
-### Achado de segurança (relatado, não corrigido)
+### Achado de segurança (relatado, SQL proposto)
 
-`public.subscription_plans` concede `SELECT, INSERT, UPDATE, DELETE, TRUNCATE, MAINTAIN, REFERENCES`
-e `TRIGGER` para `anon`. Não há policy para `anon`, então o RLS bloqueia leitura e escrita comuns
-pelo Data API; mas `TRUNCATE` não passa por RLS e as concessões no nível de tabela são desnecessárias
-para um visitante anônimo. Mesmo padrão já visto em `nfe_config` na Fase 0.
+`public.subscription_plans` concedia a **`anon`**: `SELECT`, `INSERT`, `UPDATE`, `DELETE`,
+`TRUNCATE`, `REFERENCES`, `TRIGGER` e `MAINTAIN`. Não há policy para `anon`, então o RLS já barra
+leitura e escrita comuns pelo Data API — mas `TRUNCATE` e `MAINTAIN` **não passam por RLS** e todas
+as demais concessões são desnecessárias para quem não fez login. Mesmo padrão já visto em
+`nfe_config` na Fase 0.
+
+Verificado antes de propor o SQL (somente leitura):
+
+- `pg_has_role('authenticated','anon','MEMBER')` = **false** → revogar de `anon` não tira privilégio
+  de usuário logado (`authenticated` e `anon` são papéis irmãos no Supabase).
+- As 3 policies da tabela são todas `TO authenticated`; nenhuma `TO anon`.
+- Servidor **PostgreSQL 17.11** (o privilégio `MAINTAIN` só existe a partir do 17).
+- `has_table_privilege('anon', …, 'MAINTAIN')` = true e `authenticated` = true.
+- `information_schema.role_table_grants` lista 7 privilégios por papel e **omite `MAINTAIN`**, então
+  a conferência precisa da função `has_table_privilege`.
+
+SQL escrito em `supabase/APROVACAO_revogar_anon_subscription_plans.sql`: revoga de `anon` tudo menos
+`SELECT` (o `SELECT` fica de propósito, por causa da decisão da landing abaixo). Não toca
+`authenticated` nem `service_role`.
+
+### Achado novo: a landing pública não mostra planos
+
+Não existe policy para `anon`, e a policy de leitura é `TO authenticated`. Como
+`src/pages/Landing.tsx` consulta `subscription_plans` direto do navegador, um visitante **sem
+login** recebe **zero linhas** e a seção de planos da página pública chega vazia — sem preços. O
+`SELECT` de `anon` foi mantido na revogação justamente para não fechar essa porta antes da sua
+decisão. As duas saídas estão comentadas no fim do arquivo de revogação: criar
+`policy … for select to anon using (active = true)` (exibir) ou `revoke select … from anon`
+(não exibir). Nada foi alterado.
+
+Registrado também para decisão separada: existem **duas policies de admin duplicadas** na tabela
+(`Platform admins manage plans` e `Platform admins manage all subscription_plans`, com expressão
+idêntica), e o papel `authenticated` tem `TRUNCATE`, `REFERENCES`, `TRIGGER` e `MAINTAIN` que o app
+não usa. O `REVOKE` opcional para `authenticated` está comentado no mesmo arquivo.
+
+### Arquivos de aprovação criados
+
+- `supabase/APROVACAO_planos_estado_atual.sql` — fixa os quatro planos pelo `slug`
+  (`on conflict (slug) do update`), com a rede de segurança que remove a chave `mercado_livre` de
+  qualquer linha que ainda a tenha. **Aprovado, não executado.**
+- `supabase/APROVACAO_revogar_anon_subscription_plans.sql` — revoga as concessões de `anon`.
+  **Aprovado, não executado.**
+
+Ambos seguem o padrão do arquivo da Fase 1: bloco de VERIFICAÇÃO somente leitura, bloco de
+ATUALIZAÇÃO dentro de `begin/commit` e conferência dentro da transação. Não foram gravados em
+`supabase/migrations/` (pasta gerada por sistema externo).
