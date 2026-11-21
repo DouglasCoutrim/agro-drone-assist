@@ -211,3 +211,43 @@ não usa. O `REVOKE` opcional para `authenticated` está comentado no mesmo arqu
 Ambos seguem o padrão do arquivo da Fase 1: bloco de VERIFICAÇÃO somente leitura, bloco de
 ATUALIZAÇÃO dentro de `begin/commit` e conferência dentro da transação. Não foram gravados em
 `supabase/migrations/` (pasta gerada por sistema externo).
+
+---
+
+## Bug em produção — fatura de saque com mais de uma OS (aguardando aplicação)
+
+Sintoma: ao gerar a fatura de saque o sistema não salva e responde que o registro "já está
+cadastrado (valor duplicado)" — lido pelo usuário como "a ordem já foi criada" — mesmo sem nenhuma
+fatura existente.
+
+Causa: `public.ordens_servico_payout_invoice_uq`, índice **único** sobre a **única** coluna
+`ordens_servico.payout_invoice_id` (`WHERE payout_invoice_id IS NOT NULL`), criado em
+`drizzle/migrations/0024_commission_rateio_e_faturas.sql` linhas 137-138. Como
+`create_technician_payout_invoice` grava o **mesmo** id de fatura em **todas** as OS selecionadas
+(`set payout_invoice_id = v_invoice where id = any(_os_ids)`), a partir da segunda OS o PostgreSQL
+levanta `duplicate key value violates unique constraint`, `getErrorMessage` traduz para
+`Este registro já está cadastrado (valor duplicado).` e a transação inteira volta atrás — nada é
+gravado. Fatura com uma única OS passa; com duas ou mais, falha sempre.
+
+Evidência (somente leitura): `technician_payout_invoices` com **0 linhas**; nenhuma OS com
+`payout_invoice_id` preenchido; 31 OS elegíveis em quatro técnicos de duas organizações
+(`e31fe856-…` 14/9/1 e `f42c8ddd-…` 7); índice com `indisunique=true`, `indisvalid=true` e
+`indimmediate=true` (a violação estoura no próprio UPDATE, não é diferível); nenhum trigger nas
+tabelas de fatura; nenhuma OS apontando para fatura inexistente.
+
+Descartado como causa: o índice `(organization_id, numero)` da fatura não pode acusar duplicidade
+com a tabela vazia, e a mensagem do RPC sobre "OS que ainda não estejam em outra fatura" sequer é
+levantada (todas as OS estão com `payout_invoice_id` nulo).
+
+Remoção segura porque a garantia pretendida ("uma OS por fatura ativa") é automática: a coluna
+guarda um valor por OS, o RPC já exige `payout_invoice_id is null` sob advisory lock por organização
+e `os_commission_core` não recalcula OS com fatura.
+
+Correção escrita em `supabase/APROVACAO_corrigir_indice_fatura_os.sql`: `drop index if exists
+ordens_servico_payout_invoice_uq` e, no lugar, o índice **não único**
+`ordens_servico_payout_invoice_idx` (liquidar/cancelar/recusar buscam
+`where payout_invoice_id = _invoice_id`). Nenhum dado é apagado. **Aguardando aprovação.**
+
+Pendência relacionada: o índice também está escrito na migration 0024; como a regra é não reescrever
+migration existente, o ajuste precisa de uma migration **nova** com o mesmo `DROP`, senão um apply
+do zero recria o índice e o bug volta. Qual pasta é a fonte de verdade segue pendente da Fase 5.
