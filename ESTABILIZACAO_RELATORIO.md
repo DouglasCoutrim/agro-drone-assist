@@ -76,11 +76,17 @@ texto puro e da tabela de backup (SQL aprovado, depois de 7 dias sem uso do cami
   inválidos (`import { serve } from "https://deno.land"`), o deploy falhava e nenhum arquivo de
   `src/` a chamava. A `mercadolivre-import` continua no repositório, também sem chamadas no app.
 - Nenhuma lógica de função foi alterada.
-- **Pendência reportada:** 11 funções expõem `*` por importarem
-  `corsHeaders` de `npm:@supabase/supabase-js@2/cors` (`asaas`, `buscar-imagem-produto`,
-  `cancelar-nota-fiscal`, `create-user`, `emitir-devolucao-compra`, `emitir-devolucao-venda`,
-  `emitir-nfe-venda`, `emitir-nfse-os`, `focus-webhook`, `nfes-recebidas`, `suggest-team-access`).
-  Não foram tocadas por não estarem na sua lista; precisam da mesma troca de duas linhas.
+- **Resolvido em 2026-11-21:** as 11 funções que ainda importavam `corsHeaders` de
+  `npm:@supabase/supabase-js@2/cors` (`asaas`, `buscar-imagem-produto`, `cancelar-nota-fiscal`,
+  `create-user`, `emitir-devolucao-compra`, `emitir-devolucao-venda`, `emitir-nfe-venda`,
+  `emitir-nfse-os`, `focus-webhook`, `nfes-recebidas`, `suggest-team-access`) tiveram a linha do
+  import trocada por `../_shared/cors.ts`; nada mais mudou em cada função.
+  `grep` por `npm:@supabase/supabase-js@2/cors` no repositório retorna apenas documentação — as 21
+  funções usam o helper.
+- Efeito colateral aceito: fora de `https://livreos.net` as funções deixam de responder ao navegador.
+  O helper devolve apenas a PRIMEIRA origem de `ALLOWED_ORIGIN`, então lista separada por vírgula não
+  faz eco da origem da requisição; para o preview local funcionar, a origem dele precisa ser a
+  primeira da lista.
 - Outras 5 funções já têm origem fixa, mas apontando para o projeto Supabase
   `iynljexyjhbkfxsurddn` (não para o site): `api`, `asaas-platform-webhook`,
   `asaas-tenant-webhook`, `check-overdue-tenants`, `mercadopago-webhook`. O `supabase/config.toml`
@@ -90,16 +96,19 @@ texto puro e da tabela de backup (SQL aprovado, depois de 7 dias sem uso do cami
 
 ## Pendências de aprovação
 
-1. SQL da Fase 1 (`supabase/APROVACAO_fase1_fiscal_tokens.sql`).
+1. SQL da Fase 1 (`supabase/APROVACAO_fase1_fiscal_tokens.sql`) — segue sem execução.
 2. Fase separada para `os_commission_calc` / `os_commission_core` (revogar `PUBLIC`/`anon` e
    checar organização) — SQL a preparar quando você pedir.
-3. Aprovar a remoção do índice `ordens_servico_payout_invoice_uq`
-   (`supabase/APROVACAO_corrigir_indice_fatura_os.sql`) e a migration nova com o mesmo `DROP`.
-4. Decidir sobre as 11 funções com CORS `*` via import.
-5. Landing pública sem planos para visitante anônimo (não há policy `TO anon`) — decisão pendente.
-6. Fase 5 (migrations) e Fase 6 (branch de segurança) ainda não iniciadas.
-7. `APROVACAO_planos_estado_atual.sql` e `APROVACAO_revogar_anon_subscription_plans.sql`:
-   **aplicados em 2026-11-21** (detalhes abaixo).
+3. Fase 5 (migrations): decidir qual pasta é a fonte de verdade — `drizzle/migrations/` (onde a 0026
+   foi escrita, sem journal/snapshot próprios) ou a pasta gerada pelo sistema externo.
+4. Teste ponta a ponta da fatura de saque com 2 ou mais OS, pela tela.
+5. Fase 3 (erros de tipo) e Fase 6 (branch de segurança) ainda não iniciadas.
+
+Aplicados em 2026-11-21: `APROVACAO_planos_estado_atual.sql` e
+`APROVACAO_revogar_anon_subscription_plans.sql` (comando a comando); remoção do índice
+`ordens_servico_payout_invoice_uq` com `drizzle/migrations/0026` no lugar; policy
+`"Visitantes veem planos ativos"` para `anon`; e a troca do import de CORS nas 11 funções restantes.
+Detalhes nas seções acima.
 
 ---
 
@@ -193,7 +202,15 @@ login** recebe **zero linhas** e a seção de planos da página pública chega v
 `SELECT` de `anon` foi mantido na revogação justamente para não fechar essa porta antes da sua
 decisão. As duas saídas estão comentadas no fim do arquivo de revogação: criar
 `policy … for select to anon using (active = true)` (exibir) ou `revoke select … from anon`
-(não exibir). Nada foi alterado.
+(não exibir).
+
+**Resolvido em 2026-11-21 (opção "exibir"):** criada a policy `"Visitantes veem planos ativos"` em
+`public.subscription_plans`, `FOR SELECT TO anon USING (active = true)`. Conferido depois: a policy
+existe com `papeis = {anon}`, `polcmd = r` e expressão `(active = true)`; as três policies anteriores
+seguem intactas. O visitante sem login passa a ver só os planos com `active = true` — nome, preço,
+limites e lista de recursos, exatamente o que a página pública já anunciava em texto. Reverter é uma
+linha: `drop policy "Visitantes veem planos ativos" on public.subscription_plans;` (e, nesse caso,
+revogar também o `SELECT` de `anon`).
 
 Registrado também para decisão separada: existem **duas policies de admin duplicadas** na tabela
 (`Platform admins manage plans` e `Platform admins manage all subscription_plans`, com expressão
@@ -259,11 +276,20 @@ Remoção segura porque a garantia pretendida ("uma OS por fatura ativa") é aut
 guarda um valor por OS, o RPC já exige `payout_invoice_id is null` sob advisory lock por organização
 e `os_commission_core` não recalcula OS com fatura.
 
-Correção escrita em `supabase/APROVACAO_corrigir_indice_fatura_os.sql`: `drop index if exists
-ordens_servico_payout_invoice_uq` e, no lugar, o índice **não único**
-`ordens_servico_payout_invoice_idx` (liquidar/cancelar/recusar buscam
-`where payout_invoice_id = _invoice_id`). Nenhum dado é apagado. **Aguardando aprovação.**
+Correção aplicada em **2026-11-21**: `drop index if exists ordens_servico_payout_invoice_uq` e, no
+lugar, o índice **não único** `ordens_servico_payout_invoice_idx` (liquidar/cancelar/recusar buscam
+`where payout_invoice_id = _invoice_id`). Conferido depois: o índice único não existe mais, o novo
+existe e é **não único**, `faturas_existentes` = 0, `os_com_fatura` = 0, `os_elegiveis` = 31,
+`planos` = 4 — nada foi perdido. O único índice único restante em `ordens_servico` é o
+`(organization_id, numero)`.
 
-Pendência relacionada: o índice também está escrito na migration 0024; como a regra é não reescrever
-migration existente, o ajuste precisa de uma migration **nova** com o mesmo `DROP`, senão um apply
-do zero recria o índice e o bug volta. Qual pasta é a fonte de verdade segue pendente da Fase 5.
+Falta o teste ponta a ponta pela tela: gerar uma fatura de saque com **duas ou mais** OS e conferir
+que a fatura nasce como rascunho `FAT-0001`, que as OS ficam com o mesmo `payout_invoice_id` e que o
+extrato mostra `#FAT-0001 (rascunho)`.
+
+Registro no histórico: `drizzle/migrations/0026_remove_indice_unico_fatura_saque.sql`, com os mesmos
+dois comandos (`DROP INDEX IF EXISTS` + `CREATE INDEX IF NOT EXISTS`), idempotentes. A migration 0024
+não foi reescrita, conforme a regra do projeto. Ressalvas: o journal/snapshot do drizzle não
+acompanham este arquivo (já estavam inconsistentes desde a 0024) e o sistema externo que gera
+`supabase/migrations/` não o enxerga — a decisão de qual pasta é a fonte de verdade continua na
+Fase 5.

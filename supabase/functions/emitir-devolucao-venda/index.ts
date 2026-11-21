@@ -1,7 +1,7 @@
 // Emite NF-e de entrada (tipo 0, finalidade 4) para devolução de venda, referenciando a NF-e de venda autorizada.
 // O saldo devolvido e o estoque só mudam depois que a SEFAZ autoriza (na consulta ou no aviso da Focus).
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { corsHeaders } from '../_shared/cors.ts';
 import { z } from 'npm:zod@3';
 import { absoluteUrl, dataEmissaoBrasil, focusErrorMessage, focusRequest, focusToken, mapStatus, onlyDigits, withFocusToken } from '../_shared/focus-nfe.ts';
 import { entradaEstoqueDevolucaoVenda } from '../_shared/devolucao-estoque.ts';
