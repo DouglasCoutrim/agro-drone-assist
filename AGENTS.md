@@ -1,77 +1,68 @@
 # AGENTS.md — Projeto agro-drone-assist
 
-## Armazenamento de imagens das OS via FTP (Hostinger)
+## Armazenamento de imagens das OS na hospedagem (via HTTPS/PHP)
 
-As fotos anexadas nas ordens de serviço são enviadas por **FTP** para a hospedagem
-do sistema (`livreos.net`), não ficam em bucket do Supabase nem em base64 no banco.
+As fotos anexadas nas ordens de serviço são gravadas na **hospedagem** (`livreos.net`),
+em uma pasta por empresa, e **não** ficam em bucket do Supabase nem em base64 no banco.
 No banco (`os_anexos`) é gravado apenas o registro + a **URL pública** da imagem.
+
+> **Por que não FTP:** funções serverless (Supabase Edge Functions) não têm TCP de
+> saída liberado para FTP (porta 21) — tentativas retornam erro 500. Por isso o
+> caminho principal é HTTPS para um script PHP na própria hospedagem. O FTP
+> continua implementado como fallback caso a linha de config não tenha HTTP.
 
 ### Fluxo
 
 1. Técnico clica em "Anexar Imagens" na OS → câmera do celular abre.
 2. A imagem é comprimida no navegador (máx. 1200px, JPEG qualidade 0.7).
-3. O navegador envia a imagem para a Edge Function `ftp-upload`
-   (via `fetch` com `FormData`, já que `supabase.functions.invoke` não envia multipart).
-4. A Edge Function autentica o usuário pelo JWT, descobre a `organization_id`
-   e faz o upload FTP em modo binário (`TYPE I`), criando as pastas necessárias.
-5. A Edge Function grava a URL pública em `public.os_anexos`.
+3. O navegador envia a imagem para a Edge Function `ftp-upload` via `fetch` (multipart).
+4. A Edge Function autentica o JWT, obtém a `organization_id` do perfil e envia
+   a imagem por **HTTPS** para `https://livreos.net/upload-os-image.php` com o
+   header `X-Upload-Secret`.
+5. O script PHP grava em `public_html/uploads/{org}/{os}/{arquivo}.jpg` e devolve a URL.
+6. A Edge Function grava a URL pública em `public.os_anexos`.
 
-### Estrutura de pastas no FTP
+### Estrutura de pastas na hospedagem
 
 ```
 public_html/
+  upload-os-image.php          <- script que recebe a imagem
   uploads/
     {organization_id}/          <- uma pasta por empresa
       {ordem_servico_id}/       <- uma pasta por OS
         {timestamp}_{arquivo}.jpg
 ```
 
-### Configuração do FTP — tabela `public.ftp_config`
+O script PHP versionado fica em `hosting/upload-os-image.php` (copiar para a raiz
+do site). Ele valida o segredo, confere que o arquivo é imagem, restringe a
+extensão a jpg/jpeg/png/webp e grava com `move_uploaded_file`.
 
-A configuração fica na tabela `public.ftp_config` (linha única, `id = 1`), **lida
-pela Edge Function com a service role** (a tabela tem RLS sem policies e acesso
-revogado para `anon`/`authenticated`, então o cliente nunca lê a senha).
+### Configuração — tabela `public.ftp_config` (linha `id = 1`)
 
-Colunas: `host`, `port`, `username`, `password`, `base_path`, `public_url`.
+Lida pela Edge Function com a service role. RLS ativa sem policies e acesso
+revogado para `anon`/`authenticated` — o cliente nunca lê os segredos.
 
-Valores atuais (Hostinger):
-
-| Coluna | Valor |
-|--------|-------|
-| `host` | `ftp.livreos.net` |
+| Coluna | Valor atual |
+|--------|-------------|
+| `http_upload_url` | `https://livreos.net/upload-os-image.php` |
+| `http_upload_secret` | *(igual ao `$SECRET` do PHP)* |
+| `host` | `ftp.livreos.net` (fallback) |
 | `port` | `21` |
 | `username` | `u322252451.livreosimager` |
 | `base_path` | `/uploads` |
 | `public_url` | `https://livreos.net/uploads` |
 
-> O diretório informado no painel do Hostinger foi
-> `/home/u322252451/domains/livreos.net/public_html`. A conta FTP normalmente
-> já é "trancada" (chroot) nesse diretório, então `base_path=/uploads` cria
-> `public_html/uploads`. Se o upload der erro de caminho/permissão, atualize
-> `base_path` para `/home/u322252451/domains/livreos.net/public_html/uploads`
-> — a URL pública (`public_url`) continua a mesma.
-
-A Edge Function também aceita variáveis de ambiente (`FTP_HOST`, `FTP_PORT`,
-`FTP_USERNAME`, `FTP_PASSWORD`, `FTP_BASE_PATH`, `FTP_PUBLIC_URL`) como fallback
-caso a linha em `ftp_config` não exista.
+A Edge Function também aceita variáveis de ambiente como fallback
+(`HTTP_UPLOAD_URL`, `HTTP_UPLOAD_SECRET`, `FTP_*`).
 
 ### Deploy
 
-A função está em `supabase/functions/ftp-upload/index.ts` e é publicada
-automaticamente ao salvar. Para publicar manualmente:
-
-```bash
-supabase functions deploy ftp-upload
-```
+Função em `supabase/functions/ftp-upload/index.ts` (publicada automaticamente ao salvar).
 
 ### Observações técnicas
 
-- Modo passivo (`PASV`) + `TYPE I` (binário) para não corromper imagens.
-- Pastas criadas com `MKD` (erros de "já existe" são ignorados).
+- Extensão do arquivo é forçada para `.jpg` na Edge Function para evitar que um
+  nome malicioso termine executável dentro da pasta pública (defesa em profundidade).
 - Limite de 5 MB por imagem; a compressão no navegador mantém bem abaixo disso.
-- A exclusão de um anexo remove apenas a linha em `os_anexos`; o arquivo no FTP
+- A exclusão de um anexo remove apenas a linha em `os_anexos`; o arquivo em disco
   não é apagado (órfão eventual).
-- **Se o ambiente de Edge Functions bloquear conexões TCP de saída para a porta
-  21**, o upload falha com erro de conexão. Alternativa garantida: um endpoint
-  HTTPS (PHP) na própria hospedagem que grava os arquivos em disco — a Edge
-  Function continuaria como gateway autenticado.

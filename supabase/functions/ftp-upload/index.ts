@@ -1,12 +1,16 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface FTPConfig {
+interface UploadConfig {
+  // Caminho preferido: endpoint HTTPS/PHP na hospedagem (sempre permitido de funções serverless)
+  httpUploadUrl: string
+  httpUploadSecret: string
+  // Fallback: FTP direto
   host: string
   port: number
   username: string
@@ -18,6 +22,47 @@ interface FTPConfig {
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
 
+/** Envia a imagem por HTTPS para o script PHP na hospedagem. */
+async function uploadViaHttp(
+  config: UploadConfig,
+  relativePath: string,
+  fileData: Uint8Array,
+  contentType: string,
+  fileName: string,
+): Promise<string> {
+  const form = new FormData()
+  form.append("relative_path", relativePath)
+  form.append("file", new Blob([fileData], { type: contentType }), fileName)
+
+  console.log("[ftp-upload] envio HTTP", { url: config.httpUploadUrl, relativePath, bytes: fileData.length })
+  const res = await fetch(config.httpUploadUrl, {
+    method: "POST",
+    headers: { "X-Upload-Secret": config.httpUploadSecret },
+    body: form,
+  })
+
+  const text = await res.text()
+    if (!res.ok) {
+      if (res.status === 404) {
+        throw new Error(
+          "Script upload-os-image.php não encontrado na hospedagem. " +
+          "Envie o arquivo para public_html/upload-os-image.php.",
+        )
+      }
+      throw new Error(`Upload HTTPS falhou (${res.status}): ${text.slice(0, 300)}`)
+    }
+
+  let json: any
+  try {
+    json = JSON.parse(text)
+  } catch {
+    throw new Error(`Resposta inválida do servidor PHP: ${text.slice(0, 300)}`)
+  }
+  if (json?.error) throw new Error(json.error)
+  if (!json?.url) throw new Error("O servidor PHP não retornou a URL do arquivo.")
+  return json.url
+}
+
 /** Lê uma resposta FTP completa (linha final no formato "NNN ..."). */
 async function readReply(conn: Deno.Conn): Promise<string> {
   let buffer = ""
@@ -26,8 +71,6 @@ async function readReply(conn: Deno.Conn): Promise<string> {
     const n = await conn.read(buf)
     if (n === null) break
     buffer += decoder.decode(buf.subarray(0, n))
-    // Só consideramos a resposta completa quando ela termina em CRLF e a
-    // última linha não-vazia é uma linha final "código + espaço".
     if (buffer.endsWith("\r\n")) {
       const lines = buffer.split("\r\n").filter((l) => l.length > 0)
       const last = lines[lines.length - 1] || ""
@@ -37,100 +80,59 @@ async function readReply(conn: Deno.Conn): Promise<string> {
   return buffer
 }
 
-async function openFtp(config: FTPConfig): Promise<{ conn: Deno.Conn; send: (cmd: string) => Promise<string> }> {
+async function uploadViaFtp(config: UploadConfig, relativePath: string, fileData: Uint8Array): Promise<string> {
   const conn = await Deno.connect({ hostname: config.host, port: config.port })
-
   const send = async (cmd: string): Promise<string> => {
     await conn.write(encoder.encode(cmd + "\r\n"))
     return await readReply(conn)
   }
 
-  // Mensagem de boas-vindas
-  const welcome = await readReply(conn)
-  console.log("[ftp-upload] conectado", { reply: welcome.split("\r\n")[0] })
-
-  const user = await send(`USER ${config.username}`)
-  if (!user.startsWith("331")) {
-    throw new Error(`FTP USER falhou: ${user.trim()}`)
-  }
-
-  const pass = await send(`PASS ${config.password}`)
-  if (!pass.startsWith("230")) {
-    throw new Error(`FTP login recusado: ${pass.trim()}`)
-  }
-
-  // Modo binário obrigatório para imagens
-  await send("TYPE I")
-
-  return { conn, send }
-}
-
-function buildPublicUrl(config: FTPConfig, relativePath: string): string {
-  const base = config.publicBase.replace(/\/+$/, "")
-  const rel = relativePath.replace(/^\/+/, "")
-  return `${base}/${rel}`
-}
-
-async function uploadToFTP(config: FTPConfig, relativePath: string, fileData: Uint8Array): Promise<string> {
-  const { conn, send } = await openFtp(config)
   const remotePath = `${config.basePath}/${relativePath}`.replace(/\/+/g, "/")
 
   try {
-    // Modo passivo
+    await readReply(conn)
+    const user = await send(`USER ${config.username}`)
+    if (!user.startsWith("331")) throw new Error(`FTP USER falhou: ${user.trim()}`)
+    const pass = await send(`PASS ${config.password}`)
+    if (!pass.startsWith("230")) throw new Error(`FTP login recusado: ${pass.trim()}`)
+    await send("TYPE I")
+
     const pasvResp = await send("PASV")
     const m = pasvResp.match(/\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/)
     if (!m) throw new Error("Falha ao entrar em modo passivo: " + pasvResp.trim())
-
     const dataHost = `${m[1]}.${m[2]}.${m[3]}.${m[4]}`
     const dataPort = parseInt(m[5], 10) * 256 + parseInt(m[6], 10)
 
-    // Cria as pastas necessárias (ignora erro se já existirem)
     const parts = remotePath.split("/").filter(Boolean)
     let acc = ""
     for (let i = 0; i < parts.length - 1; i++) {
       acc += "/" + parts[i]
       const mk = await send(`MKD ${acc}`)
-      // 257 = criado; 550 = já existe / sem permissão — segue em frente
       if (!mk.startsWith("257") && !mk.startsWith("550")) {
         console.log("[ftp-upload] MKD inesperado", { path: acc, reply: mk.trim() })
       }
     }
 
-    // Abre canal de dados passivo
     const dataConn = await Deno.connect({ hostname: dataHost, port: dataPort })
-
     const stor = await send(`STOR ${remotePath}`)
     if (!stor.startsWith("150") && !stor.startsWith("125")) {
       dataConn.close()
       throw new Error(`FTP STOR falhou: ${stor.trim()}`)
     }
-
     await dataConn.write(fileData)
-    try {
-      await dataConn.close()
-    } catch (_e) {
-      // ignore
-    }
+    try { await dataConn.close() } catch { /* ignore */ }
 
     const done = await send("")
     if (!done.startsWith("226") && !done.startsWith("250")) {
       throw new Error(`FTP transferência falhou: ${done.trim()}`)
     }
-
     await send("QUIT").catch(() => {})
-    try {
-      conn.close()
-    } catch (_e) {
-      // ignore
-    }
+    try { conn.close() } catch { /* ignore */ }
 
-    return buildPublicUrl(config, relativePath)
+    const base = config.publicBase.replace(/\/+$/, "")
+    return `${base}/${relativePath.replace(/^\/+/, "")}`
   } catch (error) {
-    try {
-      conn.close()
-    } catch (_e) {
-      // ignore
-    }
+    try { conn.close() } catch { /* ignore */ }
     throw error
   }
 }
@@ -184,47 +186,54 @@ serve(async (req) => {
       return new Response("File too large (max 5MB)", { status: 400, headers: corsHeaders })
     }
 
-    // Configuração do FTP: prioriza a tabela public.ftp_config (lida com a service
-        // role, nunca exposta ao cliente) e recorre a variáveis de ambiente se faltar.
-        const admin = createClient(
-          Deno.env.get("SUPABASE_URL")!,
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-        )
-        const { data: ftpRow } = await admin
-          .from("ftp_config")
-          .select("*")
-          .eq("id", 1)
-          .maybeSingle()
-    
-        const config: FTPConfig = {
-          host: ftpRow?.host || Deno.env.get("FTP_HOST") || "",
-          port: ftpRow?.port || parseInt(Deno.env.get("FTP_PORT") || "21", 10),
-          username: ftpRow?.username || Deno.env.get("FTP_USERNAME") || "",
-          password: ftpRow?.password || Deno.env.get("FTP_PASSWORD") || "",
-          basePath: ftpRow?.base_path || Deno.env.get("FTP_BASE_PATH") || "/uploads",
-          publicBase: ftpRow?.public_url || Deno.env.get("FTP_PUBLIC_URL") || "",
-        }
+    // Configuração lida com a service role (tabela não exposta ao cliente).
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    )
+    const { data: cfg } = await admin
+      .from("ftp_config")
+      .select("*")
+      .eq("id", 1)
+      .maybeSingle()
 
-    if (!config.host || !config.username || !config.password) {
-      console.error("[ftp-upload] faltam variáveis FTP", { host: config.host, username: config.username })
-      return new Response(
-        JSON.stringify({ error: "FTP não configurado (FTP_HOST/FTP_USERNAME/FTP_PASSWORD)." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      )
+    const config: UploadConfig = {
+      httpUploadUrl: cfg?.http_upload_url || Deno.env.get("HTTP_UPLOAD_URL") || "",
+      httpUploadSecret: cfg?.http_upload_secret || Deno.env.get("HTTP_UPLOAD_SECRET") || "",
+      host: cfg?.host || Deno.env.get("FTP_HOST") || "",
+      port: cfg?.port || parseInt(Deno.env.get("FTP_PORT") || "21", 10),
+      username: cfg?.username || Deno.env.get("FTP_USERNAME") || "",
+      password: cfg?.password || Deno.env.get("FTP_PASSWORD") || "",
+      basePath: cfg?.base_path || Deno.env.get("FTP_BASE_PATH") || "/uploads",
+      publicBase: cfg?.public_url || Deno.env.get("FTP_PUBLIC_URL") || "",
     }
 
     // Caminho relativo: {organization_id}/{ordem_servico_id}/{arquivo}
-    // Cada empresa tem sua própria pasta; cada OS tem uma subpasta.
-    const timestamp = Date.now()
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
-    const fileName = `${timestamp}_${safeName}`
-    const relativePath = `${profile.organization_id}/${ordemServicoId}/${fileName}`
+        // Força extensão .jpg (o front já comprime em JPEG) para evitar que um nome
+        // malicioso termine como script executável dentro da pasta pública.
+        const timestamp = Date.now()
+        const baseName = (file.name || "foto")
+          .replace(/\.[^.]+$/, "")
+          .replace(/[^a-zA-Z0-9_-]/g, "_")
+          .slice(0, 60) || "foto"
+        const fileName = `${timestamp}_${baseName}.jpg`
+        const relativePath = `${profile.organization_id}/${ordemServicoId}/${fileName}`
 
     const arrayBuffer = await file.arrayBuffer()
     const fileData = new Uint8Array(arrayBuffer)
 
-    console.log("[ftp-upload] enviando", { relativePath, bytes: fileData.length })
-    const publicUrl = await uploadToFTP(config, relativePath, fileData)
+    let publicUrl: string
+    if (config.httpUploadUrl && config.httpUploadSecret) {
+      publicUrl = await uploadViaHttp(config, relativePath, fileData, file.type || "image/jpeg", fileName)
+    } else if (config.host && config.username && config.password) {
+      publicUrl = await uploadViaFtp(config, relativePath, fileData)
+    } else {
+      console.error("[ftp-upload] nenhum destino configurado")
+      return new Response(
+        JSON.stringify({ error: "Upload não configurado (nem HTTP nem FTP)." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      )
+    }
 
     const { error: insertError } = await supabase.from("os_anexos").insert({
       ordem_servico_id: ordemServicoId,
@@ -250,7 +259,7 @@ serve(async (req) => {
     })
   } catch (error: any) {
     console.error("[ftp-upload] erro", { message: error?.message, stack: error?.stack })
-    return new Response(JSON.stringify({ error: error?.message || "Falha no upload FTP" }), {
+    return new Response(JSON.stringify({ error: error?.message || "Falha no upload" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     })

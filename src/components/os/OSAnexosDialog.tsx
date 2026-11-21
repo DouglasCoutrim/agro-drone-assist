@@ -169,9 +169,16 @@ export function OSAnexosDialog({
       });
 
       if (!fetchResponse.ok) {
-        const errorText = await fetchResponse.text();
-        throw new Error(`Erro ${fetchResponse.status}: ${errorText}`);
-      }
+              const errorText = await fetchResponse.text();
+              let msg = errorText;
+              try {
+                const parsed = JSON.parse(errorText);
+                if (parsed?.error) msg = parsed.error;
+              } catch {
+                // mantém o texto puro
+              }
+              throw new Error(msg);
+            }
 
       const result = await fetchResponse.json();
       if (result.error) throw new Error(result.error);
