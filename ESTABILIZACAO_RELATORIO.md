@@ -93,13 +93,13 @@ texto puro e da tabela de backup (SQL aprovado, depois de 7 dias sem uso do cami
 1. SQL da Fase 1 (`supabase/APROVACAO_fase1_fiscal_tokens.sql`).
 2. Fase separada para `os_commission_calc` / `os_commission_core` (revogar `PUBLIC`/`anon` e
    checar organização) — SQL a preparar quando você pedir.
-3. Decidir sobre as 11 funções com CORS `*` via import.
-4. Fase 5 (migrations) e Fase 6 (branch de segurança) ainda não iniciadas.
-5. **Aplicar** `supabase/APROVACAO_planos_estado_atual.sql` — aprovado e escrito, ainda não
-   executado no banco.
-6. **Aplicar** `supabase/APROVACAO_revogar_anon_subscription_plans.sql` — aprovado e escrito, ainda
-   não executado no banco.
-7. Landing pública sem planos para visitante anônimo (não há policy `TO anon`) — decisão pendente.
+3. Aprovar a remoção do índice `ordens_servico_payout_invoice_uq`
+   (`supabase/APROVACAO_corrigir_indice_fatura_os.sql`) e a migration nova com o mesmo `DROP`.
+4. Decidir sobre as 11 funções com CORS `*` via import.
+5. Landing pública sem planos para visitante anônimo (não há policy `TO anon`) — decisão pendente.
+6. Fase 5 (migrations) e Fase 6 (branch de segurança) ainda não iniciadas.
+7. `APROVACAO_planos_estado_atual.sql` e `APROVACAO_revogar_anon_subscription_plans.sql`:
+   **aplicados em 2026-11-21** (detalhes abaixo).
 
 ---
 
@@ -200,17 +200,33 @@ Registrado também para decisão separada: existem **duas policies de admin dupl
 idêntica), e o papel `authenticated` tem `TRUNCATE`, `REFERENCES`, `TRIGGER` e `MAINTAIN` que o app
 não usa. O `REVOKE` opcional para `authenticated` está comentado no mesmo arquivo.
 
-### Arquivos de aprovação criados
+### Arquivos de aprovação criados e APLICADOS (2026-11-21)
 
 - `supabase/APROVACAO_planos_estado_atual.sql` — fixa os quatro planos pelo `slug`
   (`on conflict (slug) do update`), com a rede de segurança que remove a chave `mercado_livre` de
-  qualquer linha que ainda a tenha. **Aprovado, não executado.**
+  qualquer linha que ainda a tenha. **APLICADO.**
 - `supabase/APROVACAO_revogar_anon_subscription_plans.sql` — revoga as concessões de `anon`.
-  **Aprovado, não executado.**
+  **APLICADO.**
+
+Resultado conferido por leitura depois dos comandos:
+
+- `subscription_plans` com 4 linhas e os valores fixados: `Isento` 0,00 · 100 usuários · 1000 OS/mês
+  e nenhum recurso; `bronze` 39,90 · 2 · 30; `prata` 59,90 · 4 · 60; `ouro` 69,90 · 10 · -1
+  (ilimitado). `yearly_price` 0,00 e `billing_cycle` `monthly` nos quatro.
+- `planos_com_mercado_livre` = 0 (antes e depois) — a rede de segurança não afetou nenhuma linha.
+- `anon` ficou apenas com `SELECT` em `subscription_plans`; `anon_maintain` = false.
+- `authenticated` e `service_role` intactos (os mesmos privilégios de tabela de antes, `MAINTAIN`
+  inclusive).
+- `notify pgrst, 'reload schema'` executado ao final.
+
+Observação de execução: o executor aplica **um comando por vez**, então os arquivos foram rodados
+comando a comando em vez do bloco `begin/commit` único. Nada aqui dependia de atomicidade — o
+`insert … on conflict` é atômico por si, o `update` da rede de segurança afetou zero linhas e o
+`revoke` é um comando único. Nenhum dado foi apagado.
 
 Ambos seguem o padrão do arquivo da Fase 1: bloco de VERIFICAÇÃO somente leitura, bloco de
-ATUALIZAÇÃO dentro de `begin/commit` e conferência dentro da transação. Não foram gravados em
-`supabase/migrations/` (pasta gerada por sistema externo).
+ATUALIZAÇÃO e conferência. Não foram gravados em `supabase/migrations/` (pasta gerada por sistema
+externo).
 
 ---
 
