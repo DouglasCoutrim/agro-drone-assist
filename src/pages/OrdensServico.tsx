@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download, UserPlus, CreditCard, Clock, Wrench, CheckCircle2, XCircle, ChevronRight, Settings2, Trash2, Printer, Check, SlidersHorizontal } from "lucide-react";
+import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download, UserPlus, CreditCard, Clock, Wrench, CheckCircle2, XCircle, ChevronRight, Settings2, Trash2, Printer, Check, SlidersHorizontal, Image } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
@@ -42,6 +42,7 @@ import type { ChecklistItem, ChecklistTipo } from "@/hooks/useChecklistConfig";
 import { AgruparOSDialog } from "@/components/os/AgruparOSDialog";
 import { CommissionBreakdown, rateioDaOS } from "@/components/os/CommissionBreakdown";
 import { CommissionOverrideDialog } from "@/components/os/CommissionOverrideDialog";
+import { OSAnexosDialog } from "@/components/os/OSAnexosDialog";
 import { calcularRateio } from "@/lib/commission";
 import { useNfseAliquota } from "@/hooks/useNfseAliquota";
 import { PaymentConfirmDialog, PaymentData } from "@/components/os/PaymentConfirmDialog";
@@ -157,7 +158,8 @@ export default function OrdensServico() {
   const { canCreateOS, osUsed, osLimit, plan } = useUsageLimits();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [viewingOS, setViewingOS] = useState<OrdemServico | null>(null);
+    const [viewingOS, setViewingOS] = useState<OrdemServico | null>(null);
+    const [anexosDialogOpen, setAnexosDialogOpen] = useState(false);
   const [commissionDialogOpen, setCommissionDialogOpen] = useState(false);
   const [editingOS, setEditingOS] = useState<OrdemServico | null>(null);
   const [formLoading, setFormLoading] = useState(false);
@@ -1426,11 +1428,21 @@ export default function OrdensServico() {
             onEscapeKeyDown={(e) => e.preventDefault()}
           >
             <DialogHeader className="p-4 border-b shrink-0">
-              <DialogTitle>{editingOS ? `Editar OS ${formatOSNumber(editingOS.numero)}` : "Nova Ordem de Serviço"}</DialogTitle>
-              <DialogDescription className="text-xs">
-                Preencha os dados abaixo. Você pode salvar a qualquer momento.
-              </DialogDescription>
-            </DialogHeader>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <DialogTitle>{editingOS ? `Editar OS ${formatOSNumber(editingOS.numero)}` : "Nova Ordem de Serviço"}</DialogTitle>
+                              <DialogDescription className="text-xs">
+                                Preencha os dados abaixo. Você pode salvar a qualquer momento.
+                              </DialogDescription>
+                            </div>
+                            {editingOS && (
+                              <Button variant="outline" size="sm" onClick={() => setAnexosDialogOpen(true)}
+                                className="h-8 text-xs bg-blue-50/50 text-blue-600 border-blue-200 hover:bg-blue-100">
+                                <Image className="h-3.5 w-3.5 mr-1.5" /> Anexar Imagens
+                              </Button>
+                            )}
+                          </div>
+                        </DialogHeader>
 
             <form
               onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}
@@ -1768,6 +1780,12 @@ export default function OrdensServico() {
                       <MessageCircle className="h-3.5 w-3.5 mr-1.5" /> Enviar PDF
                     </Button>
                   )}
+                  {viewingOS && (
+                    <Button variant="outline" size="sm" onClick={() => setAnexosDialogOpen(true)}
+                      className="h-8 text-xs bg-blue-50/50 text-blue-600 border-blue-200 hover:bg-blue-100 shrink-0">
+                      <Image className="h-3.5 w-3.5 mr-1.5" /> Anexar Imagens
+                    </Button>
+                  )}
                 </div>
               </div>
             </DialogHeader>
@@ -2060,6 +2078,16 @@ export default function OrdensServico() {
           onConfirm={handleConfirmPayment}
           onSkip={paymentDialog.nextStatus ? handleSkipPayment : undefined}
           title={paymentDialog.nextStatus === "entregue" ? "Confirmar Entrega e Recebimento" : "Registrar Recebimento"}
+        />
+
+        <OSAnexosDialog
+          open={anexosDialogOpen}
+          onOpenChange={setAnexosDialogOpen}
+          ordemServicoId={viewingOS?.id || ""}
+          organizationId={viewingOS?.organization_id || organization?.id || null}
+          isPlatformAdmin={isPlatformAdmin}
+          usuarioId={user?.id || ""}
+          onAnexosChange={() => fetchData()}
         />
 
       </div>

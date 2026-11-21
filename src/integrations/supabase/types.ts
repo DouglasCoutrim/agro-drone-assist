@@ -1810,6 +1810,7 @@ export type Database = {
       os_anexos: {
         Row: {
           created_at: string
+          descricao: string | null
           id: string
           nome_arquivo: string
           ordem_servico_id: string
@@ -1821,6 +1822,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          descricao?: string | null
           id?: string
           nome_arquivo: string
           ordem_servico_id: string
@@ -1832,6 +1834,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          descricao?: string | null
           id?: string
           nome_arquivo?: string
           ordem_servico_id?: string
