@@ -13,7 +13,7 @@ type Cycle = 'mensal' | 'semestral' | 'anual';
 
 const PLANS = [
   { slug: 'bronze', name: 'Bronze', price: 39.90, icon: Zap, highlights: ['2 usuários', '30 OS / mês', 'Clientes, Estoque, Orçamentos'] },
-  { slug: 'prata', name: 'Prata', price: 59.90, icon: Sparkles, recommended: true, highlights: ['4 usuários', '60 OS / mês', 'Financeiro + Cobrança PIX/Boleto', 'WhatsApp & Mercado Livre'] },
+  { slug: 'prata', name: 'Prata', price: 59.90, icon: Sparkles, recommended: true, highlights: ['4 usuários', '60 OS / mês', 'Financeiro + Cobrança PIX/Boleto', 'WhatsApp'] },
   { slug: 'ouro', name: 'Ouro', price: 69.90, icon: Crown, highlights: ['10 usuários', 'OS ilimitadas', 'White-label completo', 'Rotas, API REST, Suporte prioritário'] },
 ];
 

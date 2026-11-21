@@ -95,3 +95,72 @@ texto puro e da tabela de backup (SQL aprovado, depois de 7 dias sem uso do cami
    checar organização) — SQL a preparar quando você pedir.
 3. Decidir sobre as 11 funções com CORS `*` via import.
 4. Fase 5 (migrations) e Fase 6 (branch de segurança) ainda não iniciadas.
+5. Exclusão do arquivo `supabase/functions/mercadolivre-import/index.ts` e da função implantada
+   (alteração de implantação — aguardando sua aprovação).
+6. Migration que fixa o estado atual dos planos (aguardando conferência dos valores finais).
+
+---
+
+## Limpeza do Mercado Livre
+
+### Verificação em `public.subscription_plans` (somente leitura)
+
+- `features` é **`jsonb`** (não `json`), então o operador `-` seria válido se houvesse algo a remover.
+- Planos que ainda listam a chave `mercado_livre`: **0 linhas**.
+- Busca ampla (case-insensitive) por `%mercado%`: 0 linhas em `features`, 0 colunas e 0 tabelas com
+  "mercado" no nome.
+- O `UPDATE` que remove a chave **não foi executado**: sem linhas afetadas, seria uma escrita em
+  produção sem efeito. Fica registrado que a verificação deu zero.
+
+### Estado atual dos planos (leitura)
+
+| slug | name | monthly_price | yearly_price | max_users | max_os/mês | features |
+|---|---|---|---|---|---|---|
+| Isento | Isento | 0 | 0 | 100 | 1000 | `[]` |
+| bronze | Bronze | 39.90 | 0 | 2 | 30 | os, clientes, estoque, orcamentos |
+| prata | Prata | 59.90 | 0 | 4 | 60 | + financeiro, cobrancas_asaas, whatsapp_templates |
+| ouro | Ouro | 69.90 | 0 | 10 | -1 (ilimitado) | + rotas, whitelabel, api_rest, suporte_prioritario |
+
+Notas:
+
+- Não existe coluna `price`; os preços são `monthly_price` e `yearly_price`.
+- `features` é um **array de strings**, não um objeto com chaves.
+- `yearly_price` = 0 nos quatro planos e `billing_cycle` = `monthly` em todos.
+- `Isento` tem `max_users` 100 e `max_os_per_month` 1000 (não é ilimitado) e nenhum recurso.
+
+### Divergência com as migrations (não corrigida)
+
+As migrations continuam com a chave e nenhuma a remove depois:
+
+- `20260516205740_b14373ea-…sql` (linhas 7 e 8: `prata`, `ouro`)
+- `20260516203757_b4496417-…sql` (linhas 10 e 16)
+
+Os planos `bronze` e `Isento` também não existem em nenhum insert de migration. Reaplicar as
+migrations do zero **reintroduz** `mercado_livre`. Nenhuma migration nova foi escrita: preço e
+recursos de plano são decisão de negócio e precisam da sua aprovação sobre os valores finais.
+
+### Front (código)
+
+- `src/hooks/useFeatureAccess.tsx`: chave `mercado_livre` removida do tipo `FeatureKey` e do array
+  de recursos do Super Admin. Nenhum consumidor de `has('mercado_livre')` existe no app.
+- `src/components/UpgradePlanModal.tsx`, `src/pages/Assinatura.tsx`: texto do plano Prata passou de
+  `WhatsApp & Mercado Livre` para `WhatsApp`.
+- `src/pages/Landing.tsx`: "Estoque Inteligente" perdeu a menção à importação do Mercado Livre.
+- A verificação de tipos (`tsc`) **não pôde ser executada**: este ambiente não tem terminal.
+- Os textos de Mercado Livre dentro de migrations (conteúdo de `site_config` e de tour/onboarding)
+  são dados de seed e não foram tocados.
+
+### Edge Functions
+
+- Nada em `src/` chama `mercadolivre-import` (verificado): a chamada antiga em `Estoque.tsx` já não
+  existe. Só restam referências em documentação (`AGENTS.md`, `roadmap.md`, `auditoria/*`).
+- O arquivo segue no repositório e a função segue implantada. A remoção foi **segurada**: apagar a
+  pasta provavelmente dispara a exclusão da função implantada na reconciliação (precedente da
+  função `mercadolivre`), e isso é a alteração de implantação que você quer aprovar antes.
+
+### Achado de segurança (relatado, não corrigido)
+
+`public.subscription_plans` concede `SELECT, INSERT, UPDATE, DELETE, TRUNCATE, MAINTAIN, REFERENCES`
+e `TRIGGER` para `anon`. Não há policy para `anon`, então o RLS bloqueia leitura e escrita comuns
+pelo Data API; mas `TRUNCATE` não passa por RLS e as concessões no nível de tabela são desnecessárias
+para um visitante anônimo. Mesmo padrão já visto em `nfe_config` na Fase 0.
