@@ -72,6 +72,9 @@ texto puro e da tabela de backup (SQL aprovado, depois de 7 dias sem uso do cami
   `asaas-customer-sync`, `create-customer-charge` (dois blocos), `create-subscription-checkout`,
   `generate-monthly-invoices`, `mercadolivre`, `mercadolivre-import`, `seed-platform-admin`,
   `send-web-push`, `signup-tenant`, `test-tenant-gateway`.
+- `supabase/functions/mercadolivre/` foi **removida** (pedido do usuário): os imports dela eram
+  inválidos (`import { serve } from "https://deno.land"`), o deploy falhava e nenhum arquivo de
+  `src/` a chamava. A `mercadolivre-import` continua no repositório, também sem chamadas no app.
 - Nenhuma lógica de função foi alterada.
 - **Pendência reportada:** 11 funções expõem `*` por importarem
   `corsHeaders` de `npm:@supabase/supabase-js@2/cors` (`asaas`, `buscar-imagem-produto`,
