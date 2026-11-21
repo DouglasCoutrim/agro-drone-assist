@@ -1,15 +1,11 @@
 import { useState, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Camera, Image as ImageIcon, X, Loader2, Trash2, Plus, Eye } from "lucide-react";
+import { Camera, Image as ImageIcon, X, Loader2, Trash2 } from "lucide-react";
 
 interface Anexo {
   id: string;
@@ -27,12 +23,11 @@ interface OSAnexosDialogProps {
   ordemServicoId: string;
   organizationId: string | null;
   isPlatformAdmin: boolean;
-  usuarioId: string;
   onAnexosChange?: () => void;
 }
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const MAX_DIMENSION = 1200; // max width/height
+const MAX_DIMENSION = 1200; // maior lado da imagem
 const JPEG_QUALITY = 0.7;
 
 export function OSAnexosDialog({
@@ -41,7 +36,6 @@ export function OSAnexosDialog({
   ordemServicoId,
   organizationId,
   isPlatformAdmin,
-  usuarioId,
   onAnexosChange,
 }: OSAnexosDialogProps) {
   const [anexos, setAnexos] = useState<Anexo[]>([]);
@@ -49,6 +43,9 @@ export function OSAnexosDialog({
   const [uploading, setUploading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [previewDescricao, setPreviewDescricao] = useState("");
+  const [pendingImage, setPendingImage] = useState<string | null>(null);
+  const [pendingFileName, setPendingFileName] = useState("");
+  const [pendingDescricao, setPendingDescricao] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchAnexos = useCallback(async () => {
@@ -75,6 +72,7 @@ export function OSAnexosDialog({
     }
   }, [ordemServicoId, organizationId, isPlatformAdmin]);
 
+  /** Redimensiona e comprime a foto no navegador para reduzir o tamanho do arquivo. */
   const compressImage = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -98,8 +96,7 @@ export function OSAnexosDialog({
           canvas.width = width;
           canvas.height = height;
           ctx.drawImage(img, 0, 0, width, height);
-          const dataUrl = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
-          resolve(dataUrl);
+          resolve(canvas.toDataURL("image/jpeg", JPEG_QUALITY));
         };
         img.onerror = () => reject(new Error("Erro ao carregar imagem"));
         img.src = e.target?.result as string;
@@ -117,38 +114,76 @@ export function OSAnexosDialog({
       toast.error("Selecione apenas arquivos de imagem");
       return;
     }
-
     if (file.size > MAX_FILE_SIZE) {
       toast.error("Imagem muito grande. Máximo 5MB.");
       return;
     }
 
+    try {
+      // Compressão feita aqui; o envio acontece só depois que o técnico descrever a foto.
+      const compressedDataUrl = await compressImage(file);
+      setPendingImage(compressedDataUrl);
+      setPendingFileName(file.name);
+      setPendingDescricao("");
+    } catch (err: any) {
+      toast.error("Erro ao processar imagem: " + err.message);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const cancelPending = () => {
+    setPendingImage(null);
+    setPendingFileName("");
+    setPendingDescricao("");
+  };
+
+  const uploadPending = async () => {
+    if (!pendingImage) return;
     setUploading(true);
     try {
-      const dataUrl = await compressImage(file);
-      const nomeArquivo = `${Date.now()}_${file.name.replace(/\s+/g, "_")}`;
+      // Converte a data URL comprimida em Blob para envio multipart
+      const response = await fetch(pendingImage);
+      const blob = await response.blob();
 
-      const { error } = await supabase.from("os_anexos").insert({
-        ordem_servico_id: ordemServicoId,
-        organization_id: organizationId,
-        nome_arquivo: nomeArquivo,
-        url: dataUrl,
-        tipo: "image/jpeg",
-        tamanho: Math.round(dataUrl.length * 0.75), // approximate base64 size
-        usuario_id: usuarioId,
-        descricao: "",
+      const formData = new FormData();
+      formData.append("file", blob, pendingFileName || "foto.jpg");
+      formData.append("ordem_servico_id", ordemServicoId);
+      formData.append("descricao", pendingDescricao.trim());
+
+      // FormData não é suportado por supabase.functions.invoke, então chamamos direto.
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://qanmmpjofbacoxlxcgfy.supabase.co";
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
+      const functionUrl = `${supabaseUrl}/functions/v1/ftp-upload`;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const fetchResponse = await fetch(functionUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          apikey: supabaseKey,
+        },
+        body: formData,
       });
 
-      if (error) throw error;
+      if (!fetchResponse.ok) {
+        const errorText = await fetchResponse.text();
+        throw new Error(`Erro ${fetchResponse.status}: ${errorText}`);
+      }
+
+      const result = await fetchResponse.json();
+      if (result.error) throw new Error(result.error);
 
       toast.success("Imagem anexada com sucesso!");
+      cancelPending();
       fetchAnexos();
       onAnexosChange?.();
-    } catch (e: any) {
-      toast.error("Erro ao anexar imagem: " + e.message);
+    } catch (err: any) {
+      toast.error("Erro ao anexar imagem: " + err.message);
     } finally {
       setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -205,23 +240,16 @@ export function OSAnexosDialog({
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {/* Camera/Gallery Button */}
+            {/* Câmera / Galeria */}
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 className="flex-1"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
+                disabled={uploading || !!pendingImage}
               >
                 <Camera className="mr-2 h-4 w-4" />
-                {uploading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processando...
-                  </>
-                ) : (
-                  "Tirar Foto / Escolher da Galeria"
-                )}
+                Tirar Foto / Escolher da Galeria
               </Button>
               <input
                 ref={fileInputRef}
@@ -233,7 +261,50 @@ export function OSAnexosDialog({
               />
             </div>
 
-            {/* Anexos List */}
+            {/* Foto em espera: descrever antes de enviar */}
+            {pendingImage && (
+              <Card className="border-primary/40 bg-primary/5">
+                <CardContent className="p-3 space-y-3">
+                  <div className="flex gap-3">
+                    <img
+                      src={pendingImage}
+                      alt="Prévia da foto"
+                      className="h-24 w-24 rounded object-cover shrink-0 bg-muted"
+                    />
+                    <div className="flex-1 space-y-1.5">
+                      <p className="text-xs font-medium">Foto capturada</p>
+                      <Textarea
+                        value={pendingDescricao}
+                        onChange={(e) => setPendingDescricao(e.target.value)}
+                        placeholder="Descreva a foto (ex: dano na hélice traseira)"
+                        rows={2}
+                        className="text-xs resize-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={cancelPending} disabled={uploading}>
+                      Cancelar
+                    </Button>
+                    <Button size="sm" onClick={uploadPending} disabled={uploading}>
+                      {uploading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="mr-2 h-4 w-4" />
+                          Enviar foto
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Lista de anexos */}
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -303,7 +374,7 @@ export function OSAnexosDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Image Preview Modal */}
+      {/* Visualização em tela cheia */}
       {previewImage && (
         <Dialog open={true} onOpenChange={closePreview}>
           <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0">

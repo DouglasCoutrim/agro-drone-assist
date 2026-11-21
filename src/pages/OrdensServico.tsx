@@ -2081,14 +2081,13 @@ export default function OrdensServico() {
         />
 
         <OSAnexosDialog
-          open={anexosDialogOpen}
-          onOpenChange={setAnexosDialogOpen}
-          ordemServicoId={viewingOS?.id || ""}
-          organizationId={viewingOS?.organization_id || organization?.id || null}
-          isPlatformAdmin={isPlatformAdmin}
-          usuarioId={user?.id || ""}
-          onAnexosChange={() => fetchData()}
-        />
+                  open={anexosDialogOpen}
+                  onOpenChange={setAnexosDialogOpen}
+                  ordemServicoId={viewingOS?.id || editingOS?.id || ""}
+                  organizationId={viewingOS?.organization_id || editingOS?.organization_id || organization?.id || null}
+                  isPlatformAdmin={isPlatformAdmin}
+                  onAnexosChange={() => fetchData()}
+                />
 
       </div>
     </MainLayout>
