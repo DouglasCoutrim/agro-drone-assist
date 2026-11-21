@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Camera, Image, X, Loader2, Trash2, Plus, Eye } from "lucide-react";
+import { Camera, Image as ImageIcon, X, Loader2, Trash2, Plus, Eye } from "lucide-react";
 
 interface Anexo {
   id: string;
@@ -196,7 +196,7 @@ export function OSAnexosDialog({
         <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
-              <Image className="h-5 w-5 text-primary" />
+              <ImageIcon className="h-5 w-5 text-primary" />
               Anexos da OS
             </DialogTitle>
             <DialogDescription>
@@ -240,7 +240,7 @@ export function OSAnexosDialog({
               </div>
             ) : anexos.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <Image className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">Nenhum anexo ainda</p>
                 <p className="text-xs">Use o botão acima para adicionar fotos</p>
               </div>
