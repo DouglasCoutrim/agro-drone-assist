@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle2, FileCheck, Loader2, Save, Stethoscope, XCircle } from "lucide-react";
+import { CheckCircle2, FileCheck, KeyRound, Loader2, Save, Stethoscope, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useViaCep } from "@/hooks/useViaCep";
@@ -16,8 +16,6 @@ import { toast } from "sonner";
 type Cfg = {
   habilitado: boolean;
   ambiente: "homologacao" | "producao";
-  focus_token_homologacao: string;
-  focus_token_producao: string;
   razao_social: string;
   nome_fantasia: string;
   cnpj: string;
@@ -53,7 +51,7 @@ type Cfg = {
 };
 
 const EMPTY: Cfg = {
-  habilitado: false, ambiente: "homologacao", focus_token_homologacao: "", focus_token_producao: "",
+  habilitado: false, ambiente: "homologacao",
   razao_social: "", nome_fantasia: "", cnpj: "", inscricao_estadual: "", inscricao_municipal: "",
   regime_tributario: 1, logradouro: "", numero: "", complemento: "", bairro: "", municipio: "",
   codigo_municipio: "", uf: "", cep: "", telefone: "", serie: 1, natureza_operacao: "Venda de mercadoria",
@@ -63,6 +61,30 @@ const EMPTY: Cfg = {
   nfse_codigo_nbs: "115021000", nfse_codigo_indop: "100301", nfse_ibs_cbs_class_trib: "000001", nfse_ibs_cbs_cst: "000",
   mei: false, nfse_padrao: "municipal",
 };
+
+type AmbienteToken = "homologacao" | "producao";
+type TokenInfo = { configurado: boolean; ultimos4: string | null };
+
+const TOKENS_VAZIOS: Record<AmbienteToken, TokenInfo> = {
+  homologacao: { configurado: false, ultimos4: null },
+  producao: { configurado: false, ultimos4: null },
+};
+
+/**
+ * Colunas lidas da view `nfe_config_publica` — a configuração fiscal sem os tokens da
+ * Focus (esses ficam no Vault e só o servidor lê). O `proximo_numero` e o `id` ficam
+ * de fora de propósito: não são do formulário.
+ */
+const COLUNAS_PUBLICAS = [
+  "habilitado", "ambiente", "razao_social", "nome_fantasia", "cnpj", "inscricao_estadual",
+  "inscricao_municipal", "regime_tributario", "logradouro", "numero", "complemento", "bairro",
+  "municipio", "codigo_municipio", "uf", "cep", "telefone", "serie", "natureza_operacao",
+  "informacoes_complementares", "nfse_habilitado", "nfse_item_lista_servico",
+  "nfse_codigo_tributario_municipio", "nfse_codigo_cnae", "nfse_aliquota", "nfse_iss_retido",
+  "nfse_natureza_operacao", "nfse_discriminacao_padrao", "nfse_codigo_nbs", "nfse_codigo_indop",
+  "nfse_ibs_cbs_class_trib", "nfse_ibs_cbs_cst", "mei", "nfse_padrao",
+  "token_ultimos4_hom", "token_ultimos4_prod", "token_hom_configurado", "token_prod_configurado",
+].join(", ");
 
 function F({ label, k, cfg, set, ...rest }: { label: string; k: keyof Cfg; cfg: Cfg; set: (k: keyof Cfg, v: any) => void } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
@@ -79,18 +101,59 @@ export function NfeConfigCard() {
   const [cfg, setCfg] = useState<Cfg>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [tokens, setTokens] = useState<Record<AmbienteToken, TokenInfo>>(TOKENS_VAZIOS);
+  const [tokenNovo, setTokenNovo] = useState<Record<AmbienteToken, string>>({ homologacao: "", producao: "" });
+  const [salvandoToken, setSalvandoToken] = useState<AmbienteToken | null>(null);
 
   useEffect(() => {
     if (!organization?.id) return;
     (async () => {
-      const { data } = await supabase.from("nfe_config").select("*").eq("organization_id", organization.id).maybeSingle();
+      // A view ainda não está em types.ts (gerado a partir do banco), por isso o cast.
+      const { data, error } = await (supabase.from as any)("nfe_config_publica")
+        .select(COLUNAS_PUBLICAS)
+        .eq("organization_id", organization.id)
+        .maybeSingle();
+      if (error) {
+        console.error("Erro ao carregar a configuração fiscal:", error);
+        toast.error("Não foi possível carregar a configuração fiscal: " + error.message);
+        setLoading(false);
+        return;
+      }
       if (data) {
-        const clean = Object.fromEntries(Object.entries(data).map(([k, v]) => [k, v ?? ""]));
+        const { token_ultimos4_hom, token_ultimos4_prod, token_hom_configurado, token_prod_configurado, ...fiscal } = data as Record<string, unknown>;
+        const clean = Object.fromEntries(Object.entries(fiscal).map(([k, v]) => [k, v ?? ""]));
         setCfg({ ...EMPTY, ...(clean as any) });
+        setTokens({
+          homologacao: { configurado: Boolean(token_hom_configurado), ultimos4: (token_ultimos4_hom as string) ?? null },
+          producao: { configurado: Boolean(token_prod_configurado), ultimos4: (token_ultimos4_prod as string) ?? null },
+        });
       }
       setLoading(false);
     })();
   }, [organization?.id]);
+
+  /**
+   * Troca do token da Focus. O valor vai para a Edge Function `nfe-token`, que valida na
+   * Focus antes de gravar no Vault — o token não volta para a tela, só os 4 últimos dígitos.
+   */
+  const salvarToken = async (ambiente: AmbienteToken) => {
+    const token = tokenNovo[ambiente].trim();
+    if (token.length < 8) return;
+    setSalvandoToken(ambiente);
+    const { data, error } = await supabase.functions.invoke("nfe-token", {
+      body: { action: "salvar", ambiente, token },
+    });
+    setSalvandoToken(null);
+    if (error || !data?.success) {
+      let msg = data?.error || error?.message || "Não foi possível salvar o token.";
+      try { const b = await (error as any)?.context?.json?.(); msg = b?.error || msg; } catch { /* mantém a mensagem original */ }
+      toast.error("Token não salvo", { description: msg, duration: 10000 });
+      return;
+    }
+    setTokenNovo((t) => ({ ...t, [ambiente]: "" }));
+    setTokens((t) => ({ ...t, [ambiente]: { configurado: true, ultimos4: data?.ultimos4 ?? token.slice(-4) } }));
+    toast.success("Token salvo no servidor");
+  };
 
   const set = <K extends keyof Cfg>(k: K, v: Cfg[K]) => setCfg((c) => ({ ...c, [k]: v }));
 
@@ -163,10 +226,40 @@ export function NfeConfigCard() {
             </Select>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <F cfg={cfg} set={set} label="Token de homologação" k="focus_token_homologacao" type="password" autoComplete="off" />
-            <F cfg={cfg} set={set} label="Token de produção" k="focus_token_producao" type="password" autoComplete="off" />
+            {(["homologacao", "producao"] as AmbienteToken[]).map((amb) => (
+              <div key={amb} className="space-y-1.5 rounded-lg border p-3">
+                <Label>Token de {amb === "producao" ? "produção" : "homologação"}</Label>
+                <p className="text-xs text-muted-foreground">
+                  {tokens[amb].configurado
+                    ? `Token configurado, terminando em ${tokens[amb].ultimos4 ?? "----"}`
+                    : "Nenhum token cadastrado ainda"}
+                </p>
+                <Input
+                  type="password"
+                  autoComplete="off"
+                  placeholder={tokens[amb].configurado ? "Cole o novo token para substituir" : "Cole o token da Focus"}
+                  value={tokenNovo[amb]}
+                  onChange={(e) => setTokenNovo((t) => ({ ...t, [amb]: e.target.value }))}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  disabled={salvandoToken === amb || tokenNovo[amb].trim().length < 8}
+                  onClick={() => salvarToken(amb)}
+                >
+                  {salvandoToken === amb
+                    ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    : <KeyRound className="mr-1.5 h-3.5 w-3.5" />}
+                  {tokens[amb].configurado ? "Substituir token" : "Salvar token"}
+                </Button>
+              </div>
+            ))}
           </div>
-          <p className="text-xs text-muted-foreground">Os tokens ficam no painel da Focus NFe, no cadastro da sua empresa. O certificado digital A1 deve ser enviado diretamente no painel da Focus.</p>
+          <p className="text-xs text-muted-foreground">
+            O token fica guardado no servidor e não volta mais para a tela: só o começo do texto é mostrado.
+            O certificado digital A1 deve ser enviado diretamente no painel da Focus.
+          </p>
         </section>
 
         <section className="space-y-3">

@@ -5,7 +5,7 @@ import { useOrganization } from './useOrganization';
 export type FeatureKey =
   | 'os' | 'clientes' | 'estoque'
   | 'orcamentos' | 'financeiro' | 'cobrancas_asaas'
-  | 'mercado_livre' | 'whatsapp_templates'
+  | 'whatsapp_templates'
   | 'whitelabel' | 'api_rest' | 'suporte_prioritario';
 
 export function useFeatureAccess() {
@@ -19,7 +19,7 @@ export function useFeatureAccess() {
       // Super Admin tem tudo
       setFeatures([
         'os','clientes','estoque','orcamentos','financeiro','cobrancas_asaas',
-        'mercado_livre','whatsapp_templates','whitelabel','api_rest','suporte_prioritario'
+        'whatsapp_templates','whitelabel','api_rest','suporte_prioritario'
       ]);
       setLoading(false);
       return;

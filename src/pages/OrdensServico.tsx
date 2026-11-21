@@ -13,11 +13,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download, UserPlus, CreditCard, Clock, Wrench, CheckCircle2, XCircle, ChevronRight, Settings2, Trash2, Printer, Check } from "lucide-react";
+import { Plus, Search, Edit, FileText, Loader2, Eye, MessageCircle, Download, UserPlus, CreditCard, Clock, Wrench, CheckCircle2, XCircle, ChevronRight, Settings2, Trash2, Printer, Check, SlidersHorizontal } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, Enums } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
 import { useUsageLimits } from "@/hooks/useUsageLimits";
 import { UpgradePlanModal } from "@/components/UpgradePlanModal";
@@ -39,6 +40,10 @@ import type { CustomType } from "@/lib/equipment-segments";
 import { useChecklistConfig } from "@/hooks/useChecklistConfig";
 import type { ChecklistItem, ChecklistTipo } from "@/hooks/useChecklistConfig";
 import { AgruparOSDialog } from "@/components/os/AgruparOSDialog";
+import { CommissionBreakdown, rateioDaOS } from "@/components/os/CommissionBreakdown";
+import { CommissionOverrideDialog } from "@/components/os/CommissionOverrideDialog";
+import { calcularRateio } from "@/lib/commission";
+import { useNfseAliquota } from "@/hooks/useNfseAliquota";
 import { PaymentConfirmDialog, PaymentData } from "@/components/os/PaymentConfirmDialog";
 import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 
@@ -61,6 +66,7 @@ const mapDbItemsToOSItems = (data: ItemOSRow[] | null | undefined): OSItem[] =>
     desconto_percentual: Number((d as any).desconto_percentual) || 0,
     desconto_valor: Number((d as any).desconto_valor) || 0,
     desconto_maximo_percentual: Number((d as any).desconto_maximo_percentual) || 0,
+    custo_servico: Number((d as any).custo_servico) || 0,
   }));
 
 const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
@@ -95,7 +101,7 @@ const TIPO_EQUIPAMENTO: Record<string, string> = {
 const MOBILITY_CATEGORIES = ["patinete_eletrico", "bicicleta_eletrica", "moto_eletrica", "outros_autopropelidos"];
 const LOCK_CLOSED_STATUSES = new Set(["pronto_retirada", "concluida", "entregue", "finalizada"]);
 
-// Helper: verifica se o usuário pode editar/fechar esta OS
+// Helper: verifica se o usuário pode editar esta OS
 // Admin pode tudo; Técnico só se for o responsável (tecnico_id === user.id)
 const canUserManageOS = (os: OrdemServico, userId: string | undefined, isAdminUser: boolean): boolean => {
   if (isAdminUser) return true;
@@ -128,8 +134,13 @@ const formatOSNumber = (numero?: string | null) => (numero || "").replace(/^OS-?
 
 export default function OrdensServico() {
   const { user, canEdit, isAdmin, isTecnico } = useAuth();
+  const { permissions } = usePermissions();
+  // "Pode finalizar OS" (Equipe → Papéis e permissões): fecha OS de qualquer técnico. Não
+  // dá direito de editar a OS — quem tem só essa permissão grava pelo RPC `finalizar_os`.
+  const podeFinalizarOs = permissions?.pode_finalizar_os === true;
   const { organization, isPlatformAdmin, loading: orgLoading } = useOrganization();
   const { config: empresa } = useEmpresaConfig();
+  const aliquotaNfse = useNfseAliquota();
   const [agruparOpen, setAgruparOpen] = useState(false);
   const { tecnicos } = useTeamMembers();
   const confirm = useConfirm();
@@ -147,6 +158,7 @@ export default function OrdensServico() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingOS, setViewingOS] = useState<OrdemServico | null>(null);
+  const [commissionDialogOpen, setCommissionDialogOpen] = useState(false);
   const [editingOS, setEditingOS] = useState<OrdemServico | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [quickClientOpen, setQuickClientOpen] = useState(false);
@@ -378,6 +390,19 @@ export default function OrdensServico() {
 
   const selectedCliente = clientes.find(c => c.id === formData.cliente_id);
   const readOnlyOsMessage = "Seu perfil tem acesso de consulta ao módulo de OS, mas não pode criar ou alterar ordens de serviço.";
+  const readOnlyFecharMessage = "Seu perfil só pode finalizar (fechar) ordens de serviço — não pode criar, editar nem reabrir OS.";
+
+  /** Quem pode fechar a OS: admin, o técnico responsável ou quem tem a permissão "Pode finalizar OS". */
+  const podeFecharOS = (os?: OrdemServico | null): boolean =>
+    podeFinalizarOs || (!!os && canUserManageOS(os, user?.id, isAdmin));
+
+  /** "Avançar" para quem só tem a permissão só faz sentido quando o próximo passo fecha a OS. */
+  const podeAvancarOS = (os?: OrdemServico | null): boolean => {
+    if (!os || !podeFecharOS(os)) return false;
+    if (canEdit) return true;
+    const proximo = getNextStatus(os.status);
+    return !!proximo && LOCK_CLOSED_STATUSES.has(proximo);
+  };
 
   // Wizard validation
   const canAdvance = (step: number): boolean => {
@@ -530,6 +555,7 @@ export default function OrdensServico() {
             desconto_percentual: Number(item.desconto_percentual) || 0,
             desconto_valor: Number(item.desconto_valor) || 0,
             desconto_maximo_percentual: Number(item.desconto_maximo_percentual) || 0,
+            custo_servico: Math.max(0, Number(item.custo_servico) || 0),
             organization_id: editingOS?.organization_id || organizationId,
           });
         for (const item of changedItems.filter(item => item.id)) {
@@ -672,6 +698,7 @@ export default function OrdensServico() {
     setViewOsItems([]);
     setViewOsItemsLoading(true);
     setViewConfigChecklist([]);
+    setCommissionDialogOpen(false);
     setViewDialogOpen(true);
     try {
       setViewOsItems(await fetchOSItems(os.id, os.organization_id));
@@ -696,6 +723,21 @@ export default function OrdensServico() {
     } finally {
       setViewOsItemsLoading(false);
     }
+  };
+
+  /** Relê a OS aberta (o rateio já vem com o ajuste) e atualiza a lista. */
+  const recarregarOSVisualizada = async (osId: string) => {
+    const { data, error } = await supabase
+      .from("ordens_servico")
+      .select("*, clientes(nome, telefone)")
+      .eq("id", osId)
+      .maybeSingle();
+    if (error) {
+      toast.error(getErrorMessage(error));
+      return;
+    }
+    if (data) setViewingOS(data as OrdemServico);
+    fetchData();
   };
 
   // Deep link: /ordens-servico?os=<id> abre a OS correspondente e limpa o parâmetro da URL.
@@ -756,15 +798,29 @@ export default function OrdensServico() {
   };
 
   const applyStatusUpdate = async (osId: string, newStatus: string) => {
-    if (!canEdit) throw new Error(readOnlyOsMessage);
     const os = ordens.find(o => o.id === osId);
-    if (os && !canUserManageOS(os, user?.id, isAdmin)) throw new Error("Você só pode alterar status de OSs designadas a você.");
+    // Perfil sem permissão de editar OS: fecha pelo RPC `finalizar_os` (só status e datas).
+    const viaRpc = !canEdit;
+    if (viaRpc) {
+      if (!podeFinalizarOs) throw new Error(readOnlyOsMessage);
+      if (!LOCK_CLOSED_STATUSES.has(newStatus)) throw new Error("Sua permissão permite apenas finalizar (fechar) a OS.");
+    } else if (os && !canUserManageOS(os, user?.id, isAdmin)) {
+      throw new Error("Você só pode alterar status de OSs designadas a você.");
+    }
     if (LOCK_CLOSED_STATUSES.has(newStatus)) {
       const pending = await getPendingRequiredChecklist(osId, os?.organization_id || organization?.id);
       if (pending.length > 0) {
         throw new Error(`Itens obrigatórios pendentes no checklist de revisão: ${pending.slice(0, 3).join("; ")}${pending.length > 3 ? "…" : ""}.`);
       }
     }
+    if (viaRpc) {
+      // O RPC valida a permissão, grava status/datas, congela a comissão e escreve o histórico.
+      const { error } = await supabase.rpc("finalizar_os", { _os_id: osId, _status: newStatus });
+      if (error) throw error;
+      if (newStatus === "finalizada") setPagoOSIds(prev => new Set(prev).add(osId));
+      return;
+    }
+
     const updateData: any = { status: newStatus };
     if (newStatus === "pronto_retirada" || newStatus === "concluida" || newStatus === "finalizada") updateData.data_conclusao = new Date().toISOString();
     if (newStatus === "entregue") updateData.data_entrega = new Date().toISOString();
@@ -791,8 +847,8 @@ export default function OrdensServico() {
   const handleStatusChange = async (osId: string, newStatus: string): Promise<boolean> => {
     const os = ordens.find(o => o.id === osId);
     const isReview = (os as any)?.tipo_os === "revisao";
-    if (newStatus === "finalizada" && os && !canUserManageOS(os, user?.id, isAdmin)) {
-      toast.error("Somente usuários com permissão podem finalizar esta OS.");
+    if (newStatus === "finalizada" && os && !podeFecharOS(os)) {
+      toast.error("Somente o técnico responsável, um administrador ou quem tem a permissão \"Pode finalizar OS\" pode finalizar esta OS.");
       return false;
     }
 
@@ -1382,7 +1438,7 @@ export default function OrdensServico() {
             >
               {!canEdit && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                  {readOnlyOsMessage}
+                  {podeFinalizarOs ? readOnlyFecharMessage : readOnlyOsMessage}
                 </div>
               )}
               {/* Cliente */}
@@ -1687,7 +1743,7 @@ export default function OrdensServico() {
         </Dialog>
 
         {/* View OS Dialog */}
-        <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <Dialog open={viewDialogOpen} onOpenChange={(o) => { setViewDialogOpen(o); if (!o) setCommissionDialogOpen(false); }}>
           <DialogContent className="max-w-4xl w-[95vw] sm:w-[90vw] h-[90vh] sm:h-[80vh] flex flex-col p-0 overflow-hidden rounded-xl">
             <DialogHeader className="p-4 sm:p-6 border-b shrink-0">
 
@@ -1739,6 +1795,7 @@ export default function OrdensServico() {
                 {/* Status Pipeline */}
                 <StatusPipeline
                   currentStatus={viewingOS.status}
+                  canChangeTo={(s) => canEdit || (podeFinalizarOs && LOCK_CLOSED_STATUSES.has(s))}
                   onStatusChange={async (s) => {
                     const ok = await handleStatusChange(viewingOS.id, s);
                     if (ok) setViewingOS({ ...viewingOS, status: s as any });
@@ -1823,13 +1880,85 @@ export default function OrdensServico() {
                         </div>
                       </div>
                       <Separator />
+                      {/* Rateio da comissão: o valor da OS é o que o técnico vai receber */}
+                      {(() => {
+                        // Mesma resolução de valor cobrado que o SQL usa: valor_final manda; sem ele, itens − desconto.
+                        const descontoOs = Number((viewingOS as any).desconto) || 0;
+                        const valorFinalOs = Number((viewingOS as any).valor_final) || 0;
+                        const valorParaRateio = valorFinalOs !== 0
+                          ? valorFinalOs
+                          : Math.max(0, viewItemsTotal - descontoOs);
+                        const rateio = rateioDaOS(viewingOS as any, valorParaRateio);
+                        const avisos: string[] = [];
+                        const congelado = rateio.congeladoEm ? new Date(rateio.congeladoEm) : null;
+                        if (congelado && viewingOS.updated_at && new Date(viewingOS.updated_at) > congelado) {
+                          avisos.push("A OS foi alterada depois do congelamento da comissão. Use “Conferência da comissão” para revisar.");
+                        }
+                        const semCusto = viewOsItems.some((i) => i.tipo === "servico") && viewOsItems.every((i) => !Number(i.custo_servico));
+                        if (semCusto && LOCK_CLOSED_STATUSES.has(String(viewingOS.status))) {
+                          avisos.push("OS concluída sem custo de serviço lançado. Se você repassou peças, informe o custo para a comissão sair certa.");
+                        }
+                        // O que a regra calcula hoje — serve tanto de prévia (OS sem rateio gravado)
+                        // quanto de referência quando o administrador ajusta a comissão à mão.
+                        const calculoRegra = calcularRateio({
+                          valorOs: valorParaRateio,
+                          desconto: descontoOs,
+                          itens: viewOsItems.map((i) => ({
+                            tipo: i.tipo,
+                            valorTotal: Number(i.valor_total) || 0,
+                            custoServico: Number(i.custo_servico) || 0,
+                          })),
+                          aliquota: aliquotaNfse,
+                          nfeEmitida: Boolean(viewingOS.nfe_emitida),
+                          taxaSemNota: empresa.commission_no_note_fee,
+                        });
+                        // OS antiga sem rateio gravado: mostra a regra nova como prévia, sem alterar o valor.
+                        const itensCarregados = !viewOsItemsLoading;
+                        const previa = rateio.semRateio && itensCarregados ? calculoRegra : null;
+                        return (
+                          <>
+                            <CommissionBreakdown
+                              data={{
+                                ...rateio,
+                                previa,
+                                calculada: itensCarregados ? calculoRegra.comissao : null,
+                                avisos,
+                              }}
+                            />
+                            {isAdmin && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-2 w-full"
+                                onClick={() => setCommissionDialogOpen(true)}
+                              >
+                                <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5" />
+                                Ajustar comissão
+                              </Button>
+                            )}
+                            <CommissionOverrideDialog
+                              open={commissionDialogOpen}
+                              onOpenChange={setCommissionDialogOpen}
+                              osId={viewingOS.id}
+                              osNumero={formatOSNumber(viewingOS.numero)}
+                              comissaoAtual={rateio.comissao}
+                              override={rateio.override}
+                              motivoAtual={rateio.overrideMotivo}
+                              calculada={itensCarregados ? calculoRegra.comissao : null}
+                              saldo={rateio.saldo}
+                              onSaved={() => recarregarOSVisualizada(viewingOS.id)}
+                            />
+                          </>
+                        );
+                      })()}
+                      <Separator />
                       {/* Items da OS */}
                       {viewOsItemsLoading ? (
                         <div className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
                           <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando itens, peças e serviços...
                         </div>
                       ) : viewOsItems.length > 0 ? (
-                        <OSItemsSection items={viewOsItems} onChange={() => {}} disabled />
+                        <OSItemsSection items={viewOsItems} onChange={() => {}} disabled costDisabled={!isAdmin} />
                       ) : (
                         <div className="rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
                           Nenhuma peça ou serviço detalhado foi cadastrado nesta OS. O valor exibido é o orçamento salvo.
@@ -1875,7 +2004,7 @@ export default function OrdensServico() {
               </div>
               )}
             </div>
-            {viewingOS && viewingOS.status !== "entregue" && viewingOS.status !== "cancelada" && canUserManageOS(viewingOS, user?.id, isAdmin) && (
+            {viewingOS && viewingOS.status !== "entregue" && viewingOS.status !== "cancelada" && podeAvancarOS(viewingOS) && (
               <DialogFooter className="shrink-0 border-t bg-background">
                 <div className="p-4">
                   <Button className="w-full gradient-primary" onClick={() => handleAdvanceStatus(viewingOS)}>

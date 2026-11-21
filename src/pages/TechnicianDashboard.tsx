@@ -6,10 +6,11 @@ import { Separator } from "@/components/ui/separator";
 import { Loader2, Coins, CheckCircle2, ListChecks, Clock, AlertTriangle, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, todayDateInput } from "@/lib/formatters";
 import { parseISO, isPast } from "date-fns";
 import { TechnicianAnalytics } from "@/components/os/TechnicianAnalytics";
 import { OSSummaryDialog } from "@/components/os/OSSummaryDialog";
+import { getPeriodRange } from "@/hooks/useTechnicianFinancials";
 
 interface OSKanban {
   id: string;
@@ -92,7 +93,13 @@ export default function TechnicianDashboard() {
     if (!user) return;
     setLoading(true);
     try {
-      const { data: res } = await supabase.rpc("get_technician_dashboard" as any, { _tecnico_id: user.id });
+      // Sobrecarga explícita de 3 argumentos (a de 1 argumento foi removida).
+      const mes = getPeriodRange("mes");
+      const { data: res } = await supabase.rpc("get_technician_dashboard" as any, {
+        _tecnico_id: user.id,
+        _period_start: todayDateInput(mes.start),
+        _period_end: todayDateInput(mes.end),
+      });
       setData(res as DashboardPayload | null);
     } catch (e) {
       console.error(e);
@@ -163,7 +170,7 @@ export default function TechnicianDashboard() {
 
             {/* Resumo financeiro */}
             <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-              <KpiCard label="Comissões Realizadas (Mês)" value={formatCurrency(data.realized_month ?? 0)} icon={Coins} color="bg-green-500/15 text-green-600" />
+              <KpiCard label="Sua Comissão no Mês" value={formatCurrency(data.realized_month ?? 0)} icon={Coins} color="bg-green-500/15 text-green-600" sub="Já líquida de imposto e custo do serviço" />
               <KpiCard label="Comissões Estimadas (Mês)" value={formatCurrency(data.estimated_month ?? 0)} icon={Clock} color="bg-blue-500/15 text-blue-600" sub="OS em andamento/aprovação" />
               <KpiCard label="Serviços Concluídos (Mês)" value={data.services_done_month ?? 0} icon={CheckCircle2} color="bg-violet-500/15 text-violet-600" />
             </div>

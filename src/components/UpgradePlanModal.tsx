@@ -18,7 +18,7 @@ const PLANS = [
   },
   {
     slug: 'prata', name: 'Prata', price: 59.90, icon: Sparkles, recommended: true,
-    highlights: ['4 usuários', '60 OS / mês', 'Financeiro + Cobrança PIX/Boleto', 'WhatsApp & Mercado Livre'],
+    highlights: ['4 usuários', '60 OS / mês', 'Financeiro + Cobrança PIX/Boleto', 'WhatsApp'],
   },
   {
     slug: 'ouro', name: 'Ouro', price: 69.90, icon: Crown,

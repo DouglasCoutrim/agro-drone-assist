@@ -5,6 +5,10 @@ import { Separator } from "@/components/ui/separator";
 import { Loader2, Phone, User, Wrench } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { CommissionBreakdown, rateioDaOS } from "@/components/os/CommissionBreakdown";
+import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
+import { useNfseAliquota } from "@/hooks/useNfseAliquota";
+import { calcularRateio } from "@/lib/commission";
 
 interface Props {
   osId: string | null;
@@ -12,6 +16,8 @@ interface Props {
 }
 
 export function OSSummaryDialog({ osId, onOpenChange }: Props) {
+  const { config: empresa } = useEmpresaConfig();
+  const aliquotaNfse = useNfseAliquota();
   const [loading, setLoading] = useState(false);
   const [os, setOs] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
@@ -25,11 +31,11 @@ export function OSSummaryDialog({ osId, onOpenChange }: Props) {
       setOs(null); setItems([]); setTecnico(null);
       const { data } = await supabase
         .from("ordens_servico")
-        .select("id, numero, status, created_at, data_conclusao, tipo_equipamento, marca, modelo_equipamento, descricao_problema, valor_final, valor_orcamento, desconto, commission_services, commission_products, commission_total, tecnico_id, clientes(nome, telefone)")
+        .select("id, numero, status, created_at, updated_at, data_conclusao, tipo_equipamento, marca, modelo_equipamento, descricao_problema, valor_final, valor_orcamento, desconto, commission_base, commission_tax, commission_cost, commission_no_note_fee, commission_company, commission_tax_rate, commission_total, commission_frozen_at, commission_override, commission_override_reason, tecnico_id, nfe_emitida, clientes(nome, telefone)")
         .eq("id", osId)
         .maybeSingle();
       const [{ data: its }, prof] = await Promise.all([
-        supabase.from("itens_os").select("id, descricao, tipo, quantidade, valor_unitario").eq("ordem_servico_id", osId),
+        supabase.from("itens_os").select("id, descricao, tipo, quantidade, valor_unitario, valor_total, custo_servico").eq("ordem_servico_id", osId),
         data?.tecnico_id
           ? supabase.from("profiles").select("nome").eq("id", data.tecnico_id).maybeSingle()
           : Promise.resolve({ data: null } as any),
@@ -95,11 +101,46 @@ export function OSSummaryDialog({ osId, onOpenChange }: Props) {
             <Separator />
             <div className="grid grid-cols-2 gap-2">
               <div className="flex justify-between"><span className="text-muted-foreground">Valor da OS</span><span className="font-semibold">{formatCurrency(Number(os.valor_final || os.valor_orcamento || total))}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Comissão serviço</span><span>{formatCurrency(Number(os.commission_services || 0))}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Desconto</span><span>{formatCurrency(Number(os.desconto || 0))}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Comissão peças</span><span>{formatCurrency(Number(os.commission_products || 0))}</span></div>
-              <div className="col-span-2 flex justify-between font-semibold text-primary"><span>Comissão total</span><span>{formatCurrency(Number(os.commission_total || 0))}</span></div>
             </div>
+            {(() => {
+              // Mesma resolução de valor cobrado que o SQL usa: valor_final manda; sem ele, itens − desconto.
+              const descontoOs = Number(os.desconto) || 0;
+              const valorFinalOs = Number(os.valor_final) || 0;
+              const valorCobrado = valorFinalOs !== 0
+                ? valorFinalOs
+                : Math.max(0, total - descontoOs);
+              const rateio = rateioDaOS(os, valorCobrado);
+              // O que a regra calcula hoje — prévia (OS sem rateio gravado) e referência do
+              // ajuste manual feito pelo administrador.
+              const calculoRegra = calcularRateio({
+                valorOs: valorCobrado,
+                desconto: descontoOs,
+                itens: items.map((i) => ({
+                  tipo: i.tipo,
+                  valorTotal: Number(i.valor_total) || Number(i.quantidade) * Number(i.valor_unitario) || 0,
+                  custoServico: Number(i.custo_servico) || 0,
+                })),
+                aliquota: aliquotaNfse,
+                nfeEmitida: Boolean(os.nfe_emitida),
+                taxaSemNota: empresa.commission_no_note_fee,
+              });
+              const previa = rateio.semRateio ? calculoRegra : null;
+              return (
+                <CommissionBreakdown
+                  data={{
+                    ...rateio,
+                    previa,
+                    calculada: calculoRegra.comissao,
+                    taxaPercentual: empresa.commission_no_note_fee,
+                    avisos:
+                      os.commission_frozen_at && os.updated_at && new Date(os.updated_at) > new Date(os.commission_frozen_at)
+                        ? ["A OS foi alterada depois do congelamento da comissão."]
+                        : [],
+                  }}
+                />
+              );
+            })()}
           </div>
         )}
       </DialogContent>

@@ -1,7 +1,7 @@
 // Recebe avisos da Focus NFe (https://doc.focusnfe.com.br/reference/webhooks).
 // O corpo do aviso não é confiável: usamos só a referência e reconsultamos a Focus com o token da empresa.
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { corsHeaders } from '../_shared/cors.ts';
 import { absoluteUrl, focusErrorMessage, focusRequest, mapStatus, withFocusToken } from '../_shared/focus-nfe.ts';
 import { baixarEstoqueDevolucao, entradaEstoqueDevolucaoVenda } from '../_shared/devolucao-estoque.ts';
 

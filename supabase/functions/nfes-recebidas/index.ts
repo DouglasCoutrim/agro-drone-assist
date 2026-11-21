@@ -1,6 +1,6 @@
 // Notas fiscais emitidas contra o CNPJ da empresa (Focus NFe – NF-e Recebidas / MDe)
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { corsHeaders } from '../_shared/cors.ts';
 import { z } from 'npm:zod@3';
 import { focusBaseUrl, focusErrorMessage, focusRequest, focusToken, onlyDigits, withFocusToken } from '../_shared/focus-nfe.ts';
 

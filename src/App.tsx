@@ -57,6 +57,7 @@ const Wiki = lazy(() => import("./pages/Wiki"));
 const TechnicianDashboard = lazy(() => import("./pages/TechnicianDashboard"));
 const WorkshopLive = lazy(() => import("./pages/WorkshopLive"));
 const TechnicianFinancialDashboard = lazy(() => import("./pages/TechnicianFinancialDashboard"));
+const Comissoes = lazy(() => import("./pages/Comissoes"));
 const Patrimonio = lazy(() => import("./pages/Patrimonio"));
 const Demonstracoes = lazy(() => import("./pages/Demonstracoes"));
 const PedidosCompra = lazy(() => import("./pages/PedidosCompra"));
@@ -161,6 +162,7 @@ const App = () => {
                   <Route path="/wiki/:slug" element={<ProtectedRoute><Wiki /></ProtectedRoute>} />
                   <Route path="/technician/dashboard" element={<ProtectedRoute><TechnicianDashboard /></ProtectedRoute>} />
                   <Route path="/technician/financeiro" element={<ProtectedRoute requiredRole="tecnico"><TechnicianFinancialDashboard /></ProtectedRoute>} />
+                  <Route path="/comissoes" element={<ProtectedRoute requiredRole="admin"><Comissoes /></ProtectedRoute>} />
                   <Route path="/admin/retencoes" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/workshop/live" element={<ProtectedRoute><WorkshopLive /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />

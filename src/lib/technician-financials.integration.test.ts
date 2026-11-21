@@ -28,9 +28,14 @@ test('principal commissions remain readable without retired assignment records',
     _tecnico_id: userId, _period_start: '2026-08-01', _period_end: '2026-08-31',
   });
   assert.equal(error, null);
-  assert.equal(data.os_count, orders.length);
-  assert.equal(Number(data.comissoes_realizadas_periodo), orders.reduce((sum, os) => sum + Number(os.commission_total || 0), 0));
+  // Payload novo: comissao_periodo é a soma de commission_total (já líquida) das OS concluídas no período.
+  assert.equal(data.comissao_periodo_count, orders.length);
+  assert.equal(Number(data.comissao_periodo), orders.reduce((sum, os) => sum + Number(os.commission_total || 0), 0));
   assert.equal(Object.prototype.hasOwnProperty.call(data, 'retencoes_pendentes'), false);
+  // As quatro situações substituíram o antigo resumo.
+  for (const chave of ['a_receber', 'aguardando_cliente', 'recebido', 'divergencia']) {
+    assert.equal(Object.prototype.hasOwnProperty.call(data, chave), true, `faltou ${chave}`);
+  }
 });
 
 test('financial summary denies a target outside the caller organization', { skip: !available }, async () => {

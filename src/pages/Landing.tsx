@@ -23,7 +23,7 @@ interface Plan {
 
 const FEATURES = [
   { icon: ClipboardList, title: 'Ordens de Serviço', desc: 'Pipeline visual, status automáticos, fotos, assinatura digital e PDF white-label.' },
-  { icon: Package, title: 'Estoque Inteligente', desc: 'Controle de peças, código sequencial, importação Mercado Livre e preços de venda definidos por você.' },
+  { icon: Package, title: 'Estoque Inteligente', desc: 'Controle de peças, código sequencial e preços de venda definidos por você.' },
   { icon: DollarSign, title: 'Financeiro & Cobranças', desc: 'Integração com Asaas e Mercado Pago. Gere PIX e Boleto direto da OS.' },
   { icon: Users, title: 'CRM de Clientes', desc: 'Cadastro completo, histórico de atendimentos e infraestrutura técnica do cliente.' },
   { icon: BarChart3, title: 'Relatórios em Tempo Real', desc: 'KPIs de faturamento, OS, técnicos e estoque. Tudo num único painel.' },

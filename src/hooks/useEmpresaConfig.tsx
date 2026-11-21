@@ -11,6 +11,8 @@ export interface EmpresaConfig {
   responsavel: string;
   logo_url: string;
   termos_servico: string;
+  /** Taxa cobrada sobre a parte do técnico quando a OS sai sem nota (%). */
+  commission_no_note_fee: number;
 }
 
 const emptyConfig: EmpresaConfig = {
@@ -22,6 +24,7 @@ const emptyConfig: EmpresaConfig = {
   responsavel: "",
   logo_url: "",
   termos_servico: "",
+  commission_no_note_fee: 3.5,
 };
 
 const EmpresaConfigContext = createContext<{
@@ -60,6 +63,7 @@ export function EmpresaConfigProvider({ children }: { children: ReactNode }) {
           responsavel: d.responsavel ?? "",
           logo_url: d.logo_url ?? "",
           termos_servico: d.termos_servico ?? "",
+          commission_no_note_fee: Number(d.commission_no_note_fee ?? 3.5),
         });
       } else {
         setConfig(emptyConfig);

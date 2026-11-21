@@ -3,7 +3,7 @@
 > Documento de referência para retomar o trabalho. Atualizado ao fim de cada sessão.
 > Ao reiniciar, leia este arquivo e confirme em qual etapa paramos.
 
-## Status atual (última atualização: 2026-11-13 — ver seções 6, 7 e 8)
+## Status atual (última atualização: 2026-11-19 — ver seções 10 e 11)
 
 **Em andamento — "Módulo do Técnico / Comissionamento / Oficina ao Vivo".**
 Código **completo e compilando** (`npx tsc --noEmit` sem erros). Faltam **somente** etapas de deploy/dados (abaixo).
@@ -210,3 +210,102 @@ Código **completo e compilando** (`npx tsc --noEmit` sem erros). Faltam **somen
 2. Teste manual de login real com as três contas (admin, técnico, consulta), campos vazios, e-mail inválido, envio por botão e por Enter.
 3. Build/lint locais não executados por decisão do usuário (ver seção 3 do CONTEXTO.md).
 4. Cobertura e2e: `@playwright/test` não está instalado (dependência recusada anteriormente). Verificar se o ambiente de teste será disponibilizado futuramente.
+
+---
+
+## 10. Sessão 2026-11-19 — Comissão correta + painel de ganhos com faturas de saque
+
+**Entregue**
+
+- **Regra única da comissão** em SQL (`drizzle/migrations/0024_commission_rateio_e_faturas.sql`): `os_commission_calc(_os_id)` (leitura) e `os_commission_core(_os_id, _force)` (grava). Base só de serviços com o desconto do cabeçalho rateado por proporção, imposto lido de `nfe_config.nfse_aliquota` (só quando há nota), menos `itens_os.custo_servico`, dividido 50/50 com a parte do técnico ficando com o resto da divisão; sem nota, 3,5% sobre a parte do técnico (`empresa_config.commission_no_note_fee`, configurável). `src/lib/commission.ts` faz a prévia na tela e `src/lib/commission.test.ts` trava os dois lados nos mesmos exemplos (800 com nota 5% = 380,00; 6% = 376,00; 900 + custo 150 com nota 6% = 348,00; sem nota = 361,88; 2.500 com desconto 750 sem nota = 1.206,25).
+- **Congelamento do rateio** na OS: novas colunas `commission_base/tax/cost/no_note_fee/company/rate/tax_rate/frozen_at/paid_at` e `payout_invoice_id`. `commission_total` continua sendo a comissão do técnico (já líquida). Reabrir a OS antes de existir fatura limpa o congelamento; com fatura, só ajuste.
+- **Imposto com uma fonte só:** `nfe_config.nfse_aliquota`. `empresa_config.tax_percentage_nfe` deixou de ser lido (comentado no banco) e `tax_retention_ledger` não é mais escrito — a retenção de 6 meses morreu. `vw_comissoes_tecnico` foi reescrita para ler as colunas da OS (antes o imposto vinha do ledger).
+- **Rateio visível na OS:** `src/components/os/CommissionBreakdown.tsx` (com `rateioDaOS()`) renderizado no detalhe da OS e no `OSSummaryDialog`, com selo "Nota emitida"/"Sem nota", aviso de custo não lançado e aviso de divergência. `OSItemsSection` ganhou o campo "Custo do serviço (R$)" por linha de serviço, bloqueado para não-admin em OS concluída pelo trigger `protect_itens_os_custo`.
+- **Painel do técnico** (`/technician/financeiro`) reconstruído: cartão de chave PIX (obrigatória para faturar), quatro cartões clicáveis (A receber / Aguardando cliente / Recebido / Divergência) que filtram o extrato, totais do período, gráfico recharts de comissão por dia, extrato com seleção por checkbox e coluna de comissão preenchida, lista de faturas com PDF/WhatsApp/cancelar e as despesas de sempre. Abas de período Hoje · Semana · Mês · Ano (+ intervalo personalizado) em `PeriodFilterBar`.
+- **Faturas de saque:** `technician_payout_invoices` + `technician_payout_invoice_items` (com `snapshot` do rateio), numeração `FAT-0001` por organização sob advisory lock, PIX do técnico, status rascunho → enviada → paga | recusada | cancelada. `PayoutInvoiceDialog` cria, baixa PDF (`src/lib/payout-invoice-pdf.ts`, mesmo `gerarDocumentoPadrao`) e envia; ao enviar o admin recebe notificação. Uma OS só entra em uma fatura ativa.
+- **Área do gestor** `/comissoes` (admin, menu Financeiro): faturas por técnico e status com "Marcar como paga" (grava `commission_paid_at` e lança `financeiro` tipo `comissao`) e "Recusar" com motivo, mais a aba "Conferência da comissão" (`relatorio_impacto_comissao` + `recalcular_comissoes_em_lote`), que mostra comissão antiga × nova por OS e lança ajuste (`commission_adjustments`) nas já pagas em vez de corrigir em silêncio.
+- **Configuração:** `CommissionConfigCard` em `/empresa` edita a "Taxa sem nota (%)" e exibe a alíquota do ISS em leitura, avisando que é a fonte única. `get_technician_dashboard(uuid)` (sobrecarga antiga) foi removida; a tela chama a de 3 argumentos explicitamente.
+- **Testes:** unitário `src/lib/commission.test.ts` (Vitest, `npm test`); integração `src/lib/technician-financials.integration.test.ts` ajustada ao payload novo; e2e `e2e-tests/comissoes.spec.ts` (Playwright) confirma que `/comissoes` exige autenticação — passando.
+
+**Fechamento (mesma sessão): dados antigos, prévia e travas**
+
+O banco tem 42 OS e **nenhuma** tinha rateio gravado pela regra nova (`com_rateio = 0`): 28 carregam `commission_total` da regra antiga com `commission_base = 0`. O bloco de rateio abria com base/imposto/custo/saldo zerados e "Sua comissão" com valor — um rateio que não soma.
+
+- **`sem_rateio` = `commission_frozen_at is null`** (não `base = 0`): OS concluída sem serviço comissionável tem rateio gravado e base zero, e isso não é dado antigo. No banco (`get_technician_os_statement`) e no `rateioDaOS`.
+- **OS sem rateio mostra a regra nova como prévia:** selo `Prévia — regra nova`, linhas com o cálculo novo e, embaixo, `Comissão gravada (regra antiga)` + aviso para usar a Conferência. Nada é corrigido em silêncio; o valor gravado continua intacto.
+- **Extrato** mostra `—` em imposto/custo/saldo quando não há rateio e marca a comissão como `antiga`, em vez de zeros que não somam; o cabeçalho conta quantas OS do período estão assim (`N pela regra antiga`), para o técnico entender por que o total está baixo.
+- **Prévia idêntica ao SQL:** o valor cobrado da prévia resolve igual ao banco (`valor_final` manda; sem ele, itens − desconto). Antes a tela preferia o total dos itens e divergia — OS `2026-00010` (570 no banco × 600 na tela).
+- **Alíquota do ISS para não-admin** pelo RPC `get_nfse_aliquota()` (`SECURITY DEFINER`, `EXECUTE` só para `authenticated`; `PUBLIC`/`anon` revogados). `nfe_config` é restrita a admin porque guarda os tokens da Focus NFe e RLS não esconde coluna — não abrir SELECT na tabela para resolver isso. `useNfseAliquota` lê por esse RPC e o `CommissionConfigCard` reusa o hook.
+- **Grants:** as três tabelas novas herdaram os privilégios padrão do banco, que dão `ALL` a `anon` — revogado (no banco e na migration). Políticas são **só de SELECT**: toda escrita passa por RPC `SECURITY DEFINER`, então o técnico não consegue marcar a própria fatura como paga nem mexer em ajuste.
+- **Ajuste entra na fatura:** `create_technician_payout_invoice(_os_ids, _notes, _adjustment_ids)` aceita ajustes pendentes (ganham `invoice_id` e `settled_at`), com checkboxes no `PayoutInvoiceDialog`. Ajuste não forma fatura sozinho.
+- **Recusar não prende o trabalho:** `settle(..., paid := false)` agora devolve as OS (`payout_invoice_id = null`) e os ajustes (`invoice_id`/`settled_at` = null) ao técnico, mantendo os itens da fatura como histórico. Sem isso a OS ficava presa em uma fatura encerrada para sempre — só se fatura OS com `payout_invoice_id` nulo e `cancel` não aceita `recusada`.
+
+**Verificado nesta rodada**
+
+- Fórmula SQL × TS nos seis exemplos do plano (800 com nota 5% = 380,00; 6% = 376,00; 900 + custo 150 com nota 6% = 348,00 e sem nota = 361,88; 2.500 com desconto 750 sem nota = 1.206,25; 900 sem nota = 275,03), com `os_commission_calc` lido do banco e conferido linha a linha.
+- A query do extrato rodada contra OS reais devolve `sem_rateio = true` nas legadas.
+- Assinaturas dos RPCs conferidas contra o banco; grants e políticas auditados; `trg_audit` existe em `itens_os` (mudança de `custo_servico` cai na Auditoria).
+- Sem runner de comandos nesta sessão: a checagem de tipos e o build não foram executados (verificar no editor e com `npm test`).
+
+**Pendente / próximo**
+
+1. `npm test` (Vitest) — sem runner nesta sessão.
+2. `nfe_config.nfse_aliquota` está 0 na organização principal (e `habilitado = false`): enquanto não for configurada, OS com nota não geram imposto (comportamento esperado, mas vale conferir na tela fiscal).
+3. O botão "Enviar por WhatsApp" usa Web Share (celular) e cai em download + instrução no desktop, porque o técnico não pode ler o telefone do gestor por RLS.
+4. Fora do escopo desta sessão: `src/pages/Auditoria.tsx` chama o RPC `reverter_alteracao`, que não existe no banco nem nos tipos — o botão "Desfazer" não funciona. Não afeta o build (`vite build` não roda `tsc`), mas está pendente.
+5. `os_commission_core` e `os_commission_calc` têm `EXECUTE` para `anon`/`authenticated` (privilégio padrão do banco, igual a outras funções da migration 0024). São SECURITY DEFINER sem checagem de organização: um autenticado pode forçar o recálculo de OS de outra organização (mexe em dado, não lê). Vale um `REVOKE ... FROM anon` e uma checagem de org quando essas funções forem mexidas de novo.
+
+---
+
+## 11. Sessão 2026-11-19 (2) — Permissão "Pode finalizar OS" + recálculo de todas as OS
+
+**Permissão "Pode finalizar OS"** (migration `drizzle/migrations/0025_pode_finalizar_os.sql`)
+
+O problema real: `os_assignment_rules` levantava `'Somente o técnico responsável pode finalizar esta OS.'` para qualquer autenticado que não fosse o técnico da OS — **inclusive o administrador**, porque a condição olhava só `auth.uid() <> tecnico_id`. Não existia coluna de permissão.
+
+- `user_permissions.pode_finalizar_os` (padrão `false`) + predicado `public.pode_finalizar_os(_user_id)` (não é SECURITY DEFINER de propósito: dentro das policies o invocador lê a própria linha).
+- `os_assignment_rules` passou a liberar admin, admin da plataforma e quem tem a permissão.
+- Quem só tem a permissão fecha pelo RPC `finalizar_os(_os_id, _status)`: valida organização, aceita apenas status de fechamento (`pronto_retirada`, `concluida`, `entregue`, `finalizada`), grava status/datas, congela o rateio (`os_commission_core`) e escreve `os_historico`. **Não** foi aberto UPDATE em `ordens_servico` para essa permissão: a policy continua exigindo admin ou técnico, e o limite de campos fica no RPC. (A primeira tentativa foi abrir a policy + um trigger de guarda de colunas; o guarda não funcionou porque dentro de uma função SECURITY DEFINER `current_user` é o dono, não o usuário do JWT — daí o desenho por RPC.)
+- `calculate_os_commission` também libera quem tem a permissão (senão a OS fecharia com a comissão em prévia).
+- Frontend: `usePermissions`/`types.ts` expõem `pode_finalizar_os`; `Equipe → Papéis e permissões` ganhou o interruptor (desabilitado para admin/técnico, que já podem); `OrdensServico` usa `podeFecharOS`/`podeAvancarOS` e manda quem não edita pelo RPC; `StatusPipeline` ganhou `canChangeTo` e deixa só os passos permitidos clicáveis.
+- Correções na tela `Permissões de OS` (`/permissoes`, link em Configurações): o interruptor aparecia **ligado para todos** quando quem abria era admin (`canUserFinalize` curto-circuitava pelo usuário logado) e o upsert mandava `organization_id`, coluna que não existe em `user_permissions` — salvar falhava.
+
+**Recálculo de todas as OS (pedido do usuário)**
+
+Nenhuma das 43 OS tinha rateio gravado e 28 divergiam da regra nova. Rodado `recalcular_comissoes_em_lote(false)` como o admin de cada organização (e31fe856: 24 OS; f42c8ddd: 7 OS) e, na sequência, `os_commission_core(id, true)` para as OS ainda abertas (7 + 5), que guardam o rateio sem congelar.
+
+| Organização | Grupo | Antes | Depois | Congeladas |
+|---|---|---|---|---|
+| e31fe856 | Concluída | 13.294,21 | **12.147,55** | 24 de 24 |
+| e31fe856 | Aberta | 3.287,00 | **2.952,91** | — (prévia) |
+| f42c8ddd | Concluída | 0,00 | **696,38** | 7 de 7 |
+| f42c8ddd | Aberta | 0,00 | **4.535,51** | — (prévia) |
+
+Resultado verificado: **0 OS divergentes** em qualquer grupo (`commission_total` = `os_commission_calc`). Nenhuma OS estava paga nem em fatura, então não houve ajuste retroativo. Daqui para frente o cálculo se mantém: OS aberta recalcula a cada mudança de item (`trg_itens_os_recalc_commission`), OS concluída congela no fechamento.
+
+**Textos ajustados** para não mentir depois do recálculo: `CommissionBreakdown` só mostra a linha `Comissão gravada (fora da regra nova)` + aviso quando o valor gravado realmente difere da prévia; o extrato trocou o rótulo `antiga` por `sem rateio` (`N sem rateio gravado` no cabeçalho).
+
+**Pendente desta sessão**
+
+1. `npm test` e a checagem de tipos (`npm run build` / `tsc`) — sem runner nesta sessão.
+2. Confirmar na tela: abrir uma OS concluída e ver o rateio gravado (sem aviso), e logar como um usuário "Atendimento" com a permissão marcada para fechar uma OS de outro técnico.
+
+---
+
+## 12. Sessão 2026-11-19 (3) — Ajuste manual do valor da comissão (só admin)
+
+Pedido: "poder alterar o valor da cobrança de comissão" — o admin define à mão a comissão de **uma OS específica** (ex.: 275,03 → 300,00), para mais ou para menos.
+
+**Onde o valor mora.** O ajuste ficou em `ordens_servico.commission_override` (+ `_reason`, `_by`, `_at`) e não em `commission_adjustments`. Motivo: `commission_total` é a fonte de tudo que é exibido (rateio da OS, extrato, dashboard, fatura), então gravar o valor ajustado ali faz o ajuste aparecer em todos esses lugares sem nenhum encanamento novo. Se o ajuste fosse só o delta em `commission_adjustments`, a OS continuaria mostrando o valor calculado (275,03) e a soma com o delta dobraria o valor num erro de leitura.
+
+**Soma fechada.** Com o override, `os_commission_calc` devolve `comissao = coalesce(override, calculada)` e refaz `loja = saldo − comissão`, com `taxa_sem_nota = 0` (o valor digitado já é o líquido do técnico). Assim `saldo = loja + comissão` continua verdadeiro e os relatórios que somam `commission_company` (loja) não ficam errados. O JSON ganhou `comissao_calculada`, `ajuste_manual` e `ajuste_ativo` para a tela mostrar as três linhas.
+
+**Não desfaz nem acusa divergência.** Como o ajuste entra no valor *gravado*, `recalcular_comissoes_em_lote` (que compara `os_commission_calc` com `commission_total`) e `relatorio_impacto_comissao` veem diferença zero — o recálculo em lote não apaga o ajuste e a Conferência da comissão não marca a OS como divergente. Antes de gravar, o RPC exige `admin`, mesma organização, técnico definido, OS não cancelada, e recusa OS já em fatura de saque (`payout_invoice_id`) ou já paga (`commission_paid_at`) — nos dois casos `os_commission_core` não regravaria o rateio e o override ficaria inconsistente com o valor cobrado. Remover o ajuste é o mesmo RPC com `_valor = null`.
+
+**Trava.** `trg_os_protect_commission_override` (`protect_commission_override`) recusa alteração das quatro colunas por quem não é admin — a policy de UPDATE de `ordens_servico` é por organização, então uma escrita direta pelo Data API passaria. Sem JWT (`auth.uid()` nulo) a trava libera, para service_role e rotinas internas. `REVOKE` de `anon`/`PUBLIC` + `GRANT` só para `authenticated` no `ajustar_comissao_os`.
+
+**Tela.** `CommissionOverrideDialog` (valor + motivo, com aviso quando o valor passa do saldo a dividir e botão "Remover ajuste") aberto pelo botão "Ajustar comissão" no detalhe da OS, visível só para admin. `CommissionBreakdown` ganhou o selo `Ajuste manual`, as linhas `Comissão pela regra` / `Ajuste manual (admin) ±` / `Sua comissão ajustada`, o motivo e o rótulo `Loja (absorve o ajuste)`; a taxa sem nota some nesse caso. O cálculo da regra é passado sempre (`calculada`), inclusive para o técnico no `OSSummaryDialog`, que é onde ele vê o motivo do ajuste.
+
+**Verificação.** Teste no banco (com o trigger de auditoria desligado e a OS restaurada em seguida): OS-037 com 200 de serviço, sem nota — sem ajuste `comissao 96,50 / loja 100,00 / taxa 3,50`; com `commission_override = 300` → `comissao 300,00 / loja −100,00 / taxa 0 / ajuste_manual 203,50`, gravado igual na OS; removendo o ajuste, valores idênticos aos originais (total, loja, taxa, base). Depois do teste: triggers todos ativos e **0 OS divergentes** da regra.
+
+**Pendente:** `npm test` / checagem de tipos (sem runner) e a conferência na tela (abrir uma OS, ajustar, ver o rateio e o extrato do técnico).
