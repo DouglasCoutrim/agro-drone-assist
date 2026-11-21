@@ -1,13 +1,14 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { validateChargeReferences } from '../_shared/payment-order-scope.ts';
+import { ALLOWED_ORIGIN } from '../_shared/cors.ts';
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 const corsHeadersRestricted = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
