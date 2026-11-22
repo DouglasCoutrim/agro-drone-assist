@@ -84,6 +84,21 @@ automaticamente ao salvar.
   `Access-Control-Allow-Origin: '*'`. O helper ecoa apenas a **primeira** origem de
   `ALLOWED_ORIGIN`, então origem que não esteja nessa lista não é atendida.
 
+## Menu de navegação
+
+- Fonte única: `src/components/layout/navConfig.ts` (`navSections`). `Sidebar.tsx`,
+  `BottomNav.tsx` e `NavModules.tsx` apenas renderizam o que vem de lá, e a tela de
+  permissões (`PermissionTree.tsx`) monta a árvore de checkboxes a partir do mesmo
+  arquivo.
+- As oito áreas são: Início, Atendimento, Cadastros, Estoque, Vendas e Notas,
+  Financeiro, Configurações e Ajuda.
+- **Tirar um item do menu não remove a rota.** As rotas continuam todas em `src/App.tsx`.
+  Consequências de tirar um item: ele deixa de ser destacado no menu, sai da árvore de
+  permissões da Equipe (bloqueios antigos daquele href ficam inertes no banco) e
+  `pageTitleFor` passa a resolver o título pela rota base.
+- Ao tirar um item, entregue um caminho alternativo se a tela continuar necessária (foi
+  o caso de "Meu Financeiro", que virou botão no painel do técnico).
+
 ## Histórico de migrations
 
 Existem duas pastas de migrations e elas **não** são equivalentes:

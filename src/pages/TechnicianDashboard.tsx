@@ -3,7 +3,9 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Coins, CheckCircle2, ListChecks, Clock, AlertTriangle, TrendingUp } from "lucide-react";
+import { Loader2, Coins, CheckCircle2, ListChecks, Clock, AlertTriangle, TrendingUp, Calculator } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency, todayDateInput } from "@/lib/formatters";
@@ -84,7 +86,7 @@ function KpiCard({ label, value, sub, icon: Icon, color }: any) {
 }
 
 export default function TechnicianDashboard() {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
   const [data, setData] = useState<DashboardPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -144,6 +146,16 @@ export default function TechnicianDashboard() {
             <h1 className="font-display text-2xl font-bold">Meu Painel</h1>
             <p className="text-sm text-muted-foreground">Acompanhe suas ordens de serviço e comissões</p>
           </div>
+          {/* O item "Meu Financeiro" saiu do menu lateral; o técnico chega ao
+              financeiro por aqui. Mesma regra do menu: só o perfil tecnico. */}
+          {roles.includes("tecnico") && (
+            <Button asChild variant="outline" className="gap-2">
+              <Link to="/technician/financeiro">
+                <Calculator className="h-4 w-4" />
+                Meu financeiro
+              </Link>
+            </Button>
+          )}
         </div>
 
         {loading || !data ? (

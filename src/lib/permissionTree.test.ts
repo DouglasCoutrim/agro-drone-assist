@@ -4,7 +4,7 @@ import { canAccessHref, sectionsForRoles } from "@/components/layout/navConfig";
 
 describe("permissões em árvore", () => {
   it("módulo marcado com um subitem desmarcado bloqueia só esse subitem", () => {
-    const estoque = ["/estoque", "/estoque/importar-xml", "/compras", "/demonstracoes"];
+    const estoque = ["/estoque", "/meu-estoque", "/estoque/importar-xml", "/compras", "/demonstracoes"];
     let blocked = toggleHrefs([], estoque, true);
     blocked = toggleHrefs(blocked, ["/compras"], false);
     expect(blocked).toEqual(["/compras"]);
@@ -13,7 +13,7 @@ describe("permissões em árvore", () => {
     expect(items).not.toContain("/compras");
   });
   it("desmarcar o módulo bloqueia todos os itens e esconde o módulo", () => {
-    const blocked = toggleHrefs([], ["/estoque", "/estoque/importar-xml", "/compras", "/demonstracoes"], false);
+    const blocked = toggleHrefs([], ["/estoque", "/meu-estoque", "/estoque/importar-xml", "/compras", "/demonstracoes"], false);
     expect(sectionsForRoles(["tecnico"], blocked).some((s) => s.title === "Estoque")).toBe(false);
   });
   it("administrador sempre tem acesso", () => {
@@ -24,5 +24,21 @@ describe("permissões em árvore", () => {
       expect(canAccessHref(href, ["tecnico"], toggleHrefs([href], [href], true))).toBe(true);
       expect(canAccessHref(href, ["tecnico"], toggleHrefs([], [href], false))).toBe(false);
     }
+  });
+  it("tecnico não vê itens de administrador e consulta vê só os itens de todos", () => {
+    const tecnico = sectionsForRoles(["tecnico"]).flatMap((s) => s.items.map((i) => i.href));
+    expect(tecnico).not.toContain("/patrimonio");
+    expect(tecnico).not.toContain("/equipe");
+    expect(tecnico).not.toContain("/empresa");
+    expect(tecnico).toContain("/meu-estoque");
+    expect(tecnico).toContain("/technician/dashboard");
+
+    const consulta = sectionsForRoles(["consulta"]).flatMap((s) => s.items.map((i) => i.href));
+    expect(consulta).toContain("/dashboard");
+    expect(consulta).toContain("/ordens-servico");
+    expect(consulta).toContain("/estoque");
+    expect(consulta).not.toContain("/pdv");
+    expect(consulta).not.toContain("/compras");
+    expect(consulta).not.toContain("/meu-estoque");
   });
 });
