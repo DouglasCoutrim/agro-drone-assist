@@ -322,6 +322,12 @@ mais lida por nenhuma função.
 Verificação: `os_anexos` tinha **0 linhas** antes da mudança, então não há dado antigo para
 converter (o app nunca conseguiu anexar) e o formato de `url` pode mudar sem migração.
 
+As fotos passaram a sair no PDF da OS (impressão e envio por WhatsApp): `src/lib/os-anexos.ts`
+assina a leitura, baixa cada imagem e a converte em data URL, e `generateOSPDF` recebe a lista
+opcional `anexos` e monta a seção "Fotos Anexadas" em tabela de 2 colunas (o html2canvas não
+posiciona CSS grid de forma confiável), com a foto contida na célula e a legenda embaixo. Imagem
+que falhar é ignorada — o PDF sai sem ela em vez de não sair.
+
 Limites conhecidos (atualizados em 2026-11-22):
 
 - **Resolvido em 2026-11-22:** a policy de SELECT do bucket exigia `is_admin_or_tecnico`, então o

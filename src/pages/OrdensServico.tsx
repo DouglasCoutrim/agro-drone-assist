@@ -31,6 +31,7 @@ import { dateOnlyToIso, formatCurrency, formatDate, getErrorMessage, todayDateIn
 import { whatsappTemplates, openWhatsApp, WhatsAppOS } from "@/lib/whatsapp-templates";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { generateOSPDF } from "@/components/ordens-servico/OSPDFGenerator";
+import { carregarAnexosParaPdf } from "@/lib/os-anexos";
 import { imprimirEtiquetaOS } from "@/components/ordens-servico/EtiquetaOS58";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useOrgSegments } from "@/hooks/useOrgSegments";
@@ -1023,15 +1024,16 @@ export default function OrdensServico() {
       return;
     }
 
-    const t = toast.loading("Carregando itens da OS para o PDF...");
+    const t = toast.loading("Carregando itens e fotos da OS para o PDF...");
     try {
       const itemsForPdf = await fetchOSItems(viewingOS.id, viewingOS.organization_id);
       setViewOsItems(itemsForPdf);
       const empresaForPdf = { ...empresa, nome_empresa: empresa.nome_empresa || organization?.name || "Nome da Empresa" };
-      console.log("Dados da Empresa para PDF:", empresaForPdf);
       // Look up técnico name from tecnicos array
       const técnico = tecnicos.find(t => t.id === viewingOS.tecnico_id);
-      const html = generateOSPDF(viewingOS, itemsForPdf, empresaForPdf, técnico?.nome);
+      const anexosForPdf = await carregarAnexosParaPdf(viewingOS.id, viewingOS.organization_id)
+        .catch((e) => { console.warn("Fotos não entraram no PDF:", e); return []; });
+      const html = generateOSPDF(viewingOS, itemsForPdf, empresaForPdf, técnico?.nome, undefined, anexosForPdf);
       printWindow.document.write(html);
       printWindow.document.close();
     } finally {
@@ -1097,10 +1099,11 @@ export default function OrdensServico() {
       if (viewingOS?.id === os.id) setViewOsItems(itemsForPdf);
       const osComCliente = { ...os, clientes: os.clientes || { nome: cliente.nome, telefone: cliente.telefone } };
       const empresaForPdf = { ...empresa, nome_empresa: empresa.nome_empresa || organization?.name || "Nome da Empresa" };
-      console.log("Dados da Empresa para PDF (share):", empresaForPdf);
       // Look up técnico name from tecnicos array
       const técnico = tecnicos.find(t => t.id === os.tecnico_id);
-      const html = generateOSPDF(osComCliente, itemsForPdf, empresaForPdf, técnico?.nome);
+      const anexosForPdf = await carregarAnexosParaPdf(os.id, os.organization_id)
+        .catch((e) => { console.warn("Fotos não entraram no PDF:", e); return []; });
+      const html = generateOSPDF(osComCliente, itemsForPdf, empresaForPdf, técnico?.nome, undefined, anexosForPdf);
       const { htmlToPdfBlob, sharePdfOnWhatsApp } = await import("@/lib/os-pdf-share");
       const filename = `OS_${formatOSNumber(os.numero)}.pdf`;
       const blob = await htmlToPdfBlob(html);

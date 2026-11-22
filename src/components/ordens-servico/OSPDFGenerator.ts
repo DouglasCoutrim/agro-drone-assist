@@ -3,6 +3,7 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import { getStatusLabel } from "@/components/os/StatusPipeline";
 import { getLegalTermsHTML } from "@/components/os/LegalTermsFooter";
 import { EmpresaConfig } from "@/hooks/useEmpresaConfig";
+import type { AnexoParaPdf } from "@/lib/os-anexos";
 
 /** Número da OS sem o prefixo "OS-" redundante (ex.: "OS-00036" → "00036"). */
 const formatOSNumber = (numero?: string | number | null) => String(numero ?? "").replace(/^OS-?\s*/i, "");
@@ -29,7 +30,8 @@ export const generateOSPDF = (
   itemsForPdf: any[],
   empresa: EmpresaConfig,
   tecnicoNome?: string,
-  checklistRevisaoItems?: Array<{ label: string; marcado: boolean; obrigatorio: boolean }>
+  checklistRevisaoItems?: Array<{ label: string; marcado: boolean; obrigatorio: boolean }>,
+  anexos?: AnexoParaPdf[],
 ) => {
   // Encode every dynamic text/attribute at the HTML boundary, not the stored data.
   const escapeHTML = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, c =>
@@ -117,6 +119,37 @@ export const generateOSPDF = (
         <tr><td style="text-align:right;padding:6px 8px;font-weight:700;font-size:15px">TOTAL:</td><td style="text-align:right;padding:6px 0;font-weight:700;font-size:15px;color:#16a34a;width:120px">${fmtCur(totalFinal)}</td></tr>
       </table>
     </div>`;
+
+  // Fotos anexadas: tabela de 2 colunas porque o html2canvas não posiciona CSS
+  // grid de forma confiável (tabela ele renderiza bem). Cada foto fica contida
+  // na célula respeitando a proporção original — sem corte e sem estourar a
+  // página. Tamanho médio: legível sem ocupar uma folha por foto.
+  const renderFotos = (fotos: AnexoParaPdf[]) => {
+    const celula = (foto?: AnexoParaPdf) => {
+      if (!foto) return `<td style="width:50%;padding:4px"></td>`;
+      return `<td style="width:50%;padding:4px;vertical-align:top">
+        <div style="border:1px solid #e5e7eb;border-radius:4px;padding:4px;background:#fafafa">
+          <img src="${escapeHTML(foto.imagem)}" alt="Foto da OS" style="display:block;margin:0 auto;max-width:100%;max-height:62mm;width:auto;height:auto" />
+          ${foto.descricao ? `<div style="font-size:9px;color:#555;margin-top:3px">${escapeHTML(foto.descricao)}</div>` : ""}
+        </div>
+      </td>`;
+    };
+    const linhas: string[] = [];
+    for (let i = 0; i < fotos.length; i += 2) {
+      linhas.push(`<tr>${celula(fotos[i])}${celula(fotos[i + 1])}</tr>`);
+    }
+    return `<table style="width:100%;border-collapse:collapse;table-layout:fixed">
+      <tbody>${linhas.join("")}</tbody>
+    </table>`;
+  };
+
+  const fotosHtml = anexos && anexos.length > 0
+    ? `
+  <div class="section">
+    <div class="section-title">Fotos Anexadas</div>
+    ${renderFotos(anexos)}
+  </div>`
+    : "";
 
   // Get technician name, first from param if available, then try os.tecnico, then fallback
   const finalTecnicoNome = tecnicoNome || os.tecnico?.nome || "Não informado";
@@ -230,6 +263,8 @@ ${mobilityHTML}
       ${viewingOS.data_entrega ? `<div class="field"><div class="field-label">Entrega</div><div class="field-value">${fmtDt(viewingOS.data_entrega)}</div></div>` : ""}
     </div>
   </div>
+
+  ${fotosHtml}
 
   <div class="footer-sigs">
     <div class="signature">
