@@ -293,3 +293,39 @@ não foi reescrita, conforme a regra do projeto. Ressalvas: o journal/snapshot d
 acompanham este arquivo (já estavam inconsistentes desde a 0024) e o sistema externo que gera
 `supabase/migrations/` não o enxerga — a decisão de qual pasta é a fonte de verdade continua na
 Fase 5.
+
+---
+
+## Bug — anexo de imagem na OS (resolvido em 2026-11-21)
+
+Sintoma: ao enviar a foto na OS aparecia "Erro ao anexar imagem: Resposta inválida do servidor PHP:
+`<!doctype html> … <title>LivreOS - Gestão completa para seu negócio</title>`".
+
+Causa: a Edge Function `ftp-upload` enviava a imagem para
+`https://livreos.net/upload-os-image.php` (valor de `ftp_config.http_upload_url`). O domínio passou
+a servir o próprio SPA, então qualquer caminho responde **HTTP 200 com o `index.html`** — o
+`JSON.parse` da resposta estourava no `catch` que monta essa mensagem. O fallback FTP estava na mesma
+situação: `ftp_config.public_url` era `https://livreos.net/uploads`, também servido pelo SPA, então
+as miniaturas não carregariam nem se o upload passasse.
+
+Correção: o destino passou a ser o bucket **privado** `os-anexos` do Supabase Storage, que já existia
+(criado em 2026-11-09) e já tinha policies escopadas por organização. A Edge Function sobe o arquivo
+em `{organization_id}/{ordem_servico_id}/{timestamp}_nome.jpg` com o **token do próprio usuário**
+(a policy de INSERT valida organização e papel) e grava o **caminho** em `os_anexos.url`; a tela
+assina a leitura na hora (`createSignedUrls`, 7 dias) e usa a URL assinada no `<img>` — URL que
+expira não vira dado no banco. Excluir o anexo também remove o objeto do bucket. `ftp_config` não é
+mais lida por nenhuma função.
+
+Verificação: `os_anexos` tinha **0 linhas** antes da mudança, então não há dado antigo para
+converter (o app nunca conseguiu anexar) e o formato de `url` pode mudar sem migração.
+
+Limites conhecidos (não corrigidos, precisam de decisão):
+
+- A policy de SELECT do bucket exige `is_admin_or_tecnico`, então usuário com papel `consulta` vê o
+  registro em `os_anexos` mas não consegue assinar a URL — a miniatura não carrega para ele.
+- `supabase/functions/ftp-upload/index.ts` ainda devolve `Access-Control-Allow-Origin: '*'` de um
+  objeto local (não usa o helper `_shared/cors.ts`); não foi trocado junto para não somar um segundo
+  modo de falha ao mesmo upload.
+- A função continua com o nome `ftp-upload`, que já não descreve o que faz.
+- `hosting/upload-os-image.php` tem o `$SECRET` **fixo no repositório** e `ftp_config` guarda usuário
+  e senha do FTP. Com o caminho PHP/FTP retirado, o que sobra são credenciais de um caminho morto.
