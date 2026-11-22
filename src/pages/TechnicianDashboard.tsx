@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { formatCurrency, todayDateInput } from "@/lib/formatters";
-import { parseISO, isPast } from "date-fns";
+import { osEmAtraso } from "@/lib/os-prazo";
 import { TechnicianAnalytics } from "@/components/os/TechnicianAnalytics";
 import { OSSummaryDialog } from "@/components/os/OSSummaryDialog";
 import { getPeriodRange } from "@/hooks/useTechnicianFinancials";
@@ -24,7 +24,9 @@ interface OSKanban {
   prioridade: string;
   status: string;
   tempo_em_bancada_min: number;
+  data_entrada: string | null;
   data_previsao: string | null;
+  prazo_diagnostico_horas: number | null;
   commission_total: number;
 }
 
@@ -125,13 +127,9 @@ export default function TechnicianDashboard() {
     return list;
   }, [data]);
 
-  const overdueOs = useMemo(() => {
-    return allOs.filter(os => {
-      if (FINAL_STATUSES.has(os.status)) return false;
-      if (!os.data_previsao) return false;
-      return isPast(parseISO(os.data_previsao));
-    });
-  }, [allOs]);
+  // Atraso segue a fase da OS: prazo de diagnóstico, pausa na aprovação do cliente
+  // e previsão de entrega depois do aceite (ver src/lib/os-prazo.ts).
+  const overdueOs = useMemo(() => allOs.filter((os) => osEmAtraso(os)), [allOs]);
 
   const pendingCommissionOs = useMemo(() => {
     return allOs.filter(os => !FINAL_STATUSES.has(os.status));

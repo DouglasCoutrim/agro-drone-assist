@@ -88,6 +88,20 @@ automaticamente ao salvar.
   CORS não autentica. `ALLOWED_ORIGIN` continua exportado (valor `*`) porque 8 funções
   montam o próprio `corsHeaders` com ele.
 
+## Prazo e atraso da OS
+
+- Fonte única da regra: `src/lib/os-prazo.ts` (`calcularPrazoOS` / `osEmAtraso`).
+  Nunca comparar `data_previsao` direto na tela — uma OS recém-recebida aparecia
+  como atrasada antes mesmo do diagnóstico.
+- Fases: **diagnóstico** (`recebido`, `aberta`, `aguardando_diagnostico`) vence em
+  `data_entrada + prazo_diagnostico_horas` (coluna nova em `ordens_servico`, padrão
+  **48h**, ajustável por OS pelo técnico); **aprovação** (`aguardando_aprovacao`) não
+  corre prazo; **entrega** (demais status abertos) usa `data_previsao`; **encerradas**
+  nunca atrasam.
+- O prazo por OS é editável no formulário da OS e no diálogo de detalhes; o painel do
+  técnico (`get_technician_dashboard`) devolve `prazo_diagnostico_horas` para o cálculo
+  no cliente.
+
 ## Menu de navegação
 
 - Fonte única: `src/components/layout/navConfig.ts` (`navSections`). `Sidebar.tsx`,

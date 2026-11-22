@@ -309,3 +309,15 @@ Pedido: "poder alterar o valor da cobrança de comissão" — o admin define à 
 **Verificação.** Teste no banco (com o trigger de auditoria desligado e a OS restaurada em seguida): OS-037 com 200 de serviço, sem nota — sem ajuste `comissao 96,50 / loja 100,00 / taxa 3,50`; com `commission_override = 300` → `comissao 300,00 / loja −100,00 / taxa 0 / ajuste_manual 203,50`, gravado igual na OS; removendo o ajuste, valores idênticos aos originais (total, loja, taxa, base). Depois do teste: triggers todos ativos e **0 OS divergentes** da regra.
 
 **Pendente:** `npm test` / checagem de tipos (sem runner) e a conferência na tela (abrir uma OS, ajustar, ver o rateio e o extrato do técnico).
+
+## 13. Sessão 2026-11-22 (2) — Regra de atraso da OS por prazo de diagnóstico
+
+Pedido: a OS começava a aparecer em atraso só porque a `data_previsao` já tinha passado, mesmo numa OS recém-recebida que ainda nem foi diagnosticada. O usuário quer: prazo de diagnóstico padrão de **48h** por OS (o técnico pode mudar por OS), atraso só quando o status não avança dentro desse prazo, **pausa** enquanto aguarda aprovação do cliente e, depois do aceite, prazo pela **previsão de entrega**.
+
+**Banco.** Nova coluna `ordens_servico.prazo_diagnostico_horas integer NOT NULL DEFAULT 48` (com `CHECK > 0`). O `get_technician_dashboard` passou a devolver `prazo_diagnostico_horas` no kanban do técnico.
+
+**Regra única.** `src/lib/os-prazo.ts` (`calcularPrazoOS` / `osEmAtraso`): diagnóstico (`recebido`, `aberta`, `aguardando_diagnostico`) vence em `data_entrada + prazo`; `aguardando_aprovacao` não corre prazo; demais status abertos usam `data_previsao`; encerradas nunca atrasam. Testes em `src/lib/os-prazo.test.ts`.
+
+**Tela.** Campo "Prazo de diagnóstico (horas)" no formulário da OS (padrão 48h) e bloco de prazo no detalhe da OS (fase, vencimento, quanto falta/atrasou, com ajuste rápido para quem pode editar). Badge "Atrasada" na lista de OS e o painel do dashboard passaram a usar a mesma regra; o painel do técnico deixou de comparar `data_previsao` direto.
+
+**Observação:** `aguardando_peca` continua contando pela previsão de entrega (não está pausado como `aguardando_aprovacao`).

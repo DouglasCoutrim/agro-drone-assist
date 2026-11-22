@@ -21,6 +21,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import { formatCurrency, parseDate, todayDateInput } from "@/lib/formatters";
 import { fetchOsComValores } from "@/lib/os-billing";
+import { osEmAtraso } from "@/lib/os-prazo";
 import { cn } from "@/lib/utils";
 
 type Periodo = "hoje" | "7" | "30" | "365";
@@ -118,7 +119,6 @@ const Index = () => {
     setLoading(true);
     const inicio = inicioPeriodo(periodo);
     const inicioIso = inicio.toISOString();
-    const hoje = new Date().toISOString();
     const dias = periodo === "hoje" ? 1 : Number(periodo);
     const inicioAnt = new Date(inicio); inicioAnt.setDate(inicioAnt.getDate() - dias);
     const inicioAntIso = inicioAnt.toISOString();
@@ -130,7 +130,9 @@ const Index = () => {
         supabase.from("clientes").select("id, created_at").eq("organization_id", orgId).gte("created_at", inicioIso),
         supabase.from("ordens_servico").select("id, numero, status, tecnico_id, created_at, data_conclusao, tipo_equipamento, modelo_equipamento, clientes(nome)").eq("organization_id", orgId).gte("created_at", inicioIso).order("created_at", { ascending: false }),
         supabase.from("itens_estoque").select("quantidade, estoque_minimo").eq("organization_id", orgId),
-        supabase.from("ordens_servico").select("id, numero, clientes(nome)").eq("organization_id", orgId).not("data_previsao", "is", null).lt("data_previsao", hoje).not("status", "in", `(${ENCERRADAS.join(",")})`).order("data_previsao").limit(5),
+        // Atraso agora depende da fase da OS (prazo de diagnóstico, aprovação do cliente,
+        // previsão de entrega), então o filtro é feito em JS por `osEmAtraso`.
+        supabase.from("ordens_servico").select("id, numero, status, data_entrada, data_previsao, prazo_diagnostico_horas, clientes(nome)").eq("organization_id", orgId).not("status", "in", `(${ENCERRADAS.join(",")})`).order("data_entrada").limit(200),
         supabase.from("profiles").select("id, nome").eq("organization_id", orgId),
         fetchOsComValores(orgId),
         supabase.from("financeiro").select("valor, tipo").eq("organization_id", orgId).gte("data_transacao", todayDateInput(inicioAnt)).lt("data_transacao", todayDateInput(inicio)),
@@ -219,7 +221,10 @@ const Index = () => {
         statusOS: Array.from(porStatus, ([name, value]) => ({ name, value })),
         osRecentes: os.slice(0, 5).map(o => ({ ...o, tecnico_nome: o.tecnico_id ? perfis.get(o.tecnico_id) : null, valor: osValores.find(x => x.id === o.id)?.valor ?? null })),
         vendasRecentes: vendas.slice(0, 5),
-        osAtrasadas: v(6)?.data || [],
+        osAtrasadas: ((v(6)?.data || []) as any[])
+          .filter((o) => osEmAtraso(o))
+          .sort((a, b) => String(a.data_entrada).localeCompare(String(b.data_entrada)))
+          .slice(0, 5),
       });
     } catch (e) {
       console.error("Dashboard error:", e);

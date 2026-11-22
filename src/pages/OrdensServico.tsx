@@ -45,6 +45,7 @@ import { CommissionBreakdown, rateioDaOS } from "@/components/os/CommissionBreak
 import { CommissionOverrideDialog } from "@/components/os/CommissionOverrideDialog";
 import { OSAnexosDialog } from "@/components/os/OSAnexosDialog";
 import { calcularRateio } from "@/lib/commission";
+import { calcularPrazoOS, rotuloPrazo } from "@/lib/os-prazo";
 import { useNfseAliquota } from "@/hooks/useNfseAliquota";
 import { PaymentConfirmDialog, PaymentData } from "@/components/os/PaymentConfirmDialog";
 import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
@@ -161,6 +162,8 @@ export default function OrdensServico() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
     const [viewingOS, setViewingOS] = useState<OrdemServico | null>(null);
     const [anexosDialogOpen, setAnexosDialogOpen] = useState(false);
+  const [prazoHoras, setPrazoHoras] = useState(48);
+  const [salvandoPrazo, setSalvandoPrazo] = useState(false);
   const [commissionDialogOpen, setCommissionDialogOpen] = useState(false);
   const [editingOS, setEditingOS] = useState<OrdemServico | null>(null);
   const [formLoading, setFormLoading] = useState(false);
@@ -214,6 +217,7 @@ export default function OrdensServico() {
     diagnostico: "",
     prioridade: "media",
     data_previsao: "",
+    prazo_diagnostico_horas: 48,
     desconto: 0,
     valor_orcamento: 0,
     observacoes: "",
@@ -499,6 +503,7 @@ export default function OrdensServico() {
         observacoes: observacoesWithMobility || null,
         valor_orcamento: valorOrcamentoFinal,
         data_previsao: formData.data_previsao ? dateOnlyToIso(formData.data_previsao) : null,
+        prazo_diagnostico_horas: formData.prazo_diagnostico_horas > 0 ? formData.prazo_diagnostico_horas : 48,
         diagnostico: formData.diagnostico || null,
         // Campos UUID nunca podem ir como string vazia (erro 22P02 no Postgres).
         // Sem técnico escolhido, só assume o usuário logado se ele realmente executa serviço
@@ -663,6 +668,7 @@ export default function OrdensServico() {
       diagnostico: os.diagnostico || "",
       prioridade: os.prioridade,
       data_previsao: os.data_previsao ? os.data_previsao.split("T")[0] : "",
+      prazo_diagnostico_horas: (os as any).prazo_diagnostico_horas ?? 48,
       desconto: (os as any).desconto || 0,
       valor_orcamento: os.valor_orcamento || 0,
       observacoes: cleanObs,
@@ -698,6 +704,7 @@ export default function OrdensServico() {
 
   const handleView = async (os: OrdemServico) => {
     setViewingOS(os);
+    setPrazoHoras((os as any).prazo_diagnostico_horas ?? 48);
     setViewOsItems([]);
     setViewOsItemsLoading(true);
     setViewConfigChecklist([]);
@@ -728,6 +735,30 @@ export default function OrdensServico() {
     }
   };
 
+  /** O técnico ajusta o prazo de diagnóstico desta OS, sem sair do diálogo. */
+  const salvarPrazoDiagnostico = async () => {
+    if (!viewingOS) return;
+    if (!canEdit) { toast.error(readOnlyOsMessage); return; }
+    const horas = Math.max(1, Math.round(prazoHoras));
+    setSalvandoPrazo(true);
+    try {
+      const { error } = await supabase
+        .from("ordens_servico")
+        .update({ prazo_diagnostico_horas: horas } as any)
+        .eq("id", viewingOS.id);
+      if (error) throw error;
+      const atualizada = { ...viewingOS, prazo_diagnostico_horas: horas } as OrdemServico;
+      setViewingOS(atualizada);
+      setOrdens(prev => prev.map(o => (o.id === atualizada.id ? ({ ...o, prazo_diagnostico_horas: horas } as OrdemServico) : o)));
+      setPrazoHoras(horas);
+      toast.success(`Prazo de diagnóstico atualizado para ${horas}h.`);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setSalvandoPrazo(false);
+    }
+  };
+
   /** Relê a OS aberta (o rateio já vem com o ajuste) e atualiza a lista. */
   const recarregarOSVisualizada = async (osId: string) => {
     const { data, error } = await supabase
@@ -739,7 +770,10 @@ export default function OrdensServico() {
       toast.error(getErrorMessage(error));
       return;
     }
-    if (data) setViewingOS(data as OrdemServico);
+    if (data) {
+      setViewingOS(data as OrdemServico);
+      setPrazoHoras((data as any).prazo_diagnostico_horas ?? 48);
+    }
     fetchData();
   };
 
@@ -1178,7 +1212,7 @@ export default function OrdensServico() {
   const resetMobilityData = () => setMobilityData({ voltagem: "", capacidade_bateria: "", odometro: "", chave_ignicao: false, carregador_entregue: false, check_display: false, check_acelerador: false, check_freios: false, check_pneus: false, check_controladora: false, check_iluminacao: false, check_carenagem: false });
 
   const resetForm = () => {
-    setFormData({ cliente_id: "", tipo_equipamento: "bateria", marca: "", modelo_equipamento: "", numero_serie: "", descricao_problema: "", diagnostico: "", prioridade: "media", data_previsao: "", desconto: 0, valor_orcamento: 0, observacoes: "", tecnico_id: "", checklist_bateria: false, checklist_carregador: false, checklist_controle: false, checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "", ciclos_carga_entrada: 0, ciclos_carga_saida: 0, tipo_os: "normal", checklist_equipamento_tipo_id: "", nfe_emitida: false });
+    setFormData({ cliente_id: "", tipo_equipamento: "bateria", marca: "", modelo_equipamento: "", numero_serie: "", descricao_problema: "", diagnostico: "", prioridade: "media", data_previsao: "", prazo_diagnostico_horas: 48, desconto: 0, valor_orcamento: 0, observacoes: "", tecnico_id: "", checklist_bateria: false, checklist_carregador: false, checklist_controle: false, checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "", ciclos_carga_entrada: 0, ciclos_carga_saida: 0, tipo_os: "normal", checklist_equipamento_tipo_id: "", nfe_emitida: false });
     setUiCategory("bateria");
     resetMobilityData();
     setConfigCheckbox({});
@@ -1336,7 +1370,7 @@ export default function OrdensServico() {
                   return <span className="font-bold text-primary text-sm">{formatOSNumber(os.numero)}</span>;
                 case "status":
                                   return (
-                                    <div className="flex items-center gap-1.5">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
                                       <Badge variant={statusConfig.variant} className="text-[10px] whitespace-nowrap">
                                         {statusConfig.label}
                                       </Badge>
@@ -1345,6 +1379,15 @@ export default function OrdensServico() {
                                           Pago
                                         </span>
                                       )}
+                                      {(() => {
+                                        const prazo = calcularPrazoOS(os as any);
+                                        if (!prazo.emAtraso) return null;
+                                        return (
+                                          <Badge variant="destructive" className="text-[9px] whitespace-nowrap" title={rotuloPrazo(prazo)}>
+                                            Atrasada
+                                          </Badge>
+                                        );
+                                      })()}
                                     </div>
                                   );
                 case "cliente":
@@ -1667,6 +1710,19 @@ export default function OrdensServico() {
                       </div>
                     </div>
                     <div className="space-y-1.5"><Label className="text-xs">Previsão de Entrega</Label><Input type="date" value={formData.data_previsao} onChange={(e) => setFormData({ ...formData, data_previsao: e.target.value })} className="h-9" /></div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Prazo de diagnóstico (horas)</Label>
+                    <div className="flex items-center gap-2">
+                      <NumberInput
+                        value={formData.prazo_diagnostico_horas}
+                        onChange={(v) => setFormData({ ...formData, prazo_diagnostico_horas: v })}
+                        min={1}
+                        className="h-9 w-28"
+                      />
+                      <span className="text-xs text-muted-foreground">padrão 48h</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">Tempo para concluir o diagnóstico. A OS só entra em atraso se o status não mudar dentro desse prazo.</p>
                   </div>
                   <Separator />
                   {legacyBudget && <p className="text-xs text-muted-foreground">Esta OS tem um orçamento salvo de {formatCurrency(formData.valor_orcamento)}, mas não possui peças ou serviços detalhados. Cadastre os lançamentos reais para substituir esse valor.</p>}
@@ -1993,6 +2049,40 @@ export default function OrdensServico() {
                         <div><p className="text-[10px] text-muted-foreground">Conclusão</p><p className="text-sm">{formatDate(viewingOS.data_conclusao)}</p></div>
                         <div><p className="text-[10px] text-muted-foreground">Entrega</p><p className="text-sm">{formatDate(viewingOS.data_entrega)}</p></div>
                       </div>
+                      {(() => {
+                        const prazo = calcularPrazoOS(viewingOS as any);
+                        return (
+                          <div className="rounded-md border border-border/60 bg-muted/30 p-3 space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs font-medium flex items-center gap-1.5">
+                                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                                {prazo.fase === "diagnostico"
+                                  ? "Prazo de diagnóstico"
+                                  : prazo.fase === "entrega"
+                                    ? "Prazo de entrega"
+                                    : prazo.fase === "aprovacao"
+                                      ? "Aguardando aprovação do cliente"
+                                      : "OS encerrada"}
+                              </p>
+                              {prazo.emAtraso ? (
+                                <Badge variant="destructive" className="text-[10px]">Atrasada</Badge>
+                              ) : prazo.venceEm ? (
+                                <Badge variant="outline" className="text-[10px]">No prazo</Badge>
+                              ) : null}
+                            </div>
+                            <p className="text-xs text-muted-foreground">{rotuloPrazo(prazo)}</p>
+                            {canEdit && (
+                              <div className="flex items-center gap-2 pt-1">
+                                <Label className="text-[11px] text-muted-foreground">Prazo de diagnóstico (h)</Label>
+                                <NumberInput value={prazoHoras} onChange={setPrazoHoras} min={1} className="h-8 w-20 text-xs" />
+                                <Button size="sm" variant="outline" className="h-8" onClick={salvarPrazoDiagnostico} disabled={salvandoPrazo}>
+                                  {salvandoPrazo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Salvar"}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                       {cleanObs && <><Separator /><div><p className="text-[10px] text-muted-foreground">Observações</p><p className="text-sm">{cleanObs}</p></div></>}
                       <LegalTermsFooter />
                     </>
