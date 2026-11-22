@@ -1,7 +1,11 @@
 -- ============================================================================
 -- LivreOS - R1: fechar o acesso anonimo as funcoes de comissao
 --
--- STATUS: AGUARDANDO APROVACAO. Nada neste arquivo foi executado no banco.
+-- STATUS: APLICADO em 2026-11-22. O REVOKE do PASSO 2 foi executado, e a guarda
+-- de organizacao que aqui estava apenas como esboco foi implementada DENTRO das
+-- duas funcoes (mesma formula, apenas o bloco de checagem inserido depois do
+-- `if not found`). O SQL aplicado esta em
+-- drizzle/migrations/0028_guarda_organizacao_comissao.sql.
 --
 -- Evidencia (conferida no banco de producao):
 --   public.os_commission_calc(uuid)      -> SECURITY DEFINER, ACL:

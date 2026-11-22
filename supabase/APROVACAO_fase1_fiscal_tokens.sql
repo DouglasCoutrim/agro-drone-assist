@@ -1,7 +1,11 @@
 -- ============================================================================
 -- LivreOS - Fase 1: os tokens da Focus NFe nunca voltam ao navegador
 --
--- STATUS: AGUARDANDO APROVACAO. Nada neste arquivo foi executado no banco.
+-- STATUS: APLICADO em 2026-11-22 (view public.nfe_config_publica e funcao
+-- public.salvar_focus_token criadas; ACL conferida: so service_role executa a
+-- funcao e so SELECT em authenticated na view). O mesmo SQL esta em
+-- drizzle/migrations/0027_nfe_config_publica_e_token_no_vault.sql. Os passos
+-- futuros listados no fim deste arquivo continuam NAO executados.
 --
 -- O que este arquivo faz:
 --   1. Cria a view public.nfe_config_publica = nfe_config SEM as quatro colunas
