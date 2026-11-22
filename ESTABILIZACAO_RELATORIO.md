@@ -83,10 +83,13 @@ texto puro e da tabela de backup (SQL aprovado, depois de 7 dias sem uso do cami
   import trocada por `../_shared/cors.ts`; nada mais mudou em cada função.
   `grep` por `npm:@supabase/supabase-js@2/cors` no repositório retorna apenas documentação — as 21
   funções usam o helper.
-- Efeito colateral aceito: fora de `https://livreos.net` as funções deixam de responder ao navegador.
-  O helper devolve apenas a PRIMEIRA origem de `ALLOWED_ORIGIN`, então lista separada por vírgula não
-  faz eco da origem da requisição; para o preview local funcionar, a origem dele precisa ser a
-  primeira da lista.
+- **Corrigido em 2026-11-22:** o efeito colateral previsto aqui se confirmou — o helper devolvia só a
+  PRIMEIRA origem de `ALLOWED_ORIGIN`, então fora de `https://livreos.net` o navegador bloqueava o
+  preflight e o upload de anexo da OS morria com "Failed to fetch" (mensagem do `fetch`, sem resposta
+  do servidor). Como o cabeçalho é estático e o app roda em produção, no preview e em futuros
+  domínios próprios, `_shared/cors.ts` passou a devolver `Access-Control-Allow-Origin: '*'` e a
+  exportar `ALLOWED_ORIGIN = '*'` (usado por 8 funções que montam o próprio bloco). A fronteira de
+  segurança continua sendo o JWT verificado dentro de cada função — CORS não autentica.
 - Outras 5 funções já têm origem fixa, mas apontando para o projeto Supabase
   `iynljexyjhbkfxsurddn` (não para o site): `api`, `asaas-platform-webhook`,
   `asaas-tenant-webhook`, `check-overdue-tenants`, `mercadopago-webhook`. O `supabase/config.toml`
@@ -328,7 +331,9 @@ Limites conhecidos (atualizados em 2026-11-22):
   `os_anexos`). A escrita continua exigindo `admin`/`tecnico`.
 - **Resolvido em 2026-11-22:** `ftp-upload` devolvia `Access-Control-Allow-Origin: '*'` de um objeto
   local; passou a importar `corsHeaders` de `_shared/cors.ts` — as 22 funções usam o helper agora.
-  Efeito colateral: o upload deixa de responder a uma origem que não esteja em `ALLOWED_ORIGIN`.
+  O efeito colateral (origem fora de `ALLOWED_ORIGIN` não era atendida) quebrou o upload no preview
+  com "Failed to fetch"; o helper voltou a devolver `*` e o problema foi resolvido na origem (ver
+  Fase 2, acima).
 - A função continua com o nome `ftp-upload`, que já não descreve o que faz. Renomear exigiria publicar
   outra função e remover a antiga — não há como remover função daqui.
 - `hosting/upload-os-image.php` foi **removido do repositório** em 2026-11-22 (tinha `$SECRET` fixo

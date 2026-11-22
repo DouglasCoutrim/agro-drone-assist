@@ -80,9 +80,13 @@ automaticamente ao salvar.
   Function/cron (`service_role`) e `public.is_platform_admin(auth.uid())` é a exceção
   do admin da plataforma. Modelo: `os_commission_calc` / `os_commission_core`
   (guarda acrescentada em 2026-11-22).
-- Edge Function nova importa `corsHeaders` de `_shared/cors.ts`; nenhuma devolve
-  `Access-Control-Allow-Origin: '*'`. O helper ecoa apenas a **primeira** origem de
-  `ALLOWED_ORIGIN`, então origem que não esteja nessa lista não é atendida.
+- Edge Function nova importa `corsHeaders` de `_shared/cors.ts`, que devolve
+  `Access-Control-Allow-Origin: '*'`. Motivo: o cabeçalho é estático e o mesmo app roda
+  em produção (`https://livreos.net`), no preview do editor e em domínios próprios; com
+  uma origem só, o navegador bloqueia o preflight e o front mostra "Failed to fetch" sem
+  mensagem do servidor. A fronteira de segurança é o JWT verificado dentro da função —
+  CORS não autentica. `ALLOWED_ORIGIN` continua exportado (valor `*`) porque 8 funções
+  montam o próprio `corsHeaders` com ele.
 
 ## Menu de navegação
 

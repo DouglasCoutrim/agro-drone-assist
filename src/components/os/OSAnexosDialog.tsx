@@ -214,7 +214,14 @@ export function OSAnexosDialog({
       fetchAnexos();
       onAnexosChange?.();
     } catch (err: any) {
-      toast.error("Erro ao anexar imagem: " + err.message);
+      // TypeError aqui é falha de rede: o navegador não deixou a requisição sair
+      // (conexão ou CORS) e o servidor não chegou a responder. "Failed to fetch"
+      // sozinho não diz nada a quem está usando o app.
+      const mensagem =
+        err instanceof TypeError
+          ? "não foi possível falar com o servidor (conexão ou bloqueio de CORS). Tente novamente."
+          : err.message;
+      toast.error("Erro ao anexar imagem: " + mensagem);
     } finally {
       setUploading(false);
     }
