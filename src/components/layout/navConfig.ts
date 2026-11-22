@@ -101,15 +101,37 @@ export const navSections: NavSection[] = [
   },
 ];
 
+/**
+ * Páginas que continuam valendo para permissão mesmo sem item no menu.
+ *
+ * "Meu Financeiro" saiu do menu (o técnico chega pelo botão dentro do painel), mas o
+ * bloqueio por usuário precisa continuar existindo: a tela segue aparecendo na árvore de
+ * permissões da Equipe e continua sendo verificada pelo ProtectedRoute. Estes itens NÃO
+ * são renderizados no menu lateral nem na barra inferior.
+ */
+export const extraPermissionItems: NavItem[] = [
+  { title: "Meu Financeiro (técnico)", icon: Calculator, href: "/technician/financeiro", roles: ["tecnico"] },
+];
+
+/** Tudo que pode ser bloqueado: itens do menu mais os que ficaram fora dele. */
+export const permissionItems: NavItem[] = [
+  ...navSections.flatMap((s) => s.items),
+  ...extraPermissionItems,
+];
+
 /** Admins always pass; other users are blocked only for hrefs listed in `blocked`. */
 export function canAccessHref(href: string, roles: string[], blocked: string[]): boolean {
   if (roles.includes("admin")) return true;
   return !blocked.includes(href);
 }
 
-/** Finds the menu href matching the current URL (exact path+query first, then path). */
+/**
+ * Finds the permission href matching the current URL (exact path+query first, then path).
+ * Usa `permissionItems`, não `navSections`: uma tela que saiu do menu continua sendo
+ * verificada pelo ProtectedRoute.
+ */
 export function matchNavHref(pathname: string, search = ""): string | null {
-  const all = navSections.flatMap((s) => s.items.map((i) => i.href));
+  const all = permissionItems.map((i) => i.href);
   const full = pathname + search;
   return all.find((h) => h === full) ?? all.find((h) => h === pathname) ?? null;
 }

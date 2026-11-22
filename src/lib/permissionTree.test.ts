@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { toggleHrefs } from "./permissionTree";
-import { canAccessHref, sectionsForRoles } from "@/components/layout/navConfig";
+import { canAccessHref, matchNavHref, sectionsForRoles } from "@/components/layout/navConfig";
 
 describe("permissões em árvore", () => {
   it("módulo marcado com um subitem desmarcado bloqueia só esse subitem", () => {
@@ -40,5 +40,10 @@ describe("permissões em árvore", () => {
     expect(consulta).not.toContain("/pdv");
     expect(consulta).not.toContain("/compras");
     expect(consulta).not.toContain("/meu-estoque");
+  });
+  it("tela que saiu do menu continua fora do menu mas sujeita a bloqueio", () => {
+    expect(matchNavHref("/technician/financeiro")).toBe("/technician/financeiro");
+    expect(canAccessHref("/technician/financeiro", ["tecnico"], ["/technician/financeiro"])).toBe(false);
+    expect(sectionsForRoles(["tecnico"]).flatMap((s) => s.items.map((i) => i.href))).not.toContain("/technician/financeiro");
   });
 });

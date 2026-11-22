@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { formatCurrency, todayDateInput } from "@/lib/formatters";
 import { parseISO, isPast } from "date-fns";
 import { TechnicianAnalytics } from "@/components/os/TechnicianAnalytics";
@@ -87,6 +88,7 @@ function KpiCard({ label, value, sub, icon: Icon, color }: any) {
 
 export default function TechnicianDashboard() {
   const { user, roles } = useAuth();
+  const { blocked } = usePermissions();
   const [data, setData] = useState<DashboardPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -147,8 +149,9 @@ export default function TechnicianDashboard() {
             <p className="text-sm text-muted-foreground">Acompanhe suas ordens de serviço e comissões</p>
           </div>
           {/* O item "Meu Financeiro" saiu do menu lateral; o técnico chega ao
-              financeiro por aqui. Mesma regra do menu: só o perfil tecnico. */}
-          {roles.includes("tecnico") && (
+              financeiro por aqui. Mesmas regras de antes: só o perfil tecnico e
+              respeitando o bloqueio por usuário definido na tela Equipe. */}
+          {roles.includes("tecnico") && !blocked.includes("/technician/financeiro") && (
             <Button asChild variant="outline" className="gap-2">
               <Link to="/technician/financeiro">
                 <Calculator className="h-4 w-4" />
