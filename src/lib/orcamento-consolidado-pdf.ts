@@ -15,6 +15,8 @@ export interface ConsolidadoGrupo {
   defeito?: string;
   diagnostico?: string;
   itens: ConsolidadoItem[];
+  /** Desconto da própria OS sobre a soma dos itens (inclui valor_final negociado). */
+  desconto?: number;
 }
 
 export interface ConsolidadoPDFData {
@@ -36,6 +38,8 @@ export interface GroupedStoredItem extends ConsolidadoItem {
   os_equipamento: string;
   os_defeito?: string;
   os_diagnostico?: string;
+  /** Desconto da OS no momento do orçamento (para o PDF reaberto ficar igual). */
+  os_desconto?: number;
 }
 
 export const isGroupedOrcamento = (itens: unknown): boolean =>
@@ -46,14 +50,16 @@ export function groupsFromStoredItems(itens: GroupedStoredItem[]): ConsolidadoGr
   for (const i of itens) {
     const key = i.ordem_servico_id || i.os_numero;
     if (!map.has(key)) {
-      map.set(key, { os_numero: i.os_numero, equipamento: i.os_equipamento, defeito: i.os_defeito, diagnostico: i.os_diagnostico, itens: [] });
+      map.set(key, { os_numero: i.os_numero, equipamento: i.os_equipamento, defeito: i.os_defeito, diagnostico: i.os_diagnostico, itens: [], desconto: Number(i.os_desconto) || 0 });
     }
     map.get(key)!.itens.push({ tipo: i.tipo, descricao: i.descricao, quantidade: i.quantidade, valor_unitario: i.valor_unitario, valor_total: i.valor_total });
   }
   return [...map.values()];
 }
 
-export const grupoSubtotal = (g: ConsolidadoGrupo) => g.itens.reduce((s, i) => s + (Number(i.valor_total) || 0), 0);
+/** Soma dos itens do grupo menos o desconto da própria OS. */
+export const grupoSubtotal = (g: ConsolidadoGrupo) =>
+  Math.max(0, g.itens.reduce((s, i) => s + (Number(i.valor_total) || 0), 0) - (Number(g.desconto) || 0));
 
 export async function loadImageAsDataUrl(url?: string): Promise<string | undefined> {
   if (!url) return undefined;
@@ -224,6 +230,13 @@ export function generateOrcamentoConsolidadoPDF(data: ConsolidadoPDFData): jsPDF
       doc.setDrawColor(235).setLineWidth(0.2).line(M, y + h - 4, W - M, y + h - 4);
       y += h;
     });
+    if (Number(g.desconto) > 0) {
+      ensure(7);
+      doc.setFont("helvetica", "normal").setFontSize(8.5).setTextColor(120);
+      doc.text(`Desconto da ${g.os_numero}:`, COL_UNIT, y, { align: "right" });
+      doc.text(`-${formatCurrency(Number(g.desconto))}`, COL_TOTAL, y, { align: "right" });
+      y += 5;
+    }
     ensure(8);
     doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(30);
     doc.text(`Subtotal ${g.os_numero}:`, COL_UNIT, y, { align: "right" });

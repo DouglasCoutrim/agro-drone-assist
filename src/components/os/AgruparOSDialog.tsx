@@ -19,6 +19,7 @@ import { useOrganization } from "@/hooks/useOrganization";
 import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
 import { getStatusLabel } from "@/components/os/StatusPipeline";
 import { formatCurrency, formatDate, getErrorMessage, todayDateInput } from "@/lib/formatters";
+import { descontoEfetivoOS, totalItensOS, valorCobradoOS } from "@/lib/os-valor";
 import {
   ConsolidadoGrupo, GroupedStoredItem, generateOrcamentoConsolidadoPDF, grupoSubtotal,
   loadImageAsDataUrl, shareConsolidadoPDF,
@@ -36,7 +37,8 @@ const FORMAS = [
 interface OSRow {
   id: string; numero: string; status: string; tipo_equipamento: string; marca: string | null;
   modelo_equipamento: string | null; numero_serie: string | null; descricao_problema: string;
-  diagnostico: string | null; valor_orcamento: number | null; desconto: number; data_entrada: string;
+  diagnostico: string | null; valor_orcamento: number | null; valor_final: number | null;
+  desconto: number; data_entrada: string;
 }
 
 const equipLabel = (o: OSRow) =>
@@ -73,7 +75,7 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
     (async () => {
       try {
         const { data, error } = await supabase.from("ordens_servico")
-          .select("id, numero, status, tipo_equipamento, marca, modelo_equipamento, numero_serie, descricao_problema, diagnostico, valor_orcamento, desconto, data_entrada")
+          .select("id, numero, status, tipo_equipamento, marca, modelo_equipamento, numero_serie, descricao_problema, diagnostico, valor_orcamento, valor_final, desconto, data_entrada")
           .eq("organization_id", organization.id).eq("cliente_id", clienteId).order("data_entrada", { ascending: true });
         if (error) throw error;
         const list = (data as any as OSRow[]) || [];
@@ -113,15 +115,24 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
 
   const grupos: ConsolidadoGrupo[] = useMemo(() => osList.filter(o => selected.has(o.id)).map(o => {
     const its = itemsByOS[o.id] || [];
+    const totalItens = totalItensOS(its);
+    // Mesma definição de valor da OS usada na cobrança e na comissão (src/lib/os-valor.ts):
+    // o desconto da própria OS passa a valer aqui também.
+    const descontoOS = descontoEfetivoOS(o, totalItens);
     const itens = its.length
       ? its.map(i => ({ tipo: i.tipo, descricao: i.descricao, quantidade: Number(i.quantidade) || 0, valor_unitario: Number(i.valor_unitario) || 0, valor_total: Number(i.valor_total) || 0 }))
-      : Number(o.valor_orcamento) > 0
-        ? [{ tipo: "servico", descricao: "Serviço conforme orçamento da OS", quantidade: 1, valor_unitario: Number(o.valor_orcamento), valor_total: Number(o.valor_orcamento) }]
-        : [];
-    return { os_numero: o.numero, equipamento: equipLabel(o), defeito: o.descricao_problema, diagnostico: o.diagnostico || undefined, itens, _id: o.id } as any;
+      : (() => {
+          const cobrado = valorCobradoOS(o, 0);
+          return cobrado > 0
+            ? [{ tipo: "servico", descricao: "Serviço conforme valor da OS", quantidade: 1, valor_unitario: cobrado, valor_total: cobrado }]
+            : [];
+        })();
+    return { os_numero: o.numero, equipamento: equipLabel(o), defeito: o.descricao_problema, diagnostico: o.diagnostico || undefined, itens, desconto: descontoOS, _id: o.id } as any;
   }), [osList, selected, itemsByOS]);
 
   const subtotal = grupos.reduce((s, g) => s + grupoSubtotal(g), 0);
+  const descontoOs = grupos.reduce((s, g) => s + (Number(g.desconto) || 0), 0);
+  const subtotalBruto = subtotal + descontoOs;
   const total = Math.max(0, subtotal - desconto);
 
   const toggle = (id: string) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -153,6 +164,7 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
     try {
       const itens: GroupedStoredItem[] = grupos.flatMap((g: any) => g.itens.map((i: any) => ({
         ...i, ordem_servico_id: g._id, os_numero: g.os_numero, os_equipamento: g.equipamento, os_defeito: g.defeito, os_diagnostico: g.diagnostico,
+        os_desconto: Number(g.desconto) || 0,
       })));
       const { error } = await supabase.from("orcamentos").insert({
         organization_id: organization.id, cliente_id: clienteId,
@@ -178,7 +190,8 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
       const { data: venda, error } = await supabase.from("vendas").insert({
         organization_id: organization.id, numero, data_venda: todayDateInput(),
         cliente_id: clienteId, cliente_nome: cliente!.nome, forma_pagamento: forma, status_pagamento: "pago",
-        valor_produtos: subtotal, valor_desconto: desconto, valor_impostos: 0, valor_total: total, vendido_por: user.id,
+        valor_produtos: subtotalBruto, valor_desconto: Math.round((desconto + descontoOs) * 100) / 100,
+        valor_impostos: 0, valor_total: total, vendido_por: user.id,
         obs: `Venda do orçamento agrupado (${grupos.map(g => g.os_numero).join(", ")}) — recibo, sem nota fiscal`,
         nfe_dados: { emitir_nota: false, origem: "orcamento_agrupado" },
       } as any).select().single();
@@ -202,7 +215,8 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
         },
         totais: [
           { rotulo: "Subtotal", valor: subtotal },
-          ...(desconto > 0 ? [{ rotulo: "Desconto", valor: desconto, negativo: true }] : []),
+          ...(descontoOs > 0 ? [{ rotulo: "Desconto das OS", valor: descontoOs, negativo: true }] : []),
+          ...(desconto > 0 ? [{ rotulo: "Desconto do orçamento", valor: desconto, negativo: true }] : []),
           { rotulo: "TOTAL PAGO", valor: total, destaque: true },
         ],
         observacao: `Forma de pagamento: ${FORMAS.find(f => f.value === forma)?.label}`,
@@ -251,9 +265,9 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
                 : (
                   <div className="space-y-2">
                     {visible.map(o => {
-                      const g = grupos.find((x: any) => x._id === o.id);
                       const its = itemsByOS[o.id] || [];
-                      const val = its.length ? its.reduce((s, i) => s + Number(i.valor_total || 0), 0) : Number(o.valor_orcamento || 0);
+                      const descontoOS = descontoEfetivoOS(o, totalItensOS(its));
+                      const val = valorCobradoOS(o, totalItensOS(its));
                       return (
                         <label key={o.id} className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/40">
                           <Checkbox checked={selected.has(o.id)} onCheckedChange={() => toggle(o.id)} className="mt-0.5" />
@@ -267,9 +281,14 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
                               <Badge variant="outline" className="text-[10px]">{getStatusLabel(o.status as any)}</Badge>
                               <span className="text-[10px] text-muted-foreground">{formatDate(o.data_entrada)} · {its.length} item(ns)</span>
                             </div>
-                            {g && its.length > 0 && (
+                            {its.length > 0 && (
                               <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
                                 {its.map((i, idx) => <li key={idx} className="flex justify-between gap-2"><span className="truncate">{i.quantidade}× {i.descricao}</span><span className="font-mono">{formatCurrency(i.valor_total)}</span></li>)}
+                                {descontoOS > 0 && (
+                                  <li className="flex justify-between gap-2 text-destructive">
+                                    <span>Desconto da OS</span><span className="font-mono">-{formatCurrency(descontoOS)}</span>
+                                  </li>
+                                )}
                               </ul>
                             )}
                           </div>
@@ -291,6 +310,11 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
 
               <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1 text-sm">
                 {grupos.map(g => <div key={g.os_numero} className="flex justify-between"><span>{g.os_numero}</span><span className="font-mono">{formatCurrency(grupoSubtotal(g))}</span></div>)}
+                {descontoOs > 0 && (
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Descontos das OS já aplicados acima</span><span className="font-mono">- {formatCurrency(descontoOs)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between border-t border-border pt-1"><span>Subtotal</span><span className="font-mono">{formatCurrency(subtotal)}</span></div>
                 {desconto > 0 && <div className="flex justify-between"><span>Desconto</span><span className="font-mono">- {formatCurrency(desconto)}</span></div>}
                 <div className="flex justify-between font-bold text-base"><span>TOTAL</span><span className="font-mono text-primary">{formatCurrency(total)}</span></div>

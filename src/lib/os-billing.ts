@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { valorCobradoOS } from "@/lib/os-valor";
 
 export interface OsCobranca {
   id: string;
@@ -69,9 +70,7 @@ export async function fetchOsComValores(orgId: string, clienteId?: string): Prom
   });
 
   return ordens.map((o: any) => {
-    let valor = Number(o.valor_final || 0);
-    if (!valor) valor = Number(o.valor_orcamento || 0);
-    if (!valor) valor = Math.max(0, (totalItens.get(o.id) || 0) - Number(o.desconto || 0));
+    const valor = valorCobradoOS(o, totalItens.get(o.id) || 0);
     const totalPago = pagoPorOS.get(o.id) || 0;
     const saldo = Math.max(0, Math.round((valor - totalPago) * 100) / 100);
     return {

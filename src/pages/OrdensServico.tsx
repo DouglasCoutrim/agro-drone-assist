@@ -49,6 +49,7 @@ import { calcularPrazoOS, rotuloPrazo } from "@/lib/os-prazo";
 import { useNfseAliquota } from "@/hooks/useNfseAliquota";
 import { PaymentConfirmDialog, PaymentData } from "@/components/os/PaymentConfirmDialog";
 import { registrarRecebimentoOS, type RecebimentoResult } from "@/lib/os-billing";
+import { valorCobradoOS } from "@/lib/os-valor";
 import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 
 
@@ -189,6 +190,8 @@ export default function OrdensServico() {
     parcial: boolean;
   }>({ open: false, osId: null, osNumero: "", valorTotal: 0, valorJaPago: 0, osEquipamento: "", nextStatus: null, saving: false, parcial: false });
   const [pagoOSIds, setPagoOSIds] = useState<Set<string>>(new Set());
+  // OS com recebimento parcial (tem receita lançada e ainda tem saldo em aberto).
+  const [parcialOSIds, setParcialOSIds] = useState<Set<string>>(new Set());
   const [osConta, setOsConta] = useState<{ saldo: number; valor: number; valor_recebido: number; vencimento: string | null; condicoes_pagamento: string | null; equipamento: string | null; status: string } | null>(null);
   const [osJaPago, setOsJaPago] = useState(0);
 
@@ -284,11 +287,43 @@ export default function OrdensServico() {
   
     const fetchPaidOS = async () => {
       try {
-        let query = supabase.from("financeiro").select("ordem_servico_id");
-        if (organization?.id && !isPlatformAdmin) query = query.eq("organization_id", organization.id);
-        const { data, error } = await query;
+        // Só receita conta como recebimento: `financeiro` também guarda despesas e
+        // comissões que apontam para a OS (antes qualquer linha marcava a OS como paga).
+        let recQuery = supabase.from("financeiro").select("ordem_servico_id, valor").eq("tipo", "receita").not("ordem_servico_id", "is", null);
+        if (organization?.id && !isPlatformAdmin) recQuery = recQuery.eq("organization_id", organization.id);
+        const recebidoPorOS = new Map<string, number>();
+        const { data, error } = await recQuery;
         if (error) { console.error("Erro ao buscar OS pagas:", error); return; }
-        setPagoOSIds(new Set((data || []).map((r: any) => r.ordem_servico_id).filter(Boolean)));
+        (data || []).forEach((r: any) => {
+          if (!r?.ordem_servico_id) return;
+          recebidoPorOS.set(r.ordem_servico_id, (recebidoPorOS.get(r.ordem_servico_id) || 0) + Number(r.valor || 0));
+        });
+
+        // `contas_receber` é a fonte do saldo por OS (valor total e recebido oficiais).
+        let contasQuery = supabase.from("contas_receber" as any).select("ordem_servico_id, valor, valor_recebido, saldo");
+        if (organization?.id && !isPlatformAdmin) contasQuery = contasQuery.eq("organization_id", organization.id);
+        const { data: contas } = await contasQuery;
+        const contaPorOS = new Map<string, any>();
+        (contas || []).forEach((c: any) => { if (c?.ordem_servico_id) contaPorOS.set(c.ordem_servico_id, c); });
+
+        const pagos = new Set<string>();
+        const parciais = new Set<string>();
+        const ids = new Set<string>([...recebidoPorOS.keys(), ...contaPorOS.keys()]);
+        ids.forEach((osId) => {
+          const recebido = Number(contaPorOS.get(osId)?.valor_recebido ?? recebidoPorOS.get(osId) ?? 0);
+          if (recebido <= 0.005) return;
+          const conta = contaPorOS.get(osId);
+          const saldo = conta ? Number(conta.saldo ?? 0) : Number(contaPorOS.get(osId)?.valor ?? 0);
+          // Sem linha em contas_receber (recebimento antigo): decide pelo valor da OS carregada.
+          if (!conta) {
+            const os = ordens.find((o) => o.id === osId) as any;
+            const total = valorCobradoOS(os, 0);
+            if (total > 0 && recebido < total - 0.005) { parciais.add(osId); return; }
+          }
+          if (saldo > 0.005) parciais.add(osId); else pagos.add(osId);
+        });
+        setPagoOSIds(pagos);
+        setParcialOSIds(parciais);
       } catch (err) {
         console.error("Erro ao buscar OS pagas:", err);
       }
@@ -890,7 +925,7 @@ export default function OrdensServico() {
       // O RPC valida a permissão, grava status/datas, congela a comissão e escreve o histórico.
       const { error } = await supabase.rpc("finalizar_os", { _os_id: osId, _status: newStatus });
       if (error) throw error;
-      if (newStatus === "finalizada") setPagoOSIds(prev => new Set(prev).add(osId));
+      // Finalizar não é receber: o selo "Pago" só vem de recebimento lançado (fetchPaidOS).
       return;
     }
 
@@ -910,10 +945,6 @@ export default function OrdensServico() {
         usuario_id: user.id,
         acao: `Status alterado para ${getStatusLabel(newStatus)}`,
       }).then(() => {});
-    }
-    // Atualizar o set de OS pagas quando a OS for finalizada
-    if (newStatus === "finalizada") {
-      setPagoOSIds(prev => new Set(prev).add(osId));
     }
   };
 
@@ -1028,9 +1059,15 @@ export default function OrdensServico() {
         toast.success("Recebimento registrado no Financeiro!");
       }
 
+      const quitada = res.saldo <= 0.005;
       setPagoOSIds(prev => {
         const n = new Set(prev);
-        if (!data.parcial || res.saldo <= 0) n.add(osId);
+        if (quitada) n.add(osId); else n.delete(osId);
+        return n;
+      });
+      setParcialOSIds(prev => {
+        const n = new Set(prev);
+        if (quitada) n.delete(osId); else n.add(osId);
         return n;
       });
       const eraVista = viewingOS?.id === osId;
@@ -1429,6 +1466,14 @@ export default function OrdensServico() {
                                       {pagoOSIds.has(os.id) && (
                                         <span className="inline-flex shrink-0 items-center rounded-full bg-green-600 px-1.5 py-px text-[9px] font-semibold leading-none text-white">
                                           Pago
+                                        </span>
+                                      )}
+                                      {parcialOSIds.has(os.id) && (
+                                        <span
+                                          className="inline-flex shrink-0 items-center rounded-full bg-amber-500 px-1.5 py-px text-[9px] font-semibold leading-none text-white"
+                                          title="Recebimento parcial — ainda há saldo em aberto"
+                                        >
+                                          Parcial
                                         </span>
                                       )}
                                       {(() => {
@@ -1876,6 +1921,7 @@ export default function OrdensServico() {
                                   OS {formatOSNumber(viewingOS?.numero)}
                                   {viewingOS && <Badge className={STATUS_CONFIG[viewingOS.status]?.variant === 'destructive' ? 'bg-destructive' : 'bg-primary'}>{getStatusLabel(viewingOS.status)}</Badge>}
                                   {viewingOS && pagoOSIds.has(viewingOS.id) && <Badge className="bg-green-600 text-white text-[10px]">Pago</Badge>}
+                                  {viewingOS && parcialOSIds.has(viewingOS.id) && <Badge className="bg-amber-500 text-white text-[10px]">Parcial</Badge>}
                                 </DialogTitle>
                   <DialogDescription className="text-xs">
                     Criada em {formatDate(viewingOS?.created_at || null)}
@@ -2004,16 +2050,14 @@ export default function OrdensServico() {
                           <div><p className="text-[10px] text-muted-foreground">Diagnóstico</p><p className="text-sm">{viewingOS.diagnostico || "-"}</p></div>
                           <div className="flex items-center justify-between rounded-md bg-muted/30 border border-border/50 px-3 py-2">
                             <p className="text-xs text-muted-foreground uppercase font-medium">{viewOsItems.length ? "Total da OS" : "Orçamento salvo"}</p>
-                            <p className="text-base font-bold text-primary">{formatCurrency(viewItemsTotal > 0 ? viewItemsTotal - ((viewingOS as any).desconto || 0) : viewingOS.valor_orcamento)}</p>
+                            <p className="text-base font-bold text-primary">{formatCurrency(valorCobradoOS(viewingOS as any, viewItemsTotal))}</p>
                           </div>
                         </div>
                       </div>
                       <Separator />
                       {/* Recebimento: total, o que já foi pago e o saldo em aberto (conta a receber). */}
                       {(() => {
-                        const descontoOs = Number((viewingOS as any).desconto) || 0;
-                        const valorTotalOs = Number((viewingOS as any).valor_final)
-                          || (viewItemsTotal > 0 ? Math.max(0, viewItemsTotal - descontoOs) : Number(viewingOS.valor_orcamento) || 0);
+                        const valorTotalOs = valorCobradoOS(viewingOS as any, viewItemsTotal);
                         const saldoOs = Math.max(0, Math.round((valorTotalOs - osJaPago) * 100) / 100);
                         return (
                           <div>

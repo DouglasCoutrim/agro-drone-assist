@@ -9,6 +9,7 @@ import { CommissionBreakdown, rateioDaOS } from "@/components/os/CommissionBreak
 import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
 import { useNfseAliquota } from "@/hooks/useNfseAliquota";
 import { calcularRateio } from "@/lib/commission";
+import { descontoEfetivoOS, valorCobradoOS } from "@/lib/os-valor";
 
 interface Props {
   osId: string | null;
@@ -100,16 +101,13 @@ export function OSSummaryDialog({ osId, onOpenChange }: Props) {
             </div>
             <Separator />
             <div className="grid grid-cols-2 gap-2">
-              <div className="flex justify-between"><span className="text-muted-foreground">Valor da OS</span><span className="font-semibold">{formatCurrency(Number(os.valor_final || os.valor_orcamento || total))}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Desconto</span><span>{formatCurrency(Number(os.desconto || 0))}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Valor da OS</span><span className="font-semibold">{formatCurrency(valorCobradoOS(os as any, total))}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Desconto</span><span>{formatCurrency(descontoEfetivoOS(os as any, total))}</span></div>
             </div>
             {(() => {
               // Mesma resolução de valor cobrado que o SQL usa: valor_final manda; sem ele, itens − desconto.
               const descontoOs = Number(os.desconto) || 0;
-              const valorFinalOs = Number(os.valor_final) || 0;
-              const valorCobrado = valorFinalOs !== 0
-                ? valorFinalOs
-                : Math.max(0, total - descontoOs);
+              const valorCobrado = valorCobradoOS(os as any, total);
               const rateio = rateioDaOS(os, valorCobrado);
               // O que a regra calcula hoje — prévia (OS sem rateio gravado) e referência do
               // ajuste manual feito pelo administrador.

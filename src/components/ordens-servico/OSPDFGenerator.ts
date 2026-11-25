@@ -4,6 +4,7 @@ import { getStatusLabel } from "@/components/os/StatusPipeline";
 import { getLegalTermsHTML } from "@/components/os/LegalTermsFooter";
 import { EmpresaConfig } from "@/hooks/useEmpresaConfig";
 import type { AnexoParaPdf } from "@/lib/os-anexos";
+import { descontoEfetivoOS, valorCobradoOS } from "@/lib/os-valor";
 
 /** Número da OS sem o prefixo "OS-" redundante (ex.: "OS-00036" → "00036"). */
 const formatOSNumber = (numero?: string | number | null) => String(numero ?? "").replace(/^OS-?\s*/i, "");
@@ -79,10 +80,10 @@ export const generateOSPDF = (
   }
 
   const subtotal = itemsForPdf.reduce((s, i) => s + (i.valor_total || 0), 0);
-  const desconto = (os.desconto || 0);
-  const totalFinal = subtotal > 0
-    ? Math.max(0, subtotal - desconto)
-    : (Number(viewingOS.valor_orcamento) || 0);
+  // Mesma definição de valor da OS do resto do sistema (src/lib/os-valor.ts): o
+  // `valor_final` negociado manda, e o desconto exibido é o desconto efetivo.
+  const totalFinal = valorCobradoOS(viewingOS as any, subtotal);
+  const desconto = subtotal > 0 ? descontoEfetivoOS(viewingOS as any, subtotal) : 0;
 
   const tableStyle = `width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;table-layout:fixed;`;
   const thStyle = `text-align:left;padding:6px 8px;background:#f3f4f6;border-bottom:1px solid #d1d5db;font-weight:600;`;
