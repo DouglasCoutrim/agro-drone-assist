@@ -123,6 +123,23 @@ automaticamente ao salvar.
 - `fetchOsComValores` (mesmo arquivo) agora devolve `totalPago` e `saldo` (antes só `pago`);
   a tela de Financeiro lista o saldo em aberto e permite "Receber".
 
+## Contas a pagar
+
+- Tela `/contas-pagar` (`src/pages/ContasPagar.tsx`, item "Contas a Pagar" no grupo
+  Financeiro, `requiredPermission="acesso_financeiro"`): CRUD de despesas com fornecedor,
+  categoria, valor, vencimento e recorrência (semanal/mensal/anual), filtro por status
+  e KPIs (a vencer, atrasado, pago no mês, total em aberto).
+- A tabela `public.contas_pagar` já existia (migration `20260919230049`) com RLS; ganhou
+  `valor_pago`, `saldo` (coluna gerada), `observacoes` e `updated_at`, a policy de DELETE
+  que faltava (havia grant sem policy) e a RPC `public.pagar_conta_pagar`.
+- Pagamento (parcial ou total) passa por `public.pagar_conta_pagar`: soma `valor_pago`,
+  grava a nota em `observacoes` e marca `status = 'pago'` só quando o saldo zera (parcial
+  fica `pendente`/`atrasado`). "Reabrir" zera `valor_pago` e o `data_pagamento`.
+- **O pagamento não lança nada em `financeiro` de propósito**: o DRE
+  (`get_dre_simplificada`) lê as despesas operacionais de `contas_pagar` com `status = 'pago'`
+  (receitas vêm de `financeiro`). Lançar nos dois lugares duplicaria a despesa.
+- A tabela é financeira: `anon` não tem acesso (SELECT revogado).
+
 ## Menu de navegação
 
 - Fonte única: `src/components/layout/navConfig.ts` (`navSections`). `Sidebar.tsx`,
@@ -142,7 +159,7 @@ automaticamente ao salvar.
 
 Existem duas pastas de migrations e elas **não** são equivalentes:
 
-- `drizzle/migrations/` — pasta em que o projeto **escreve** (0000 a 0029). É o registro das
+- `drizzle/migrations/` — pasta em que o projeto **escreve** (0000 a 0032). É o registro das
   mudanças feitas aqui. O `meta/_journal.json` e os snapshots param no `0023`: de `0024` em diante
   os arquivos são escritos à mão, sem `drizzle-kit generate`.
 - `supabase/migrations/` — 88 arquivos gerados pelo CLI, congelados em 2026-10-03. Fica como

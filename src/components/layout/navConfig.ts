@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, FileText, BarChart3, DollarSign, Settings, Users, CreditCard, UsersRound,
   Building2, ClipboardList, LifeBuoy, BookOpen, Bell, Wrench, Monitor, Calculator, ShoppingCart, Package, Truck,
-  History, BadgeDollarSign,
+  History, BadgeDollarSign, CalendarClock,
   type LucideIcon,
 } from "lucide-react";
 
@@ -76,6 +76,7 @@ export const navSections: NavSection[] = [
     title: "Financeiro",
     items: [
       { title: "Financeiro", icon: DollarSign, href: "/financeiro", roles: STAFF },
+      { title: "Contas a Pagar", icon: CalendarClock, href: "/contas-pagar", roles: STAFF },
       { title: "Comissões", icon: BadgeDollarSign, href: "/comissoes", roles: ADMIN },
       { title: "Cobranças", icon: CreditCard, href: "/cobrancas", roles: STAFF },
       { title: "Relatórios", icon: BarChart3, href: "/relatorios", roles: ALL },

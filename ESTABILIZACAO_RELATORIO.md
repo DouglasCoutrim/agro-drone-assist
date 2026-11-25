@@ -599,3 +599,41 @@ OS em aberto até quitar; SQL aditivo pode ser aplicado direto.
 
 Registro no histórico: `drizzle/migrations/0031_recebimento_parcial_os.sql`. SQL comentado em
 `supabase/APROVACAO_recebimento_parcial_os.sql`.
+
+## Sessão de 2026-11-25 — contas a pagar (tela + pagamento)
+
+Pedido do usuário: "já que temos contas a receber, implemente contas a pagar também". Não havia
+tela: a tabela `public.contas_pagar` existia desde a migration `20260919230049` (RLS, DRE e fluxo
+de caixa já a usavam), mas nenhuma página.
+
+**Banco (aditivo, aplicado).**
+
+- Colunas: `valor_pago` (`numeric(12,2)` default 0), `saldo` (gerada `valor - valor_pago`),
+  `observacoes`, `updated_at`; trigger `update_contas_pagar_updated_at`.
+- Policy de DELETE que faltava: a tabela tinha `grant DELETE` para `authenticated` mas **nenhuma
+  policy** — apagar não funcionava pela API. Criada "Admin delete contas pagar" (admin/técnico da
+  organização).
+- `public.pagar_conta_pagar(p_conta_id, p_valor, p_forma, p_obs)`: `SECURITY DEFINER`, guarda de
+  organização **e** de papel (admin/técnico) por dentro. Soma `valor_pago`, grava a nota do
+  pagamento em `observacoes` e marca `status = 'pago'` só ao zerar o saldo (parcial permanece
+  `pendente`/`atrasado`, regra do trigger existente). Executa só `authenticated`/`service_role`.
+- `anon` perdeu o `SELECT` na tabela (é financeira). Verificação: chamada com id inexistente caiu na
+  guarda antes de qualquer escrita.
+- **Decisão:** o pagamento **não** lança em `financeiro`. O DRE lê despesas operacionais de
+  `contas_pagar` (`status = 'pago'`) e receitas de `financeiro`; lançar nos dois lugares duplicaria
+  a despesa. Pelo mesmo motivo o `get_fluxo_caixa_projetado` (que já usa `contas_pagar` pendente)
+  ficou intacto.
+- Registro no histórico: `drizzle/migrations/0032_contas_pagar_pagamento.sql`. SQL comentado em
+  `supabase/APROVACAO_contas_pagar.sql`.
+
+**Front.**
+
+- `src/pages/ContasPagar.tsx`: CRUD (descrição, fornecedor, categoria, valor, vencimento,
+  recorrência semanal/mensal/anual, observações), filtro por status, busca, KPIs (a vencer,
+  atrasado, pago no mês, total em aberto), detalhes, ação **Pagar** (parcial/total + forma +
+  observação) e **Reabrir** (zera `valor_pago`/`data_pagamento`).
+- Rota `/contas-pagar` (lazy, `requiredPermission="acesso_financeiro"`) em `src/App.tsx` e item
+  "Contas a Pagar" no grupo Financeiro de `src/components/layout/navConfig.ts`.
+
+**Teste sugerido.** Cadastrar conta, pagar parcial (conferir saldo/status), quitar (status "Pago" +
+data) e Reabrir; conferir no DRE que a despesa só entra quando paga.

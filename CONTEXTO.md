@@ -339,3 +339,15 @@ Pedido: ao registrar o recebimento de uma OS, poder marcar **recebimento parcial
 **Front.** `PaymentConfirmDialog` ganhou o modo parcial (equipamento, valor pago, saldo calculado, condições, vencimento). `OrdensServico` usa o RPC (`registrarRecebimentoOS`), mostra "Recebimento" no detalhe (total, já recebido, saldo, vencimento/condições/equipamento) com botão "Receber saldo"; recebimento parcial não muda o status. `os-billing.ts` agora devolve `totalPago`/`saldo`; a tela de Financeiro mostra o saldo em aberto por OS e permite "Receber".
 
 **Observações.** Um equipamento por OS (decisão do usuário) — o campo "Equipamento retirado" é pré-preenchido com o da OS e fica guardado na conta a receber. Um recebimento continua sendo uma receita em `financeiro`; a conta a receber é o espelho do saldo (uma por OS).
+
+## 16. Sessão 2026-11-25 — Contas a pagar (tela completa)
+
+Pedido: "já que temos contas a receber, implemente contas a pagar também". A tabela `public.contas_pagar` já existia (migration `20260919230049`) com RLS, e o DRE/fluxo de caixa já a usavam, mas **não havia tela nenhuma**.
+
+**Banco (aditivo, aplicado).** Em `contas_pagar`: colunas `valor_pago` (default 0), `saldo` (gerada = `valor - valor_pago`), `observacoes`, `updated_at`; trigger `update_contas_pagar_updated_at`; a **policy de DELETE que faltava** (a tabela tinha `grant DELETE` sem policy, então apagar não funcionava pela API); RPC `public.pagar_conta_pagar` (`SECURITY DEFINER`, guarda de organização e de papel admin/técnico por dentro), que soma `valor_pago`, grava a nota do pagamento em `observacoes` e marca `status = 'pago'` **só ao zerar o saldo** (parcial segue `pendente`/`atrasado`). `anon` perdeu o SELECT na tabela (é tabela financeira). SQL em `supabase/APROVACAO_contas_pagar.sql`; registro em `drizzle/migrations/0032`.
+
+**Decisão importante.** O pagamento **não** lança nada em `financeiro`. O `get_dre_simplificada` já conta as despesas operacionais a partir de `contas_pagar` com `status = 'pago'` (as receitas é que vêm de `financeiro`). Lançar nos dois lugares duplicaria a despesa. O `get_fluxo_caixa_projetado` também já usa `contas_pagar` pendente — nada a mudar.
+
+**Front.** Nova página `src/pages/ContasPagar.tsx` com CRUD (descrição, fornecedor, categoria, valor, vencimento, recorrência semanal/mensal/anual, observações), filtro por status, busca, KPIs (a vencer / atrasado / pago no mês / total em aberto), diálogo de detalhes, ação **Pagar** (valor parcial ou total, forma de pagamento, observação) e **Reabrir** (zera `valor_pago`/`data_pagamento`). Rota `/contas-pagar` (lazy + `requiredPermission="acesso_financeiro"`) em `src/App.tsx` e item "Contas a Pagar" no grupo Financeiro de `src/components/layout/navConfig.ts`. Sem alteração de fórmula de comissão, imposto ou valor de OS.
+
+**Teste sugerido.** Cadastrar uma conta, registrar pagamento parcial (conferir saldo em aberto e status), quitar (conferir status "Pago" e data) e Reabrir. Conferir o DRE: a despesa só entra em "despesas operacionais" quando a conta está paga.
