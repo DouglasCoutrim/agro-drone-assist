@@ -557,3 +557,45 @@ Conferido depois (leitura):
   `INSERT/UPDATE/DELETE/SELECT` preservados em `ordens_servico` e `nfe_config`.
 - `notify pgrst, 'reload schema'` executado ao final. Nenhum dado foi tocado; nada de `DROP`,
   `DELETE` ou `UPDATE`.
+
+---
+
+## Sessão de 2026-11-22 (cont.) — recebimento parcial de OS + contas a receber
+
+Pedido do usuário: no recebimento de uma OS, marcar **recebimento parcial**, informar o
+**equipamento retirado**, o **valor pago**, o **saldo** e as **condições**; o saldo vira
+**conta a receber** com vencimento; a OS fica **em aberto até quitar**. Decisões confirmadas por
+questionário: um equipamento por OS; contas a receber com vencimento; condições em texto livre;
+OS em aberto até quitar; SQL aditivo pode ser aplicado direto.
+
+**Banco (aditivo, aplicado).**
+
+- `public.contas_receber`: `valor` (total da OS), `valor_recebido` (soma paga), `saldo`
+  (coluna gerada `valor - valor_recebido`), `vencimento`, `condicoes_pagamento`, `equipamento`,
+  `status` (`aberto`/`quitado`/`cancelado`), `ordem_servico_id` **único**. RLS por organização e
+  papel (leitura para membro; escrita admin/técnico), grants só para `authenticated`/`service_role`,
+  triggers de `updated_at` e de auditoria (`trg_audit`).
+- `public.registrar_recebimento_os(p_os_id, p_valor, p_forma, p_equipamento, p_condicoes,
+  p_vencimento, p_obs)`: `SECURITY DEFINER`, guarda de organização **e** de papel (admin/técnico)
+  por dentro. Calcula o total da OS (`valor_final` > orçamento > itens − desconto), lança a receita
+  em `financeiro` e faz upsert da conta a receber do saldo (ou marca `quitado` quando zera). Só
+  `authenticated`/`service_role` executam.
+- Verificação: chamada com OS inexistente retornou o erro da guarda **antes** de qualquer insert
+  (nada gravado). ACL final: `{postgres, authenticated, service_role}`.
+
+**Front.**
+
+- `src/components/os/PaymentConfirmDialog.tsx`: switch "Recebimento parcial"; mostra total, já
+  recebido e saldo; no modo parcial pede valor pago, equipamento retirado, condições e vencimento.
+- `src/pages/OrdensServico.tsx`: o recebimento passou a chamar `registrarRecebimentoOS` (o lançamento
+  no Financeiro + a conta a receber ficam no RPC). Recebimento parcial **não** muda o status; o
+  detalhe da OS ganhou a seção "Recebimento" (total, já recebido, saldo, vencimento, condições,
+  equipamento) com o botão "Receber saldo". O antigo bloqueio "OS já possui recebimento" virou
+  "só bloqueia se estiver quitada".
+- `src/lib/os-billing.ts`: `fetchOsComValores` devolve `totalPago` e `saldo` (antes só um booleano
+  `pago`); novo helper `registrarRecebimentoOS`.
+- `src/pages/Financeiro.tsx`: "A Receber (OS)" e a lista passam a usar o **saldo**; botão "Receber"
+  por OS com diálogo (valor + forma) que chama o mesmo RPC.
+
+Registro no histórico: `drizzle/migrations/0031_recebimento_parcial_os.sql`. SQL comentado em
+`supabase/APROVACAO_recebimento_parcial_os.sql`.

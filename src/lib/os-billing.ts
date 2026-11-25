@@ -12,6 +12,10 @@ export interface OsCobranca {
   data_conclusao: string | null;
   data_entrega: string | null;
   valor: number;
+  /** Soma dos pagamentos de receita lançados para a OS. */
+  totalPago: number;
+  /** valor − totalPago (nunca negativo). */
+  saldo: number;
   pago: boolean;
 }
 
@@ -52,11 +56,12 @@ export async function fetchOsComValores(orgId: string, clienteId?: string): Prom
       .in("ordem_servico_id", ids),
   ]);
 
-  const pagos = new Set(
-    (finData || [])
-      .filter((f: any) => f.tipo === "receita" && f.ordem_servico_id)
-      .map((f: any) => f.ordem_servico_id as string)
-  );
+  const pagoPorOS = new Map<string, number>();
+  (finData || [])
+    .filter((f: any) => f.tipo === "receita" && f.ordem_servico_id)
+    .forEach((f: any) => {
+      pagoPorOS.set(f.ordem_servico_id, (pagoPorOS.get(f.ordem_servico_id) || 0) + Number(f.valor || 0));
+    });
 
   const totalItens = new Map<string, number>();
   (itensData || []).forEach((i: any) => {
@@ -67,6 +72,8 @@ export async function fetchOsComValores(orgId: string, clienteId?: string): Prom
     let valor = Number(o.valor_final || 0);
     if (!valor) valor = Number(o.valor_orcamento || 0);
     if (!valor) valor = Math.max(0, (totalItens.get(o.id) || 0) - Number(o.desconto || 0));
+    const totalPago = pagoPorOS.get(o.id) || 0;
+    const saldo = Math.max(0, Math.round((valor - totalPago) * 100) / 100);
     return {
       id: o.id,
       numero: o.numero,
@@ -79,9 +86,48 @@ export async function fetchOsComValores(orgId: string, clienteId?: string): Prom
       data_conclusao: o.data_conclusao,
       data_entrega: o.data_entrega,
       valor,
-      pago: pagos.has(o.id),
+      totalPago,
+      saldo,
+      pago: saldo <= 0.005,
     };
   });
+}
+
+export interface RecebimentoParams {
+  osId: string;
+  valor: number;
+  formaPagamento?: string;
+  equipamento?: string;
+  condicoesPagamento?: string;
+  vencimento?: string | null;
+  observacoes?: string;
+}
+
+export interface RecebimentoResult {
+  os_id: string;
+  total: number;
+  pago: number;
+  saldo: number;
+  conta_id: string | null;
+}
+
+/**
+ * Registra um recebimento (parcial ou total) de uma OS. O RPC
+ * `registrar_recebimento_os` lança a receita no Financeiro e cria/atualiza a
+ * conta a receber do saldo. A guarda de organização fica dentro do RPC.
+ */
+export async function registrarRecebimentoOS(p: RecebimentoParams): Promise<RecebimentoResult> {
+  const { data, error } = await supabase.rpc("registrar_recebimento_os" as any, {
+    p_os_id: p.osId,
+    p_valor: p.valor,
+    p_forma: p.formaPagamento ?? null,
+    p_equipamento: p.equipamento ?? null,
+    p_condicoes: p.condicoesPagamento ?? null,
+    p_vencimento: p.vencimento ?? null,
+    p_obs: p.observacoes ?? null,
+  });
+  if (error) throw error;
+  return data as RecebimentoResult;
 }
 
 export interface PagamentoConfig {

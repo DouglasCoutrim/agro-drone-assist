@@ -48,6 +48,7 @@ import { calcularRateio } from "@/lib/commission";
 import { calcularPrazoOS, rotuloPrazo } from "@/lib/os-prazo";
 import { useNfseAliquota } from "@/hooks/useNfseAliquota";
 import { PaymentConfirmDialog, PaymentData } from "@/components/os/PaymentConfirmDialog";
+import { registrarRecebimentoOS, type RecebimentoResult } from "@/lib/os-billing";
 import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 
 
@@ -180,11 +181,16 @@ export default function OrdensServico() {
     open: boolean;
     osId: string | null;
     osNumero: string;
-    valorSugerido: number;
+    valorTotal: number;
+    valorJaPago: number;
+    osEquipamento: string;
     nextStatus: string | null;
     saving: boolean;
-  }>({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
+    parcial: boolean;
+  }>({ open: false, osId: null, osNumero: "", valorTotal: 0, valorJaPago: 0, osEquipamento: "", nextStatus: null, saving: false, parcial: false });
   const [pagoOSIds, setPagoOSIds] = useState<Set<string>>(new Set());
+  const [osConta, setOsConta] = useState<{ saldo: number; valor: number; valor_recebido: number; vencimento: string | null; condicoes_pagamento: string | null; equipamento: string | null; status: string } | null>(null);
+  const [osJaPago, setOsJaPago] = useState(0);
 
   // Wizard step
   const [wizardStep, setWizardStep] = useState(0);
@@ -709,7 +715,10 @@ export default function OrdensServico() {
     setViewOsItemsLoading(true);
     setViewConfigChecklist([]);
     setCommissionDialogOpen(false);
+    setOsConta(null);
+    setOsJaPago(0);
     setViewDialogOpen(true);
+    carregarContaOS(os.id);
     try {
       setViewOsItems(await fetchOSItems(os.id, os.organization_id));
       const checklistClient = supabase as any;
@@ -822,15 +831,42 @@ export default function OrdensServico() {
     return Math.max(0, total - (Number((os as any).desconto) || 0));
   };
 
+  /** Carrega a conta a receber (saldo em aberto) desta OS, se houver. */
+  const carregarContaOS = async (osId: string) => {
+    try {
+      const [{ data: conta }, { data: fin }] = await Promise.all([
+        (supabase.from as any)("contas_receber")
+          .select("saldo, valor, valor_recebido, vencimento, condicoes_pagamento, equipamento, status")
+          .eq("ordem_servico_id", osId)
+          .maybeSingle(),
+        supabase.from("financeiro").select("valor").eq("ordem_servico_id", osId).eq("tipo", "receita"),
+      ]);
+      setOsConta(conta || null);
+      setOsJaPago((fin || []).reduce((s: number, f: any) => s + Number(f.valor || 0), 0));
+    } catch {
+      setOsConta(null);
+      setOsJaPago(0);
+    }
+  };
+
   const openPaymentForOS = async (os: OrdemServico, nextStatus: string | null) => {
-    const sugerido = await computeSuggestedValue(os);
+    const total = await computeSuggestedValue(os);
+    const { data: fin } = await supabase
+      .from("financeiro")
+      .select("valor")
+      .eq("ordem_servico_id", os.id)
+      .eq("tipo", "receita");
+    const jaPago = (fin || []).reduce((s: number, f: any) => s + Number(f.valor || 0), 0);
     setPaymentDialog({
       open: true,
       osId: os.id,
       osNumero: os.numero,
-      valorSugerido: sugerido,
+      valorTotal: total,
+      valorJaPago: jaPago,
+      osEquipamento: [(os as any).modelo_equipamento, (os as any).numero_serie].filter(Boolean).join(" — ") || (os as any).tipo_equipamento || "",
       nextStatus,
       saving: false,
+      parcial: false,
     });
   };
 
@@ -939,55 +975,68 @@ export default function OrdensServico() {
     }
   };
 
+  const fecharPaymentDialog = () =>
+    setPaymentDialog({ open: false, osId: null, osNumero: "", valorTotal: 0, valorJaPago: 0, osEquipamento: "", nextStatus: null, saving: false, parcial: false });
+
   const handleConfirmPayment = async (data: PaymentData) => {
     if (!paymentDialog.osId) return;
     if (!canEdit) { toast.error(readOnlyOsMessage); return; }
     setPaymentDialog(p => ({ ...p, saving: true }));
     try {
-      const os = ordens.find(o => o.id === paymentDialog.osId);
-      const orgId = os?.organization_id || organization?.id;
-      if (!orgId) throw new Error("Organização não identificada.");
-
-      // 1) Insert financeiro
-      const { error: finErr } = await supabase.from("financeiro").insert({
-        organization_id: orgId,
-        ordem_servico_id: paymentDialog.osId,
-        usuario_id: user?.id || null,
-        tipo: "receita" as any,
-        categoria: "Serviços",
-        descricao: `Recebimento OS ${formatOSNumber(paymentDialog.osNumero)}`,
+      const osId = paymentDialog.osId;
+      // O RPC lança a receita no Financeiro, cria/atualiza a conta a receber do
+      // saldo e valida a organização. Vale para pagamento parcial ou total.
+      const res: RecebimentoResult = await registrarRecebimentoOS({
+        osId,
         valor: data.valor,
-        data_transacao: todayDateInput(),
-        observacoes: [`Forma: ${data.forma_pagamento}`, data.observacoes].filter(Boolean).join(" | "),
+        formaPagamento: data.forma_pagamento,
+        equipamento: data.equipamento,
+        condicoesPagamento: data.condicoes_pagamento,
+        vencimento: data.vencimento ?? null,
+        observacoes: data.observacoes,
       });
-      if (finErr) throw finErr;
 
-      // 2) Update OS with valor_final + status
-      const updateData: any = { valor_final: data.valor };
-      if (paymentDialog.nextStatus) {
-        updateData.status = paymentDialog.nextStatus;
-        if (paymentDialog.nextStatus === "entregue") updateData.data_entrega = new Date().toISOString();
-        if (paymentDialog.nextStatus === "pronto_retirada" || paymentDialog.nextStatus === "concluida" || paymentDialog.nextStatus === "finalizada")
-          updateData.data_conclusao = new Date().toISOString();
+      if (data.parcial && res.saldo > 0) {
+        // Recebimento parcial: a OS fica em aberto até quitar (não muda o status).
+        if (user) {
+          await supabase.from("os_historico").insert({
+            ordem_servico_id: osId,
+            usuario_id: user.id,
+            acao: `Recebimento parcial de ${formatCurrency(data.valor)} (${data.forma_pagamento}) — saldo em aberto ${formatCurrency(res.saldo)}`,
+          }).then(() => {});
+        }
+        toast.success("Recebimento parcial registrado", {
+          description: `Saldo em aberto: ${formatCurrency(res.saldo)}. A OS segue em aberto até quitar.`,
+        });
+      } else {
+        // Pagamento total: aplica o status escolhido, se houver.
+        if (paymentDialog.nextStatus) {
+          const updateData: any = { status: paymentDialog.nextStatus };
+          if (paymentDialog.nextStatus === "entregue") updateData.data_entrega = new Date().toISOString();
+          if (paymentDialog.nextStatus === "pronto_retirada" || paymentDialog.nextStatus === "concluida" || paymentDialog.nextStatus === "finalizada")
+            updateData.data_conclusao = new Date().toISOString();
+          const { error: osErr } = await supabase.from("ordens_servico").update(updateData).eq("id", osId);
+          if (osErr) throw osErr;
+          if (user) {
+            await supabase.from("os_historico").insert({
+              ordem_servico_id: osId,
+              usuario_id: user.id,
+              acao: `Recebimento registrado (${data.forma_pagamento}) e status alterado para ${getStatusLabel(paymentDialog.nextStatus)}`,
+            }).then(() => {});
+          }
+        }
+        toast.success("Recebimento registrado no Financeiro!");
       }
-      const { error: osErr } = await supabase
-        .from("ordens_servico")
-        .update(updateData)
-        .eq("id", paymentDialog.osId);
-      if (osErr) throw osErr;
 
-      if (user && paymentDialog.nextStatus) {
-        await supabase.from("os_historico").insert({
-          ordem_servico_id: paymentDialog.osId,
-          usuario_id: user.id,
-          acao: `Recebimento registrado (${data.forma_pagamento}) e status alterado para ${getStatusLabel(paymentDialog.nextStatus)}`,
-        }).then(() => {});
-      }
-
-      toast.success("Recebimento registrado no Financeiro!");
-            setPagoOSIds(prev => new Set(prev).add(paymentDialog.osId!));
-            setPaymentDialog({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
-            fetchData();
+      setPagoOSIds(prev => {
+        const n = new Set(prev);
+        if (!data.parcial || res.saldo <= 0) n.add(osId);
+        return n;
+      });
+      const eraVista = viewingOS?.id === osId;
+      fecharPaymentDialog();
+      fetchData();
+      if (eraVista) { await Promise.all([carregarContaOS(osId), recarregarOSVisualizada(osId)]); }
     } catch (err: any) {
       toast.error(getErrorMessage(err));
       setPaymentDialog(p => ({ ...p, saving: false }));
@@ -996,14 +1045,14 @@ export default function OrdensServico() {
 
   const handleSkipPayment = async () => {
     if (!paymentDialog.osId || !paymentDialog.nextStatus) {
-      setPaymentDialog({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
+      fecharPaymentDialog();
       return;
     }
     setPaymentDialog(p => ({ ...p, saving: true }));
     try {
       await applyStatusUpdate(paymentDialog.osId, paymentDialog.nextStatus);
       toast.success(`Status atualizado sem cobrança.`);
-      setPaymentDialog({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
+      fecharPaymentDialog();
       fetchData();
     } catch (err: any) {
       toast.error(getErrorMessage(err));
@@ -1012,13 +1061,16 @@ export default function OrdensServico() {
   };
 
   const handleRegisterPaymentForExisting = async (os: OrdemServico) => {
-    const { data: existing } = await supabase
+    // Permite registrar um novo recebimento enquanto houver saldo em aberto.
+    const { data: fin } = await supabase
       .from("financeiro")
-      .select("id")
+      .select("valor")
       .eq("ordem_servico_id", os.id)
-      .limit(1);
-    if (existing && existing.length > 0) {
-      toast.info("Esta OS já possui um recebimento registrado no Financeiro.");
+      .eq("tipo", "receita");
+    const jaPago = (fin || []).reduce((s: number, f: any) => s + Number(f.valor || 0), 0);
+    const total = await computeSuggestedValue(os);
+    if (jaPago >= total - 0.005 && total > 0) {
+      toast.info("Esta OS já está quitada — nenhum saldo em aberto.");
       return;
     }
     await openPaymentForOS(os, null);
@@ -1957,6 +2009,54 @@ export default function OrdensServico() {
                         </div>
                       </div>
                       <Separator />
+                      {/* Recebimento: total, o que já foi pago e o saldo em aberto (conta a receber). */}
+                      {(() => {
+                        const descontoOs = Number((viewingOS as any).desconto) || 0;
+                        const valorTotalOs = Number((viewingOS as any).valor_final)
+                          || (viewItemsTotal > 0 ? Math.max(0, viewItemsTotal - descontoOs) : Number(viewingOS.valor_orcamento) || 0);
+                        const saldoOs = Math.max(0, Math.round((valorTotalOs - osJaPago) * 100) / 100);
+                        return (
+                          <div>
+                            <h3 className="text-xs font-semibold text-primary uppercase mb-2">Recebimento</h3>
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between rounded-md bg-muted/30 border border-border/50 px-3 py-2">
+                                <p className="text-xs text-muted-foreground uppercase font-medium">Total da OS</p>
+                                <p className="text-sm font-semibold">{formatCurrency(valorTotalOs)}</p>
+                              </div>
+                              {osJaPago > 0 && (
+                                <div className="flex items-center justify-between rounded-md bg-muted/30 border border-border/50 px-3 py-2">
+                                  <p className="text-xs text-muted-foreground uppercase font-medium">Já recebido</p>
+                                  <p className="text-sm font-semibold">{formatCurrency(osJaPago)}</p>
+                                </div>
+                              )}
+                              <div className={`flex items-center justify-between rounded-md border px-3 py-2 ${saldoOs > 0.005 ? "border-amber-500/40 bg-amber-500/5" : "border-border/50 bg-muted/30"}`}>
+                                <p className={`text-xs uppercase font-medium ${saldoOs > 0.005 ? "text-amber-700" : "text-muted-foreground"}`}>
+                                  {saldoOs > 0.005 ? "Saldo em aberto" : "Quitado"}
+                                </p>
+                                <p className={`text-sm font-bold ${saldoOs > 0.005 ? "text-amber-600" : "text-muted-foreground"}`}>{formatCurrency(saldoOs)}</p>
+                              </div>
+                              {osConta?.vencimento && (
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="text-muted-foreground">Vencimento</span>
+                                  <span>{formatDate(osConta.vencimento)}</span>
+                                </div>
+                              )}
+                              {osConta?.condicoes_pagamento && (
+                                <div className="text-xs"><span className="text-muted-foreground">Condições: </span>{osConta.condicoes_pagamento}</div>
+                              )}
+                              {osConta?.equipamento && (
+                                <div className="text-xs"><span className="text-muted-foreground">Equipamento retirado: </span>{osConta.equipamento}</div>
+                              )}
+                              {saldoOs > 0.005 && canEdit && (
+                                <Button size="sm" variant="outline" className="w-full" onClick={() => openPaymentForOS(viewingOS, null)}>
+                                  <CreditCard className="mr-1.5 h-3.5 w-3.5" />Receber saldo
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      <Separator />
                       {/* Rateio da comissão: o valor da OS é o que o técnico vai receber */}
                       {(() => {
                         // Mesma resolução de valor cobrado que o SQL usa: valor_final manda; sem ele, itens − desconto.
@@ -2166,7 +2266,9 @@ export default function OrdensServico() {
           open={paymentDialog.open}
           onOpenChange={(o) => setPaymentDialog(p => ({ ...p, open: o }))}
           osNumero={paymentDialog.osNumero}
-          valorSugerido={paymentDialog.valorSugerido}
+          valorTotal={paymentDialog.valorTotal}
+          valorJaPago={paymentDialog.valorJaPago}
+          osEquipamento={paymentDialog.osEquipamento}
           loading={paymentDialog.saving}
           onConfirm={handleConfirmPayment}
           onSkip={paymentDialog.nextStatus ? handleSkipPayment : undefined}

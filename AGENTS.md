@@ -109,6 +109,20 @@ automaticamente ao salvar.
   técnico (`get_technician_dashboard`) devolve `prazo_diagnostico_horas` para o cálculo
   no cliente.
 
+## Recebimento de OS (parcial/total) e contas a receber
+
+- Todo recebimento de OS passa pelo RPC `public.registrar_recebimento_os`
+  (`SECURITY DEFINER`, guarda de organização **e** de papel admin/técnico por dentro).
+  Ele lança a receita em `financeiro` e faz upsert da conta a receber do saldo.
+  Helper no front: `registrarRecebimentoOS` em `src/lib/os-billing.ts`.
+- Tabela `contas_receber`: `valor` = total da OS, `valor_recebido` = soma paga,
+  `saldo` (coluna gerada) = em aberto; `status` `aberto`/`quitado`/`cancelado`;
+  guarda `vencimento`, `condicoes_pagamento` e `equipamento` (um por OS — `ordem_servico_id` é único).
+- Regra: recebimento **parcial** deixa a OS **em aberto** (não muda o status) até quitar;
+  a conta a receber vira o valor a cobrar depois. Pagamento total pode avançar o status.
+- `fetchOsComValores` (mesmo arquivo) agora devolve `totalPago` e `saldo` (antes só `pago`);
+  a tela de Financeiro lista o saldo em aberto e permite "Receber".
+
 ## Menu de navegação
 
 - Fonte única: `src/components/layout/navConfig.ts` (`navSections`). `Sidebar.tsx`,

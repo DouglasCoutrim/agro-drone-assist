@@ -18,7 +18,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { useOrganization } from "@/hooks/useOrganization";
 import { formatCurrency, formatDate, parseDate, todayDateInput } from "@/lib/formatters";
 import { CobrancaClienteDialog } from "@/components/financeiro/CobrancaClienteDialog";
-import { fetchOsComValores, OsCobranca } from "@/lib/os-billing";
+import { fetchOsComValores, registrarRecebimentoOS, OsCobranca } from "@/lib/os-billing";
 import { PremiumCard } from "@/components/premium/PremiumCard";
 import { KpiCard } from "@/components/premium/KpiCard";
 import { PremiumTable } from "@/components/premium/PremiumTable";
@@ -42,6 +42,10 @@ export default function Financeiro() {
   const [cobrancaCliente, setCobrancaCliente] = useState<string | undefined>(undefined);
   const [osAbertas, setOsAbertas] = useState<OsCobranca[]>([]);
   const [categorias, setCategorias] = useState<string[]>([]);
+  const [receberOS, setReceberOS] = useState<OsCobranca | null>(null);
+  const [receberValor, setReceberValor] = useState(0);
+  const [receberForma, setReceberForma] = useState("pix");
+  const [receberLoading, setReceberLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     tipo: "receita" as Enums<"tipo_transacao">,
@@ -53,7 +57,7 @@ export default function Financeiro() {
       if (!organization?.id) return;
       fetchTransacoes();
       fetchOsComValores(organization.id)
-        .then(list => setOsAbertas(list.filter(o => !o.pago && o.valor > 0)))
+        .then(list => setOsAbertas(list.filter(o => o.saldo > 0.005 && o.valor > 0)))
         .catch(() => { /* silent */ });
       fetchCategorias();
     }, [organization?.id]);
@@ -168,9 +172,44 @@ export default function Financeiro() {
     );
   }, [transacoes, searchTerm]);
 
-  const totalAReceber = useMemo(() => osAbertas.reduce((s, o) => s + o.valor, 0), [osAbertas]);
+  const totalAReceber = useMemo(() => osAbertas.reduce((s, o) => s + (o.saldo ?? o.valor), 0), [osAbertas]);
 
   const abrirCobranca = (clienteId?: string) => { setCobrancaCliente(clienteId); setCobrancaOpen(true); };
+
+  const recarregarOSAbertas = () => {
+    if (!organization?.id) return;
+    fetchOsComValores(organization.id)
+      .then(list => setOsAbertas(list.filter(o => o.saldo > 0.005 && o.valor > 0)))
+      .catch(() => { /* silent */ });
+  };
+
+  const abrirReceber = (os: OsCobranca) => {
+    setReceberOS(os);
+    setReceberValor(os.saldo ?? os.valor);
+    setReceberForma("pix");
+  };
+
+  const confirmarReceber = async () => {
+    if (!receberOS) return;
+    const valor = Number(receberValor) || 0;
+    if (valor <= 0) { toast.error("Informe um valor válido"); return; }
+    setReceberLoading(true);
+    try {
+      const res = await registrarRecebimentoOS({ osId: receberOS.id, valor, formaPagamento: receberForma });
+      if (res.saldo > 0.005) {
+        toast.success("Recebimento parcial registrado", { description: `Saldo em aberto: ${formatCurrency(res.saldo)}.` });
+      } else {
+        toast.success("Saldo quitado!");
+      }
+      setReceberOS(null);
+      fetchTransacoes();
+      recarregarOSAbertas();
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao registrar recebimento");
+    } finally {
+      setReceberLoading(false);
+    }
+  };
 
   return (
     <MainLayout>
@@ -297,10 +336,16 @@ export default function Financeiro() {
                 <div key={os.id} className="flex items-center justify-between gap-2 p-3 border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors">
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{os.cliente_nome}</p>
-                    <p className="text-[11px] text-muted-foreground font-mono">#{os.numero} · {os.equipamento}</p>
+                    <p className="text-[11px] text-muted-foreground font-mono">
+                      #{os.numero} · {os.equipamento}
+                      {os.totalPago > 0 && <span> · pago {formatCurrency(os.totalPago)}</span>}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-sm font-bold">{formatCurrency(os.valor)}</span>
+                    <span className="text-sm font-bold text-amber-600">{formatCurrency(os.saldo)}</span>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => abrirReceber(os)}>
+                      <CreditCard className="mr-1 h-3 w-3" />Receber
+                    </Button>
                     <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => abrirCobranca(os.cliente_id)}>
                       <MessageCircle className="mr-1 h-3 w-3" />Cobrar
                     </Button>
@@ -431,6 +476,50 @@ export default function Financeiro() {
                 </DialogFooter>
               </>
             )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!receberOS} onOpenChange={(open) => { if (!open) setReceberOS(null); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><CreditCard className="h-5 w-5 text-primary" />Receber saldo</DialogTitle>
+              <DialogDescription>{receberOS ? `OS #${receberOS.numero} — ${receberOS.cliente_nome}` : ""}</DialogDescription>
+            </DialogHeader>
+            {receberOS && (
+              <div className="space-y-3 py-2">
+                <div className="rounded-lg border bg-muted/30 px-3 py-2 text-sm space-y-1">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Total da OS</span><span className="font-semibold">{formatCurrency(receberOS.valor)}</span></div>
+                  {receberOS.totalPago > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Já recebido</span><span>{formatCurrency(receberOS.totalPago)}</span></div>}
+                  <div className="flex justify-between border-t pt-1"><span className="text-muted-foreground">Em aberto</span><span className="font-semibold">{formatCurrency(receberOS.saldo)}</span></div>
+                </div>
+                <div>
+                  <Label>Valor recebido (R$)</Label>
+                  <NumberInput value={receberValor} onChange={(v) => setReceberValor(v)} />
+                </div>
+                <div>
+                  <Label>Forma de pagamento</Label>
+                  <Select value={receberForma} onValueChange={setReceberForma}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                      <SelectItem value="pix">PIX</SelectItem>
+                      <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
+                      <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                      <SelectItem value="transferencia">Transferência</SelectItem>
+                      <SelectItem value="boleto">Boleto</SelectItem>
+                      <SelectItem value="outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setReceberOS(null)} disabled={receberLoading}>Cancelar</Button>
+              <Button onClick={confirmarReceber} disabled={receberLoading} className="gradient-primary">
+                {receberLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CreditCard className="h-4 w-4 mr-2" />}
+                Confirmar recebimento
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
