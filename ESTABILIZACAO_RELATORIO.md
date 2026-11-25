@@ -505,3 +505,55 @@ histórico, um `supabase db push` tentaria reaplicar **os 88 arquivos**, e não 
 práticas, registradas no `AGENTS.md`: não rodar `supabase db push` em produção (reaplicaria os 88
 arquivos antigos) e não rodar `drizzle-kit generate` (o snapshot para no `0023`, então ele
 reemitiria mudanças já aplicadas).
+
+---
+
+## Sessão de 2026-11-22 (cont.) — hardening dos privilégios de `anon` (aplicado)
+
+Trabalho de segurança **sem alterar comportamento** nenhum do app. Só `SELECT` de leitura para
+levantar o estado; a mudança em si revoga privilégios que o app não usa.
+
+O que foi encontrado (leitura):
+
+- Quase todas as tabelas de `public` concediam a `anon` — quem ainda não fez login — `INSERT`,
+  `UPDATE`, `DELETE`, `TRUNCATE`, `REFERENCES` e `TRIGGER`, e ainda `MAINTAIN` (privilégio novo do
+  PostgreSQL 17). `TRUNCATE` e `MAINTAIN` **não passam por RLS**; o resto já era barrado pela RLS
+  (todas as tabelas de `public` têm RLS ligado — conferido: nenhuma com `relrowsecurity = false`).
+- Toda função de `public` tinha `EXECUTE` via `PUBLIC` (o pseudo-papel `=X/postgres`), e `anon` herda
+  de `PUBLIC`. Sem login, dava para chamar RPC `SECURITY DEFINER` que recebem id por parâmetro
+  (`get_technician_dashboard`, `get_technician_os_statement`, `create_technician_payout_invoice`,
+  `cancel`/`settle_technician_payout_invoice`, `reverter_alteracao`, `get_org_commissions_report`) e
+  ler/gravar dado de qualquer organização.
+
+Por que a revogação é segura (conferido antes de aplicar):
+
+- `authenticated` e `service_role` têm grant **direto** em toda função que hoje aparecia via
+  `PUBLIC` (nenhuma função tem `=X` sem `authenticated=X` e sem `service_role=X`). As Edge Functions
+  rodam como `service_role`.
+- As páginas públicas (`/auth`, `/landing`, `/cadastro-empresa`, `/reset-password`, `/admin/login`)
+  só **leem tabelas** (`site_config`, `subscription_plans`, `platform_admins`) — não chamam RPC.
+  `SELECT` de `anon` foi mantido em todas as tabelas.
+- As funções auxiliares usadas **dentro de policies de RLS** (`get_user_org_id`, `has_role`,
+  `is_admin_or_tecnico`, `is_platform_admin`) continuam executáveis por `anon`, para uma consulta
+  anônima a `profiles`/`user_roles`/`site_config` (ou ao Storage) continuar retornando vazio em vez
+  de estourar `permission denied`.
+
+Aplicado (comando a comando) — arquivos `supabase/APROVACAO_revogar_anon_escrita_public.sql` e
+`supabase/APROVACAO_fechar_rpc_anon.sql`, registrados na migration `0030`:
+
+- `anon`: revogado `INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER/MAINTAIN` de todas as tabelas e
+  `USAGE/SELECT/UPDATE` de todas as sequences. `SELECT` preservado.
+- `authenticated`: revogados só `TRUNCATE/REFERENCES/TRIGGER/MAINTAIN` (o app nunca faz DDL nem
+  `TRUNCATE`); `SELECT/INSERT/UPDATE/DELETE` intactos.
+- `anon`: `EXECUTE` revogado de todas as funções (via `PUBLIC` e direto); reabertas apenas as 4
+  auxiliares de policy.
+
+Conferido depois (leitura):
+
+- `anon`: 0 privilégios de escrita em tabelas, 0 `MAINTAIN`, 0 em sequences, e só 4 funções
+  executáveis (as auxiliares).
+- `authenticated`: 85 de 87 funções com `EXECUTE` — as duas ausentes são `get_focus_token` e
+  `salvar_focus_token`, que são `service_role` de propósito. `service_role`: 87 de 87.
+  `INSERT/UPDATE/DELETE/SELECT` preservados em `ordens_servico` e `nfe_config`.
+- `notify pgrst, 'reload schema'` executado ao final. Nenhum dado foi tocado; nada de `DROP`,
+  `DELETE` ou `UPDATE`.

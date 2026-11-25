@@ -321,3 +321,11 @@ Pedido: a OS começava a aparecer em atraso só porque a `data_previsao` já tin
 **Tela.** Campo "Prazo de diagnóstico (horas)" no formulário da OS (padrão 48h) e bloco de prazo no detalhe da OS (fase, vencimento, quanto falta/atrasou, com ajuste rápido para quem pode editar). Badge "Atrasada" na lista de OS e o painel do dashboard passaram a usar a mesma regra; o painel do técnico deixou de comparar `data_previsao` direto.
 
 **Observação:** `aguardando_peca` continua contando pela previsão de entrega (não está pausado como `aguardando_aprovacao`).
+
+## 14. Sessão 2026-11-22 (3) — Fase 1 concluída + hardening de `anon` (aplicado)
+
+**Fase 1 (tokens da Focus).** O núcleo já estava aplicado no banco (view `nfe_config_publica` e função `salvar_focus_token` existem; `anon`/PUBLIC sem as funções de comissão). O que faltava era o commit do front apontado como pendente no próprio SQL: `src/pages/NovaNfse.tsx` fazia `select("*")` em `nfe_config` e trazia os tokens para o navegador — passou a ler a view. Conferido que não sobrou nenhum outro ponto do navegador tocando os tokens (Edge Functions leem com `service_role`/Vault; `NfeConfigCard` já usava a view).
+
+**Hardening de `anon` (novo, aplicado).** `anon` (quem não fez login; a chave pública vai no bundle) tinha escrita em quase todas as tabelas — inclusive `TRUNCATE`/`MAINTAIN`, que **não passam por RLS** — e `EXECUTE` em toda função via `PUBLIC`, o que permitia chamar RPC `SECURITY DEFINER` sem login. Revogado: escrita de `anon` em tabelas/sequences (mantido o `SELECT`) e `EXECUTE` de todas as RPC; `authenticated` perdeu só `TRUNCATE/REFERENCES/TRIGGER/MAINTAIN`. Reabertas a `anon` apenas as 4 auxiliares usadas em policies (`get_user_org_id`, `has_role`, `is_admin_or_tecnico`, `is_platform_admin`). `authenticated`/`service_role` têm grant direto e seguem intactos. SQL em `supabase/APROVACAO_revogar_anon_escrita_public.sql` e `supabase/APROVACAO_fechar_rpc_anon.sql`; registro em `drizzle/migrations/0030`. Nenhum dado tocado.
+
+**Ainda em decisão (não executei):** limpeza/remoção das colunas de token em texto puro (passos futuros da Fase 1) e a tela `platform_config` (a tabela não existe e nenhuma Edge Function a lê — criar só a tabela deixaria a tela salvando um token sem efeito).

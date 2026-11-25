@@ -80,6 +80,13 @@ automaticamente ao salvar.
   Function/cron (`service_role`) e `public.is_platform_admin(auth.uid())` é a exceção
   do admin da plataforma. Modelo: `os_commission_calc` / `os_commission_core`
   (guarda acrescentada em 2026-11-22).
+- O papel `anon` **não** tem privilégio de escrita nem `EXECUTE` de RPC. O schema nasceu
+  com o padrão do Supabase (tudo concedido a `anon`, `EXECUTE` via `PUBLIC`); em 2026-11-22
+  isso foi revogado (`TRUNCATE`/`MAINTAIN` não passam por RLS, e as RPC `SECURITY DEFINER`
+  davam para chamar sem login). Ficaram abertas a `anon` só `SELECT` nas tabelas e as 4
+  auxiliares usadas em policies de RLS (`get_user_org_id`, `has_role`, `is_admin_or_tecnico`,
+  `is_platform_admin`). Objeto novo aplicado por SQL: se for função chamada por policy, ela
+  precisa de `GRANT EXECUTE ... TO anon`; se for RPC de app, só `authenticated`/`service_role`.
 - Edge Function nova importa `corsHeaders` de `_shared/cors.ts`, que devolve
   `Access-Control-Allow-Origin: '*'`. Motivo: o cabeçalho é estático e o mesmo app roda
   em produção (`https://livreos.net`), no preview do editor e em domínios próprios; com
