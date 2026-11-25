@@ -17,9 +17,15 @@
 --
 -- O que este arquivo NAO faz (decisao sua, ficou para depois):
 --   - nao limpa as colunas de texto puro dos tokens (fica para 7 dias depois);
---   - nao altera o NovaNfse.tsx (commit separado);
---   - nao mexe na tabela nfe_config_backup_20261111;
---   - nao revoga EXECUTE de os_commission_calc/os_commission_core.
+--   - nao mexe na tabela nfe_config_backup_20261111.
+--
+-- FEITO depois, em commits separados:
+--   - src/pages/NovaNfse.tsx migrado para ler da view (era o unico ponto do
+--     navegador que fazia select("*") em nfe_config e trazia os tokens);
+--   - EXECUTE de os_commission_calc/os_commission_core revogado de PUBLIC/anon
+--     (ver APROVACAO_revogar_execute_comissao_anon.sql).
+-- Obs.: as Edge Functions leem o token pelo Vault (RPC get_focus_token) e so caem
+-- na coluna legada como fallback, entao nada mais no navegador toca os tokens.
 --
 -- Depois de aplicar, conferir:
 --   select * from public.nfe_config_publica;

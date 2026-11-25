@@ -33,7 +33,9 @@ export default function NovaNfse() {
 
   useEffect(() => {
     if (!organization?.id) return;
-    supabase.from("nfe_config").select("*").eq("organization_id", organization.id).maybeSingle().then(({ data }) => setCfg(data));
+    // Le da view publica: a configuracao fiscal sem os tokens da Focus NFe, que
+    // ficam no Vault e nunca devem chegar ao navegador.
+    (supabase.from as any)("nfe_config_publica").select("*").eq("organization_id", organization.id).maybeSingle().then(({ data }: { data: any }) => setCfg(data));
     supabase.from("ordens_servico").select("id, numero, status, valor_final, clientes!ordens_servico_cliente_id_fkey(nome)")
       .eq("organization_id", organization.id).neq("status", "cancelada").order("created_at", { ascending: false }).limit(200)
       .then(({ data }) => setOrdens(data || []));
