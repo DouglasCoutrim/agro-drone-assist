@@ -307,10 +307,10 @@ export default function PDV() {
                     <NumberInput min={1} step={1} inputMode="numeric" value={l.qtd} onChange={(v) => upd(l.key, { qtd: Math.round(v) })} placeholder="Qtd" className="h-10 w-full text-right text-sm" />
                   </div>
                   <div className="space-y-1">
-                    <span className="block text-xs uppercase tracking-wide text-slate-500 md:hidden">Preço</span>
-                    {/* Preço do catálogo: a venda é gravada com o valor cadastrado, o desconto é informado em % */}
-                    <div className="flex h-10 items-center justify-end pr-1 text-sm tabular-nums text-slate-700">{formatCurrency(l.preco)}</div>
-                  </div>
+                                      <span className="block text-xs uppercase tracking-wide text-slate-500 md:hidden">Preço</span>
+                                      {/* Preço editável: o operador pode alterar o valor unitário na venda */}
+                                      <NumberInput min={0} step={0.01} value={l.preco} onChange={(v) => upd(l.key, { preco: v })} placeholder="Preço" title="Preço unitário" className="h-10 w-full text-right text-sm" />
+                                    </div>
                   <div className="space-y-1">
                     <span className="block text-xs uppercase tracking-wide text-slate-500 md:hidden">Desc %</span>
                     <NumberInput min={0} max={tetoDesconto(l.max)} step={0.1} value={l.pct} onChange={(v) => upd(l.key, { pct: v })} placeholder="Desc %" title={`Desconto máximo: ${tetoDesconto(l.max)}%`} className="h-10 w-full text-right text-sm" />
