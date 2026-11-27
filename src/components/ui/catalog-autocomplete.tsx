@@ -78,8 +78,13 @@ export function CatalogAutocomplete({
     (async () => {
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) return;
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from("profiles").select("organization_id").eq("id", auth.user.id).maybeSingle();
+      if (error) {
+        console.error("Erro ao identificar a empresa do usuário:", error);
+        toast.error("Não foi possível identificar sua empresa. Tente novamente.");
+        return;
+      }
       if (profile?.organization_id) setOrgId(profile.organization_id);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -107,24 +112,26 @@ export function CatalogAutocomplete({
         const items: CatalogResult[] = [];
 
         if (source !== "servicos") {
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from("itens_estoque")
             .select("id, descricao, preco_venda, codigo, categoria")
             .eq("organization_id", orgId)
             .eq("finalidade", "revenda")
             .ilike("descricao", like)
             .limit(8);
+          if (error) throw error;
           (data || []).forEach((p) => items.push({
             id: p.id, descricao: p.descricao, preco: Number(p.preco_venda) || 0,
             tipo: "produto", codigo: p.codigo, categoria: p.categoria,
           }));
         } else {
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from("servicos")
             .select("id, descricao, preco")
             .eq("organization_id", orgId)
             .ilike("descricao", like)
             .limit(8);
+          if (error) throw error;
           (data || []).forEach((s) => items.push({
             id: s.id, descricao: s.descricao, preco: Number(s.preco) || 0,
             tipo: "servico",
@@ -133,7 +140,8 @@ export function CatalogAutocomplete({
 
         setResults(items);
       } catch (err) {
-        console.error(err);
+        console.error("Erro ao buscar no catálogo:", err);
+        toast.error("Não foi possível buscar no catálogo. Tente novamente.");
       } finally {
         setLoading(false);
       }

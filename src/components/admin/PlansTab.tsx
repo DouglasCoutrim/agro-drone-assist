@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Loader2, Plus, Pencil, Users, FileText, Power } from 'lucide-react';
 import { toast } from 'sonner';
+import { EstadoErro } from '@/components/listagem/EstadoErro';
 
 interface Plan {
   id: string; name: string; slug: string;
@@ -25,14 +26,26 @@ const empty: Partial<Plan> = {
 export default function PlansTab() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState(false);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Partial<Plan>>(empty);
 
   const fetchData = async () => {
-    const { data } = await supabase.from('subscription_plans' as any).select('*').order('monthly_price', { ascending: true });
-    setPlans((data as any) || []);
-    setLoading(false);
+    setLoading(true);
+    setErro(false);
+    try {
+      const { data, error } = await supabase.from('subscription_plans' as any).select('*').order('monthly_price', { ascending: true });
+      if (error) throw error;
+      setPlans((data as any) || []);
+    } catch (err) {
+      console.error("Erro ao carregar planos:", err);
+      toast.error("Não foi possível carregar os planos. Tente novamente.");
+      setErro(true);
+      setPlans([]);
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => { fetchData(); }, []);
 
@@ -73,6 +86,7 @@ export default function PlansTab() {
   };
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-muted-foreground" /></div>;
+  if (erro) return <EstadoErro mensagem="Não foi possível carregar os planos." aoTentarNovamente={fetchData} />;
 
   return (
     <div className="space-y-4">

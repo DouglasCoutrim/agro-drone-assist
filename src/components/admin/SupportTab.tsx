@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Send, CheckCircle2, Inbox } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { EstadoErro } from '@/components/listagem/EstadoErro';
 
 interface Ticket {
   id: string; organization_id: string; user_id: string; subject: string; category: string;
@@ -34,6 +35,7 @@ export default function SupportTab() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [orgs, setOrgs] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [reply, setReply] = useState('');
@@ -41,15 +43,27 @@ export default function SupportTab() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
   const fetchTickets = async () => {
-    const [t, o] = await Promise.all([
-      supabase.from('support_tickets' as any).select('*').order('updated_at', { ascending: false }),
-      supabase.from('organizations' as any).select('id,name'),
-    ]);
-    setTickets((t.data as any) || []);
-    const map: Record<string, string> = {};
-    ((o.data as any) || []).forEach((x: any) => { map[x.id] = x.name; });
-    setOrgs(map);
-    setLoading(false);
+    setLoading(true);
+    setErro(false);
+    try {
+      const [t, o] = await Promise.all([
+        supabase.from('support_tickets' as any).select('*').order('updated_at', { ascending: false }),
+        supabase.from('organizations' as any).select('id,name'),
+      ]);
+      if (t.error) throw t.error;
+      if (o.error) throw o.error;
+      setTickets((t.data as any) || []);
+      const map: Record<string, string> = {};
+      ((o.data as any) || []).forEach((x: any) => { map[x.id] = x.name; });
+      setOrgs(map);
+    } catch (err) {
+      console.error("Erro ao carregar tickets:", err);
+      toast.error("Não foi possível carregar os tickets. Tente novamente.");
+      setErro(true);
+      setTickets([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchMessages = async (ticketId: string) => {
@@ -104,13 +118,16 @@ export default function SupportTab() {
               <p className="text-sm font-medium">Tickets ({tickets.length})</p>
             </div>
             <ScrollArea className="h-[560px]">
-              {tickets.length === 0 && (
+              {erro && (
+                <EstadoErro mensagem="Não foi possível carregar os tickets." aoTentarNovamente={fetchTickets} />
+              )}
+              {!erro && tickets.length === 0 && (
                 <div className="p-8 text-center text-muted-foreground">
                   <Inbox className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">Nenhum ticket</p>
                 </div>
               )}
-              {tickets.map((t) => (
+              {!erro && tickets.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => setSelectedId(t.id)}

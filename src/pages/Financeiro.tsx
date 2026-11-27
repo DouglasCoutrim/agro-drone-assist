@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ import { PremiumCard } from "@/components/premium/PremiumCard";
 import { KpiCard } from "@/components/premium/KpiCard";
 import { PremiumTable } from "@/components/premium/PremiumTable";
 import { SearchableInput } from "@/components/ui/searchable-input";
+import { EstadoErro } from "@/components/listagem/EstadoErro";
 
 type Transacao = Tables<"financeiro">;
 
@@ -41,6 +42,7 @@ export default function Financeiro() {
   const [cobrancaOpen, setCobrancaOpen] = useState(false);
   const [cobrancaCliente, setCobrancaCliente] = useState<string | undefined>(undefined);
   const [osAbertas, setOsAbertas] = useState<OsCobranca[]>([]);
+  const [erroOS, setErroOS] = useState(false);
   const [categorias, setCategorias] = useState<string[]>([]);
   const [receberOS, setReceberOS] = useState<OsCobranca | null>(null);
   const [receberValor, setReceberValor] = useState(0);
@@ -53,14 +55,26 @@ export default function Financeiro() {
     data_transacao: todayDateInput(), observacoes: ""
   });
 
+  const carregarOSAbertas = useCallback(async () => {
+    if (!organization?.id) return;
+    setErroOS(false);
+    try {
+      const list = await fetchOsComValores(organization.id);
+      setOsAbertas(list.filter(o => o.saldo > 0.005 && o.valor > 0));
+    } catch (err) {
+      console.error("Erro ao carregar OS em aberto:", err);
+      toast.error("Não foi possível carregar as ordens de serviço em aberto. Tente novamente.");
+      setErroOS(true);
+      setOsAbertas([]);
+    }
+  }, [organization?.id]);
+
   useEffect(() => {
       if (!organization?.id) return;
       fetchTransacoes();
-      fetchOsComValores(organization.id)
-        .then(list => setOsAbertas(list.filter(o => o.saldo > 0.005 && o.valor > 0)))
-        .catch(() => { /* silent */ });
+      carregarOSAbertas();
       fetchCategorias();
-    }, [organization?.id]);
+    }, [organization?.id, carregarOSAbertas]);
   
     const fetchCategorias = async () => {
       if (!organization?.id) return;
@@ -176,12 +190,6 @@ export default function Financeiro() {
 
   const abrirCobranca = (clienteId?: string) => { setCobrancaCliente(clienteId); setCobrancaOpen(true); };
 
-  const recarregarOSAbertas = () => {
-    if (!organization?.id) return;
-    fetchOsComValores(organization.id)
-      .then(list => setOsAbertas(list.filter(o => o.saldo > 0.005 && o.valor > 0)))
-      .catch(() => { /* silent */ });
-  };
 
   const abrirReceber = (os: OsCobranca) => {
     setReceberOS(os);
@@ -203,7 +211,7 @@ export default function Financeiro() {
       }
       setReceberOS(null);
       fetchTransacoes();
-      recarregarOSAbertas();
+      carregarOSAbertas();
     } catch (err: any) {
       toast.error(err?.message || "Erro ao registrar recebimento");
     } finally {
@@ -322,6 +330,11 @@ export default function Financeiro() {
         </div>
 
         {/* OS em aberto para cobrança */}
+        {erroOS && (
+          <PremiumCard delay={100}>
+            <EstadoErro mensagem="Não foi possível carregar as ordens de serviço em aberto." aoTentarNovamente={carregarOSAbertas} />
+          </PremiumCard>
+        )}
         {osAbertas.length > 0 && (
           <PremiumCard delay={100}>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">

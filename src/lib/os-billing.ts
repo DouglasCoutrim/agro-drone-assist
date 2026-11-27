@@ -45,7 +45,7 @@ export async function fetchOsComValores(orgId: string, clienteId?: string): Prom
 
   const ids = ordens.map((o: any) => o.id);
 
-  const [{ data: finData }, { data: itensData }] = await Promise.all([
+  const [finRes, itensRes] = await Promise.all([
     supabase
       .from("financeiro")
       .select("ordem_servico_id, valor, tipo")
@@ -56,6 +56,13 @@ export async function fetchOsComValores(orgId: string, clienteId?: string): Prom
       .select("ordem_servico_id, valor_total")
       .in("ordem_servico_id", ids),
   ]);
+
+  // Lança em vez de seguir com listas vazias: quem chama decide como mostrar o erro.
+  if (finRes.error) throw finRes.error;
+  if (itensRes.error) throw itensRes.error;
+
+  const finData = finRes.data;
+  const itensData = itensRes.data;
 
   const pagoPorOS = new Map<string, number>();
   (finData || [])

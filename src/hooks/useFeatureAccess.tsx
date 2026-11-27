@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { useOrganization } from './useOrganization';
 
 export type FeatureKey =
@@ -30,11 +31,19 @@ export function useFeatureAccess() {
       const planSlug = ['bronze','prata','ouro'].includes(organization.plan)
         ? organization.plan
         : 'bronze';
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('subscription_plans' as any)
         .select('features')
         .eq('slug', planSlug)
         .maybeSingle();
+      if (error) {
+        console.error('Erro ao carregar recursos do plano:', error);
+        toast.error("Não foi possível verificar os recursos do seu plano. Tente novamente.");
+        // Em falha não libera nada: mantém o bloqueio atual.
+        setFeatures([]);
+        setLoading(false);
+        return;
+      }
       setFeatures(((data as any)?.features as FeatureKey[]) || []);
       setLoading(false);
     })();

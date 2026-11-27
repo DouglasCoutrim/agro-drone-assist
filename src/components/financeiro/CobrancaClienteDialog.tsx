@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
 import { formatCurrency } from "@/lib/formatters";
 import { fetchOsComValores, fetchPagamentoConfig, OsCobranca, PagamentoConfig } from "@/lib/os-billing";
 import { montarMensagemCobranca, openWhatsApp } from "@/lib/whatsapp-templates";
+import { EstadoErro } from "@/components/listagem/EstadoErro";
 
 interface ClienteLite { id: string; nome: string; telefone: string | null }
 
@@ -34,6 +35,7 @@ export function CobrancaClienteDialog({ open, onOpenChange, clienteIdInicial }: 
   const [ordens, setOrdens] = useState<OsCobranca[]>([]);
   const [selecionadas, setSelecionadas] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
+  const [erroOS, setErroOS] = useState(false);
   const [pagamento, setPagamento] = useState<PagamentoConfig>({ gateway: "none" });
   const [observacao, setObservacao] = useState("");
 
@@ -54,19 +56,30 @@ export function CobrancaClienteDialog({ open, onOpenChange, clienteIdInicial }: 
     })();
   }, [open, organization?.id, clienteIdInicial]);
 
-  useEffect(() => {
-    if (!open || !organization?.id || !clienteId) { setOrdens([]); return; }
+  const carregarOS = useCallback(async () => {
+    if (!organization?.id || !clienteId) { setOrdens([]); return; }
     setLoading(true);
-    fetchOsComValores(organization.id, clienteId)
-      .then(list => {
-        setOrdens(list);
-        const pre: Record<string, boolean> = {};
-        list.filter(o => !o.pago && o.valor > 0).forEach(o => { pre[o.id] = true; });
-        setSelecionadas(pre);
-      })
-      .catch(() => toast.error("Erro ao carregar ordens de serviço"))
-      .finally(() => setLoading(false));
-  }, [open, organization?.id, clienteId]);
+    setErroOS(false);
+    try {
+      const list = await fetchOsComValores(organization.id, clienteId);
+      setOrdens(list);
+      const pre: Record<string, boolean> = {};
+      list.filter(o => !o.pago && o.valor > 0).forEach(o => { pre[o.id] = true; });
+      setSelecionadas(pre);
+    } catch (err) {
+      console.error("Erro ao carregar ordens de serviço:", err);
+      toast.error("Não foi possível carregar as ordens de serviço. Tente novamente.");
+      setErroOS(true);
+      setOrdens([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [organization?.id, clienteId]);
+
+  useEffect(() => {
+    if (!open || !organization?.id || !clienteId) { setOrdens([]); setErroOS(false); return; }
+    carregarOS();
+  }, [open, organization?.id, clienteId, carregarOS]);
 
   const clientesFiltrados = useMemo(() => {
     const t = busca.trim().toLowerCase();
@@ -153,6 +166,8 @@ export function CobrancaClienteDialog({ open, onOpenChange, clienteIdInicial }: 
               <Label className="text-xs">2. Ordens de serviço</Label>
               {loading ? (
                 <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+              ) : erroOS ? (
+                <EstadoErro mensagem="Não foi possível carregar as ordens de serviço." aoTentarNovamente={carregarOS} />
               ) : ordens.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-3 text-center">Nenhuma OS encontrada para este cliente.</p>
               ) : (

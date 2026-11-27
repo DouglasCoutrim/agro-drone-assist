@@ -14,7 +14,11 @@ export interface SavedEstoqueItem { id: string; descricao: string; codigo: strin
 export interface SavedServico { id: string; descricao: string; preco: number }
 
 async function nextEstoqueCode(orgId: string) {
-  const { data } = await supabase.from("itens_estoque").select("codigo").eq("organization_id", orgId);
+  const { data, error } = await supabase.from("itens_estoque").select("codigo").eq("organization_id", orgId);
+  if (error) {
+    console.error("Erro ao buscar o próximo código do estoque:", error);
+    toast.error("Não foi possível gerar o código do item. Tente novamente.");
+  }
   const nums = (data || []).map(i => i.codigo).filter(c => /^P-\d+$/.test(c)).map(c => parseInt(c.slice(2), 10));
   return `P-${String((nums.length ? Math.max(...nums) : 0) + 1).padStart(5, "0")}`;
 }
@@ -33,7 +37,14 @@ export function EstoqueItemDialog({ open, onOpenChange, organizationId, initialN
     setForm({ ...empty, descricao: initialName });
     nextEstoqueCode(organizationId).then(codigo => setForm(p => ({ ...p, codigo })));
     supabase.from("itens_estoque").select("categoria").eq("organization_id", organizationId)
-      .then(({ data }) => setCategorias([...new Set((data || []).map(d => d.categoria).filter(Boolean))]));
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Erro ao carregar categorias do estoque:", error);
+          toast.error("Não foi possível carregar as categorias do estoque. Tente novamente.");
+          return;
+        }
+        setCategorias([...new Set((data || []).map(d => d.categoria).filter(Boolean))]);
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, organizationId]);
 
@@ -112,12 +123,17 @@ export function ServicoDialog({ open, onOpenChange, organizationId, initialName,
     setSaving(true);
     try {
       // Peça/produto não pode ser criado como serviço: evita catálogos duplicados.
-      const { data: jaNoEstoque } = await supabase
+      const { data: jaNoEstoque, error: erroBuscaEstoque } = await supabase
         .from("itens_estoque")
         .select("id")
         .eq("organization_id", organizationId)
         .ilike("descricao", form.descricao.trim())
         .limit(1);
+      if (erroBuscaEstoque) {
+        console.error("Erro ao verificar o estoque:", erroBuscaEstoque);
+        toast.error("Não foi possível verificar o catálogo. Tente novamente.");
+        return;
+      }
       if (jaNoEstoque?.length) {
         toast.error("Esse item já está no estoque. Adicione-o em \"Itens / Peças\".");
         return;

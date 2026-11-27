@@ -5,6 +5,8 @@ import { Loader2 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/formatters";
+import { toast } from "sonner";
+import { EstadoErro } from "@/components/listagem/EstadoErro";
 import { OSSummaryDialog } from "./OSSummaryDialog";
 
 const DONE = new Set(["pronto_retirada", "entregue", "finalizada", "concluida"]);
@@ -14,24 +16,39 @@ export function TechnicianAnalytics({ userId }: { userId: string }) {
   const [days, setDays] = useState("30");
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     (async () => {
       setLoading(true);
-      const since = new Date(Date.now() - Number(days) * 86400000).toISOString();
-      const { data } = await supabase
-        .from("ordens_servico")
-        .select("id, numero, status, created_at, recebida_em, data_conclusao, commission_services, commission_products, commission_total, clientes(nome)")
-        .eq("tecnico_id", userId)
-        .gte("created_at", since)
-        .order("created_at", { ascending: false })
-        .limit(500);
-      if (active) { setRows((data as any[]) || []); setLoading(false); }
+      setErro(false);
+      try {
+        const since = new Date(Date.now() - Number(days) * 86400000).toISOString();
+        const { data, error } = await supabase
+          .from("ordens_servico")
+          .select("id, numero, status, created_at, recebida_em, data_conclusao, commission_services, commission_products, commission_total, clientes(nome)")
+          .eq("tecnico_id", userId)
+          .gte("created_at", since)
+          .order("created_at", { ascending: false })
+          .limit(500);
+        if (error) throw error;
+        if (active) setRows((data as any[]) || []);
+      } catch (err) {
+        console.error("Erro ao carregar indicadores do técnico:", err);
+        if (active) {
+          toast.error("Não foi possível carregar seus indicadores. Tente novamente.");
+          setErro(true);
+          setRows([]);
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
     })();
     return () => { active = false; };
-  }, [userId, days]);
+  }, [userId, days, reloadKey]);
 
   const m = useMemo(() => {
     const aceitas = rows.filter((r) => r.recebida_em).length;
@@ -80,6 +97,8 @@ export function TechnicianAnalytics({ userId }: { userId: string }) {
       </div>
       {loading ? (
         <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+      ) : erro ? (
+        <EstadoErro mensagem="Não foi possível carregar seus indicadores." aoTentarNovamente={() => setReloadKey((k) => k + 1)} />
       ) : (
         <>
           <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">

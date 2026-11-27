@@ -10,6 +10,7 @@ import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
 import { useNfseAliquota } from "@/hooks/useNfseAliquota";
 import { calcularRateio } from "@/lib/commission";
 import { descontoEfetivoOS, valorCobradoOS } from "@/lib/os-valor";
+import { toast } from "sonner";
 
 interface Props {
   osId: string | null;
@@ -30,20 +31,28 @@ export function OSSummaryDialog({ osId, onOpenChange }: Props) {
     (async () => {
       setLoading(true);
       setOs(null); setItems([]); setTecnico(null);
-      const { data } = await supabase
-        .from("ordens_servico")
-        .select("id, numero, status, created_at, updated_at, data_conclusao, tipo_equipamento, marca, modelo_equipamento, descricao_problema, valor_final, valor_orcamento, desconto, commission_base, commission_tax, commission_cost, commission_no_note_fee, commission_company, commission_tax_rate, commission_total, commission_frozen_at, commission_override, commission_override_reason, tecnico_id, nfe_emitida, clientes(nome, telefone)")
-        .eq("id", osId)
-        .maybeSingle();
-      const [{ data: its }, prof] = await Promise.all([
-        supabase.from("itens_os").select("id, descricao, tipo, quantidade, valor_unitario, valor_total, custo_servico").eq("ordem_servico_id", osId),
-        data?.tecnico_id
-          ? supabase.from("profiles").select("nome").eq("id", data.tecnico_id).maybeSingle()
-          : Promise.resolve({ data: null } as any),
-      ]);
-      if (!active) return;
-      setOs(data); setItems((its as any[]) || []); setTecnico((prof as any)?.data?.nome ?? null);
-      setLoading(false);
+      try {
+        const { data, error } = await supabase
+          .from("ordens_servico")
+          .select("id, numero, status, created_at, updated_at, data_conclusao, tipo_equipamento, marca, modelo_equipamento, descricao_problema, valor_final, valor_orcamento, desconto, commission_base, commission_tax, commission_cost, commission_no_note_fee, commission_company, commission_tax_rate, commission_total, commission_frozen_at, commission_override, commission_override_reason, tecnico_id, nfe_emitida, clientes(nome, telefone)")
+          .eq("id", osId)
+          .maybeSingle();
+        if (error) throw error;
+        const [{ data: its, error: itsErr }, prof] = await Promise.all([
+          supabase.from("itens_os").select("id, descricao, tipo, quantidade, valor_unitario, valor_total, custo_servico").eq("ordem_servico_id", osId),
+          data?.tecnico_id
+            ? supabase.from("profiles").select("nome").eq("id", data.tecnico_id).maybeSingle()
+            : Promise.resolve({ data: null } as any),
+        ]);
+        if (itsErr) throw itsErr;
+        if (!active) return;
+        setOs(data); setItems((its as any[]) || []); setTecnico((prof as any)?.data?.nome ?? null);
+      } catch (err) {
+        console.error("Erro ao carregar o resumo da OS:", err);
+        if (active) toast.error("Não foi possível carregar o resumo da OS. Tente novamente.");
+      } finally {
+        if (active) setLoading(false);
+      }
     })();
     return () => { active = false; };
   }, [osId]);

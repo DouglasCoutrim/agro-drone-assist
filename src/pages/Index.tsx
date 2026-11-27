@@ -23,6 +23,8 @@ import { formatCurrency, parseDate, todayDateInput } from "@/lib/formatters";
 import { fetchOsComValores } from "@/lib/os-billing";
 import { osEmAtraso } from "@/lib/os-prazo";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { EstadoErro } from "@/components/listagem/EstadoErro";
 
 type Periodo = "hoje" | "7" | "30" | "365";
 const PERIODOS: { id: Periodo; label: string }[] = [
@@ -107,6 +109,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [osId, setOsId] = useState<string | null>(null);
   const [nome, setNome] = useState<string>("");
+  const [erroOS, setErroOS] = useState(false);
 
   useEffect(() => {
     if (orgLoading) return;
@@ -142,6 +145,12 @@ const Index = () => {
       ]);
       const v = (i: number): any => (r[i].status === "fulfilled" ? (r[i] as PromiseFulfilledResult<any>).value : null);
       r.forEach((x, i) => x.status === "rejected" && console.error(`Dashboard consulta ${i}:`, x.reason));
+      if (r[8].status === "rejected") {
+        toast.error("Não foi possível carregar as ordens de serviço. Tente novamente.");
+        setErroOS(true);
+      } else {
+        setErroOS(false);
+      }
 
       const fin: any[] = v(0)?.data || [];
       const vendas: any[] = v(1)?.data || [];
@@ -307,6 +316,15 @@ const Index = () => {
 
         {(loading || orgLoading) && (
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-5">{[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-32 rounded-2xl" />)}</div>
+        )}
+
+        {erroOS && !loading && (
+          <section className="rounded-2xl border border-destructive/30 bg-card p-4 shadow-sm">
+            <EstadoErro
+              mensagem="Não foi possível carregar as ordens de serviço."
+              aoTentarNovamente={() => { if (organization?.id) carregar(organization.id); }}
+            />
+          </section>
         )}
 
         {dados && !loading && (

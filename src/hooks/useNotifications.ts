@@ -23,14 +23,22 @@ export function useNotifications(limit = 50) {
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const { data } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(limit);
-    setItems((data || []) as Notification[]);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      setItems((data || []) as Notification[]);
+    } catch (err) {
+      console.error("Erro ao carregar notificações:", err);
+      toast.error("Não foi possível carregar as notificações. Tente novamente.");
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
   }, [user, limit]);
 
   useEffect(() => {
