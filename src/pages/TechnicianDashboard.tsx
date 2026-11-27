@@ -3,13 +3,14 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Coins, CheckCircle2, ListChecks, Clock, AlertTriangle, TrendingUp, Calculator } from "lucide-react";
+import { Loader2, Coins, CheckCircle2, ListChecks, Clock, AlertTriangle, TrendingUp, Calculator, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { formatCurrency, todayDateInput } from "@/lib/formatters";
+import { cn } from "@/lib/utils";
 import { osEmAtraso } from "@/lib/os-prazo";
 import { TechnicianAnalytics } from "@/components/os/TechnicianAnalytics";
 import { OSSummaryDialog } from "@/components/os/OSSummaryDialog";
@@ -56,6 +57,9 @@ const KANBAN_COLUMNS: { key: string; label: string }[] = [
   { key: "concluido", label: "Concluído" },
 ];
 
+// Quantidade de itens mostrados antes de o cartão ser expandido.
+const LIMITE_PREVIA = 3;
+
 const prioridadeVariant = (p: string) => {
   const v = (p || "normal").toLowerCase();
   if (v === "alta" || v === "urgente") return "destructive" as const;
@@ -94,6 +98,8 @@ export default function TechnicianDashboard() {
   const [data, setData] = useState<DashboardPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [verTodasAtrasadas, setVerTodasAtrasadas] = useState(false);
+  const [verTodasComissoes, setVerTodasComissoes] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -137,6 +143,9 @@ export default function TechnicianDashboard() {
 
   const totalPendingCommission = pendingCommissionOs.reduce((s, os) => s + (os.commission_total || 0), 0);
   const totalOverdueKm = overdueOs.reduce((s, os) => s + (os.tempo_em_bancada_min || 0), 0);
+
+  const atrasadasVisiveis = verTodasAtrasadas ? overdueOs : overdueOs.slice(0, LIMITE_PREVIA);
+  const comissoesVisiveis = verTodasComissoes ? pendingCommissionOs : pendingCommissionOs.slice(0, LIMITE_PREVIA);
 
   return (
     <MainLayout>
@@ -202,15 +211,30 @@ export default function TechnicianDashboard() {
                   {overdueOs.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-4">Nenhuma OS atrasada! ✅</p>
                   ) : (
-                    overdueOs.map(os => (
-                      <div key={os.id} className="flex items-center justify-between p-2 bg-destructive/5 border border-destructive/10 rounded-lg">
-                        <div>
-                          <p className="text-xs font-mono font-semibold">{os.numero}</p>
-                          <p className="text-xs text-muted-foreground">{os.cliente || "—"} • {formatBenchTime(os.tempo_em_bancada_min)} em bancada</p>
+                    <>
+                      {atrasadasVisiveis.map(os => (
+                        <div key={os.id} className="flex items-center justify-between p-2 bg-destructive/5 border border-destructive/10 rounded-lg">
+                          <div>
+                            <p className="text-xs font-mono font-semibold">{os.numero}</p>
+                            <p className="text-xs text-muted-foreground">{os.cliente || "—"} • {formatBenchTime(os.tempo_em_bancada_min)} em bancada</p>
+                          </div>
+                          <Badge variant="destructive">Atrasada</Badge>
                         </div>
-                        <Badge variant="destructive">Atrasada</Badge>
-                      </div>
-                    ))
+                      ))}
+                      {overdueOs.length > LIMITE_PREVIA && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="w-full gap-1 text-xs"
+                          aria-expanded={verTodasAtrasadas}
+                          onClick={() => setVerTodasAtrasadas(v => !v)}
+                        >
+                          <ChevronDown className={cn("h-4 w-4 transition-transform", verTodasAtrasadas && "rotate-180")} />
+                          {verTodasAtrasadas ? "Ver menos" : `Ver todas as ${overdueOs.length}`}
+                        </Button>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -228,7 +252,7 @@ export default function TechnicianDashboard() {
                     <p className="text-xs text-muted-foreground text-center py-4">Nenhuma comissão pendente.</p>
                   ) : (
                     <div className="space-y-2">
-                      {pendingCommissionOs.map(os => (
+                      {comissoesVisiveis.map(os => (
                         <div key={os.id} className="flex items-center justify-between p-2 bg-card border border-border rounded-lg">
                           <div>
                             <p className="text-xs font-mono font-semibold">{os.numero}</p>
@@ -237,6 +261,19 @@ export default function TechnicianDashboard() {
                           <span className="text-sm font-bold text-success">{os.commission_total ? formatCurrency(os.commission_total) : "—"}</span>
                         </div>
                       ))}
+                      {pendingCommissionOs.length > LIMITE_PREVIA && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="w-full gap-1 text-xs"
+                          aria-expanded={verTodasComissoes}
+                          onClick={() => setVerTodasComissoes(v => !v)}
+                        >
+                          <ChevronDown className={cn("h-4 w-4 transition-transform", verTodasComissoes && "rotate-180")} />
+                          {verTodasComissoes ? "Ver menos" : `Ver todas as ${pendingCommissionOs.length}`}
+                        </Button>
+                      )}
                       <Separator />
                       <div className="flex items-center justify-between font-bold text-sm">
                         <span>Total a receber:</span>
