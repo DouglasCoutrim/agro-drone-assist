@@ -8,14 +8,15 @@
  *
  * Roda automaticamente no início do servidor de desenvolvimento e do build
  * (ver `vite.config.ts`), então trocar o emblema já refaz todo o conjunto.
+ *
+ * A raiz do projeto vem por parâmetro. Aqui não dá para usar `import.meta.url`:
+ * dentro do `vite.config.ts` este arquivo é empacotado junto com a configuração,
+ * e `import.meta.url` passa a apontar para o bundle da config (um nível acima de
+ * `scripts/`) — a leitura do emblema falhava e os ícones nunca eram atualizados.
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
-
-const RAIZ = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const ENTRADA = resolve(RAIZ, "src/assets/logo-icon.png");
 
 /** Mesma tolerância do `LivreOSLogo`: pixel claro demais conta como fundo. */
 const LIMITE_CLARO = 236;
@@ -196,8 +197,8 @@ function paraSvg(bitmap: Bitmap): string {
 
 let emAndamento: Promise<IconeGerado[]> | null = null;
 
-async function gerar(): Promise<IconeGerado[]> {
-  const emblema = recortarEmblema(await lerPng(ENTRADA));
+async function gerar(raiz: string): Promise<IconeGerado[]> {
+  const emblema = recortarEmblema(await lerPng(resolve(raiz, "src/assets/logo-icon.png")));
   const gerados: IconeGerado[] = [];
 
   const escrever = async (caminho: string, bitmap: Bitmap, descricao: string) => {
@@ -209,13 +210,13 @@ async function gerar(): Promise<IconeGerado[]> {
     // Ícone comum: verde da marca ao fundo, emblema grande e centrado.
     const icone = criarTela(lado, FUNDO_MARCA);
     desenharEmblema(emblema, icone, 0.78);
-    await escrever(resolve(RAIZ, `public/icons/icon-${lado}.png`), icone, `icon-${lado}`);
+    await escrever(resolve(raiz, `public/icons/icon-${lado}.png`), icone, `icon-${lado}`);
 
     // Maskable: o sistema recorta até 20% de cada borda, então o emblema recua.
     const maskable = criarTela(lado, FUNDO_MARCA);
     desenharEmblema(emblema, maskable, 0.58);
     await escrever(
-      resolve(RAIZ, `public/icons/icon-${lado}-maskable.png`),
+      resolve(raiz, `public/icons/icon-${lado}-maskable.png`),
       maskable,
       `icon-${lado}-maskable`,
     );
@@ -223,16 +224,16 @@ async function gerar(): Promise<IconeGerado[]> {
 
   const apple = criarTela(180, FUNDO_MARCA);
   desenharEmblema(emblema, apple, 0.72);
-  await escrever(resolve(RAIZ, "public/icons/apple-touch-icon.png"), apple, "apple-touch-icon");
+  await escrever(resolve(raiz, "public/icons/apple-touch-icon.png"), apple, "apple-touch-icon");
 
   const favicon = criarTela(32, FUNDO_MARCA);
   desenharEmblema(emblema, favicon, 0.88);
-  await escrever(resolve(RAIZ, "public/favicon.png"), favicon, "favicon");
+  await escrever(resolve(raiz, "public/favicon.png"), favicon, "favicon");
 
   // Favicon vetorial: emblema sem fundo, como a marca aparece dentro do ERP.
   const marca = criarTela(512, null);
   desenharEmblema(emblema, marca, 0.98);
-  const svg = resolve(RAIZ, "public/icons/livreos.svg");
+  const svg = resolve(raiz, "public/icons/livreos.svg");
   await mkdir(dirname(svg), { recursive: true });
   await writeFile(svg, paraSvg(marca));
   gerados.push({ caminho: svg, descricao: "livreos.svg" });
@@ -240,9 +241,12 @@ async function gerar(): Promise<IconeGerado[]> {
   return gerados;
 }
 
-/** Gera o conjunto completo (uma vez por processo) e devolve os arquivos escritos. */
-export function generatePwaIcons(): Promise<IconeGerado[]> {
-  emAndamento ??= gerar().catch((erro) => {
+/**
+ * Gera o conjunto completo (uma vez por processo) e devolve os arquivos escritos.
+ * `raiz` é o diretório do projeto — informe-o sempre (por padrão, o diretório atual).
+ */
+export function generatePwaIcons(raiz: string = process.cwd()): Promise<IconeGerado[]> {
+  emAndamento ??= gerar(raiz).catch((erro) => {
     emAndamento = null;
     throw erro;
   });
