@@ -49,7 +49,7 @@ import { calcularPrazoOS, rotuloPrazo } from "@/lib/os-prazo";
 import { useNfseAliquota } from "@/hooks/useNfseAliquota";
 import { PaymentConfirmDialog, PaymentData } from "@/components/os/PaymentConfirmDialog";
 import { registrarRecebimentoOS, type RecebimentoResult } from "@/lib/os-billing";
-import { valorCobradoOS } from "@/lib/os-valor";
+import { classificarRecebimentoOS, valorCobradoOS } from "@/lib/os-valor";
 import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 
 
@@ -302,28 +302,36 @@ export default function OrdensServico() {
         // `contas_receber` é a fonte do saldo por OS (valor total e recebido oficiais).
         let contasQuery = supabase.from("contas_receber" as any).select("ordem_servico_id, valor, valor_recebido, saldo");
         if (organization?.id && !isPlatformAdmin) contasQuery = contasQuery.eq("organization_id", organization.id);
-        const { data: contas } = await contasQuery;
+        const { data: contas, error: contasError } = await contasQuery;
+        // Falha (RLS/rede/tabela) não pode virar "sem contas": sem a fonte do saldo não
+        // classificamos nada, para não marcar como paga uma OS que talvez não esteja.
+        if (contasError) { console.error("Erro ao buscar contas a receber:", contasError); return; }
         const contaPorOS = new Map<string, any>();
         (contas || []).forEach((c: any) => { if (c?.ordem_servico_id) contaPorOS.set(c.ordem_servico_id, c); });
 
-        const pagos = new Set<string>();
-        const parciais = new Set<string>();
-        const ids = new Set<string>([...recebidoPorOS.keys(), ...contaPorOS.keys()]);
-        ids.forEach((osId) => {
-          const recebido = Number(contaPorOS.get(osId)?.valor_recebido ?? recebidoPorOS.get(osId) ?? 0);
-          if (recebido <= 0.005) return;
-          const conta = contaPorOS.get(osId);
-          const saldo = conta ? Number(conta.saldo ?? 0) : Number(contaPorOS.get(osId)?.valor ?? 0);
-          // Sem linha em contas_receber (recebimento antigo): decide pelo valor da OS carregada.
-          if (!conta) {
-            const os = ordens.find((o) => o.id === osId) as any;
-            const total = valorCobradoOS(os, 0);
-            if (total > 0 && recebido < total - 0.005) { parciais.add(osId); return; }
-          }
-          if (saldo > 0.005) parciais.add(osId); else pagos.add(osId);
-        });
-        setPagoOSIds(pagos);
-        setParcialOSIds(parciais);
+        // Recebimentos antigos (sem linha em contas_receber): o total da OS precisa dos
+        // itens. Buscamos direto do banco em vez de depender de `ordens` (que pode ainda
+        // não estar carregada quando este efeito roda em paralelo com fetchData).
+        const ids = [...new Set<string>([...recebidoPorOS.keys(), ...contaPorOS.keys()])];
+        const semConta = ids.filter((osId) => !contaPorOS.has(osId));
+        const totalPorOS = new Map<string, number>();
+        if (semConta.length) {
+          const [{ data: osRows, error: osErr }, { data: itensRows, error: itensErr }] = await Promise.all([
+            supabase.from("ordens_servico").select("id, valor_final, valor_orcamento, desconto").in("id", semConta),
+            supabase.from("itens_os").select("ordem_servico_id, valor_total").in("ordem_servico_id", semConta),
+          ]);
+          if (osErr || itensErr) { console.error("Erro ao buscar valores das OS:", osErr || itensErr); return; }
+          const itensPorOS = new Map<string, number>();
+          (itensRows || []).forEach((i: any) => {
+            if (!i?.ordem_servico_id) return;
+            itensPorOS.set(i.ordem_servico_id, (itensPorOS.get(i.ordem_servico_id) || 0) + Number(i.valor_total || 0));
+          });
+          (osRows || []).forEach((o: any) => totalPorOS.set(o.id, valorCobradoOS(o, itensPorOS.get(o.id) || 0)));
+        }
+
+        const { pago, parcial } = classificarRecebimentoOS(recebidoPorOS, contaPorOS, totalPorOS);
+        setPagoOSIds(pago);
+        setParcialOSIds(parcial);
       } catch (err) {
         console.error("Erro ao buscar OS pagas:", err);
       }

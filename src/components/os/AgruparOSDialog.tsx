@@ -19,7 +19,7 @@ import { useOrganization } from "@/hooks/useOrganization";
 import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
 import { getStatusLabel } from "@/components/os/StatusPipeline";
 import { formatCurrency, formatDate, getErrorMessage, todayDateInput } from "@/lib/formatters";
-import { descontoEfetivoOS, totalItensOS, valorCobradoOS } from "@/lib/os-valor";
+import { descontoEfetivoOS, totalItensOS, valorCobradoOS, valoresDoGrupoOS } from "@/lib/os-valor";
 import {
   ConsolidadoGrupo, GroupedStoredItem, generateOrcamentoConsolidadoPDF, grupoSubtotal,
   loadImageAsDataUrl, shareConsolidadoPDF,
@@ -115,18 +115,10 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
 
   const grupos: ConsolidadoGrupo[] = useMemo(() => osList.filter(o => selected.has(o.id)).map(o => {
     const its = itemsByOS[o.id] || [];
-    const totalItens = totalItensOS(its);
     // Mesma definição de valor da OS usada na cobrança e na comissão (src/lib/os-valor.ts):
-    // o desconto da própria OS passa a valer aqui também.
-    const descontoOS = descontoEfetivoOS(o, totalItens);
-    const itens = its.length
-      ? its.map(i => ({ tipo: i.tipo, descricao: i.descricao, quantidade: Number(i.quantidade) || 0, valor_unitario: Number(i.valor_unitario) || 0, valor_total: Number(i.valor_total) || 0 }))
-      : (() => {
-          const cobrado = valorCobradoOS(o, 0);
-          return cobrado > 0
-            ? [{ tipo: "servico", descricao: "Serviço conforme valor da OS", quantidade: 1, valor_unitario: cobrado, valor_total: cobrado }]
-            : [];
-        })();
+    // o desconto da própria OS entra UMA vez sobre o bruto do grupo — nunca sobre um valor
+    // já líquido, o que fazia a OS sem itens cobrar a menos.
+    const { itens, desconto: descontoOS } = valoresDoGrupoOS(o, its);
     return { os_numero: o.numero, equipamento: equipLabel(o), defeito: o.descricao_problema, diagnostico: o.diagnostico || undefined, itens, desconto: descontoOS, _id: o.id } as any;
   }), [osList, selected, itemsByOS]);
 
