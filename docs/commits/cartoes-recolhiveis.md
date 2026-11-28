@@ -26,6 +26,13 @@ Novas props (todas opcionais):
   e não mostra um segundo botão para o mesmo conteúdo.
 - O bloco encolhido continua arrastável e as setas ↑ ↓ continuam funcionando.
 
+## Destaque de quem está encolhido
+
+Para o bloco/cartão encolhido não "sumir" da tela, o rótulo dele fica em **verde e maior**
+(`bg-success` + `text-success-foreground`, `text-sm font-semibold`, `px-3 py-1`, ícone maior)
+enquanto está fechado; ao expandir volta ao estilo discreto. O botão "Expandir" também ganha
+contorno verde no estado encolhido, e o rótulo longo trunca em vez de quebrar o cabeçalho.
+
 ## O que ainda não encolhe
 
 - Cartões da biblioteca (`src/components/ui/card.tsx`) em telas que **não** estão dentro de

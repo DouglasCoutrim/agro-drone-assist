@@ -68,7 +68,16 @@ export function PremiumCard({
           )}
         >
           {rotulo && (
-            <span className="truncate text-xs font-medium text-muted-foreground">{rotulo}</span>
+            <span
+              className={cn(
+                "truncate font-medium",
+                aberto
+                  ? "text-xs text-muted-foreground"
+                  : "rounded-full border border-success bg-success px-3 py-1 text-sm font-semibold text-success-foreground shadow-sm"
+              )}
+            >
+              {rotulo}
+            </span>
           )}
           <button
             type="button"
@@ -76,10 +85,21 @@ export function PremiumCard({
             aria-controls={conteudoId}
             title={aberto ? "Encolher" : "Expandir"}
             onClick={() => setAberto((atual) => !atual)}
-            className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1 rounded-full font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+              aberto
+                ? "rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                : rotulo
+                  ? "border border-success/60 px-2.5 py-0.5 text-xs text-success hover:bg-success/10"
+                  : "border border-success bg-success px-3 py-1 text-sm font-semibold text-success-foreground shadow-sm"
+            )}
           >
             <ChevronDown
-              className={cn("h-3.5 w-3.5 transition-transform", !aberto && "-rotate-90")}
+              className={cn(
+                "transition-transform",
+                aberto ? "h-3.5 w-3.5" : "h-4 w-4",
+                !aberto && "-rotate-90"
+              )}
             />
             {aberto ? "Encolher" : "Expandir"}
           </button>

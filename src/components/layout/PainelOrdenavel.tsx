@@ -160,16 +160,21 @@ export function PainelOrdenavel({
             <div className="mb-1 flex items-center justify-between gap-2">
               <button
                 type="button"
-                aria-label={`Reorganizar bloco ${bloco.rotulo}`}
+                aria-label={`Reorganizar bloco ${bloco.rotulo}${encolhido ? " (bloco encolhido)" : ""}`}
                 onPointerDown={(e) => iniciarArraste(id, e)}
                 onPointerMove={moverArraste}
                 onPointerUp={finalizarArraste}
                 onPointerCancel={finalizarArraste}
                 onKeyDown={(e) => atalhoTeclado(id, e)}
-                className="flex cursor-grab touch-none items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
+                className={cn(
+                  "flex min-w-0 cursor-grab touch-none items-center gap-1 rounded-full border transition-colors active:cursor-grabbing",
+                  encolhido
+                    ? "border-success bg-success px-3 py-1 text-sm font-semibold text-success-foreground shadow-sm"
+                    : "border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+                )}
               >
-                <GripVertical className="h-3.5 w-3.5" />
-                {bloco.rotulo}
+                <GripVertical className={cn("shrink-0", encolhido ? "h-4 w-4" : "h-3.5 w-3.5")} />
+                <span className="truncate">{bloco.rotulo}</span>
               </button>
               <button
                 type="button"
@@ -177,7 +182,12 @@ export function PainelOrdenavel({
                 aria-controls={conteudoId}
                 title={encolhido ? "Expandir" : "Encolher"}
                 onClick={() => alternarRecolhido(id, bloco.rotulo)}
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className={cn(
+                  "inline-flex shrink-0 items-center gap-1 rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+                  encolhido
+                    ? "border-success/60 bg-card px-2.5 py-0.5 text-xs font-medium text-success hover:bg-success/10"
+                    : "border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+                )}
               >
                 <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", encolhido && "-rotate-90")} />
                 {encolhido ? "Expandir" : "Encolher"}
