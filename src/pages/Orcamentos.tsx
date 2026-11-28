@@ -283,7 +283,7 @@ export default function Orcamentos() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <PremiumCard bordered={true} padding="lg" delay={0}>
+        <PremiumCard bordered={true} padding="lg" delay={0} rotulo="Orçamentos">
           <PremiumCardHeader
             title="Orçamentos"
             subtitle="Orçamentos rápidos com peças, serviços e desconto"

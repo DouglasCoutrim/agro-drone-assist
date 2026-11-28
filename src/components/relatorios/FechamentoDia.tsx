@@ -160,7 +160,7 @@ export function FechamentoDia() {
   };
 
   return (
-    <PremiumCard>
+    <PremiumCard rotulo="Fechamento do dia">
       <PremiumCardHeader
         title="Fechamento do dia"
         subtitle="Resumo das vendas do dia e registro do fechamento"

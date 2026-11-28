@@ -332,7 +332,7 @@ export default function ContasPagar() {
     <MainLayout>
       <div className="space-y-4">
         {/* Header */}
-        <PremiumCard delay={0}>
+        <PremiumCard delay={0} rotulo="Contas a Pagar">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
             <div>
               <h1 className="text-lg font-bold flex items-center gap-2"><CalendarClock className="h-5 w-5 text-primary" />Contas a Pagar</h1>

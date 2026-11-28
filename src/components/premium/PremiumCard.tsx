@@ -63,20 +63,13 @@ export function PremiumCard({
         <div
           className={cn(
             "flex items-center gap-2",
-            rotulo ? "justify-between" : "justify-end",
+            aberto ? "justify-end" : "justify-between",
             aberto && "mb-3"
           )}
         >
-          {rotulo && (
-            <span
-              className={cn(
-                "truncate font-medium",
-                aberto
-                  ? "text-xs text-muted-foreground"
-                  : "rounded-full border border-success bg-success px-3 py-1 text-sm font-semibold text-success-foreground shadow-sm"
-              )}
-            >
-              {rotulo}
+          {!aberto && (
+            <span className="gradient-primary truncate rounded-full px-3 py-1 text-sm font-semibold shadow-soft">
+              {rotulo || "Conteúdo"}
             </span>
           )}
           <button
@@ -86,12 +79,10 @@ export function PremiumCard({
             title={aberto ? "Encolher" : "Expandir"}
             onClick={() => setAberto((atual) => !atual)}
             className={cn(
-              "inline-flex shrink-0 items-center gap-1 rounded-full font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+              "inline-flex shrink-0 items-center gap-1 rounded-full border font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
               aberto
-                ? "rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                : rotulo
-                  ? "border border-success/60 px-2.5 py-0.5 text-xs text-success hover:bg-success/10"
-                  : "border border-success bg-success px-3 py-1 text-sm font-semibold text-success-foreground shadow-sm"
+                ? "rounded-md border-transparent px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                : "border-primary/60 bg-card px-2.5 py-1 text-xs text-primary hover:bg-primary/10"
             )}
           >
             <ChevronDown

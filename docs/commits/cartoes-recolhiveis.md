@@ -28,10 +28,16 @@ Novas props (todas opcionais):
 
 ## Destaque de quem está encolhido
 
-Para o bloco/cartão encolhido não "sumir" da tela, o rótulo dele fica em **verde e maior**
-(`bg-success` + `text-success-foreground`, `text-sm font-semibold`, `px-3 py-1`, ícone maior)
-enquanto está fechado; ao expandir volta ao estilo discreto. O botão "Expandir" também ganha
-contorno verde no estado encolhido, e o rótulo longo trunca em vez de quebrar o cabeçalho.
+Para o bloco/cartão encolhido não "sumir" da tela, o rótulo dele fica **verde e maior** enquanto
+está fechado; ao expandir volta ao estilo discreto. O botão "Expandir" ganha contorno verde no
+estado encolhido e o rótulo longo trunca em vez de quebrar o cabeçalho.
+
+Cores: usa a mesma pintura do botão **"Nova Transação"** (`gradient-primary`, ou seja
+`linear-gradient(135deg, hsl(var(--primary)), hsl(142 72% 44%))` com `text-primary-foreground`),
+com `text-sm font-semibold`, `px-3 py-1` e ícone maior — nada de cor nova fora do tema.
+
+O `PremiumCard` mostra o nome do cartão no selo verde: use a prop `rotulo` (ex.: `rotulo="Fechamento do dia"`).
+Sem `rotulo`, o selo aparece como "Conteúdo" — assim nenhum cartão encolhido fica sem identificação.
 
 ## O que ainda não encolhe
 

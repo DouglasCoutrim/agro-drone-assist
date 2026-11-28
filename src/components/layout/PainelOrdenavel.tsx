@@ -169,7 +169,7 @@ export function PainelOrdenavel({
                 className={cn(
                   "flex min-w-0 cursor-grab touch-none items-center gap-1 rounded-full border transition-colors active:cursor-grabbing",
                   encolhido
-                    ? "border-success bg-success px-3 py-1 text-sm font-semibold text-success-foreground shadow-sm"
+                    ? "gradient-primary border-transparent px-3 py-1 text-sm font-semibold shadow-soft"
                     : "border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -185,7 +185,7 @@ export function PainelOrdenavel({
                 className={cn(
                   "inline-flex shrink-0 items-center gap-1 rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                   encolhido
-                    ? "border-success/60 bg-card px-2.5 py-0.5 text-xs font-medium text-success hover:bg-success/10"
+                    ? "border-primary/60 bg-card px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10"
                     : "border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
                 )}
               >

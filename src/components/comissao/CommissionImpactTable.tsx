@@ -104,7 +104,7 @@ export function CommissionImpactTable({ period }: { period: PeriodRange }) {
         />
       </div>
 
-      <PremiumCard delay={0}>
+      <PremiumCard delay={0} rotulo="Conferência da comissão">
         <div className="flex flex-col gap-3 border-b border-border/60 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="flex items-center gap-2 text-sm font-semibold">

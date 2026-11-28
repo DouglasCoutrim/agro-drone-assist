@@ -185,7 +185,7 @@ export default function Comissoes() {
               <Resumo rotulo="Em aberto" valor={totais.abertas} cor="text-amber-600" />
             </div>
 
-            <PremiumCard delay={0}>
+            <PremiumCard delay={0} rotulo="Faturas por técnico">
               <CardHeader className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-center sm:justify-between">
                 <CardTitle className="text-base">Faturas por técnico</CardTitle>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

@@ -224,7 +224,7 @@ export default function Financeiro() {
     <MainLayout>
       <div className="space-y-4" data-tour="financeiro-page">
         {/* Header */}
-        <PremiumCard delay={0}>
+        <PremiumCard delay={0} rotulo="Financeiro">
           <div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
               <div>
@@ -334,12 +334,12 @@ export default function Financeiro() {
 
         {/* OS em aberto para cobrança */}
         {erroOS && (
-          <PremiumCard delay={100}>
+          <PremiumCard delay={100} rotulo="OS em aberto para cobrança">
             <EstadoErro mensagem="Não foi possível carregar as ordens de serviço em aberto." aoTentarNovamente={carregarOSAbertas} />
           </PremiumCard>
         )}
         {osAbertas.length > 0 && (
-          <PremiumCard delay={100}>
+          <PremiumCard delay={100} rotulo="OS aguardando pagamento">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
               <div className="flex items-center gap-1.5">
                 <ClipboardList className="h-4 w-4 text-primary" />
