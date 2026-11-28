@@ -28,6 +28,7 @@ import { SmartSelect, SmartSelectOption } from "@/components/ui/smart-select";
 import { StatusPipeline, getNextStatus, getStatusLabel } from "@/components/os/StatusPipeline";
 import { OSItemsSection, OSItem } from "@/components/os/OSItemsSection";
 import { dateOnlyToIso, formatCurrency, formatDate, getErrorMessage, todayDateInput } from "@/lib/formatters";
+import { gerarReciboRecebimentoOS, baixarReciboRecebimentoOS } from "@/lib/recibo-os";
 import { whatsappTemplates, openWhatsApp, WhatsAppOS } from "@/lib/whatsapp-templates";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { generateOSPDF } from "@/components/ordens-servico/OSPDFGenerator";
@@ -950,7 +951,29 @@ export default function OrdensServico() {
       }
 
       toast.success("Recebimento registrado no Financeiro!");
-            setPagoOSIds(prev => new Set(prev).add(paymentDialog.osId!));
+      
+            // Gera e baixa o PDF do Recibo de Recebimento
+            try {
+              const os = ordens.find(o => o.id === paymentDialog.osId);
+              if (os) {
+                await baixarReciboRecebimentoOS({
+                  osId: paymentDialog.osId,
+                  osNumero: os.numero,
+                  clienteNome: os.clientes?.nome || "Cliente",
+                  clienteTelefone: os.clientes?.telefone,
+                  clienteCpfCnpj: undefined,
+                  valor: data.valor,
+                  formaPagamento: data.forma_pagamento,
+                  dataPagamento: todayDateInput(),
+                  organizationId: os.organization_id || organization?.id || "",
+                });
+              }
+            } catch (err: any) {
+              console.error("Erro ao gerar recibo:", err);
+              // O recibo é opcional; o pagamento já foi registrado com sucesso
+            }
+      
+                  setPagoOSIds(prev => new Set(prev).add(paymentDialog.osId!));
             setPaymentDialog({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
             fetchData();
     } catch (err: any) {
