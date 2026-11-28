@@ -232,12 +232,12 @@ export default function Financeiro() {
                 <p className="text-xs text-muted-foreground">Controle de receitas, despesas e cobranças</p>
               </div>
               <div className="flex gap-2 w-full sm:w-auto">
-                <Button size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => abrirCobranca()}>
+                <Button data-tour="financeiro-cobrar" size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => abrirCobranca()}>
                   <MessageCircle className="mr-1.5 h-3.5 w-3.5" />Cobrar Cliente
                 </Button>
                 <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
                   <DialogTrigger asChild>
-                    <Button size="sm" className="gradient-primary shadow-soft"><Plus className="mr-1.5 h-3.5 w-3.5" />Nova Transação</Button>
+                    <Button data-tour="financeiro-nova" size="sm" className="gradient-primary shadow-soft"><Plus className="mr-1.5 h-3.5 w-3.5" />Nova Transação</Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
                     <DialogHeader className="shrink-0">
@@ -339,6 +339,7 @@ export default function Financeiro() {
           </PremiumCard>
         )}
         {osAbertas.length > 0 && (
+          <div data-tour="financeiro-os-abertas">
           <PremiumCard delay={100} rotulo="OS aguardando pagamento">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
               <div className="flex items-center gap-1.5">
@@ -373,6 +374,7 @@ export default function Financeiro() {
               )}
             </div>
           </PremiumCard>
+          </div>
         )}
 
         {/* Search */}

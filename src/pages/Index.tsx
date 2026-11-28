@@ -304,7 +304,7 @@ const Index = () => {
             <h1 className="text-4xl font-bold leading-tight tracking-tight text-foreground">Visão geral</h1>
             <p className="mt-1 text-muted-foreground">{saudacao}{nome ? `, ${nome}` : ""}! Acompanhe o desempenho e a operação da sua empresa.</p>
           </div>
-          <div className="flex shrink-0 flex-nowrap items-center gap-2">
+          <div data-tour="dashboard-acoes" className="flex shrink-0 flex-nowrap items-center gap-2">
             <Select value={periodo} onValueChange={(v) => setPeriodo(v as Periodo)}>
               <SelectTrigger className="h-11 w-[170px] rounded-xl bg-card shadow-sm" aria-label="Período"><CalendarDays className="mr-2 h-4 w-4" /><SelectValue /></SelectTrigger>
               <SelectContent>{PERIODOS.map(p => <SelectItem key={p.id} value={p.id}>{p.id === "hoje" ? "Hoje" : `Últimos ${p.label}`}</SelectItem>)}</SelectContent>
@@ -335,7 +335,7 @@ const Index = () => {
             {/* Indicadores */}
             <div data-bloco="indicadores" data-rotulo="Indicadores" data-tour="dashboard-kpis" className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-5">
               {kpis.map((k, idx) => (
-                <button key={k.label} onClick={() => navigate(k.href)}
+                <button key={k.label} data-tour={`dashboard-kpi-${idx}`} onClick={() => navigate(k.href)}
                   className="group relative overflow-hidden rounded-2xl border border-border bg-card p-3 pb-12 text-left shadow-sm transition-shadow hover:shadow-md sm:p-5 sm:pb-14">
                   <div className="relative z-10 flex items-start gap-3">
                     <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full sm:h-12 sm:w-12", k.tone === "warning" ? "bg-warning/15 text-warning" : "bg-primary/15 text-primary")}>

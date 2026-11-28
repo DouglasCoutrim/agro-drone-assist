@@ -211,7 +211,7 @@ export default function Clientes() {
                 <p className="text-xs text-muted-foreground">Cadastro e gestão de clientes</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div data-tour="clientes-csv" className="flex items-center gap-2">
               <CsvImportExport
                 tableName="clientes"
                 organizationId={organization?.id}

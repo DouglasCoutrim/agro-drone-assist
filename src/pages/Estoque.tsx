@@ -373,10 +373,10 @@ export default function Estoque() {
             <p className="text-gray-600 mt-1">Gerencie peças, componentes e materiais</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={buscarFotosLote} disabled={loteLoading}>
+            <Button data-tour="estoque-fotos" variant="outline" onClick={buscarFotosLote} disabled={loteLoading}>
               {loteLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImageIcon className="mr-2 h-4 w-4" />}Buscar fotos
             </Button>
-            <Button variant="outline" onClick={() => { window.location.href = "/estoque/importar-xml"; }}>
+            <Button data-tour="estoque-xml" variant="outline" onClick={() => { window.location.href = "/estoque/importar-xml"; }}>
               Importar XML (NF-e)
             </Button>
             <Button data-tour="estoque-novo" className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold" onClick={handleOpenNewDialog}>
@@ -386,7 +386,7 @@ export default function Estoque() {
         </div>
 
         {/* CSV Import/Export */}
-        <div className="flex items-center gap-2">
+        <div data-tour="estoque-csv" className="flex items-center gap-2">
           <CsvImportExport
             tableName="itens_estoque"
             organizationId={organization?.id}
@@ -496,6 +496,7 @@ export default function Estoque() {
 
         {/* Low Stock Alerts */}
         {itensEstoqueBaixo.length > 0 && (
+          <div data-tour="estoque-baixo">
           <AlertBox
             title={`${itensEstoqueBaixo.length} Itens com Estoque Baixo`}
             items={itensEstoqueBaixo.slice(0, 5).map(item => ({
@@ -506,6 +507,7 @@ export default function Estoque() {
             icon={AlertTriangle}
             delay={200}
           />
+          </div>
         )}
 
         {/* New/Edit Item Dialog */}

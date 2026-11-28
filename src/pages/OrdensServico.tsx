@@ -1367,7 +1367,7 @@ export default function OrdensServico() {
             </div>
             <div className="flex flex-col items-end gap-1">
               <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => setAgruparOpen(true)}>
+              <Button data-tour="os-agrupar" size="sm" variant="outline" onClick={() => setAgruparOpen(true)}>
                 <FileText className="mr-1.5 h-3.5 w-3.5" />Agrupar em orçamento
               </Button>
               <Button data-tour="os-nova" size="sm" className="gradient-primary shadow-soft" onClick={() => {
@@ -1408,7 +1408,7 @@ export default function OrdensServico() {
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Buscar por número, cliente ou defeito..." className="pl-9 h-9 text-xs bg-muted/30 border-border/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
-            <Button size="sm" variant={tecFilter === "meus" ? "default" : "outline"} className="h-9" onClick={() => setTecFilter(tecFilter === "meus" ? "todos" : "meus")}>Minhas OS</Button>
+            <Button data-tour="os-filtros" size="sm" variant={tecFilter === "meus" ? "default" : "outline"} className="h-9" onClick={() => setTecFilter(tecFilter === "meus" ? "todos" : "meus")}>Minhas OS</Button>
             <select aria-label="Filtrar por técnico" className="h-9 rounded-md border border-border bg-background px-2 text-xs" value={tecFilter} onChange={(e) => setTecFilter(e.target.value)}>
               <option value="todos">Todos os técnicos</option>
               <option value="meus">Minhas OS</option>

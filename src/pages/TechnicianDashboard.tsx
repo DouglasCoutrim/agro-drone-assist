@@ -222,7 +222,7 @@ export default function TechnicianDashboard() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div data-tour="tecnico-topo" className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="font-display text-2xl font-bold">Meu Painel</h1>
             <p className="text-sm text-muted-foreground">Acompanhe suas ordens de serviço e comissões</p>
@@ -360,7 +360,7 @@ export default function TechnicianDashboard() {
             </PainelOrdenavel>
 
             {/* Kanban — arraste o cartão para outra coluna para mudar o status da OS */}
-            <div className="grid gap-4 lg:grid-cols-5">
+            <div data-tour="tecnico-kanban" className="grid gap-4 lg:grid-cols-5">
               {KANBAN_COLUMNS.map(col => {
                 const list = data.kanban?.[col.key] || [];
                 const destacada = colunaAlvo === col.key && arrastando !== null;
