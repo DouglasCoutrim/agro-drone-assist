@@ -50,6 +50,7 @@ const EmpresaConfig = lazy(() => import("./pages/EmpresaConfig"));
 const Orcamentos = lazy(() => import("./pages/Orcamentos"));
 const AdminMaster = lazy(() => import("./pages/AdminMaster"));
 const CadastroEmpresa = lazy(() => import("./pages/CadastroEmpresa"));
+const CheckoutPublico = lazy(() => import("./pages/CheckoutPublico"));
 const MensalidadeAtraso = lazy(() => import("./pages/MensalidadeAtraso"));
 const Assinatura = lazy(() => import("./pages/Assinatura"));
 const Suporte = lazy(() => import("./pages/Suporte"));
@@ -119,6 +120,7 @@ const App = () => {
                   <Route path="/admin/login" element={<AdminAuth />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/cadastro-empresa" element={<CadastroEmpresa />} />
+                  <Route path="/checkout-publico/:token" element={<CheckoutPublico />} />
                   <Route path="/mensalidade-em-atraso" element={<ProtectedRoute allowBlocked><MensalidadeAtraso /></ProtectedRoute>} />
                   <Route path="/admin/dashboard" element={<ProtectedRoute requiredPlatformAdmin><AdminMaster /></ProtectedRoute>} />
                   <Route path="/admin" element={<Navigate to="/admin/login" replace />} />

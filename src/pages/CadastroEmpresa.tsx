@@ -35,23 +35,18 @@ export default function CadastroEmpresa() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (form.password.length < 6) {
-      toast.error('Senha deve ter ao menos 6 caracteres.');
+    if (form.password.length < 8) {
+      toast.error('Senha deve ter ao menos 8 caracteres.');
       return;
     }
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('signup-tenant', { body: form });
       if (error || !(data as any)?.ok) throw new Error((data as any)?.error || error?.message);
-
-      const { error: signErr } = await supabase.auth.signInWithPassword({
-        email: form.email, password: form.password,
-      });
-      if (signErr) throw signErr;
-      try { localStorage.setItem("livreos:lastActivityAt", String(Date.now())); } catch {}
-
-      toast.success('Empresa cadastrada! Configure os dados da sua empresa para começar.');
-      navigate('/empresa');
+      const checkoutToken = (data as { checkout_token?: string }).checkout_token;
+      if (!checkoutToken) throw new Error('Não foi possível criar a sessão de checkout.');
+      toast.success('Empresa cadastrada! Escolha o ciclo e gere sua cobrança quando quiser.');
+      navigate(`/checkout-publico/${checkoutToken}`);
     } catch (err: any) {
       toast.error(err.message || 'Erro no cadastro');
     } finally {
@@ -105,7 +100,7 @@ export default function CadastroEmpresa() {
                 </div>
                 <div className="sm:col-span-2">
                   <Label>Senha *</Label>
-                  <Input type="password" required minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                  <Input type="password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
                 </div>
               </div>
 
