@@ -1,9 +1,10 @@
 import { Children, isValidElement, useEffect, useRef, useState, type ReactNode } from "react";
-import { GripVertical, RotateCcw } from "lucide-react";
+import { ChevronDown, GripVertical, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { carregarOrdem, chaveDoPainel, limparOrdem, moverItem, salvarOrdem } from "@/lib/painel-layout";
+import { PainelBlocoContext } from "./painel-bloco-context";
 
 /**
  * Painel com blocos que o usuário reorganiza na ordem que preferir.
@@ -52,6 +53,8 @@ export function PainelOrdenavel({
   const [carregadoPara, setCarregadoPara] = useState<string | null>(null);
   const [arrastando, setArrastando] = useState<string | null>(null);
   const [anuncio, setAnuncio] = useState("");
+  // Blocos encolhidos pelo usuário (acordeão). Somente visual, nada é gravado.
+  const [recolhidos, setRecolhidos] = useState<Record<string, boolean>>({});
   const refs = useRef<Record<string, HTMLDivElement | null>>({});
   const arrastandoRef = useRef<string | null>(null);
 
@@ -72,6 +75,12 @@ export function PainelOrdenavel({
 
   const padrao = chaveIds ? chaveIds.split("|") : [];
   const alterado = ordem.join("|") !== padrao.join("|");
+
+  const alternarRecolhido = (id: string, rotulo: string) => {
+    const encolhendo = !recolhidos[id];
+    setRecolhidos((atual) => ({ ...atual, [id]: encolhendo }));
+    setAnuncio(`${rotulo} ${encolhendo ? "encolhido" : "expandido"}.`);
+  };
 
   const iniciarArraste = (id: string, e: React.PointerEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -123,7 +132,7 @@ export function PainelOrdenavel({
     <div className={cn("space-y-4 lg:space-y-5", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-          Seu painel: arraste pelos pontos para reorganizar (ou use ↑ ↓ no teclado)
+          Seu painel: arraste pelos pontos para reorganizar, use ↑ ↓ no teclado, ou encolha o que não usa
         </p>
         {alterado && (
           <Button
@@ -144,23 +153,44 @@ export function PainelOrdenavel({
       {ordem.map((id) => {
         const bloco = blocos.find((b) => b.id === id);
         if (!bloco) return null;
+        const encolhido = !!recolhidos[id];
+        const conteudoId = `bloco-${id}-conteudo`;
         return (
           <div key={id} ref={(el) => { refs.current[id] = el; }} className={cn(arrastando === id && "opacity-70")}>
-            <button
-              type="button"
-              aria-label={`Reorganizar bloco ${bloco.rotulo}`}
-              onPointerDown={(e) => iniciarArraste(id, e)}
-              onPointerMove={moverArraste}
-              onPointerUp={finalizarArraste}
-              onPointerCancel={finalizarArraste}
-              onKeyDown={(e) => atalhoTeclado(id, e)}
-              className="mb-1 flex cursor-grab touch-none items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                aria-label={`Reorganizar bloco ${bloco.rotulo}`}
+                onPointerDown={(e) => iniciarArraste(id, e)}
+                onPointerMove={moverArraste}
+                onPointerUp={finalizarArraste}
+                onPointerCancel={finalizarArraste}
+                onKeyDown={(e) => atalhoTeclado(id, e)}
+                className="flex cursor-grab touch-none items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
+              >
+                <GripVertical className="h-3.5 w-3.5" />
+                {bloco.rotulo}
+              </button>
+              <button
+                type="button"
+                aria-expanded={!encolhido}
+                aria-controls={conteudoId}
+                title={encolhido ? "Expandir" : "Encolher"}
+                onClick={() => alternarRecolhido(id, bloco.rotulo)}
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              >
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", encolhido && "-rotate-90")} />
+                {encolhido ? "Expandir" : "Encolher"}
+              </button>
+            </div>
+            <div
+              id={conteudoId}
+              hidden={encolhido}
+              className={cn("rounded-2xl", arrastando === id && "ring-2 ring-primary/40")}
             >
-              <GripVertical className="h-3.5 w-3.5" />
-              {bloco.rotulo}
-            </button>
-            <div className={cn("rounded-2xl", arrastando === id && "ring-2 ring-primary/40")}>
-              {bloco.elemento}
+              <PainelBlocoContext.Provider value={true}>
+                {bloco.elemento}
+              </PainelBlocoContext.Provider>
             </div>
           </div>
         );

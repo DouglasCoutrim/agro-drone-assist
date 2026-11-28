@@ -1,6 +1,8 @@
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { useDentroDeBlocoPainel } from "@/components/layout/painel-bloco-context";
 
 interface PremiumCardProps {
   children: ReactNode;
@@ -9,6 +11,9 @@ interface PremiumCardProps {
   padding?: "sm" | "md" | "lg"; // p-3, p-4, p-6
   bordered?: boolean; // Mostra borda
   delay?: number; // Stagger delay for entrance animation
+  recolhivel?: boolean; // Mostra o botão de encolher/expandir (padrão: ligado)
+  recolhidoInicial?: boolean; // Começa encolhido
+  rotulo?: string; // Nome do card, exibido quando está encolhido
 }
 
 export function PremiumCard({
@@ -18,6 +23,9 @@ export function PremiumCard({
   padding = "md",
   bordered = true,
   delay = 0,
+  recolhivel = true,
+  recolhidoInicial = false,
+  rotulo,
 }: PremiumCardProps) {
   const paddingClass = {
     sm: "p-3",
@@ -26,6 +34,11 @@ export function PremiumCard({
   }[padding];
 
   const [visible, setVisible] = useState(false);
+  const [aberto, setAberto] = useState(!recolhidoInicial);
+  const conteudoId = useId();
+  // Dentro de um bloco do painel é o bloco que encolhe: evita dois botões para a mesma coisa.
+  const dentroDeBloco = useDentroDeBlocoPainel();
+  const mostrarControle = recolhivel && !dentroDeBloco;
 
   useEffect(() => {
     const timer = setTimeout(() => setVisible(true), delay);
@@ -46,7 +59,36 @@ export function PremiumCard({
       )}
       style={{ transitionDelay: `${delay}ms` }}
     >
-      {children}
+      {mostrarControle && (
+        <div
+          className={cn(
+            "flex items-center gap-2",
+            rotulo ? "justify-between" : "justify-end",
+            aberto && "mb-3"
+          )}
+        >
+          {rotulo && (
+            <span className="truncate text-xs font-medium text-muted-foreground">{rotulo}</span>
+          )}
+          <button
+            type="button"
+            aria-expanded={aberto}
+            aria-controls={conteudoId}
+            title={aberto ? "Encolher" : "Expandir"}
+            onClick={() => setAberto((atual) => !atual)}
+            className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          >
+            <ChevronDown
+              className={cn("h-3.5 w-3.5 transition-transform", !aberto && "-rotate-90")}
+            />
+            {aberto ? "Encolher" : "Expandir"}
+          </button>
+        </div>
+      )}
+
+      <div id={conteudoId} hidden={!aberto}>
+        {children}
+      </div>
     </div>
   );
 }
