@@ -68,6 +68,7 @@ const PERMISSION_LABELS: Record<Exclude<keyof UserPermissions, 'rotas_bloqueadas
   acesso_equipe: 'Equipe', acesso_empresa: 'Empresa', acesso_configuracoes: 'Configurações',
   acesso_checklist: 'Checklist de OS', acesso_notificacoes: 'Notificações', acesso_wiki: 'Central de Ajuda',
   acesso_suporte: 'Suporte',
+  pode_finalizar_os: 'Pode finalizar OS de outros técnicos',
 };
 type AccessSuggestion = { roles: AppRole[]; permissions: (keyof UserPermissions)[]; justification: string };
 

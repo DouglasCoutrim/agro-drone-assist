@@ -361,7 +361,7 @@ export default function Auditoria() {
     const desfazer = async (linha: Trilha) => {
       setDesfazendoId(linha.id);
       try {
-        const { error } = await supabase.rpc("reverter_alteracao", { audit_id: linha.id });
+        const { error } = await supabase.rpc("reverter_alteracao" as never, { audit_id: linha.id } as never);
         if (error) throw error;
         toast.success("Alteração desfeita com sucesso");
         setConfirmarDesfazer(null);
