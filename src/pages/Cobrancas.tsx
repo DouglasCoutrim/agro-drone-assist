@@ -135,7 +135,7 @@ export default function Cobrancas() {
             </Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" className="gradient-primary"><Plus className="mr-1.5 h-3.5 w-3.5" />Gerar Cobrança</Button>
+                <Button data-tour="cobrancas-nova" size="sm" className="gradient-primary"><Plus className="mr-1.5 h-3.5 w-3.5" />Gerar Cobrança</Button>
               </DialogTrigger>
               <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
                 <DialogHeader className="shrink-0">

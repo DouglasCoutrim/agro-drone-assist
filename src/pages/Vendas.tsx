@@ -707,7 +707,7 @@ export default function Vendas() {
             <h1 data-tour="vendas-page" className="text-2xl font-bold">Vendas</h1>
             <p className="text-gray-500">Gerencie vendas, emissão de notas e comissões</p>
           </div>
-          {activeTab === "vendas" && <Button onClick={handleOpenNewVenda}><Plus className="h-4 w-4 mr-2" />Nova Venda</Button>}
+          {activeTab === "vendas" && <Button data-tour="vendas-nova" onClick={handleOpenNewVenda}><Plus className="h-4 w-4 mr-2" />Nova Venda</Button>}
         </div>
 
         <PainelOrdenavel tela="vendas">

@@ -180,7 +180,7 @@ export default function ConfiguracaoOS() {
               Cadastre os tipos de equipamento que sua oficina atende e defina os itens de verificação (checklist de revisão) de cada um.
             </p>
           </div>
-          <Button className="gradient-primary" onClick={openCreateTipo}>
+          <Button data-tour="checklist-novo-tipo" className="gradient-primary" onClick={openCreateTipo}>
             <Plus className="h-4 w-4 mr-1.5" /> Novo tipo de equipamento
           </Button>
         </div>

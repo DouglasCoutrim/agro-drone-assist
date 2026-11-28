@@ -148,16 +148,85 @@ Como funciona (`src/components/help/HelpTourRunner.tsx`):
   `#cliente-form`); `input[placeholder="..."]`; `button[form="id-do-formulário"]` para o botão
   Salvar; `[role="dialog"]` quando o diálogo não tem id.
 
-Telas com o fluxo completo (explicação + criação de exemplo): **Clientes**, **Serviços**,
-**Orçamentos**, **Contas a Pagar** e **Itens para Demonstração**.
+### Cobertura final: 38 artigos com treinamento prático
 
-Âncoras novas para esse fluxo: `servicos-novo`, `servico-descricao`, `servico-preco`,
-`contas-pagar-nova`, `orcamentos-novo`, `demonstracoes-nova`, `demonstracao-busca`,
-`demonstracao-obs`, `demonstracao-gerar`.
+Criação de registro de teste (o passeio abre o formulário e preenche um exemplo):
 
-Pendentes de "mão na massa": Estoque (novo produto), Fornecedores/Transportadoras, Ordens de
-Serviço, Vendas, PDV, Pedidos de Compra, Notas Fiscais/NFS-e, Equipe, Cobranças, Ferramentas e
-Equipamentos, Suporte e Checklist de OS.
+| Tela | Artigo | Passos |
+| --- | --- | --- |
+| Estoque (novo produto) | `controle-estoque` | 21 |
+| Ordens de Serviço | `criando-primeira-os` | 17 |
+| Financeiro (nova transação) | `financeiro-completo` | 17 |
+| Clientes | `gestao-clientes` | 19 |
+| Fornecedores | `guia-parceiros` | 15 |
+| Transportadoras | `guia-transportadoras` | 14 |
+| Pedidos de Compra | `pedidos-compra` | 16 |
+| Vendas | `guia-vendas` | 15 |
+| PDV | `guia-pdv` | 11 |
+| Cobranças | `guia-cobrancas` | 13 |
+| Contas a Pagar | `guia-contas-pagar` | 17 |
+| Serviços | `guia-servicos` | 13 |
+| Orçamentos | `guia-orcamentos` | 16 |
+| Itens para Demonstração | `guia-demonstracoes` | 14 |
+| Ferramentas e Equipamentos | `guia-patrimonio` | 13 |
+| Meu Estoque (devolução) | `guia-meu-estoque` | 8 |
+| Equipe (novo membro) | `guia-equipe` | 13 |
+| Suporte (novo ticket) | `guia-suporte` | 12 |
+| Checklist de OS (novo tipo) | `guia-checklist-os` | 12 |
+
+Exercício de conferência/consulta (a tela não cria registro: o passeio explica o que fazer):
+
+| Tela | Artigo | Passos |
+| --- | --- | --- |
+| Dashboard | `bem-vindo` | 14 |
+| Painel do técnico (mover cartão) | `painel-tecnico` | 12 |
+| Comissões (conferir faturas) | `comissoes-guia` | 12 |
+| Meu Financeiro (técnico) | `guia-financeiro-tecnico` | 16 |
+| Importar XML de NF-e | `guia-importar-xml` | 9 |
+| Notas Fiscais (filtros e detalhe) | `guia-notas-fiscais` | 7 |
+| NF-e de venda | `guia-nfe-venda` | 8 |
+| NFS-e | `guia-nfse` | 12 |
+| Devolução de venda | `guia-devolucao-venda` | 9 |
+| Devolução de compra | `guia-devolucao-compra` | 9 |
+| Relatórios (período + PDF) | `guia-relatorios` | 12 |
+| Auditoria (filtro + detalhe) | `guia-auditoria` | 9 |
+| Notificações | `guia-notificacoes` | 9 |
+| Configurações (push + som) | `guia-configuracoes` | 11 |
+| Empresa e fiscal | `guia-empresa` | 10 |
+| Permissões | `guia-permissoes` | 7 |
+| Assinatura | `guia-assinatura` | 7 |
+| Orçamento para OS | `orcamento-para-os` | 5 |
+| Personalizando a empresa | `personalizando-empresa` | 5 |
+
+Sem treinamento prático por decisão de conteúdo: `guia-central-de-ajuda` (a própria wiki),
+`guia-oficina-ao-vivo` (transmissão), `guia-nfe-complementar` ("Em breve"), `mapa-do-sistema`,
+`rotas-osrm`, `cadastro-cliente` e `cobrancas-asaas` (artigos de referência que repetem telas já
+cobertas).
+
+### Cuidados com ações irreversíveis
+
+Onde o clique gera efeito real, o passeio **avisa e não clica**:
+
+- **Cobranças** — preenche os campos e manda usar Cancelar; gerar cria fatura real no provedor.
+- **NFS-e, NF-e de venda, devoluções** — só percorrem a tela e instruem a emitir apenas em
+  operação real.
+- **Equipe** — avisa que o membro criado tem acesso real (e-mail + senha) antes de confirmar.
+- **Comissões** — explica que "marcar como paga" movimenta o Financeiro; o exercício é a
+  conferência na aba de comparação.
+- **Empresa e Configurações** — sem preenchimento automático de dados reais; só revisão e os
+  testes seguros (som e notificações).
+
+### Âncoras novas nesta rodada
+
+`parceiros-novo`, `cobrancas-nova`, `suporte-novo-ticket`, `vendas-nova`, `pdv-finalizar`,
+`relatorios-periodo`, `relatorios-exportar`, `checklist-novo-tipo`, `patrimonio-nova`,
+`patrimonio-{nome,categoria,marca_modelo,numero_serie}`, `patrimonio-valor`, `patrimonio-vida`,
+`patrimonio-residual`, `equipe-novo`, `equipe-adicionar`.
+
+Nas telas sem id de formulário o passo final aponta para `[role="dialog"]` (ou
+`[role="dialog"] button[type="submit"]`) e explica qual botão confirmar. Os passos que preenchem
+campos usam `#id` (Estoque, Financeiro, Parceiros, Cobranças, Vendas, Equipe) ou
+`input[placeholder="..."]` (Compras, Suporte, Patrimônio, Checklist de OS).
 
 ## Como testar
 

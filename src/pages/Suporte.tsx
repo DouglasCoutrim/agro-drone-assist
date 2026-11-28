@@ -157,7 +157,7 @@ export default function Suporte() {
           </div>
           <Dialog open={openNew} onOpenChange={setOpenNew}>
             <DialogTrigger asChild>
-              <Button><Plus className="h-4 w-4 mr-2" />Novo Ticket</Button>
+              <Button data-tour="suporte-novo-ticket"><Plus className="h-4 w-4 mr-2" />Novo Ticket</Button>
             </DialogTrigger>
             <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
               <DialogHeader className="shrink-0"><DialogTitle>Abrir novo ticket</DialogTitle><DialogDescription className="sr-only">Formulário para abrir um novo ticket de suporte</DialogDescription></DialogHeader>

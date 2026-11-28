@@ -314,7 +314,7 @@ export default function Equipe() {
 
           {isAdmin && (
             <div className="flex flex-col items-end gap-1">
-              <Button className="gradient-primary shadow-medium" onClick={() => {
+              <Button data-tour="equipe-novo" className="gradient-primary shadow-medium" onClick={() => {
                 if (!canInviteUser) { setShowUpgrade(true); return; }
                 setAddDialogOpen(true);
               }}>
@@ -377,7 +377,7 @@ export default function Equipe() {
                 </div>
                 <DialogFooter className="shrink-0 border-t bg-background">
                   <div className="flex justify-end gap-2 w-full p-4">
-                    <Button className="w-full gradient-primary" onClick={handleAddMember} disabled={addLoading}>
+                    <Button data-tour="equipe-adicionar" className="w-full gradient-primary" onClick={handleAddMember} disabled={addLoading}>
                       {addLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
                       Adicionar à Equipe
                     </Button>

@@ -372,7 +372,7 @@ export default function PDV() {
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
               Emitir Nota Fiscal
             </Button>
-            <Button variant="outline" className="w-full gap-2" size="lg" disabled={saving || linhas.length === 0} onClick={() => finalizar(false)}>
+            <Button data-tour="pdv-finalizar" variant="outline" className="w-full gap-2" size="lg" disabled={saving || linhas.length === 0} onClick={() => finalizar(false)}>
               <Receipt className="h-4 w-4" />
               Emitir Recibo
             </Button>

@@ -164,7 +164,7 @@ export default function Relatorios() {
           </div>
           <div className="flex items-center gap-3">
             <Select value={periodo} onValueChange={setPeriodo}>
-              <SelectTrigger className="w-40"><Calendar className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger>
+              <SelectTrigger data-tour="relatorios-periodo" className="w-40"><Calendar className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="semana">Última Semana</SelectItem>
                 <SelectItem value="mes">Este Mês</SelectItem>
@@ -172,7 +172,7 @@ export default function Relatorios() {
                 <SelectItem value="ano">Este Ano</SelectItem>
               </SelectContent>
             </Select>
-            <Button className="gradient-primary shadow-medium" onClick={handleExport}>
+            <Button data-tour="relatorios-exportar" className="gradient-primary shadow-medium" onClick={handleExport}>
               <Download className="mr-2 h-4 w-4" />Exportar
             </Button>
           </div>
