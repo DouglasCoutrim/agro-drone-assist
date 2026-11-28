@@ -5,6 +5,7 @@ import { BottomNav } from "./BottomNav";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { useInactivityLogout } from "@/hooks/useInactivityLogout";
 import { NotificadorGlobal } from "@/components/notifications/NotificadorGlobal";
+import { HelpTourRunner } from "@/components/help/HelpTourRunner";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -37,6 +38,9 @@ export function MainLayout({ children }: MainLayoutProps) {
 
       {/* Avisos em tempo real (pop-up + som) */}
       <NotificadorGlobal />
+
+      {/* Tours da Central de Ajuda continuam ativos ao trocar de tela */}
+      <HelpTourRunner />
 
       {/* Global Search Overlay */}
       <GlobalSearch />

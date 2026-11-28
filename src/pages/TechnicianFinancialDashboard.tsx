@@ -633,6 +633,7 @@ export default function TechnicianFinancialDashboard() {
             )}
           </CardContent>
         </PremiumCard>
+        </div>
 
         {/* Despesas */}
         <div data-bloco="despesas" data-rotulo="Minhas despesas">
