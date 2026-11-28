@@ -335,7 +335,7 @@ export default function ContasPagar() {
         <PremiumCard delay={0} rotulo="Contas a Pagar">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
             <div>
-              <h1 className="text-lg font-bold flex items-center gap-2"><CalendarClock className="h-5 w-5 text-primary" />Contas a Pagar</h1>
+              <h1 data-tour="contas-pagar-page" className="text-lg font-bold flex items-center gap-2"><CalendarClock className="h-5 w-5 text-primary" />Contas a Pagar</h1>
               <p className="text-xs text-muted-foreground">Despesas, fornecedores e vencimentos</p>
             </div>
             <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>

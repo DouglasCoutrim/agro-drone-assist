@@ -387,7 +387,7 @@ export default function Auditoria() {
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
+            <h1 data-tour="auditoria-page" className="text-2xl font-bold flex items-center gap-2">
               <History className="h-6 w-6 text-primary" />
               Auditoria
             </h1>

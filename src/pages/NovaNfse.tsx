@@ -89,7 +89,7 @@ export default function NovaNfse() {
       <div className="space-y-4 py-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2"><FileCheck className="h-6 w-6 text-primary" />Nova NFS-e</h1>
+            <h1 data-tour="nfse-page" className="text-2xl font-bold flex items-center gap-2"><FileCheck className="h-6 w-6 text-primary" />Nova NFS-e</h1>
             <p className="text-sm text-muted-foreground">Fiscal › Nota de serviço</p>
           </div>
           <div className="flex gap-2">

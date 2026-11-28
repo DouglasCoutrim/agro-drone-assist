@@ -41,7 +41,7 @@ export default function Notificacoes() {
       <div className="space-y-4">
         <header className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="font-display text-2xl font-bold flex items-center gap-2">
+            <h1 data-tour="notificacoes-page" className="font-display text-2xl font-bold flex items-center gap-2">
               <Bell className="h-6 w-6 text-primary" /> Notificações
             </h1>
             <p className="text-xs text-muted-foreground">{unread} não lidas de {items.length} totais</p>

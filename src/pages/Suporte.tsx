@@ -150,7 +150,7 @@ export default function Suporte() {
       <div className="p-4 lg:p-6 max-w-[1400px] mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
+            <h1 data-tour="suporte-page" className="text-2xl font-bold flex items-center gap-2">
               <LifeBuoy className="h-6 w-6 text-primary" /> Suporte
             </h1>
             <p className="text-sm text-muted-foreground">Abra tickets e converse com nossa equipe</p>

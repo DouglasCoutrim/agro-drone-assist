@@ -145,7 +145,7 @@ export default function Patrimonio({ meu = false }: { meu?: boolean }) {
       <div className="space-y-4 p-4 md:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2"><Wrench className="h-6 w-6 text-primary" />{meu ? "Meu Estoque" : "Ferramentas e Equipamentos"}</h1>
+            <h1 data-tour="patrimonio-page" className="text-2xl font-bold flex items-center gap-2"><Wrench className="h-6 w-6 text-primary" />{meu ? "Meu Estoque" : "Ferramentas e Equipamentos"}</h1>
             <p className="text-sm text-muted-foreground">{meu ? "Ferramentas sob sua responsabilidade, com valor atualizado." : "Patrimônio da empresa entregue aos funcionários."}</p>
           </div>
           {isAdmin && <Button onClick={() => setForm({ ...empty })}><Plus className="h-4 w-4 mr-1" />Nova ferramenta</Button>}

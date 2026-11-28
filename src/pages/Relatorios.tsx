@@ -157,7 +157,7 @@ export default function Relatorios() {
       <div className="space-y-6" id="report-content">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
+            <h1 data-tour="relatorios-page" className="text-2xl font-bold flex items-center gap-2">
               <BarChart3 className="h-6 w-6 text-primary" />Relatórios
             </h1>
             <p className="text-sm text-muted-foreground">Análises e relatórios gerenciais com dados reais</p>

@@ -57,7 +57,7 @@ export default function NfeVenda() {
 
   return (
     <MainLayout>
-      <div className="space-y-4 py-6">
+      <div data-tour="nfe-venda-page" className="space-y-4 py-6">
         <FiscalHeader titulo="NF-e de venda" operacao="Vendas sem nota fiscal" />
         <div className="grid gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">

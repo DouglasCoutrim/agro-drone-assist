@@ -306,7 +306,7 @@ export default function Equipe() {
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
+            <h1 data-tour="equipe-page" className="text-3xl font-bold flex items-center gap-2">
               <Users className="h-8 w-8 text-primary" />Gerenciamento de Equipe
             </h1>
             <p className="text-muted-foreground">Gerencie membros da equipe e suas permissões de acesso</p>

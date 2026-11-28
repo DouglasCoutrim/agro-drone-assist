@@ -704,7 +704,7 @@ export default function Vendas() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Vendas</h1>
+            <h1 data-tour="vendas-page" className="text-2xl font-bold">Vendas</h1>
             <p className="text-gray-500">Gerencie vendas, emissão de notas e comissões</p>
           </div>
           {activeTab === "vendas" && <Button onClick={handleOpenNewVenda}><Plus className="h-4 w-4 mr-2" />Nova Venda</Button>}

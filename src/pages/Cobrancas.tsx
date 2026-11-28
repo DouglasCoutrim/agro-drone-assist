@@ -126,7 +126,7 @@ export default function Cobrancas() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold flex items-center gap-2"><CreditCard className="h-5 w-5 text-primary" />Cobranças</h1>
+            <h1 data-tour="cobrancas-page" className="text-xl font-bold flex items-center gap-2"><CreditCard className="h-5 w-5 text-primary" />Cobranças</h1>
             <p className="text-xs text-muted-foreground">Cobranças integradas com Asaas</p>
           </div>
           <div className="flex gap-2">

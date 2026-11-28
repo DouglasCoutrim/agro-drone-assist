@@ -192,7 +192,7 @@ export default function Wiki() {
         <section className="rounded-2xl bg-gradient-to-br from-primary/10 via-background to-accent/40 p-5 sm:p-8">
           <div className="max-w-3xl">
             <Badge variant="secondary" className="mb-3"><Sparkles className="mr-1.5 h-3.5 w-3.5" />Aprenda no seu ritmo</Badge>
-            <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Central de Ajuda</h1>
+            <h1 data-tour="wiki-page" className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Central de Ajuda</h1>
             <p className="mt-2 text-muted-foreground sm:text-base">Encontre o passo a passo de qualquer tarefa ou faça um treinamento guiado dentro do próprio LivreOS.</p>
             <div className="relative mt-5 max-w-2xl">
               <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

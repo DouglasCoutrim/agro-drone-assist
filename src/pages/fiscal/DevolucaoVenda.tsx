@@ -52,7 +52,7 @@ export default function DevolucaoVenda() {
 
   return (
     <MainLayout>
-      <div className="space-y-4 py-6">
+      <div data-tour="devolucao-venda-page" className="space-y-4 py-6">
         <FiscalHeader titulo="Devolução de venda" operacao="NF-e de entrada (finalidade devolução)" />
         <div className="grid gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">

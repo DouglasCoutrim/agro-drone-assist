@@ -351,3 +351,19 @@ Pedido: "já que temos contas a receber, implemente contas a pagar também". A t
 **Front.** Nova página `src/pages/ContasPagar.tsx` com CRUD (descrição, fornecedor, categoria, valor, vencimento, recorrência semanal/mensal/anual, observações), filtro por status, busca, KPIs (a vencer / atrasado / pago no mês / total em aberto), diálogo de detalhes, ação **Pagar** (valor parcial ou total, forma de pagamento, observação) e **Reabrir** (zera `valor_pago`/`data_pagamento`). Rota `/contas-pagar` (lazy + `requiredPermission="acesso_financeiro"`) em `src/App.tsx` e item "Contas a Pagar" no grupo Financeiro de `src/components/layout/navConfig.ts`. Sem alteração de fórmula de comissão, imposto ou valor de OS.
 
 **Teste sugerido.** Cadastrar uma conta, registrar pagamento parcial (conferir saldo em aberto e status), quitar (conferir status "Pago" e data) e Reabrir. Conferir o DRE: a despesa só entra em "despesas operacionais" quando a conta está paga.
+
+## 17. Sessão 2026-11-28 — Passeio guiado em todas as telas
+
+Pedido: "quero passeio guiado de tudo". Antes existiam 8 passeios guiados; **todas as telas do menu** agora têm o seu (30 novos, 38 no total).
+
+**Como funciona.** O artigo da Central de Ajuda (`wiki_articles`) guarda `tour_target_route` (rota do treinamento) e `tour_steps` (passos com título, texto, alvo e posicionamento). O alvo é uma âncora estável: `[data-tour="..."]` nos blocos criados nesta rodada e `[data-bloco="..."]` nos painéis que já existiam. O `HelpTourRunner` navega até a rota, espera os alvos e destaca um por um; passo com alvo ausente é pulado com aviso e a conclusão só é gravada se algum destaque apareceu.
+
+**Âncoras novas (`data-tour`) somente em elementos DOM** (h1, header, div, label, section): `workshop-live-page`, `equipe-page`, `permissoes-page`, `empresa-page`, `configuracoes-page`, `checklist-os-page`, `assinatura-page`, `auditoria-page`, `relatorios-page`, `notificacoes-page`, `suporte-page`, `wiki-page`, `importar-xml-page`, `importar-xml-upload`, `nfse-page`, `pdv-topo`, `pdv-itens`, `vendas-page`, `servicos-page`, `patrimonio-page` (serve `/patrimonio` e `/meu-estoque`), `demonstracoes-page`, `contas-pagar-page`, `cobrancas-page`, `financeiro-tecnico-page`, `nfe-venda-page`, `devolucao-venda-page`, `devolucao-compra-page`, `nfe-complementar-page`, `parceiros-page` (serve fornecedores e transportadoras). Componentes React (`Button`, `Input`, `PremiumCard`, `AlertBox`, `FiscalHeader`) **não** recebem `data-*` — o passo aponta para o bloco que os contém.
+
+**Banco (conteúdo, aditivo).** 30 artigos novos em `wiki_articles` com `summary`, `content` em markdown, `tags` e `tour_steps` (2 a 9 passos cada), e 4 categorias novas: `Cadastros`, `Vendas e Notas`, `Patrimônio e Demonstração`, `Ajuda e Suporte`. Sem alteração de schema.
+
+**Telas cobertas.** Orçamentos, Serviços, Fornecedores, Transportadoras, Oficina ao Vivo, Checklist de OS, Ferramentas e Equipamentos, Meu Estoque, Itens para Demonstração, Importar XML, PDV, Vendas, Notas Fiscais, NF-e de venda, NFS-e, Devolução de venda/compra, NF-e complementar (em breve), Contas a Pagar, Cobranças, Relatórios, Meu Financeiro, Equipe, Permissões, Empresa e fiscal, Configurações, Auditoria, Assinatura, Central de Ajuda, Suporte, Notificações.
+
+**Detalhes documentados em** `docs/commits/treinamentos-guiados-todas-as-telas.md`. Nada foi alterado em cálculos, valores, filtros de organização, RLS, permissões ou Edge Functions.
+
+**Teste sugerido.** Abrir `/wiki`, buscar uma tela (ex.: "PDV") e iniciar o passeio; conferir o aviso de passos pulados quando alguma área não existe na tela.

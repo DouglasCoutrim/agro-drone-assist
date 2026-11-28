@@ -361,7 +361,7 @@ export default function TechnicianFinancialDashboard() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="flex items-center gap-2 text-3xl font-bold">
+            <h1 data-tour="financeiro-tecnico-page" className="flex items-center gap-2 text-3xl font-bold">
               <Wallet className="h-8 w-8 text-primary" />
               Painel Financeiro
             </h1>

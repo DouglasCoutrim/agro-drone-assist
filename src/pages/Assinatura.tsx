@@ -69,7 +69,7 @@ export default function Assinatura() {
     <MainLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Assinatura</h1>
+          <h1 data-tour="assinatura-page" className="text-3xl font-bold">Assinatura</h1>
           <p className="text-muted-foreground">
             Plano atual: <Badge variant="outline" className="ml-1 uppercase">{organization?.plan ?? '-'}</Badge>
           </p>

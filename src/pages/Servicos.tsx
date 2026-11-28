@@ -168,7 +168,7 @@ export default function Servicos() {
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-lg font-bold font-display flex items-center gap-2">
+            <h1 data-tour="servicos-page" className="text-lg font-bold font-display flex items-center gap-2">
               <Wrench className="h-5 w-5 text-primary" />
               Serviços
             </h1>

@@ -230,14 +230,14 @@ export default function ImportarXmlNfe() {
       <div className="space-y-6 py-8">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-2xl font-bold">Importar XML de NF-e</h1>
+            <h1 data-tour="importar-xml-page" className="text-2xl font-bold">Importar XML de NF-e</h1>
             <p className="text-muted-foreground text-sm">Cadastra fornecedor, transportadora e produtos, e dá entrada no estoque.</p>
           </div>
           <Button variant="outline" onClick={() => navigate("/estoque")}><ArrowLeft className="h-4 w-4 mr-2" />Estoque</Button>
         </div>
 
         <Card><CardContent className="pt-6">
-          <label className="flex flex-col items-center gap-2 border-2 border-dashed rounded-lg p-8 cursor-pointer hover:bg-muted/50">
+          <label data-tour="importar-xml-upload" className="flex flex-col items-center gap-2 border-2 border-dashed rounded-lg p-8 cursor-pointer hover:bg-muted/50">
             {busy ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : <FileUp className="h-8 w-8 text-primary" />}
             <span className="font-medium">Selecione o arquivo .xml da nota</span>
             <input type="file" accept=".xml,text/xml" className="hidden" disabled={busy} onChange={(e) => { onFile(e.target.files?.[0]); e.target.value = ""; }} />
