@@ -12,11 +12,24 @@ import { mensagemDoErroFuncao } from '@/lib/functionsError';
 
 type Cycle = 'mensal' | 'semestral' | 'anual';
 
-const PLANS = [
-  { slug: 'bronze', name: 'Bronze', price: 39.90, icon: Zap, highlights: ['2 usuários', '30 OS / mês', 'Clientes, Estoque, Orçamentos'] },
-  { slug: 'prata', name: 'Prata', price: 59.90, icon: Sparkles, recommended: true, highlights: ['4 usuários', '60 OS / mês', 'Financeiro + Cobrança PIX/Boleto', 'WhatsApp'] },
-  { slug: 'ouro', name: 'Ouro', price: 69.90, icon: Crown, highlights: ['10 usuários', 'OS ilimitadas', 'White-label completo', 'Rotas, API REST, Suporte prioritário'] },
-];
+type Plan = {
+  id: string;
+  slug: string;
+  name: string;
+  monthly_price: number;
+  max_users: number;
+  max_os_per_month: number;
+  features: unknown;
+  active: boolean;
+  visivel_publicamente: boolean;
+  cobravel: boolean;
+};
+
+const PLAN_PRESENTATION: Record<string, { icon: typeof Zap; recommended?: boolean; highlights: string[] }> = {
+  bronze: { icon: Zap, highlights: ['Clientes, Estoque e Orçamentos'] },
+  prata: { icon: Sparkles, recommended: true, highlights: ['Financeiro e Cobranças PIX/Boleto', 'Modelos de WhatsApp'] },
+  ouro: { icon: Crown, highlights: ['Rotas, API REST e Suporte prioritário'] },
+};
 
 const CYCLES: { value: Cycle; label: string; months: number; discount: number; badge?: string }[] = [
   { value: 'mensal', label: 'Mensal', months: 1, discount: 0 },
@@ -25,8 +38,10 @@ const CYCLES: { value: Cycle; label: string; months: number; discount: number; b
 ];
 
 export default function Assinatura() {
-  const { organization } = useOrganization();
+  const { organization, isPlatformAdmin } = useOrganization();
   const [cycle, setCycle] = useState<Cycle>('mensal');
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
   const [checkout, setCheckout] = useState<any>(null);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [polling, setPolling] = useState(false);
@@ -34,6 +49,27 @@ export default function Assinatura() {
   const [gerandoLink, setGerandoLink] = useState<string | null>(null);
 
   const cycleCfg = CYCLES.find(c => c.value === cycle)!;
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadPlans = async () => {
+      setPlansLoading(true);
+      let query = supabase
+        .from('subscription_plans' as any)
+        .select('id,slug,name,monthly_price,max_users,max_os_per_month,features,active,visivel_publicamente,cobravel')
+        .eq('active', true)
+        .order('monthly_price', { ascending: true });
+      if (!isPlatformAdmin) query = query.eq('visivel_publicamente', true);
+      const { data, error } = await query;
+      if (!cancelled) {
+        if (error) toast.error('Não foi possível carregar os planos.');
+        setPlans((data as Plan[]) || []);
+        setPlansLoading(false);
+      }
+    };
+    loadPlans();
+    return () => { cancelled = true; };
+  }, [isPlatformAdmin]);
 
   const calcPrice = (monthly: number) => monthly * cycleCfg.months * (1 - cycleCfg.discount);
 
@@ -109,14 +145,16 @@ export default function Assinatura() {
           </Tabs>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-5">
-          {PLANS.map(p => {
-            const Icon = p.icon;
-            const total = calcPrice(p.price);
+        {plansLoading ? <div className="text-center text-muted-foreground py-10">Carregando planos...</div> : <div className="grid md:grid-cols-3 gap-5">
+          {plans.map(p => {
+            const presentation = PLAN_PRESENTATION[p.slug] ?? { icon: Zap, highlights: [] };
+            const Icon = presentation.icon;
+            const total = calcPrice(Number(p.monthly_price));
             const isCurrent = organization?.plan === p.slug;
+            const canCheckout = p.cobravel && p.visivel_publicamente;
             return (
-              <Card key={p.slug} className={`p-6 relative ${p.recommended ? 'border-primary ring-2 ring-primary/30' : ''}`}>
-                {p.recommended && (
+              <Card key={p.id} className={`p-6 relative ${presentation.recommended ? 'border-primary ring-2 ring-primary/30' : ''}`}>
+                {presentation.recommended && (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-3 py-1 rounded-full font-medium">
                     Recomendado
                   </span>
@@ -133,7 +171,9 @@ export default function Assinatura() {
                   </div>
                 </div>
                 <ul className="mt-5 space-y-2 text-sm">
-                  {p.highlights.map(h => (
+                  <li className="flex items-start gap-2"><Check className="h-4 w-4 text-primary mt-0.5 shrink-0" /><span>Até {p.max_users === -1 ? 'usuários ilimitados' : `${p.max_users} usuários`}</span></li>
+                  <li className="flex items-start gap-2"><Check className="h-4 w-4 text-primary mt-0.5 shrink-0" /><span>{p.max_os_per_month === -1 ? 'OS ilimitadas' : `${p.max_os_per_month} OS / mês`}</span></li>
+                  {presentation.highlights.map(h => (
                     <li key={h} className="flex items-start gap-2">
                       <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                       <span>{h}</span>
@@ -142,18 +182,18 @@ export default function Assinatura() {
                 </ul>
                 <Button
                   className="w-full mt-6"
-                  variant={p.recommended ? 'default' : 'outline'}
-                  disabled={isCurrent || loadingPlan === p.slug}
+                  variant={presentation.recommended ? 'default' : 'outline'}
+                  disabled={isCurrent || !canCheckout || loadingPlan === p.slug}
                   onClick={() => handleSubscribe(p.slug)}
                 >
                   {loadingPlan === p.slug && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  {isCurrent ? 'Plano atual' : 'Assinar agora'}
+                  {isCurrent ? 'Plano atual' : canCheckout ? 'Assinar agora' : 'Cortesia interna'}
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="w-full mt-2"
-                  disabled={gerandoLink === p.slug}
+                  disabled={!canCheckout || gerandoLink === p.slug}
                   onClick={() => gerarLink(p.slug)}
                 >
                   {gerandoLink === p.slug
@@ -164,7 +204,7 @@ export default function Assinatura() {
               </Card>
             );
           })}
-        </div>
+        </div>}
 
         {link && (
           <Card className="p-6 space-y-3">

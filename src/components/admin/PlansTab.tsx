@@ -16,11 +16,12 @@ interface Plan {
   id: string; name: string; slug: string;
   monthly_price: number; yearly_price: number; billing_cycle: string;
   max_users: number; max_os_per_month: number;
-  features: unknown; active: boolean;
+  features: unknown; active: boolean; visivel_publicamente: boolean; cobravel: boolean;
 }
 const empty: Partial<Plan> = {
   name: '', slug: '', monthly_price: 0, yearly_price: 0, billing_cycle: 'monthly',
   max_users: 3, max_os_per_month: 100, features: [], active: true,
+  visivel_publicamente: true, cobravel: true,
 };
 
 export default function PlansTab() {
@@ -67,6 +68,8 @@ export default function PlansTab() {
       max_users: Number(form.max_users || 0),
       max_os_per_month: Number(form.max_os_per_month || 0),
       active: form.active ?? true,
+      visivel_publicamente: form.visivel_publicamente ?? true,
+      cobravel: form.cobravel ?? true,
     };
     const q = form.id
       ? supabase.from('subscription_plans' as any).update(payload).eq('id', form.id)
@@ -104,7 +107,11 @@ export default function PlansTab() {
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <CardTitle className="text-base">{p.name}</CardTitle>
-                {p.active ? <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">Ativo</Badge> : <Badge variant="secondary">Inativo</Badge>}
+                <div className="flex gap-1">
+                  {p.active ? <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">Ativo</Badge> : <Badge variant="secondary">Inativo</Badge>}
+                  {!p.visivel_publicamente && <Badge variant="outline">Interno</Badge>}
+                  {!p.cobravel && <Badge variant="outline">Cortesia</Badge>}
+                </div>
               </div>
               <p className="text-xs text-muted-foreground">{p.slug}</p>
             </CardHeader>
@@ -159,6 +166,14 @@ export default function PlansTab() {
             <div className="col-span-2 flex items-center gap-2">
               <Switch checked={form.active ?? true} onCheckedChange={(v) => setForm({ ...form, active: v })} />
               <Label>Plano ativo</Label>
+            </div>
+            <div className="col-span-2 flex items-center gap-2">
+              <Switch checked={form.visivel_publicamente ?? true} onCheckedChange={(v) => setForm({ ...form, visivel_publicamente: v })} />
+              <Label>Visível para empresas</Label>
+            </div>
+            <div className="col-span-2 flex items-center gap-2">
+              <Switch checked={form.cobravel ?? true} onCheckedChange={(v) => setForm({ ...form, cobravel: v })} />
+              <Label>Plano cobrável</Label>
             </div>
           </div>
           <DialogFooter>

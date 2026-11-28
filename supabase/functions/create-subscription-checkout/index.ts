@@ -53,6 +53,9 @@ Deno.serve(async (req) => {
 
     const { data: plan } = await admin.from('subscription_plans').select('*').eq('slug', plan_slug).maybeSingle();
     if (!plan) return json({ error: 'Plano não encontrado' }, 404);
+    if (plan.active === false || plan.visivel_publicamente === false || plan.cobravel === false) {
+      return json({ error: 'Este plano não está disponível para cobrança.' }, 400);
+    }
 
     const months = cycle === 'mensal' ? 1 : cycle === 'semestral' ? 6 : 12;
     const discount = cycle === 'mensal' ? 0 : cycle === 'semestral' ? 0.10 : 0.20;

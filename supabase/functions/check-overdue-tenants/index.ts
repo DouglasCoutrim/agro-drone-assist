@@ -52,10 +52,14 @@ Deno.serve(async (req) => {
 
     const orgIds = Array.from(new Set((overdue || []).map((i: any) => i.organization_id)));
     let blocked = 0;
+    const today = new Date().toISOString().slice(0, 10);
 
     for (const orgId of orgIds) {
-      const { data: org } = await admin.from('organizations').select('id, status').eq('id', orgId).maybeSingle();
+      const { data: org } = await admin.from('organizations').select('id, status, cortesia_ate').eq('id', orgId).maybeSingle();
       if (!org || org.status === 'blocked' || org.status === 'canceled') continue;
+      // Cortesia ativa suspende o bloqueio até a data final. Quando a data
+      // passar, a próxima execução trata a organização como qualquer pagante.
+      if (org.cortesia_ate && org.cortesia_ate >= today) continue;
       await admin.from('organizations').update({
         status: 'blocked',
         blocked_at: new Date().toISOString(),
@@ -75,11 +79,13 @@ Deno.serve(async (req) => {
 
     const { data: expiredTrials } = await admin
       .from('organizations')
-      .select('id')
+      .select('id, cortesia_ate')
       .eq('status', 'trial')
       .lt('trial_ends_at', new Date().toISOString());
 
     for (const t of expiredTrials || []) {
+      // Uma cortesia ativa também impede o bloqueio de trial expirado.
+      if (t.cortesia_ate && t.cortesia_ate >= today) continue;
       await admin.from('organizations').update({
         status: 'blocked',
         blocked_at: new Date().toISOString(),

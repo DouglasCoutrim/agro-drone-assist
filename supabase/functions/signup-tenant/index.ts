@@ -115,8 +115,19 @@ Deno.serve(async (req) => {
     const lookupSlug = requestedSlug;
 
     const { data: planRow, error: planErr } = await admin
-      .from('subscription_plans').select('*').eq('slug', lookupSlug).maybeSingle();
+      .from('subscription_plans')
+      .select('*')
+      .eq('slug', lookupSlug)
+      .eq('active', true)
+      .eq('visivel_publicamente', true)
+      .eq('cobravel', true)
+      .maybeSingle();
     if (planErr) throw planErr;
+    if (!planRow) {
+      return new Response(JSON.stringify({ ok: false, error: 'Plano indisponível para cadastro público.' }), {
+        status: 400, headers: { ...corsHeadersRestricted, 'Content-Type': 'application/json' },
+      });
+    }
 
     const plan = planRow ?? { id: null, monthly_price: 0, max_users: 3, max_os_per_month: 100 };
     const orgPlan = isTrial ? 'trial' : requestedSlug;

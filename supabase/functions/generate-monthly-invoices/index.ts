@@ -33,10 +33,20 @@ Deno.serve(async (req) => {
     if (vencimento < today) vencimento.setMonth(vencimento.getMonth() + 1);
     const vencimentoStr = vencimento.toISOString().slice(0, 10);
 
-    // Fetch active orgs with monthly_fee > 0
+    // Planos não cobráveis (por exemplo, o piloto) nunca geram fatura.
+    const { data: nonBillablePlans, error: plansError } = await admin
+      .from('subscription_plans')
+      .select('id')
+      .eq('cobravel', false);
+    if (plansError) throw plansError;
+    const nonBillablePlanIds = new Set((nonBillablePlans || []).map((plan) => plan.id));
+
+    // Fetch active orgs with monthly_fee > 0. Organizações pagantes mantêm
+    // exatamente o comportamento anterior; somente planos explicitamente
+    // marcados como não cobráveis são excluídos.
     const { data: orgs } = await admin
       .from('organizations')
-      .select('id, name, monthly_fee, owner_id')
+      .select('id, name, monthly_fee, owner_id, plan_id')
       .gt('monthly_fee', 0)
       .not('status', 'in', '("blocked","canceled")');
 
@@ -44,6 +54,7 @@ Deno.serve(async (req) => {
     const results: any[] = [];
 
     for (const org of orgs || []) {
+      if (org.plan_id && nonBillablePlanIds.has(org.plan_id)) { skipped++; continue; }
       // skip if invoice already exists for this competencia
       const { data: existing } = await admin
         .from('tenant_invoices')
