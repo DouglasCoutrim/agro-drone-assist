@@ -18,6 +18,7 @@ import Landing from "./pages/Landing";
 import AdminAuth from "./pages/AdminAuth";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import CheckoutPublico from "./pages/CheckoutPublico";
 
 // Lazy: heavy authenticated pages
 const Index = lazy(() => import("./pages/Index"));
@@ -119,6 +120,7 @@ const App = () => {
                   <Route path="/admin/login" element={<AdminAuth />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/cadastro-empresa" element={<CadastroEmpresa />} />
+                  <Route path="/checkout/:token" element={<CheckoutPublico />} />
                   <Route path="/mensalidade-em-atraso" element={<ProtectedRoute allowBlocked><MensalidadeAtraso /></ProtectedRoute>} />
                   <Route path="/admin/dashboard" element={<ProtectedRoute requiredPlatformAdmin><AdminMaster /></ProtectedRoute>} />
                   <Route path="/admin" element={<Navigate to="/admin/login" replace />} />

@@ -4,10 +4,11 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Check, Crown, Sparkles, Zap, Copy, Loader2 } from 'lucide-react';
+import { Check, Crown, Sparkles, Zap, Copy, Link2, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
 import { toast } from 'sonner';
+import { mensagemDoErroFuncao } from '@/lib/functionsError';
 
 type Cycle = 'mensal' | 'semestral' | 'anual';
 
@@ -29,6 +30,8 @@ export default function Assinatura() {
   const [checkout, setCheckout] = useState<any>(null);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [polling, setPolling] = useState(false);
+  const [link, setLink] = useState<any>(null);
+  const [gerandoLink, setGerandoLink] = useState<string | null>(null);
 
   const cycleCfg = CYCLES.find(c => c.value === cycle)!;
 
@@ -49,6 +52,24 @@ export default function Assinatura() {
       toast.error(e?.message ?? 'Falha ao gerar cobrança');
     } finally {
       setLoadingPlan(null);
+    }
+  };
+
+  const gerarLink = async (slug: string) => {
+    setGerandoLink(slug);
+    setLink(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('public-checkout', {
+        body: { action: 'create', plan_slug: slug, cycle },
+      });
+      if (error) throw new Error(await mensagemDoErroFuncao(error, 'Falha ao gerar o link de pagamento'));
+      if (data?.error) throw new Error(data.error);
+      setLink(data);
+      toast.success('Link de pagamento gerado.');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Falha ao gerar o link de pagamento');
+    } finally {
+      setGerandoLink(null);
     }
   };
 
@@ -128,10 +149,43 @@ export default function Assinatura() {
                   {loadingPlan === p.slug && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   {isCurrent ? 'Plano atual' : 'Assinar agora'}
                 </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full mt-2"
+                  disabled={gerandoLink === p.slug}
+                  onClick={() => gerarLink(p.slug)}
+                >
+                  {gerandoLink === p.slug
+                    ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    : <Link2 className="h-4 w-4 mr-2" />}
+                  Gerar link de pagamento
+                </Button>
               </Card>
             );
           })}
         </div>
+
+        {link && (
+          <Card className="p-6 space-y-3">
+            <h3 className="text-xl font-bold">Link de pagamento pronto</h3>
+            <p className="text-sm text-muted-foreground">
+              Envie este link para quem vai pagar a assinatura {link.plano?.nome} ({link.ciclo}). Ao confirmar o
+              pagamento, o plano é ativado automaticamente. O link vale até{' '}
+              {new Date(link.expires_at).toLocaleDateString('pt-BR')}.
+            </p>
+            <div className="flex gap-2">
+              <code className="text-xs bg-muted p-2 rounded flex-1 break-all">{link.url}</code>
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => { navigator.clipboard.writeText(link.url); toast.success('Link copiado'); }}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          </Card>
+        )}
 
         {checkout && (
           <Card className="p-6">
