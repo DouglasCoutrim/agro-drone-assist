@@ -151,7 +151,7 @@ export default function Demonstracoes() {
             <h1 className="text-2xl font-bold">Itens para Demonstração</h1>
             <p className="text-sm text-muted-foreground">Retire itens do estoque para mostrar a clientes. Prazo de 7 dias para vender ou devolver; depois disso o valor é cobrado do funcionário.</p>
           </div>
-          {isAdmin && <Button onClick={() => { setItens([]); setNovo({ obs: "", busca: "", func: "" }); }}><Plus className="mr-1 h-4 w-4" />Nova retirada</Button>}
+          {isAdmin && <Button data-tour="demonstracoes-nova" onClick={() => { setItens([]); setNovo({ obs: "", busca: "", func: "" }); }}><Plus className="mr-1 h-4 w-4" />Nova retirada</Button>}
         </div>
 
         <PainelOrdenavel tela="demonstracoes">
@@ -217,7 +217,7 @@ export default function Demonstracoes() {
             <div><Label>Itens do estoque *</Label>
               <div className="relative">
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input className="pl-8" value={novo.busca} placeholder="Buscar peça ou produto para adicionar..." onChange={(e) => setNovo({ ...novo, busca: e.target.value })} />
+                <Input data-tour="demonstracao-busca" className="pl-8" value={novo.busca} placeholder="Buscar peça ou produto para adicionar..." onChange={(e) => setNovo({ ...novo, busca: e.target.value })} />
                 {buscando && <Loader2 className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />}
                 {novo.busca.trim() && (
                   <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-md border border-border bg-popover shadow-lg">
@@ -254,10 +254,10 @@ export default function Demonstracoes() {
                 <div className="flex justify-end border-t pt-2 text-sm font-bold">Total: {formatCurrency(totalRetirada)}</div>
               </div>
             )}
-            <div><Label>Observação (cliente, motivo...)</Label><Input value={novo.obs} onChange={(e) => setNovo({ ...novo, obs: e.target.value })} /></div>
+            <div><Label>Observação (cliente, motivo...)</Label><Input data-tour="demonstracao-obs" value={novo.obs} onChange={(e) => setNovo({ ...novo, obs: e.target.value })} /></div>
             <p className="text-xs text-muted-foreground">Ao confirmar, os itens saem do estoque da loja e ficam sob responsabilidade do funcionário por 7 dias. Se não forem vendidos nem devolvidos nesse prazo, o valor de venda é cobrado dele.</p>
           </div>}
-          <DialogFooter><Button onClick={criar} disabled={salvando}>{salvando ? "Gerando..." : "Gerar nota interna"}</Button></DialogFooter>
+          <DialogFooter><Button data-tour="demonstracao-gerar" onClick={criar} disabled={salvando}>{salvando ? "Gerando..." : "Gerar nota interna"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </MainLayout>

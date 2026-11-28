@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Joyride, type EventData, type Step } from "react-joyride";
 import { toast } from "sonner";
@@ -34,6 +34,68 @@ export function queueHelpTour(tour: PendingTour) {
   }
 }
 
+/**
+ * Ações que um passo pode executar antes de aparecer, guardadas em `step.data`.
+ * É o que transforma o passeio em treinamento "mão na massa": o sistema abre o
+ * formulário e já deixa um exemplo preenchido para o usuário concluir.
+ */
+type PassoAcao = {
+  /** Seletor do atalho que abre o formulário desta etapa (ex.: o botão Novo). */
+  abrir?: string;
+  /** Valor de exemplo aplicado no próprio campo destacado (input de texto). */
+  exemplo?: string;
+  /** Outros campos preenchidos nesta mesma etapa. */
+  campos?: { seletor: string; valor: string }[];
+};
+
+const espera = (ms: number) =>
+  new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+
+function clicarEm(seletor: string) {
+  const alvo = document.querySelector<HTMLElement>(seletor);
+  if (!alvo) return false;
+  alvo.click();
+  return true;
+}
+
+function preencherCampo(seletor: string, valor: string) {
+  const campo = document.querySelector(seletor);
+  if (!(campo instanceof HTMLInputElement) && !(campo instanceof HTMLTextAreaElement)) return false;
+
+  // Inputs controlados do React ignoram `campo.value = x`; é preciso usar o
+  // setter nativo e disparar o evento de input para o estado do formulário mudar.
+  const prototipo =
+    campo instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+  const definirValor = Object.getOwnPropertyDescriptor(prototipo, "value")?.set;
+  if (!definirValor) return false;
+
+  definirValor.call(campo, valor);
+  campo.dispatchEvent(new Event("input", { bubbles: true }));
+  campo.dispatchEvent(new Event("change", { bubbles: true }));
+  return true;
+}
+
+async function executarAcao(step: Step) {
+  const acao = (step.data ?? {}) as PassoAcao;
+
+  if (acao.abrir) {
+    // Abre o diálogo da etapa antes de procurar os campos dentro dele.
+    if (clicarEm(acao.abrir)) await espera(500);
+  }
+
+  if (acao.exemplo && typeof step.target === "string") {
+    preencherCampo(step.target, acao.exemplo);
+    await espera(80);
+  }
+
+  if (acao.campos?.length) {
+    acao.campos.forEach((campo) => preencherCampo(campo.seletor, campo.valor));
+    await espera(80);
+  }
+}
+
 export function HelpTourRunner() {
   const location = useLocation();
   const [tour, setTour] = useState<PendingTour | null>(null);
@@ -42,6 +104,17 @@ export function HelpTourRunner() {
   // O treinamento só conta como visto se pelo menos um destaque apareceu na tela.
   const exibiuDestaque = useRef(false);
   const destaquesNaoEncontrados = useRef(0);
+
+  // Passos com ações (abrir formulário / preencher exemplo) viram passos com hook `before`.
+  const passos = useMemo<Step[]>(
+    () =>
+      (tour?.steps ?? []).map((step) => {
+        const acao = (step.data ?? {}) as PassoAcao;
+        if (!acao.abrir && !acao.exemplo && !acao.campos?.length) return step;
+        return { ...step, before: () => executarAcao(step) };
+      }),
+    [tour],
+  );
 
   const tryStart = useCallback(() => {
     const pending = readPendingTour();
@@ -125,7 +198,7 @@ export function HelpTourRunner() {
 
   return (
     <Joyride
-      steps={tour.steps}
+      steps={passos}
       run={run}
       continuous
       scrollToFirstStep
@@ -159,11 +232,9 @@ export function HelpTourRunner() {
         back: "Voltar",
         close: "Fechar",
         last: "Finalizar",
-        lastWithProgress: "Finalizar ({current} de {total})",
         next: "Próximo",
         nextWithProgress: "Próximo ({current} de {total})",
         skip: "Pular",
-        skipWithProgress: "Pular ({current} de {total})",
         open: "Abrir",
       }}
     />

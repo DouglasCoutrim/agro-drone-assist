@@ -340,7 +340,7 @@ export default function ContasPagar() {
             </div>
             <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
               <DialogTrigger asChild>
-                <Button size="sm" className="gradient-primary shadow-soft w-full sm:w-auto"><Plus className="mr-1.5 h-3.5 w-3.5" />Nova Conta</Button>
+                <Button data-tour="contas-pagar-nova" size="sm" className="gradient-primary shadow-soft w-full sm:w-auto"><Plus className="mr-1.5 h-3.5 w-3.5" />Nova Conta</Button>
               </DialogTrigger>
               <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
                 <DialogHeader className="shrink-0">

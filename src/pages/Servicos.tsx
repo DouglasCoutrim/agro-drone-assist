@@ -202,7 +202,7 @@ export default function Servicos() {
               }}
             >
               <DialogTrigger asChild>
-                <Button size="sm" className="gradient-primary">
+                <Button data-tour="servicos-novo" size="sm" className="gradient-primary">
                   <Plus className="mr-1.5 h-3.5 w-3.5" />
                   Novo Serviço
                 </Button>
@@ -221,6 +221,7 @@ export default function Servicos() {
                     <div className="space-y-1">
                       <Label className="text-xs">Descrição *</Label>
                       <Input
+                        data-tour="servico-descricao"
                         value={formData.descricao}
                         onChange={(e) =>
                           setFormData({ ...formData, descricao: e.target.value })
@@ -233,6 +234,7 @@ export default function Servicos() {
                       <div className="space-y-1">
                         <Label className="text-xs">Preço (R$)</Label>
                         <Input
+                          data-tour="servico-preco"
                           type="number"
                           step="0.01"
                           min={0}

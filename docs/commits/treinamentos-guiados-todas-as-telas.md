@@ -127,6 +127,38 @@ Correções:
 - Os destaques mais longos dos passeios antigos (OS, Estoque, Pedidos de Compra, Painel do
   Técnico) foram reescritos em frases curtas, para caberem no balão sem parecer um bloco de texto.
 
+## Treinamento "mão na massa": cria um registro de exemplo
+
+Depois de explicar a tela, o passeio continua dentro do formulário: o sistema abre o cadastro,
+destaca campo por campo, diz o que preencher e já deixa um exemplo digitado — o usuário só confere
+e salva (e depois pode apagar o registro de teste).
+
+Como funciona (`src/components/help/HelpTourRunner.tsx`):
+
+- Cada passo pode trazer um `data` (JSON no banco, sem código): `abrir` (seletor do botão "Novo",
+  clicado antes do passo aparecer), `exemplo` (valor aplicado no próprio campo destacado) e
+  `campos` (vários campos de uma vez). O runner converte esses dados em hook `before` do
+  react-joyride; o diálogo abre e o alvo é encontrado dentro de `targetWaitTimeout`.
+- Preencher campo controlado do React exige o setter nativo + eventos `input`/`change` — o valor
+  digitado por `campo.value = x` seria ignorado pelo formulário.
+- Passos dentro do formulário usam `hideOverlay: true`: sem o overlay, o usuário consegue digitar,
+  escolher em Selects (a lista abre em portal, fora do destaque) e rolar o formulário. O overlay
+  continua nas etapas de explicação da tela, mantendo o destaque escurecido.
+- Seletores usados, em ordem de preferência: `[data-tour="..."]`; `#id-do-formulário` (ex.:
+  `#cliente-form`); `input[placeholder="..."]`; `button[form="id-do-formulário"]` para o botão
+  Salvar; `[role="dialog"]` quando o diálogo não tem id.
+
+Telas com o fluxo completo (explicação + criação de exemplo): **Clientes**, **Serviços**,
+**Orçamentos**, **Contas a Pagar** e **Itens para Demonstração**.
+
+Âncoras novas para esse fluxo: `servicos-novo`, `servico-descricao`, `servico-preco`,
+`contas-pagar-nova`, `orcamentos-novo`, `demonstracoes-nova`, `demonstracao-busca`,
+`demonstracao-obs`, `demonstracao-gerar`.
+
+Pendentes de "mão na massa": Estoque (novo produto), Fornecedores/Transportadoras, Ordens de
+Serviço, Vendas, PDV, Pedidos de Compra, Notas Fiscais/NFS-e, Equipe, Cobranças, Ferramentas e
+Equipamentos, Suporte e Checklist de OS.
+
 ## Como testar
 
 1. Abra Central de Ajuda (`/wiki`) e busque por uma tela, por exemplo "PDV".
