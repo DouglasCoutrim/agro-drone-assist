@@ -26,6 +26,20 @@ Deno.serve(async (req) => {
     if (!payment) return new Response('no payment', { headers: corsHeaders });
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const webhookEventId = String(payload?.id || `${event}:${payment.id}:${payment.status || ''}`);
+    const { data: registeredEvent, error: eventError } = await admin.from('payment_webhook_events').insert({
+      event_id: webhookEventId,
+      event_type: event || 'unknown',
+      asaas_payment_id: payment.id || null,
+      payload_hash: webhookEventId,
+      status: 'processing',
+    }).select('id').maybeSingle();
+    if (eventError?.code === '23505') {
+      return new Response(JSON.stringify({ ok: true, idempotent: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (eventError) throw eventError;
 
     // Find invoice by asaas_charge_id OR externalReference
     let { data: invoice } = await admin
@@ -40,18 +54,27 @@ Deno.serve(async (req) => {
         .select('*').eq('organization_id', orgId).eq('competencia', competencia).maybeSingle();
       invoice = data;
     }
-    if (!invoice) return new Response('invoice not found', { headers: corsHeaders });
+    if (!invoice) {
+      await admin.from('payment_webhook_events').update({ status: 'failed', error_message: 'invoice not found' }).eq('id', registeredEvent?.id);
+      return new Response('invoice not found', { headers: corsHeaders });
+    }
 
     if (event === 'PAYMENT_CONFIRMED' || event === 'PAYMENT_RECEIVED') {
       if (invoice.status === 'pago') {
+        await admin.from('payment_webhook_events').update({ status: 'processed', processed_at: new Date().toISOString() }).eq('id', registeredEvent?.id);
         return new Response(JSON.stringify({ ok: true, idempotent: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       await admin.from('tenant_invoices').update({
         status: 'pago', pago_em: new Date().toISOString(),
-        asaas_charge_id: payment.id,
+        asaas_charge_id: payment.id, last_webhook_event: webhookEventId,
       }).eq('id', invoice.id);
+      if (invoice.checkout_session_id) {
+        await admin.from('checkout_sessions').update({
+          status: 'paid', completed_at: new Date().toISOString(), asaas_charge_id: payment.id,
+        }).eq('id', invoice.checkout_session_id);
+      }
 
       // Advance next_due_date according to the purchased billing cycle and unblock.
       const { data: organization } = await admin.from('organizations')
@@ -66,8 +89,10 @@ Deno.serve(async (req) => {
         next_due_date: next.toISOString().slice(0, 10),
       }).eq('id', invoice.organization_id);
     } else if (event === 'PAYMENT_OVERDUE') {
-      await admin.from('tenant_invoices').update({ status: 'vencido' }).eq('id', invoice.id);
+      await admin.from('tenant_invoices').update({ status: 'vencido', last_webhook_event: webhookEventId }).eq('id', invoice.id);
     }
+
+    await admin.from('payment_webhook_events').update({ status: 'processed', processed_at: new Date().toISOString() }).eq('id', registeredEvent?.id);
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
