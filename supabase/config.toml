@@ -1,7 +1,7 @@
-[project_id = "iynljexyjhbkfxsurddn"]
+project_id = "iynljexyjhbkfxsurddn"
 
 [functions.asaas-platform-webhook]
-verify_jwt = true
+verify_jwt = false
 
 [functions.asaas-tenant-webhook]
 verify_jwt = true
@@ -17,3 +17,9 @@ verify_jwt = true
 
 [functions.seed-platform-admin]
 verify_jwt = true
+
+[functions.signup-tenant]
+verify_jwt = false
+
+[functions.public-checkout]
+verify_jwt = false
