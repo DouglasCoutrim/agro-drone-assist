@@ -1,14 +1,8 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
 User-agent: *
-Allow: /
+Allow: /landing
+Disallow: /auth
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /api/
+
+Sitemap: https://livreos.net/sitemap.xml
