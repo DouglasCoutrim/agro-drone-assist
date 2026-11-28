@@ -9,7 +9,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { isSoundMuted, setSoundMuted, playNotificationSound } from "@/hooks/useSoundNotifications";
+import { isSomAtivado, setSomAtivado, tocarSomNotificacao } from "@/lib/notification-sound";
 
 const typeColor: Record<string, string> = {
   os: "bg-blue-500/15 text-blue-400",
@@ -23,7 +23,7 @@ const typeColor: Record<string, string> = {
 export function NotificationBell({ compact = false }: { compact?: boolean }) {
   const { items, unread, markAsRead, markAllAsRead } = useNotifications(10);
   const navigate = useNavigate();
-  const [muted, setMuted] = useState(isSoundMuted());
+  const [somLigado, setSomLigado] = useState(isSomAtivado());
 
   const handleClick = async (id: string, link: string | null) => {
     await markAsRead(id);
@@ -55,9 +55,9 @@ export function NotificationBell({ compact = false }: { compact?: boolean }) {
             <p className="text-[11px] text-muted-foreground">{unread} não lidas</p>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={muted ? "Ativar som" : "Silenciar som"} title={muted ? "Ativar som" : "Silenciar som"}
-              onClick={() => { setSoundMuted(!muted); setMuted(!muted); if (muted) setTimeout(playNotificationSound, 0); }}>
-              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={somLigado ? "Silenciar som" : "Ativar som"} title={somLigado ? "Silenciar som" : "Ativar som"}
+              onClick={() => { const ativar = !somLigado; setSomAtivado(ativar); setSomLigado(ativar); if (ativar) setTimeout(() => tocarSomNotificacao(true), 0); }}>
+              {somLigado ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
             </Button>
             {unread > 0 && (
               <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={markAllAsRead}>
