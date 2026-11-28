@@ -38,6 +38,19 @@ const BENEFITS = [
   'Integrações para vender e cobrar melhor',
 ];
 
+const FALLBACK_PLANS: Plan[] = [
+  { id: 'bronze', name: 'Bronze', slug: 'bronze', monthly_price: 39.90, max_users: 2, features: ['Clientes', 'Estoque', 'Orçamentos'] },
+  { id: 'prata', name: 'Prata', slug: 'prata', monthly_price: 59.90, max_users: 4, features: ['Financeiro', 'Cobrança Pix e boleto', 'WhatsApp'] },
+  { id: 'ouro', name: 'Ouro', slug: 'ouro', monthly_price: 69.90, max_users: 10, features: ['OS ilimitadas', 'White-label', 'API REST', 'Suporte prioritário'] },
+];
+
+const FAQ = [
+  { question: 'Preciso cadastrar cartão para testar?', answer: 'Não. O teste dura 7 dias e começa sem cartão de crédito.' },
+  { question: 'O LivreOS serve para qual tipo de empresa?', answer: 'A base é genérica para lojas, empresas agropecuárias, prestadores de serviço e assistências técnicas. Você ativa os módulos que combinam com sua operação.' },
+  { question: 'Posso mudar de plano depois?', answer: 'Sim. O plano pode acompanhar o crescimento da empresa e os módulos contratados.' },
+  { question: 'Como funcionam os pagamentos?', answer: 'Após o teste, a cobrança pode ser paga por Pix, boleto ou cartão, conforme a disponibilidade do Asaas.' },
+];
+
 export default function Landing() {
   const { user } = useAuth();
   const { isPlatformAdmin, loading: orgLoading } = useOrganization();
@@ -46,6 +59,16 @@ export default function Landing() {
   const [contact, setContact] = useState<any>(null);
 
   useEffect(() => {
+    document.title = 'LivreOS — ERP modular para sua empresa';
+    const description = 'Organize operação, vendas, estoque e financeiro com o LivreOS, um ERP modular para vários nichos.';
+    let meta = document.querySelector('meta[name="description"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.setAttribute('name', 'description');
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute('content', description);
+
     supabase.from('site_config').select('*')
       .then(({ data }) => {
         if (data) {
@@ -56,7 +79,10 @@ export default function Landing() {
 
     supabase.from('subscription_plans' as any)
       .select('*').eq('active', true).order('monthly_price')
-      .then(({ data }) => setPlans((data as any) || []));
+      .then(({ data }) => {
+        const activePlans = (data as Plan[]) || [];
+        setPlans(activePlans.length ? activePlans : FALLBACK_PLANS);
+      });
   }, []);
 
   const dashboardPath = isPlatformAdmin ? "/admin/dashboard" : "/dashboard";
@@ -72,6 +98,7 @@ export default function Landing() {
           <nav className="hidden md:flex items-center gap-6 text-sm">
             <a href="#features" className="hover:text-primary">Recursos</a>
             <a href="#planos" className="hover:text-primary">Planos</a>
+            <a href="#faq" className="hover:text-primary">Dúvidas</a>
             <a href="#contato" className="hover:text-primary">Contato</a>
           </nav>
           <div className="flex items-center gap-2">
@@ -225,6 +252,26 @@ export default function Landing() {
                 </Card>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="py-20 border-t bg-muted/20">
+        <div className="container mx-auto px-4 max-w-3xl">
+          <div className="text-center mb-10 space-y-3">
+            <Badge variant="outline">Dúvidas frequentes</Badge>
+            <h2 className="text-3xl md:text-4xl font-bold">Comece com clareza</h2>
+          </div>
+          <div className="space-y-3">
+            {FAQ.map((item) => (
+              <details key={item.question} className="rounded-lg border bg-background p-4 group">
+                <summary className="cursor-pointer font-medium list-none flex items-center justify-between gap-4">
+                  {item.question}<span className="text-primary text-xl transition-transform group-open:rotate-45">+</span>
+                </summary>
+                <p className="text-sm text-muted-foreground pt-3 pr-8">{item.answer}</p>
+              </details>
+            ))}
           </div>
         </div>
       </section>
