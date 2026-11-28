@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -69,6 +70,10 @@ export default function NotasFiscais() {
     <MainLayout>
       <div className="space-y-4 py-6">
         <FiscalHeader titulo="Notas Fiscais" operacao="Todas as notas emitidas" />
+
+        <PainelOrdenavel tela="notas-fiscais">
+
+        <div data-bloco="filtros" data-rotulo="Filtros">
         <Card>
           <CardContent className="grid gap-3 pt-6 sm:grid-cols-4">
             <div className="space-y-1.5"><Label>Tipo</Label>
@@ -86,7 +91,9 @@ export default function NotasFiscais() {
             <div className="space-y-1.5"><Label>Até</Label><Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} /></div>
           </CardContent>
         </Card>
+        </div>
 
+        <div data-bloco="lista" data-rotulo="Notas emitidas">
         <Card>
           <CardContent className="p-0 overflow-x-auto">
             {loading ? <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : erro ? (
@@ -113,6 +120,8 @@ export default function NotasFiscais() {
             )}
           </CardContent>
         </Card>
+        </div>
+        </PainelOrdenavel>
       </div>
 
       <Sheet open={!!sel} onOpenChange={(o) => !o && setSel(null)}>

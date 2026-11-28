@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1388,16 +1389,18 @@ export default function OrdensServico() {
         </PremiumCard>
         <UpgradePlanModal open={showUpgrade} onOpenChange={setShowUpgrade} reason="os" currentPlan={plan} />
 
+        <PainelOrdenavel tela="ordens-servico">
+
         {/* Stats */}
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+        <div data-bloco="indicadores" data-rotulo="Indicadores" className="grid gap-3 grid-cols-2 sm:grid-cols-4">
           <KpiCard label="Recebidas" value={stats.recebidas} icon={Clock} color="blue" delay={0} />
           <KpiCard label="Em Reparo" value={stats.emReparo} icon={Wrench} color="yellow" delay={100} />
           <KpiCard label="Aguardando" value={stats.aguardando} icon={Clock} color="orange" delay={200} />
           <KpiCard label="Prontas" value={stats.prontas} icon={CheckCircle2} color="green" delay={300} />
         </div>
 
-
         {/* OS List */}
+        <div data-bloco="lista" data-rotulo="Ordens de serviço">
         <PremiumCard delay={200}>
           <div className="p-4 border-b border-border">
             <div className="flex flex-wrap gap-2 items-center">
@@ -1542,6 +1545,8 @@ export default function OrdensServico() {
             }}
           />
         </PremiumCard>
+        </div>
+        </PainelOrdenavel>
 
         {/* ===== OS FORM DIALOG (single-scroll) ===== */}
         <Dialog open={dialogOpen} onOpenChange={handleOSDialogOpenChange}>

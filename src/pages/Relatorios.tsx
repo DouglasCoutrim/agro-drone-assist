@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -177,8 +178,13 @@ export default function Relatorios() {
           </div>
         </div>
 
-        <FechamentoDia />
+        <PainelOrdenavel tela="relatorios">
 
+        <div data-bloco="fechamento" data-rotulo="Fechamento do dia">
+        <FechamentoDia />
+        </div>
+
+        <div data-bloco="analises" data-rotulo="Análises do período" className="space-y-6">
         {loading ? (
           <div className="flex items-center justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
         ) : (
@@ -308,8 +314,12 @@ export default function Relatorios() {
             </div>
           </>
         )}
+        </div>
 
+        <div data-bloco="personalizado" data-rotulo="Relatório personalizado">
         <RelatorioPersonalizado />
+        </div>
+        </PainelOrdenavel>
       </div>
     </MainLayout>
   );

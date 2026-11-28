@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -384,8 +385,10 @@ export default function Orcamentos() {
           />
         </PremiumCard>
 
+        <PainelOrdenavel tela="orcamentos">
+
         {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div data-bloco="indicadores" data-rotulo="Indicadores" className="grid gap-4 md:grid-cols-3">
           <KpiCard
             label="Total de Orçamentos"
             value={orcamentos.length}
@@ -410,6 +413,7 @@ export default function Orcamentos() {
         </div>
 
         {/* Search */}
+        <div data-bloco="busca" data-rotulo="Buscar orçamentos">
         <PremiumCard padding="sm" hover={false} bordered={true} delay={100}>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -421,8 +425,10 @@ export default function Orcamentos() {
             />
           </div>
         </PremiumCard>
+        </div>
 
         {/* List */}
+        <div data-bloco="lista" data-rotulo="Lista de orçamentos">
         <PremiumCard bordered={true} delay={200}>
           <PremiumCardHeader
             title="Lista de Orçamentos"
@@ -499,6 +505,8 @@ export default function Orcamentos() {
             )}
           </PremiumCardContent>
         </PremiumCard>
+        </div>
+        </PainelOrdenavel>
 
         {/* View Dialog */}
         <Dialog open={!!viewingOrc} onOpenChange={(open) => { if (!open) setViewingOrc(null); }}>

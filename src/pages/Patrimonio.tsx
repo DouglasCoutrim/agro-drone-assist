@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -150,12 +151,15 @@ export default function Patrimonio({ meu = false }: { meu?: boolean }) {
           {isAdmin && <Button onClick={() => setForm({ ...empty })}><Plus className="h-4 w-4 mr-1" />Nova ferramenta</Button>}
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <PainelOrdenavel tela="patrimonio">
+
+        <div data-bloco="indicadores" data-rotulo="Indicadores" className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Itens</p><p className="text-xl font-bold">{enriched.length}</p></CardContent></Card>
           <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Valor de compra</p><p className="text-xl font-bold">{formatCurrency(totalCompra)}</p></CardContent></Card>
           <Card className="col-span-2 md:col-span-1"><CardContent className="p-4"><p className="text-xs text-muted-foreground">Valor atual (com desvalorização)</p><p className="text-xl font-bold text-primary">{formatCurrency(totalAtual)}</p></CardContent></Card>
         </div>
 
+        <div data-bloco="ferramentas" data-rotulo="Ferramentas e equipamentos" className="space-y-4">
         {isAdmin && (
           <Select value={filtro} onValueChange={setFiltro}>
             <SelectTrigger className="w-full md:w-64"><SelectValue /></SelectTrigger>
@@ -223,6 +227,8 @@ export default function Patrimonio({ meu = false }: { meu?: boolean }) {
             ))}
           </div>
         )}
+        </div>
+        </PainelOrdenavel>
       </div>
 
       <Dialog open={!!form} onOpenChange={(o) => !o && setForm(null)}>

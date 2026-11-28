@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { validarClienteFiscal } from "@/lib/fiscal-validation";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -335,8 +336,10 @@ export default function Clientes() {
           </div>
         </PremiumCard>
 
+        <PainelOrdenavel tela="clientes">
+
         {/* KPIs */}
-        <div className="grid gap-3 grid-cols-3 sm:grid-cols-4">
+        <div data-bloco="indicadores" data-rotulo="Indicadores" className="grid gap-3 grid-cols-3 sm:grid-cols-4">
           <KpiCard label="Total Clientes" value={totalClientes} icon={Users} color="blue" trend={`${syncedCount} sincronizados com Asaas`} delay={0} />
           <KpiCard label="Com CPF/CNPJ" value={withDocCount} icon={Building} color="green" delay={100} />
           <KpiCard label="Sincronizados" value={syncedCount} icon={Mail} color="purple" delay={200} />
@@ -344,6 +347,7 @@ export default function Clientes() {
         </div>
 
         {/* Search + Table */}
+        <div data-bloco="lista" data-rotulo="Buscar e listar clientes">
         <PremiumCard delay={100}>
           <div className="p-4 border-b border-border">
             <div className="relative max-w-xs">
@@ -420,6 +424,8 @@ export default function Clientes() {
             }}
           />
         </PremiumCard>
+        </div>
+        </PainelOrdenavel>
 
         {/* View Client Dialog */}
         <Dialog open={!!viewingCliente} onOpenChange={(open) => { if (!open) setViewingCliente(null); }}>

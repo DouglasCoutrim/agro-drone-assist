@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -284,8 +285,10 @@ export default function Financeiro() {
           </div>
         </PremiumCard>
 
+        <PainelOrdenavel tela="financeiro">
+
         {/* KPI Cards */}
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+        <div data-bloco="indicadores" data-rotulo="Indicadores" className="grid gap-3 grid-cols-2 lg:grid-cols-5">
           <KpiCard
             label="Receita do Mês"
             value={formatCurrency(receitaMensal)}
@@ -373,6 +376,7 @@ export default function Financeiro() {
         )}
 
         {/* Search */}
+        <div data-bloco="busca" data-rotulo="Buscar transações">
         <PremiumCard delay={200}>
           <div className="p-4 border-b border-border">
             <div className="relative max-w-xs">
@@ -381,8 +385,10 @@ export default function Financeiro() {
             </div>
           </div>
         </PremiumCard>
+        </div>
 
         {/* Transações Table */}
+        <div data-bloco="transacoes" data-rotulo="Transações recentes">
         <PremiumCard delay={300}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -460,6 +466,8 @@ export default function Financeiro() {
             )}
           </div>
         </PremiumCard>
+        </div>
+        </PainelOrdenavel>
 
         {/* View Transaction Dialog */}
         <Dialog open={!!viewingTransacao} onOpenChange={(open) => { if (!open) setViewingTransacao(null); }}>

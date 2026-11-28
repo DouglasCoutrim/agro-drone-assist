@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -412,8 +413,10 @@ export default function ContasPagar() {
           </div>
         </PremiumCard>
 
+        <PainelOrdenavel tela="contas-pagar">
+
         {/* KPIs */}
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <div data-bloco="indicadores" data-rotulo="Indicadores" className="grid gap-3 grid-cols-2 lg:grid-cols-4">
           <KpiCard label="A vencer" value={formatCurrency(kpis.aVencer)} trend="em aberto" icon={CalendarClock} color="blue" delay={0} />
           <KpiCard label="Atrasado" value={formatCurrency(kpis.atrasado)} trend="vencido" icon={AlertTriangle} color="red" delay={100} />
           <KpiCard label="Pago no mês" value={formatCurrency(kpis.pagoMes)} trend="liquidado" icon={CheckCircle2} color="green" delay={200} />
@@ -421,6 +424,7 @@ export default function ContasPagar() {
         </div>
 
         {/* Filtros */}
+        <div data-bloco="filtros" data-rotulo="Busca e filtros">
         <PremiumCard delay={150}>
           <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
             <div className="relative flex-1 max-w-xs">
@@ -439,8 +443,10 @@ export default function ContasPagar() {
             </Select>
           </div>
         </PremiumCard>
+        </div>
 
         {/* Tabela */}
+        <div data-bloco="contas" data-rotulo="Lista de contas">
         <PremiumCard delay={250} padding="sm">
           <div className="px-1 pb-3 flex items-center gap-1.5">
             <TrendingDown className="h-4 w-4 text-primary" />
@@ -514,6 +520,8 @@ export default function ContasPagar() {
             onRowClick={(row: ContaPagar) => setViewing(row)}
           />
         </PremiumCard>
+        </div>
+        </PainelOrdenavel>
 
         {/* Detalhes */}
         <Dialog open={!!viewing} onOpenChange={(open) => { if (!open) setViewing(null); }}>

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -243,8 +244,9 @@ export default function TechnicianDashboard() {
           <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
         ) : (
           <>
+            <PainelOrdenavel tela="tecnico">
             {/* Fila prioritária */}
-            <div className="rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 to-transparent p-5 flex items-center gap-4 flex-wrap">
+            <div data-bloco="fila" data-rotulo="Próxima OS da fila" className="rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 to-transparent p-5 flex items-center gap-4 flex-wrap">
               <div className="h-11 w-11 rounded-xl bg-primary/15 flex items-center justify-center"><ListChecks className="h-6 w-6 text-primary" /></div>
               <div className="flex-1 min-w-[200px]">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Próxima OS da Fila</p>
@@ -262,14 +264,14 @@ export default function TechnicianDashboard() {
             </div>
 
             {/* Resumo financeiro */}
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+            <div data-bloco="resumo" data-rotulo="Resumo financeiro" className="grid gap-3 grid-cols-1 sm:grid-cols-3">
               <KpiCard label="Sua Comissão no Mês" value={formatCurrency(data.realized_month ?? 0)} icon={Coins} color="bg-green-500/15 text-green-600" sub="Já líquida de imposto e custo do serviço" />
               <KpiCard label="Comissões Estimadas (Mês)" value={formatCurrency(data.estimated_month ?? 0)} icon={Clock} color="bg-blue-500/15 text-blue-600" sub="OS em andamento/aprovação" />
               <KpiCard label="Serviços Concluídos (Mês)" value={data.services_done_month ?? 0} icon={CheckCircle2} color="bg-violet-500/15 text-violet-600" />
             </div>
 
             {/* OS Atrasadas e Comissões a Receber */}
-            <div className="grid gap-3 md:grid-cols-2">
+            <div data-bloco="pendencias" data-rotulo="OS atrasadas e comissões a receber" className="grid gap-3 md:grid-cols-2">
               <Card className={`shadow-soft ${overdueOs.length > 0 ? "border-destructive/30" : "border-border"}`}>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2">
@@ -355,6 +357,7 @@ export default function TechnicianDashboard() {
                 </CardContent>
               </Card>
             </div>
+            </PainelOrdenavel>
 
             {/* Kanban — arraste o cartão para outra coluna para mudar o status da OS */}
             <div className="grid gap-4 lg:grid-cols-5">

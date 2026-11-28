@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { usePagination } from "@/hooks/usePagination";
 import { RecordPagination } from "@/components/RecordPagination";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -321,7 +322,9 @@ export default function Servicos() {
           </div>
         </div>
 
-        <div className="relative">
+        <PainelOrdenavel tela="servicos">
+
+        <div data-bloco="busca" data-rotulo="Buscar serviços" className="relative">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar serviço..."
@@ -331,6 +334,7 @@ export default function Servicos() {
           />
         </div>
 
+        <div data-bloco="lista" data-rotulo="Catálogo de serviços">
         <Card className="shadow-soft border-border/50">
           <CardContent className="p-0">
             {loading ? (
@@ -401,6 +405,8 @@ export default function Servicos() {
           </CardContent>
           {!loading && <RecordPagination {...pagination} />}
         </Card>
+        </div>
+        </PainelOrdenavel>
       </div>
     </MainLayout>
   );

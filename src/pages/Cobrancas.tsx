@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { usePagination } from "@/hooks/usePagination";
 import { RecordPagination } from "@/components/RecordPagination";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -191,14 +192,17 @@ export default function Cobrancas() {
           </div>
         </div>
 
+        <PainelOrdenavel tela="cobrancas">
+
         {/* Stats */}
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+        <div data-bloco="indicadores" data-rotulo="Indicadores" className="grid gap-3 grid-cols-2 md:grid-cols-4">
           <Card className="shadow-soft"><CardContent className="p-3"><div className="flex items-center gap-2"><div className="p-1.5 rounded-md bg-primary/10"><Receipt className="h-4 w-4 text-primary" /></div><div><p className="text-[10px] text-muted-foreground">Total</p><p className="text-lg font-bold">{payments.length}</p></div></div></CardContent></Card>
           <Card className="shadow-soft"><CardContent className="p-3"><div className="flex items-center gap-2"><div className="p-1.5 rounded-md bg-success/10"><CheckCircle className="h-4 w-4 text-success" /></div><div><p className="text-[10px] text-muted-foreground">Recebido</p><p className="text-lg font-bold text-success">{formatCurrency(totalRecebido)}</p></div></div></CardContent></Card>
           <Card className="shadow-soft"><CardContent className="p-3"><div className="flex items-center gap-2"><div className="p-1.5 rounded-md bg-warning/10"><Clock className="h-4 w-4 text-warning" /></div><div><p className="text-[10px] text-muted-foreground">Pendente</p><p className="text-lg font-bold text-warning">{formatCurrency(totalPendente)}</p></div></div></CardContent></Card>
           <Card className="shadow-soft"><CardContent className="p-3"><div className="flex items-center gap-2"><div className="p-1.5 rounded-md bg-destructive/10"><AlertTriangle className="h-4 w-4 text-destructive" /></div><div><p className="text-[10px] text-muted-foreground">Vencido</p><p className="text-lg font-bold text-destructive">{formatCurrency(totalVencido)}</p></div></div></CardContent></Card>
         </div>
 
+        <div data-bloco="cobrancas" data-rotulo="Busca e lista de cobranças" className="space-y-4">
         {!hasData && !loading ? (
           /* Empty State */
           <Card className="shadow-soft">
@@ -257,6 +261,8 @@ export default function Cobrancas() {
             </Card>
           </>
         )}
+        </div>
+        </PainelOrdenavel>
 
         {/* Detail Dialog */}
         {detailDialog && (

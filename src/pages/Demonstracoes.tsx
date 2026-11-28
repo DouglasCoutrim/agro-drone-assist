@@ -7,6 +7,7 @@ import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -153,12 +154,15 @@ export default function Demonstracoes() {
           {isAdmin && <Button onClick={() => { setItens([]); setNovo({ obs: "", busca: "", func: "" }); }}><Plus className="mr-1 h-4 w-4" />Nova retirada</Button>}
         </div>
 
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+        <PainelOrdenavel tela="demonstracoes">
+
+        <div data-bloco="indicadores" data-rotulo="Indicadores" className="grid grid-cols-2 gap-3 md:grid-cols-3">
           <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Itens com funcionários</p><p className="text-xl font-bold">{emPosse.length}</p></CardContent></Card>
           <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Valor fora da loja</p><p className="text-xl font-bold">{formatCurrency(emPosse.reduce((t: number, s: any) => t + s.quantidade * s.valor_unitario, 0))}</p></CardContent></Card>
           <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Cobranças em aberto</p><p className="text-xl font-bold text-destructive">{formatCurrency(cobrado)}</p></CardContent></Card>
         </div>
 
+        <div data-bloco="registros" data-rotulo="Filtro e registros" className="space-y-4">
         <Select value={filtro} onValueChange={setFiltro}>
           <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -196,6 +200,8 @@ export default function Demonstracoes() {
             })}
           </div>
         )}
+        </div>
+        </PainelOrdenavel>
       </div>
 
       <Dialog open={!!novo} onOpenChange={(o) => !o && setNovo(null)}>
