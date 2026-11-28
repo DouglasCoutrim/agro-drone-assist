@@ -1,6 +1,7 @@
 import { SmartSelect } from "@/components/ui/smart-select";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -703,14 +704,16 @@ export default function Vendas() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Vendas</h1>
+            <h1 data-tour="vendas-page" className="text-2xl font-bold">Vendas</h1>
             <p className="text-gray-500">Gerencie vendas, emissão de notas e comissões</p>
           </div>
-          {activeTab === "vendas" && <Button onClick={handleOpenNewVenda}><Plus className="h-4 w-4 mr-2" />Nova Venda</Button>}
+          {activeTab === "vendas" && <Button data-tour="vendas-nova" onClick={handleOpenNewVenda}><Plus className="h-4 w-4 mr-2" />Nova Venda</Button>}
         </div>
 
+        <PainelOrdenavel tela="vendas">
+
         {/* KPIs */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div data-bloco="indicadores" data-rotulo="Indicadores" className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <KpiCard label="Vendas do Mês" value={formatCurrency(valorTotalMes)} icon={DollarSign} color="green" />
           <KpiCard label="Pendentes" value={vendasPendentes} icon={AlertTriangle} color="orange" />
           <KpiCard label="Total de Vendas" value={vendas.length} icon={Package} color="blue" />
@@ -718,6 +721,7 @@ export default function Vendas() {
         </div>
 
         {/* Tabs */}
+        <div data-bloco="conteudo" data-rotulo="Vendas, ganhos e notas fiscais">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="vendas"><Package className="h-4 w-4 mr-2" />Vendas</TabsTrigger>
@@ -963,6 +967,8 @@ export default function Vendas() {
             )}
           </TabsContent>
         </Tabs>
+        </div>
+        </PainelOrdenavel>
 
         {/* NF View Dialog */}
         <Dialog open={!!viewingNF} onOpenChange={() => setViewingNF(null)}>

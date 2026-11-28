@@ -183,7 +183,7 @@ export default function EmpresaConfig() {
     <MainLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
+          <h1 data-tour="empresa-page" className="text-3xl font-bold flex items-center gap-2">
             <Building2 className="h-8 w-8 text-primary" />
             Configurações da Empresa
           </h1>

@@ -169,7 +169,7 @@ export default function Comissoes() {
         </div>
 
         <Tabs value={aba} onValueChange={setAba}>
-          <TabsList>
+          <TabsList data-tour="comissoes-abas">
             <TabsTrigger value="faturas" className="gap-1.5">
               <Receipt className="h-4 w-4" /> Faturas de saque
             </TabsTrigger>
@@ -179,17 +179,18 @@ export default function Comissoes() {
           </TabsList>
 
           <TabsContent value="faturas" className="space-y-4 pt-4">
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div data-tour="comissoes-resumo" className="grid gap-4 sm:grid-cols-3">
               <Resumo rotulo="Total listado" valor={totais.total} />
               <Resumo rotulo="Já pago" valor={totais.pagas} cor="text-blue-600" />
               <Resumo rotulo="Em aberto" valor={totais.abertas} cor="text-amber-600" />
             </div>
 
-            <PremiumCard delay={0}>
+            <div data-tour="comissoes-faturas">
+            <PremiumCard delay={0} rotulo="Faturas por técnico">
               <CardHeader className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-center sm:justify-between">
                 <CardTitle className="text-base">Faturas por técnico</CardTitle>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <div className="relative">
+                  <div data-tour="comissoes-busca" className="relative">
                     <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       value={busca}
@@ -280,6 +281,7 @@ export default function Comissoes() {
                 )}
               </CardContent>
             </PremiumCard>
+            </div>
           </TabsContent>
 
           <TabsContent value="conferencia" className="space-y-4 pt-4">

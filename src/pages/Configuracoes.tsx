@@ -86,7 +86,7 @@ export default function Configuracoes() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2"><Settings className="h-8 w-8 text-primary" />Configurações</h1>
+            <h1 data-tour="configuracoes-page" className="text-3xl font-bold flex items-center gap-2"><Settings className="h-8 w-8 text-primary" />Configurações</h1>
             <p className="text-muted-foreground">Gerencie as configurações do sistema e seu perfil</p>
           </div>
         </div>

@@ -34,12 +34,13 @@ describe("rateio da comissão", () => {
       nfeEmitida: true,
       aliquota: 6,
     });
-    expect(r.base).toBe(900);
+    // Base = valor cobrado (itens - desconto quando valor_final é zero) = 1050
+    expect(r.base).toBe(1050);
     expect(r.custo).toBe(150);
-    expect(r.imposto).toBe(54);
-    expect(r.saldo).toBe(696);
-    expect(r.loja).toBe(348);
-    expect(r.comissao).toBe(348);
+    expect(r.imposto).toBe(63);
+    expect(r.saldo).toBe(837);
+    expect(r.loja).toBe(418.5);
+    expect(r.comissao).toBe(418.5);
   });
 
   it("sem nota aplica 3,5% sobre a parte do técnico", () => {
@@ -47,13 +48,14 @@ describe("rateio da comissão", () => {
       ...base,
       itens: [servico(900, 150), peca(150)],
     });
-    expect(r.base).toBe(900);
+    // Base = valor cobrado (itens - desconto quando valor_final é zero) = 1050
+    expect(r.base).toBe(1050);
     expect(r.imposto).toBe(0);
-    expect(r.saldo).toBe(750);
-    expect(r.loja).toBe(375);
-    expect(r.comissao).toBe(361.88);
-    expect(r.taxaSemNota).toBe(13.12);
-    expect(r.loja + r.taxaSemNota + r.comissao).toBe(750);
+    expect(r.saldo).toBe(900);
+    expect(r.loja).toBe(450);
+    expect(r.comissao).toBe(434.25);
+    expect(r.taxaSemNota).toBe(15.75);
+    expect(r.loja + r.taxaSemNota + r.comissao).toBe(900);
   });
 
   it("desconto do cabeçalho cai proporcionalmente sobre os serviços", () => {
@@ -69,13 +71,13 @@ describe("rateio da comissão", () => {
     expect(semValorFinal.comissao).toBe(844.38);
   });
 
-  it("peça não entra na base e o desconto é rateado por proporção", () => {
+  it("base é o valor cobrado (itens - desconto) quando valor_final é zero", () => {
     const r = calcularRateio({ ...base, itens: [servico(900), peca(300)], desconto: 200 });
     expect(r.totalItens).toBe(1200);
     expect(r.totalServicos).toBe(900);
     expect(r.valorOs).toBe(1000);
-    expect(r.base).toBe(750);
-    expect(r.comissao).toBe(361.88);
+    expect(r.base).toBe(1000);
+    expect(r.comissao).toBe(482.5);
   });
 
   it("saldo negativo vira zero, sem dívida para o técnico", () => {

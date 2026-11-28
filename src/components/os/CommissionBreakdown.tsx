@@ -148,6 +148,7 @@ export function CommissionBreakdown({ data, className }: { data: CommissionBreak
         comissao: p.comissao,
         aliquota: p.aliquota,
         taxaPercentual: p.taxaPercentual,
+        nfeEmitida: data.nfeEmitida,
       }
     : data;
 

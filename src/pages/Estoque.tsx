@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { validarProdutoFiscal } from "@/lib/fiscal-validation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -372,20 +373,20 @@ export default function Estoque() {
             <p className="text-gray-600 mt-1">Gerencie peças, componentes e materiais</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={buscarFotosLote} disabled={loteLoading}>
+            <Button data-tour="estoque-fotos" variant="outline" onClick={buscarFotosLote} disabled={loteLoading}>
               {loteLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImageIcon className="mr-2 h-4 w-4" />}Buscar fotos
             </Button>
-            <Button variant="outline" onClick={() => { window.location.href = "/estoque/importar-xml"; }}>
+            <Button data-tour="estoque-xml" variant="outline" onClick={() => { window.location.href = "/estoque/importar-xml"; }}>
               Importar XML (NF-e)
             </Button>
-            <Button className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold" onClick={handleOpenNewDialog}>
+            <Button data-tour="estoque-novo" className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold" onClick={handleOpenNewDialog}>
               <Plus className="mr-2 h-4 w-4" />Novo Item
             </Button>
           </div>
         </div>
 
         {/* CSV Import/Export */}
-        <div className="flex items-center gap-2">
+        <div data-tour="estoque-csv" className="flex items-center gap-2">
           <CsvImportExport
             tableName="itens_estoque"
             organizationId={organization?.id}
@@ -412,8 +413,10 @@ export default function Estoque() {
           />
         </div>
 
+        <PainelOrdenavel tela="estoque">
+
         {/* KPI Grid */}
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+        <div data-bloco="indicadores" data-rotulo="Indicadores" data-tour="estoque-indicadores" className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
           <KpiCard
             label="Total de Itens"
             value={itens.length}
@@ -446,7 +449,7 @@ export default function Estoque() {
         </div>
 
         {/* Search + finalidade */}
-        <div className="flex flex-col sm:flex-row gap-2 max-w-2xl">
+        <div data-bloco="filtros" data-rotulo="Busca e filtros" data-tour="estoque-filtros" className="flex flex-col sm:flex-row gap-2 max-w-2xl">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input
@@ -466,6 +469,7 @@ export default function Estoque() {
         </div>
 
         {/* Main Table */}
+        <div data-bloco="inventario" data-rotulo="Inventário">
         <PremiumCard delay={100}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Inventário</h2>
@@ -487,9 +491,12 @@ export default function Estoque() {
             animateRows={true}
           />
         </PremiumCard>
+        </div>
+        </PainelOrdenavel>
 
         {/* Low Stock Alerts */}
         {itensEstoqueBaixo.length > 0 && (
+          <div data-tour="estoque-baixo">
           <AlertBox
             title={`${itensEstoqueBaixo.length} Itens com Estoque Baixo`}
             items={itensEstoqueBaixo.slice(0, 5).map(item => ({
@@ -500,6 +507,7 @@ export default function Estoque() {
             icon={AlertTriangle}
             delay={200}
           />
+          </div>
         )}
 
         {/* New/Edit Item Dialog */}

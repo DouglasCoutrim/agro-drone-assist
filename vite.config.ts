@@ -8,19 +8,23 @@ import { generatePwaIcons } from "./scripts/generate-pwa-icons";
 /**
  * Refaz os ícones de instalação do PWA a partir de `src/assets/logo-icon.png`
  * (emblema da marca) sempre que o servidor de desenvolvimento ou o build começa.
+ *
+ * A raiz vai explícita: dentro do bundle da configuração o `import.meta.url` do
+ * gerador aponta para o próprio bundle, e não para `scripts/`, o que gravava os
+ * ícones fora do projeto. `__dirname` é o mesmo caminho usado no alias `@`.
  */
 function iconesPwa() {
   const gerar = async (contexto: string) => {
     try {
-      const arquivos = await generatePwaIcons();
+      const arquivos = await generatePwaIcons(__dirname);
       if (arquivos.length > 0) {
         console.log(
-          `[pwa-icons] ${arquivos.length} ícones gerados de src/assets/logo-icon.png (${contexto}).`,
+          `[pwa-icons] ${arquivos.length} ícones gerados de src/assets/logo-icon.png (${contexto}, raiz ${__dirname}).`,
         );
       }
     } catch (erro) {
       // Nunca derruba o app por causa de ícone: mantém os arquivos já existentes.
-      console.warn(`[pwa-icons] falha ao gerar os ícones (${contexto}):`, erro);
+      console.warn(`[pwa-icons] falha ao gerar os ícones (${contexto}, raiz ${__dirname}):`, erro);
     }
   };
 

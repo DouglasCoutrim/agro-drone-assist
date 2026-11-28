@@ -10,6 +10,7 @@ import BroadcastTab from "@/components/admin/BroadcastTab";
 import WikiTab from "@/components/admin/WikiTab";
 import ConfigTab from "@/components/admin/ConfigTab";
 import SiteTab from "@/components/admin/SiteTab";
+import RecebimentosTab from "@/components/admin/RecebimentosTab";
 import { PlatformSidebar } from "@/components/layout/PlatformSidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -42,6 +43,7 @@ export default function AdminMaster() {
       case "wiki": return <WikiTab />;
       case "config": return <ConfigTab />;
       case "site": return <SiteTab />;
+      case "recebimentos": return <RecebimentosTab />;
       default: return <OverviewTab />;
     }
   };
@@ -72,7 +74,8 @@ export default function AdminMaster() {
                activeTab === "support" ? "Suporte Global" : 
                activeTab === "broadcast" ? "Comunicados do Sistema" : 
                activeTab === "plans" ? "Planos e Assinaturas" : 
-               activeTab === "site" ? "Administração do Site" : 
+               activeTab === "site" ? "Administração do Site" :
+               activeTab === "recebimentos" ? "Recebimentos" :
                activeTab === "wiki" ? "Wiki Administrativa" : "Visão Geral"}
             </h1>
           </div>

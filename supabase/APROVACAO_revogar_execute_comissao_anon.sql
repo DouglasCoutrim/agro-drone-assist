@@ -1,0 +1,107 @@
+-- ============================================================================
+-- LivreOS - R1: fechar o acesso anonimo as funcoes de comissao
+--
+-- STATUS: APLICADO em 2026-11-22. O REVOKE do PASSO 2 foi executado, e a guarda
+-- de organizacao que aqui estava apenas como esboco foi implementada DENTRO das
+-- duas funcoes (mesma formula, apenas o bloco de checagem inserido depois do
+-- `if not found`). O SQL aplicado esta em
+-- drizzle/migrations/0028_guarda_organizacao_comissao.sql.
+--
+-- Evidencia (conferida no banco de producao):
+--   public.os_commission_calc(uuid)      -> SECURITY DEFINER, ACL:
+--       {=X/postgres, postgres=X, anon=X, authenticated=X, service_role=X}
+--   public.os_commission_core(uuid,bool) -> SECURITY DEFINER, ACL:
+--       {=X/postgres, postgres=X, anon=X, authenticated=X, service_role=X}
+--
+--   `=X/postgres` e o PUBLIC: qualquer role, inclusive anon, executa.
+--   E `os_commission_core`:
+--     - NAO usa auth.uid() (usa_auth_uid = false);
+--     - NAO checa papel (checa_papel = false);
+--     - NAO checa organizacao (checa_org = false);
+--     - NAO tem nenhum "raise exception" (tem_raise = false);
+--     - ESCREVE (contem insert/update);
+--     - e SECURITY DEFINER, ou seja, roda como o dono e ignora a RLS.
+--
+--   Consequencia: quem tiver a chave publicavel (que vai no bundle do site)
+--   pode chamar POST /rest/v1/rpc/os_commission_core com o uuid de uma OS de
+--   QUALQUER organizacao e forcar a gravacao das colunas de comissao daquela
+--   OS, sem login. Hoje nada protege isso.
+--
+-- O que este arquivo faz:
+--   Tira o EXECUTE de PUBLIC e de anon nas duas funcoes. `authenticated` e
+--   `service_role` continuam com EXECUTE (nao mexemos em quem ja funcionava).
+--
+-- Por que isso e seguro (por que nao quebra o calculo):
+--   Os chamadores internos sao todos SECURITY DEFINER:
+--     recalc_os_commission_internal, trg_itens_os_recalc_commission,
+--     trg_os_recalc_commission_on_tech, calculate_os_commission,
+--     finalizar_os, ajustar_comissao_os, recalcular_comissoes_em_lote,
+--     relatorio_impacto_comissao.
+--   Chamada de dentro de uma funcao SECURITY DEFINER roda como o dono, e o
+--   dono (postgres) tem EXECUTE na ACL. A tela do app chama
+--   `calculate_os_commission` (que ja checa a organizacao), nao estas duas.
+--
+-- O que este arquivo NAO resolve (fica para decisao separada):
+--   Um usuario LOGADO de uma organizacao ainda pode chamar `os_commission_core`
+--   direto com o uuid de uma OS de OUTRA organizacao, porque a funcao nao olha
+--   a organizacao. Fechar isso exige acrescentar uma guarda DENTRO da funcao,
+--   o que muda comportamento de codigo de comissao - por isso nao vai aqui.
+--   Esboco da guarda, para aprovar depois (nao executar agora):
+--
+--     create or replace function public.os_commission_core(_os_id uuid, _force boolean default false)
+--     returns jsonb language plpgsql security definer set search_path = '' as $fn$
+--     begin
+--       -- chamada legitima pelo app: exige a organizacao do usuario;
+--       -- chamada sem sessao (service_role/edge) segue como hoje.
+--       if auth.uid() is not null and not exists (
+--         select 1 from public.ordens_servico os
+--         where os.id = _os_id
+--           and os.organization_id = public.get_user_org_id(auth.uid())
+--       ) then
+--         raise exception 'Ordem de servico fora da organizacao do usuario.';
+--       end if;
+--       ... (corpo atual, sem alteracao) ...
+--     end $fn$;
+--
+-- PASSO 1 - Conferir o estado atual (rode antes, so para registrar)
+-- ============================================================================
+-- select p.proname, coalesce(p.proacl::text, '(default)') as acl
+-- from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+-- where n.nspname = 'public'
+--   and p.proname in ('os_commission_calc', 'os_commission_core');
+
+-- ============================================================================
+-- PASSO 2 - Fechar o acesso anonimo
+-- ============================================================================
+revoke all on function public.os_commission_calc(uuid) from public;
+
+revoke all on function public.os_commission_calc(uuid) from anon;
+
+revoke all on function public.os_commission_core(uuid, boolean) from public;
+
+revoke all on function public.os_commission_core(uuid, boolean) from anon;
+
+-- ============================================================================
+-- PASSO 3 - Conferir o resultado (nao deve aparecer "anon=X" nem "=X")
+-- ============================================================================
+-- select p.proname, coalesce(p.proacl::text, '(default)') as acl
+-- from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+-- where n.nspname = 'public'
+--   and p.proname in ('os_commission_calc', 'os_commission_core');
+
+-- ============================================================================
+-- PASSO 4 - Teste depois de aplicar
+-- ============================================================================
+-- 1) Negativo (deve dar erro de permissao, nao recalcular nada):
+--    no PostgREST, sem sessao, com a chave publicavel:
+--      POST /rest/v1/rpc/os_commission_core  { "_os_id": "<uuid>", "_force": true }
+--    Esperado: 401/403 ou "permission denied for function os_commission_core".
+-- 2) Positivo (nada pode ter mudado para o usuario logado):
+--    abrir uma OS, salvar, e conferir que a comissao continua sendo recalculada
+--    (a tela chama calculate_os_commission, que continua com EXECUTE).
+--
+-- REVERSAO (se algum fluxo legitimo parar): devolver o EXECUTE que existia
+--   grant execute on function public.os_commission_calc(uuid) to anon;
+--   grant execute on function public.os_commission_core(uuid, boolean) to anon;
+--   (PUBLIC nao precisa ser devolvido: ninguem depende dele.)
+-- ============================================================================

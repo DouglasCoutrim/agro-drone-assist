@@ -1,7 +1,8 @@
 -- ============================================================================
 -- Fixa o estado atual dos planos de assinatura (bronze, prata, ouro, Isento).
 --
--- STATUS: AGUARDANDO APROVACAO. Nada deste arquivo foi executado no banco.
+-- STATUS: APLICADO em 2026-11-21 (upsert dos 4 planos por slug). Este arquivo
+-- fica como registro.
 --
 -- Por que este arquivo existe:
 --   Os quatro planos foram ajustados direto no banco (SQL editor), fora do

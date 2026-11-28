@@ -123,7 +123,7 @@ export default function WorkshopLive() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <MonitorPlay className="h-8 w-8 text-emerald-400" />
-          <h1 className="text-3xl font-bold tracking-tight">Oficina ao Vivo</h1>
+          <h1 data-tour="workshop-live-page" className="text-3xl font-bold tracking-tight">Oficina ao Vivo</h1>
         </div>
         <span className="inline-flex items-center gap-2 text-sm text-white/50">
           <span className="relative flex h-3 w-3">

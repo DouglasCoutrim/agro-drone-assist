@@ -26,6 +26,20 @@ function checkRateLimit(key: string): boolean {
   return true;
 }
 
+function base64Url(bytes: Uint8Array): string {
+  let binary = '';
+  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+async function createCheckoutToken(): Promise<{ token: string; hash: string }> {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  const token = base64Url(bytes);
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  return { token, hash: base64Url(new Uint8Array(digest)) };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeadersRestricted });
 
@@ -35,6 +49,13 @@ Deno.serve(async (req) => {
     if (!email || !password || !nome || !empresa) {
       return new Response(JSON.stringify({ ok: false, error: 'Dados obrigatórios ausentes.' }), {
         headers: { ...corsHeadersRestricted, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const requestedSlug = (plan_slug || 'bronze').toLowerCase();
+    if (!VALID_PLAN_SLUGS.includes(requestedSlug)) {
+      return new Response(JSON.stringify({ ok: false, error: 'Plano inválido. Escolha Bronze, Prata ou Ouro.' }), {
+        status: 400, headers: { ...corsHeadersRestricted, 'Content-Type': 'application/json' },
       });
     }
 
@@ -90,9 +111,8 @@ Deno.serve(async (req) => {
     const userId = created.user.id;
 
     // 2. Get plan
-    const requestedSlug = (plan_slug || 'trial').toLowerCase();
-    const isTrial = !VALID_PLAN_SLUGS.includes(requestedSlug);
-    const lookupSlug = isTrial ? 'bronze' : requestedSlug;
+    const isTrial = false;
+    const lookupSlug = requestedSlug;
 
     const { data: planRow, error: planErr } = await admin
       .from('subscription_plans').select('*').eq('slug', lookupSlug).maybeSingle();
@@ -114,6 +134,18 @@ Deno.serve(async (req) => {
         monthly_fee: monthlyFee, max_users: plan.max_users ?? 3, max_os_per_month: plan.max_os_per_month ?? 100,
       }).select().single();
     if (orgErr || !org) throw orgErr || new Error('Falha ao criar organização');
+
+    // Sessão pública: somente o hash do token é armazenado no banco.
+    const checkoutToken = await createCheckoutToken();
+    const { error: checkoutError } = await admin.from('checkout_sessions').insert({
+      organization_id: org.id,
+      plan_slug: isTrial ? 'bronze' : requestedSlug,
+      billing_cycle: 'mensal',
+      token_hash: checkoutToken.hash,
+      status: 'created',
+      expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
+    });
+    if (checkoutError) throw checkoutError;
 
     // 4. Profile
     const { error: profileErr } = await admin.from('profiles').upsert(
@@ -148,7 +180,7 @@ Deno.serve(async (req) => {
     });
     if (cfgErr) throw cfgErr;
 
-    return new Response(JSON.stringify({ ok: true, organization_id: org.id, plan: orgPlan, emailConfirmed: false }), {
+    return new Response(JSON.stringify({ ok: true, organization_id: org.id, plan: orgPlan, emailConfirmed: false, checkout_token: checkoutToken.token }), {
       headers: { ...corsHeadersRestricted, 'Content-Type': 'application/json' },
     });
   } catch (e: any) {

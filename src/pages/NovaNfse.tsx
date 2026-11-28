@@ -33,7 +33,9 @@ export default function NovaNfse() {
 
   useEffect(() => {
     if (!organization?.id) return;
-    supabase.from("nfe_config").select("*").eq("organization_id", organization.id).maybeSingle().then(({ data }) => setCfg(data));
+    // Le da view publica: a configuracao fiscal sem os tokens da Focus NFe, que
+    // ficam no Vault e nunca devem chegar ao navegador.
+    (supabase.from as any)("nfe_config_publica").select("*").eq("organization_id", organization.id).maybeSingle().then(({ data }: { data: any }) => setCfg(data));
     supabase.from("ordens_servico").select("id, numero, status, valor_final, clientes!ordens_servico_cliente_id_fkey(nome)")
       .eq("organization_id", organization.id).neq("status", "cancelada").order("created_at", { ascending: false }).limit(200)
       .then(({ data }) => setOrdens(data || []));
@@ -87,7 +89,7 @@ export default function NovaNfse() {
       <div className="space-y-4 py-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2"><FileCheck className="h-6 w-6 text-primary" />Nova NFS-e</h1>
+            <h1 data-tour="nfse-page" className="text-2xl font-bold flex items-center gap-2"><FileCheck className="h-6 w-6 text-primary" />Nova NFS-e</h1>
             <p className="text-sm text-muted-foreground">Fiscal › Nota de serviço</p>
           </div>
           <div className="flex gap-2">

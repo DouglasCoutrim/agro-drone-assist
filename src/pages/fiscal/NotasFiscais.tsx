@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { formatCurrency, todayDateInput } from "@/lib/formatters";
 import { FiscalHeader, NotaStatusBadge } from "@/components/fiscal/fiscalShared";
+import { toast } from "sonner";
+import { EstadoErro } from "@/components/listagem/EstadoErro";
 
 const TIPOS: Record<string, string> = {
   venda: "NF-e de venda", devolucao_venda: "Devolução de venda", devolucao_compra: "Devolução de compra", nfse: "NFS-e", nfe: "NF-e",
@@ -31,20 +34,35 @@ export default function NotasFiscais() {
   const { organization } = useOrganization();
   const [notas, setNotas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState(false);
   const [tipo, setTipo] = useState("todos");
   const [status, setStatus] = useState("todos");
   const [de, setDe] = useState(inicioMes);
   const [ate, setAte] = useState(hoje);
   const [sel, setSel] = useState<any>(null);
 
-  useEffect(() => {
+  const carregar = useCallback(async () => {
     if (!organization?.id) return;
     setLoading(true);
-    let q = supabase.from("nota_fiscal_emitida").select("*").eq("organization_id", organization.id)
-      .gte("created_at", `${de}T00:00:00`).lte("created_at", `${ate}T23:59:59`).order("created_at", { ascending: false }).limit(500);
-    if (status !== "todos") q = q.eq("status", status);
-    q.then(({ data }) => { setNotas(data || []); setLoading(false); });
+    setErro(false);
+    try {
+      let q = supabase.from("nota_fiscal_emitida").select("*").eq("organization_id", organization.id)
+        .gte("created_at", `${de}T00:00:00`).lte("created_at", `${ate}T23:59:59`).order("created_at", { ascending: false }).limit(500);
+      if (status !== "todos") q = q.eq("status", status);
+      const { data, error } = await q;
+      if (error) throw error;
+      setNotas(data || []);
+    } catch (err) {
+      console.error("Erro ao carregar notas fiscais:", err);
+      toast.error("Não foi possível carregar as notas fiscais.");
+      setErro(true);
+      setNotas([]);
+    } finally {
+      setLoading(false);
+    }
   }, [organization?.id, de, ate, status]);
+
+  useEffect(() => { carregar(); }, [carregar]);
 
   const lista = useMemo(() => notas.filter((n) => tipo === "todos" || tipoNota(n) === tipo), [notas, tipo]);
 
@@ -52,6 +70,10 @@ export default function NotasFiscais() {
     <MainLayout>
       <div className="space-y-4 py-6">
         <FiscalHeader titulo="Notas Fiscais" operacao="Todas as notas emitidas" />
+
+        <PainelOrdenavel tela="notas-fiscais">
+
+        <div data-bloco="filtros" data-rotulo="Filtros">
         <Card>
           <CardContent className="grid gap-3 pt-6 sm:grid-cols-4">
             <div className="space-y-1.5"><Label>Tipo</Label>
@@ -69,10 +91,14 @@ export default function NotasFiscais() {
             <div className="space-y-1.5"><Label>Até</Label><Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} /></div>
           </CardContent>
         </Card>
+        </div>
 
+        <div data-bloco="lista" data-rotulo="Notas emitidas">
         <Card>
           <CardContent className="p-0 overflow-x-auto">
-            {loading ? <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : (
+            {loading ? <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : erro ? (
+              <EstadoErro mensagem="Não foi possível carregar as notas fiscais." aoTentarNovamente={carregar} />
+            ) : (
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-xs text-muted-foreground">
                   <tr><th className="p-3 text-left">Número</th><th className="p-3 text-left">Tipo</th><th className="p-3 text-left">Cliente / fornecedor</th><th className="p-3 text-left">Data</th><th className="p-3 text-right">Valor</th><th className="p-3 text-left">Status</th></tr>
@@ -94,6 +120,8 @@ export default function NotasFiscais() {
             )}
           </CardContent>
         </Card>
+        </div>
+        </PainelOrdenavel>
       </div>
 
       <Sheet open={!!sel} onOpenChange={(o) => !o && setSel(null)}>

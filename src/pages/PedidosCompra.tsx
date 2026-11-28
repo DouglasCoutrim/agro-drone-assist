@@ -170,13 +170,13 @@ export default function PedidosCompra() {
 
   return (
     <MainLayout>
-      <div className="space-y-4 p-4">
+      <div className="space-y-4 p-4" data-tour="compras-page">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div><h1 className="text-2xl font-bold">Pedidos de Compra</h1><p className="text-sm text-muted-foreground">Pedidos por setor: estoque, ferramentas, limpeza, mantimentos, uniformes e mais</p></div>
-          <Button onClick={() => { setEditPedido(null); setOpen(true); }}><Plus className="mr-1 h-4 w-4" />Novo pedido</Button>
+          <Button data-tour="compras-novo" onClick={() => { setEditPedido(null); setOpen(true); }}><Plus className="mr-1 h-4 w-4" />Novo pedido</Button>
         </div>
         <Tabs defaultValue="pedidos">
-          <TabsList className="flex-wrap h-auto"><TabsTrigger value="pedidos">Pedidos ({pedidos.length})</TabsTrigger><TabsTrigger value="pendentes">Pendentes ({pendentes.length})</TabsTrigger><TabsTrigger value="cotacoes">Cotações ({cotacoes.length})</TabsTrigger><TabsTrigger value="historico">Histórico</TabsTrigger></TabsList>
+          <TabsList data-tour="compras-abas" className="flex-wrap h-auto"><TabsTrigger value="pedidos">Pedidos ({pedidos.length})</TabsTrigger><TabsTrigger value="pendentes">Pendentes ({pendentes.length})</TabsTrigger><TabsTrigger value="cotacoes">Cotações ({cotacoes.length})</TabsTrigger><TabsTrigger value="historico">Histórico</TabsTrigger></TabsList>
           <TabsContent value="pedidos" className="space-y-2">
             {!pedidos.length && <p className="py-6 text-center text-sm text-muted-foreground">Nenhum pedido criado.</p>}
             {pedidos.map((p: any) => {

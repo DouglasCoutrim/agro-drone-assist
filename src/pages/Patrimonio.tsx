@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -144,18 +145,21 @@ export default function Patrimonio({ meu = false }: { meu?: boolean }) {
       <div className="space-y-4 p-4 md:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2"><Wrench className="h-6 w-6 text-primary" />{meu ? "Meu Estoque" : "Ferramentas e Equipamentos"}</h1>
+            <h1 data-tour="patrimonio-page" className="text-2xl font-bold flex items-center gap-2"><Wrench className="h-6 w-6 text-primary" />{meu ? "Meu Estoque" : "Ferramentas e Equipamentos"}</h1>
             <p className="text-sm text-muted-foreground">{meu ? "Ferramentas sob sua responsabilidade, com valor atualizado." : "Patrimônio da empresa entregue aos funcionários."}</p>
           </div>
-          {isAdmin && <Button onClick={() => setForm({ ...empty })}><Plus className="h-4 w-4 mr-1" />Nova ferramenta</Button>}
+          {isAdmin && <Button data-tour="patrimonio-nova" onClick={() => setForm({ ...empty })}><Plus className="h-4 w-4 mr-1" />Nova ferramenta</Button>}
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <PainelOrdenavel tela="patrimonio">
+
+        <div data-bloco="indicadores" data-rotulo="Indicadores" className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Itens</p><p className="text-xl font-bold">{enriched.length}</p></CardContent></Card>
           <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Valor de compra</p><p className="text-xl font-bold">{formatCurrency(totalCompra)}</p></CardContent></Card>
           <Card className="col-span-2 md:col-span-1"><CardContent className="p-4"><p className="text-xs text-muted-foreground">Valor atual (com desvalorização)</p><p className="text-xl font-bold text-primary">{formatCurrency(totalAtual)}</p></CardContent></Card>
         </div>
 
+        <div data-bloco="ferramentas" data-rotulo="Ferramentas e equipamentos" className="space-y-4">
         {isAdmin && (
           <Select value={filtro} onValueChange={setFiltro}>
             <SelectTrigger className="w-full md:w-64"><SelectValue /></SelectTrigger>
@@ -223,6 +227,8 @@ export default function Patrimonio({ meu = false }: { meu?: boolean }) {
             ))}
           </div>
         )}
+        </div>
+        </PainelOrdenavel>
       </div>
 
       <Dialog open={!!form} onOpenChange={(o) => !o && setForm(null)}>
@@ -230,12 +236,12 @@ export default function Patrimonio({ meu = false }: { meu?: boolean }) {
           <DialogHeader><DialogTitle>{form?.id ? "Editar ferramenta" : "Nova ferramenta"}</DialogTitle></DialogHeader>
           {form && <form onSubmit={salvar} className="grid gap-3 sm:grid-cols-2">
             {([["nome", "Nome *"], ["categoria", "Categoria"], ["marca_modelo", "Marca / modelo"], ["numero_serie", "Número de série"]] as const).map(([k, l]) => (
-              <div key={k}><Label>{l}</Label><Input value={form[k] || ""} onChange={(e) => setForm({ ...form, [k]: e.target.value })} /></div>
+              <div key={k}><Label>{l}</Label><Input data-tour={`patrimonio-${k}`} value={form[k] || ""} onChange={(e) => setForm({ ...form, [k]: e.target.value })} /></div>
             ))}
-            <div><Label>Valor de compra (R$) *</Label><Input type="number" step="0.01" value={form.valor_referencia} onChange={(e) => setForm({ ...form, valor_referencia: e.target.value })} /></div>
+            <div><Label>Valor de compra (R$) *</Label><Input data-tour="patrimonio-valor" type="number" step="0.01" value={form.valor_referencia} onChange={(e) => setForm({ ...form, valor_referencia: e.target.value })} /></div>
             <div><Label>Data de compra</Label><Input type="date" value={form.data_aquisicao} onChange={(e) => setForm({ ...form, data_aquisicao: e.target.value })} /></div>
-            <div><Label>Vida útil (meses)</Label><Input type="number" min={1} value={form.vida_util_meses} onChange={(e) => setForm({ ...form, vida_util_meses: e.target.value })} /></div>
-            <div><Label>Valor mínimo (% da compra)</Label><Input type="number" min={0} max={100} value={form.valor_residual_pct} onChange={(e) => setForm({ ...form, valor_residual_pct: e.target.value })} /></div>
+            <div><Label>Vida útil (meses)</Label><Input data-tour="patrimonio-vida" type="number" min={1} value={form.vida_util_meses} onChange={(e) => setForm({ ...form, vida_util_meses: e.target.value })} /></div>
+            <div><Label>Valor mínimo (% da compra)</Label><Input data-tour="patrimonio-residual" type="number" min={0} max={100} value={form.valor_residual_pct} onChange={(e) => setForm({ ...form, valor_residual_pct: e.target.value })} /></div>
             <DialogFooter className="sm:col-span-2"><Button type="submit">Salvar</Button></DialogFooter>
           </form>}
         </DialogContent>

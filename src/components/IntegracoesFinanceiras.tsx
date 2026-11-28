@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
 import { toast } from 'sonner';
 import { ExternalLink, Eye, EyeOff, Loader2, ShieldCheck, KeyRound } from 'lucide-react';
+import { EstadoErro } from '@/components/listagem/EstadoErro';
 
 type Gateway = 'none' | 'asaas' | 'mercadopago' | 'pix_manual';
 type PixKeyType = 'cpf' | 'cnpj' | 'email' | 'telefone' | 'aleatoria';
@@ -73,22 +74,33 @@ export function IntegracoesFinanceiras() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState(false);
 
-  useEffect(() => {
+  const carregar = useCallback(async () => {
     if (!organization) return;
-    (async () => {
-      const { data } = await supabase
+    setLoading(true);
+    setErro(false);
+    try {
+      const { data, error } = await supabase
         .from('empresa_config' as any)
         .select('gateway_clientes, gateway_clientes_credentials')
         .eq('organization_id', organization.id)
         .maybeSingle();
+      if (error) throw error;
       if (data) {
         setGateway(((data as any).gateway_clientes as Gateway) || 'none');
         setCreds(normalizeStoredCredentials((data as any).gateway_clientes_credentials));
       }
+    } catch (err) {
+      console.error("Erro ao carregar configurações de recebimento:", err);
+      toast.error("Não foi possível carregar as configurações de recebimento. Tente novamente.");
+      setErro(true);
+    } finally {
       setLoading(false);
-    })();
+    }
   }, [organization]);
+
+  useEffect(() => { carregar(); }, [carregar]);
 
   const update = (patch: Partial<Credentials>) => setCreds(prev => ({ ...prev, ...patch }));
 
@@ -158,6 +170,7 @@ export function IntegracoesFinanceiras() {
   };
 
   if (loading) return <div className="p-6"><Loader2 className="h-5 w-5 animate-spin" /></div>;
+  if (erro) return <EstadoErro mensagem="Não foi possível carregar as configurações de recebimento." aoTentarNovamente={carregar} />;
 
   const optionCard = (id: Gateway, title: string, desc: string) => (
     <label className={`border rounded-lg p-4 cursor-pointer transition ${gateway === id ? 'border-primary ring-2 ring-primary/30' : 'hover:border-primary/50'}`}>

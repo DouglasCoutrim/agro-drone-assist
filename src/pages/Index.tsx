@@ -20,8 +20,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import { formatCurrency, parseDate, todayDateInput } from "@/lib/formatters";
+import { todayLocal, nowLocalISO } from "@/lib/date-utils";
 import { fetchOsComValores } from "@/lib/os-billing";
+import { somarReceitas, somarDespesas } from "@/lib/financeiro-helpers";
+import { osEmAtraso } from "@/lib/os-prazo";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { EstadoErro } from "@/components/listagem/EstadoErro";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 
 type Periodo = "hoje" | "7" | "30" | "365";
 const PERIODOS: { id: Periodo; label: string }[] = [
@@ -106,6 +112,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [osId, setOsId] = useState<string | null>(null);
   const [nome, setNome] = useState<string>("");
+  const [erroOS, setErroOS] = useState(false);
 
   useEffect(() => {
     if (orgLoading) return;
@@ -115,13 +122,12 @@ const Index = () => {
   }, [organization?.id, orgLoading, user, periodo]);
 
   const carregar = async (orgId: string) => {
-    setLoading(true);
-    const inicio = inicioPeriodo(periodo);
-    const inicioIso = inicio.toISOString();
-    const hoje = new Date().toISOString();
-    const dias = periodo === "hoje" ? 1 : Number(periodo);
-    const inicioAnt = new Date(inicio); inicioAnt.setDate(inicioAnt.getDate() - dias);
-    const inicioAntIso = inicioAnt.toISOString();
+      setLoading(true);
+      const inicio = inicioPeriodo(periodo);
+      const inicioIso = nowLocalISO();
+      const dias = periodo === "hoje" ? 1 : Number(periodo);
+      const inicioAnt = new Date(inicio); inicioAnt.setDate(inicioAnt.getDate() - dias);
+      const inicioAntIso = nowLocalISO();
     try {
       const r = await Promise.allSettled([
         supabase.from("financeiro").select("valor, tipo, data_transacao").eq("organization_id", orgId).gte("data_transacao", todayDateInput(inicio)),
@@ -130,7 +136,9 @@ const Index = () => {
         supabase.from("clientes").select("id, created_at").eq("organization_id", orgId).gte("created_at", inicioIso),
         supabase.from("ordens_servico").select("id, numero, status, tecnico_id, created_at, data_conclusao, tipo_equipamento, modelo_equipamento, clientes(nome)").eq("organization_id", orgId).gte("created_at", inicioIso).order("created_at", { ascending: false }),
         supabase.from("itens_estoque").select("quantidade, estoque_minimo").eq("organization_id", orgId),
-        supabase.from("ordens_servico").select("id, numero, clientes(nome)").eq("organization_id", orgId).not("data_previsao", "is", null).lt("data_previsao", hoje).not("status", "in", `(${ENCERRADAS.join(",")})`).order("data_previsao").limit(5),
+        // Atraso agora depende da fase da OS (prazo de diagnóstico, aprovação do cliente,
+        // previsão de entrega), então o filtro é feito em JS por `osEmAtraso`.
+        supabase.from("ordens_servico").select("id, numero, status, data_entrada, data_previsao, prazo_diagnostico_horas, clientes(nome)").eq("organization_id", orgId).not("status", "in", `(${ENCERRADAS.join(",")})`).order("data_entrada").limit(200),
         supabase.from("profiles").select("id, nome").eq("organization_id", orgId),
         fetchOsComValores(orgId),
         supabase.from("financeiro").select("valor, tipo").eq("organization_id", orgId).gte("data_transacao", todayDateInput(inicioAnt)).lt("data_transacao", todayDateInput(inicio)),
@@ -140,6 +148,12 @@ const Index = () => {
       ]);
       const v = (i: number): any => (r[i].status === "fulfilled" ? (r[i] as PromiseFulfilledResult<any>).value : null);
       r.forEach((x, i) => x.status === "rejected" && console.error(`Dashboard consulta ${i}:`, x.reason));
+      if (r[8].status === "rejected") {
+        toast.error("Não foi possível carregar as ordens de serviço. Tente novamente.");
+        setErroOS(true);
+      } else {
+        setErroOS(false);
+      }
 
       const fin: any[] = v(0)?.data || [];
       const vendas: any[] = v(1)?.data || [];
@@ -149,8 +163,8 @@ const Index = () => {
       const perfis = new Map<string, string>((v(7)?.data || []).map((p: any) => [p.id, p.nome || "Sem nome"]));
       const osValores: any[] = v(8) || [];
 
-      const receitaFin = fin.filter(f => f.tipo === "receita").reduce((a, f) => a + Number(f.valor || 0), 0);
-      const despesas = fin.filter(f => f.tipo === "despesa").reduce((a, f) => a + Number(f.valor || 0), 0);
+      const receitaFin = somarReceitas(fin);
+      const despesas = somarDespesas(fin);
       const osAberto = osValores.filter(o => !o.pago && o.valor > 0 && FINALIZADAS.includes(o.status));
       const osFaturadasPeriodo = osAberto.filter(o => {
         const ref = o.data_entrega || o.data_conclusao;
@@ -190,7 +204,7 @@ const Index = () => {
       const finAnt: any[] = v(9)?.data || [];
       const receitaAnt = finAnt.filter(f => f.tipo === "receita").reduce((a, f) => a + Number(f.valor || 0), 0)
         + (v(10)?.data || []).reduce((a: number, s: any) => a + Number(s.valor_total || 0), 0);
-      const despesaAnt = finAnt.filter(f => f.tipo === "despesa").reduce((a, f) => a + Number(f.valor || 0), 0);
+      const despesaAnt = somarDespesas(finAnt);
       const chavesSerie = Array.from(buckets.keys());
       const contarPor = (lista: any[]) => {
         const m = new Map(chavesSerie.map(k => [k, 0]));
@@ -219,7 +233,10 @@ const Index = () => {
         statusOS: Array.from(porStatus, ([name, value]) => ({ name, value })),
         osRecentes: os.slice(0, 5).map(o => ({ ...o, tecnico_nome: o.tecnico_id ? perfis.get(o.tecnico_id) : null, valor: osValores.find(x => x.id === o.id)?.valor ?? null })),
         vendasRecentes: vendas.slice(0, 5),
-        osAtrasadas: v(6)?.data || [],
+        osAtrasadas: ((v(6)?.data || []) as any[])
+          .filter((o) => osEmAtraso(o))
+          .sort((a, b) => String(a.data_entrada).localeCompare(String(b.data_entrada)))
+          .slice(0, 5),
       });
     } catch (e) {
       console.error("Dashboard error:", e);
@@ -289,7 +306,7 @@ const Index = () => {
             <h1 className="text-4xl font-bold leading-tight tracking-tight text-foreground">Visão geral</h1>
             <p className="mt-1 text-muted-foreground">{saudacao}{nome ? `, ${nome}` : ""}! Acompanhe o desempenho e a operação da sua empresa.</p>
           </div>
-          <div className="flex shrink-0 flex-nowrap items-center gap-2">
+          <div data-tour="dashboard-acoes" className="flex shrink-0 flex-nowrap items-center gap-2">
             <Select value={periodo} onValueChange={(v) => setPeriodo(v as Periodo)}>
               <SelectTrigger className="h-11 w-[170px] rounded-xl bg-card shadow-sm" aria-label="Período"><CalendarDays className="mr-2 h-4 w-4" /><SelectValue /></SelectTrigger>
               <SelectContent>{PERIODOS.map(p => <SelectItem key={p.id} value={p.id}>{p.id === "hoje" ? "Hoje" : `Últimos ${p.label}`}</SelectItem>)}</SelectContent>
@@ -304,12 +321,23 @@ const Index = () => {
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-5">{[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-32 rounded-2xl" />)}</div>
         )}
 
+        {erroOS && !loading && (
+          <section className="rounded-2xl border border-destructive/30 bg-card p-4 shadow-sm">
+            <EstadoErro
+              mensagem="Não foi possível carregar as ordens de serviço."
+              aoTentarNovamente={() => { if (organization?.id) carregar(organization.id); }}
+            />
+          </section>
+        )}
+
         {dados && !loading && (
           <>
+            {/* Blocos do painel: cada usuário reorganiza na ordem que preferir */}
+            <PainelOrdenavel tela="inicio">
             {/* Indicadores */}
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-5">
+            <div data-bloco="indicadores" data-rotulo="Indicadores" data-tour="dashboard-kpis" className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-5">
               {kpis.map((k, idx) => (
-                <button key={k.label} onClick={() => navigate(k.href)}
+                <button key={k.label} data-tour={`dashboard-kpi-${idx}`} onClick={() => navigate(k.href)}
                   className="group relative overflow-hidden rounded-2xl border border-border bg-card p-3 pb-12 text-left shadow-sm transition-shadow hover:shadow-md sm:p-5 sm:pb-14">
                   <div className="relative z-10 flex items-start gap-3">
                     <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full sm:h-12 sm:w-12", k.tone === "warning" ? "bg-warning/15 text-warning" : "bg-primary/15 text-primary")}>
@@ -342,7 +370,7 @@ const Index = () => {
               ))}
             </div>
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
+            <div data-bloco="faturamento" data-rotulo="Faturamento e resumo financeiro" className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
               {/* Faturamento: cartão verde no celular, gráfico completo no computador */}
               <section className="relative overflow-hidden rounded-2xl p-5 text-sidebar-accent-foreground shadow-md lg:hidden" style={{ background: "var(--gradient-brand)" }}>
                 <div className="relative z-10 flex items-center justify-between gap-2">
@@ -438,7 +466,7 @@ const Index = () => {
 
             {/* Alertas */}
             {totalAlertas > 0 && (
-              <section className="space-y-2 rounded-2xl border border-destructive/30 bg-card p-4 shadow-sm">
+              <section data-bloco="alertas" data-rotulo="Requer atenção" data-tour="dashboard-alertas" className="space-y-2 rounded-2xl border border-destructive/30 bg-card p-4 shadow-sm">
                 <h2 className="flex items-center gap-2 font-semibold text-destructive"><AlertTriangle className="h-4 w-4" />Requer atenção ({totalAlertas})</h2>
                 {dados.osAtrasadas.map(o => (
                   <button key={o.id} className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-sm hover:bg-muted" onClick={() => setOsId(o.id)}>
@@ -453,7 +481,7 @@ const Index = () => {
               </section>
             )}
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
+            <div data-bloco="os-atividades" data-rotulo="OS e atividades recentes" data-tour="dashboard-os" className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
               {/* Ordens recentes */}
               <section className="rounded-2xl border border-border bg-card p-4 shadow-sm lg:col-span-2 lg:p-6">
                 <div className="mb-3 flex items-center justify-between">
@@ -522,6 +550,7 @@ const Index = () => {
                 )}
               </section>
             </div>
+            </PainelOrdenavel>
           </>
         )}
 

@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard, Building2, Package, LifeBuoy, Megaphone, BookOpen, Settings, LogOut, ShieldCheck, Globe
+  LayoutDashboard, Building2, Package, LifeBuoy, Megaphone, BookOpen, Settings, LogOut, Globe, Receipt
 } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +13,7 @@ const navSections = [
       { title: "Visão Geral", icon: LayoutDashboard, href: "/admin/dashboard?tab=overview" },
       { title: "Clientes (Tenants)", icon: Building2, href: "/admin/dashboard?tab=tenants" },
       { title: "Planos & Preços", icon: Package, href: "/admin/dashboard?tab=plans" },
+      { title: "Recebimentos", icon: Receipt, href: "/admin/dashboard?tab=recebimentos" },
     ],
   },
   {

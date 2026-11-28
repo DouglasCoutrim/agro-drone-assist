@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, FileText, BarChart3, DollarSign, Settings, Users, CreditCard, UsersRound,
   Building2, ClipboardList, LifeBuoy, BookOpen, Bell, Wrench, Monitor, Calculator, ShoppingCart, Package, Truck,
-  History, BadgeDollarSign,
+  History, BadgeDollarSign, CalendarClock,
   type LucideIcon,
 } from "lucide-react";
 
@@ -12,15 +12,32 @@ const ALL = ["admin", "tecnico", "consulta"];
 const STAFF = ["admin", "tecnico"];
 const ADMIN = ["admin"];
 
-/** Menu único usado no computador e no celular. */
+/**
+ * Menu único usado no computador e no celular.
+ *
+ * Organizado em oito áreas: Início, Atendimento, Cadastros, Estoque, Vendas e Notas,
+ * Financeiro, Configurações e Ajuda.
+ *
+ * Este arquivo define apenas o que aparece no menu. As rotas continuam todas em
+ * `src/App.tsx` e seguem acessíveis pela barra de endereços mesmo quando o item não
+ * está aqui — é o caso de `/vendas?nova=1&nfe=1` (item "Nova NF-e", retirado do menu)
+ * e de `/technician/financeiro` (item "Meu Financeiro", que passou a ser alcançado
+ * pelo botão dentro do painel do técnico).
+ */
 export const navSections: NavSection[] = [
   {
     title: "Início",
     items: [
       { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard", roles: ALL },
       { title: "Meu Painel (Técnico)", icon: Wrench, href: "/technician/dashboard", roles: STAFF },
-      { title: "Meu Financeiro", icon: Calculator, href: "/technician/financeiro", roles: ["tecnico"] },
       { title: "Oficina ao Vivo (TV)", icon: Monitor, href: "/workshop/live", roles: ALL },
+    ],
+  },
+  {
+    title: "Atendimento",
+    items: [
+      { title: "Ordens de Serviço", icon: FileText, href: "/ordens-servico", roles: ALL },
+      { title: "Orçamentos", icon: ClipboardList, href: "/orcamentos", roles: STAFF },
     ],
   },
   {
@@ -36,42 +53,30 @@ export const navSections: NavSection[] = [
     title: "Estoque",
     items: [
       { title: "Produtos e Peças", icon: Package, href: "/estoque", roles: ALL },
+      { title: "Meu Estoque (técnico)", icon: Package, href: "/meu-estoque", roles: STAFF },
       { title: "Importar XML (NF-e)", icon: FileText, href: "/estoque/importar-xml", roles: STAFF },
       { title: "Pedidos de Compra", icon: ShoppingCart, href: "/compras", roles: STAFF },
       { title: "Itens para Demonstração", icon: Package, href: "/demonstracoes", roles: STAFF },
+      { title: "Ferramentas e Equipamentos", icon: Wrench, href: "/patrimonio", roles: ADMIN },
     ],
   },
   {
-    title: "Atendimento",
-    items: [
-      { title: "Ordens de Serviço", icon: FileText, href: "/ordens-servico", roles: ALL },
-      { title: "Orçamentos", icon: ClipboardList, href: "/orcamentos", roles: STAFF },
-
-    ],
-  },
-  {
-    title: "Vendas",
+    title: "Vendas e Notas",
     items: [
       { title: "Nova Venda (PDV)", icon: Calculator, href: "/pdv", roles: STAFF },
       { title: "Pedidos de Venda", icon: ShoppingCart, href: "/vendas", roles: STAFF },
-    ],
-  },
-  {
-    title: "Fiscal",
-    items: [
       { title: "Notas Fiscais", icon: FileText, href: "/fiscal/notas", roles: STAFF },
-      { title: "Nova NF-e", icon: FileText, href: "/vendas?nova=1&nfe=1", roles: STAFF },
       { title: "NF-e de venda", icon: FileText, href: "/fiscal/nfe/venda", roles: STAFF },
       { title: "Devolução de venda", icon: FileText, href: "/fiscal/nfe/devolucao-venda", roles: ADMIN },
       { title: "Devolução de compra", icon: FileText, href: "/fiscal/nfe/devolucao-compra", roles: ADMIN },
       { title: "Nova NFS-e (serviço)", icon: FileText, href: "/fiscal/nfse", roles: STAFF },
-      { title: "Configuração fiscal", icon: Settings, href: "/empresa", roles: ADMIN },
     ],
   },
   {
     title: "Financeiro",
     items: [
       { title: "Financeiro", icon: DollarSign, href: "/financeiro", roles: STAFF },
+      { title: "Contas a Pagar", icon: CalendarClock, href: "/contas-pagar", roles: STAFF },
       { title: "Comissões", icon: BadgeDollarSign, href: "/comissoes", roles: ADMIN },
       { title: "Cobranças", icon: CreditCard, href: "/cobrancas", roles: STAFF },
       { title: "Relatórios", icon: BarChart3, href: "/relatorios", roles: ALL },
@@ -81,10 +86,8 @@ export const navSections: NavSection[] = [
     title: "Configurações",
     items: [
       { title: "Equipe", icon: UsersRound, href: "/equipe", roles: ADMIN },
-      { title: "Ferramentas e Equipamentos", icon: Wrench, href: "/patrimonio", roles: ADMIN },
-      { title: "Meu Estoque", icon: Package, href: "/meu-estoque", roles: ALL },
-      { title: "Empresa", icon: Building2, href: "/empresa", roles: ADMIN },
-      { title: "Configurações", icon: Settings, href: "/configuracoes", roles: ADMIN },
+      { title: "Empresa e fiscal", icon: Building2, href: "/empresa", roles: ADMIN },
+      { title: "Configurações gerais", icon: Settings, href: "/configuracoes", roles: ADMIN },
       { title: "Checklist de OS", icon: ClipboardList, href: "/admin/configuracao-os", roles: ADMIN },
       { title: "Auditoria", icon: History, href: "/auditoria", roles: ADMIN },
     ],
@@ -92,11 +95,29 @@ export const navSections: NavSection[] = [
   {
     title: "Ajuda",
     items: [
-      { title: "Notificações", icon: Bell, href: "/notificacoes", roles: ALL },
       { title: "Central de Ajuda", icon: BookOpen, href: "/wiki", roles: ALL },
       { title: "Suporte", icon: LifeBuoy, href: "/suporte", roles: ALL },
+      { title: "Notificações", icon: Bell, href: "/notificacoes", roles: ALL },
     ],
   },
+];
+
+/**
+ * Páginas que continuam valendo para permissão mesmo sem item no menu.
+ *
+ * "Meu Financeiro" saiu do menu (o técnico chega pelo botão dentro do painel), mas o
+ * bloqueio por usuário precisa continuar existindo: a tela segue aparecendo na árvore de
+ * permissões da Equipe e continua sendo verificada pelo ProtectedRoute. Estes itens NÃO
+ * são renderizados no menu lateral nem na barra inferior.
+ */
+export const extraPermissionItems: NavItem[] = [
+  { title: "Meu Financeiro (técnico)", icon: Calculator, href: "/technician/financeiro", roles: ["tecnico"] },
+];
+
+/** Tudo que pode ser bloqueado: itens do menu mais os que ficaram fora dele. */
+export const permissionItems: NavItem[] = [
+  ...navSections.flatMap((s) => s.items),
+  ...extraPermissionItems,
 ];
 
 /** Admins always pass; other users are blocked only for hrefs listed in `blocked`. */
@@ -105,9 +126,13 @@ export function canAccessHref(href: string, roles: string[], blocked: string[]):
   return !blocked.includes(href);
 }
 
-/** Finds the menu href matching the current URL (exact path+query first, then path). */
+/**
+ * Finds the permission href matching the current URL (exact path+query first, then path).
+ * Usa `permissionItems`, não `navSections`: uma tela que saiu do menu continua sendo
+ * verificada pelo ProtectedRoute.
+ */
 export function matchNavHref(pathname: string, search = ""): string | null {
-  const all = navSections.flatMap((s) => s.items.map((i) => i.href));
+  const all = permissionItems.map((i) => i.href);
   const full = pathname + search;
   return all.find((h) => h === full) ?? all.find((h) => h === pathname) ?? null;
 }

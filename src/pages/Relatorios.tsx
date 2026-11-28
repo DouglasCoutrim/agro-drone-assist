@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,6 +18,7 @@ import { RelatorioPersonalizado } from "@/components/relatorios/RelatorioPersona
 import { usePagination } from "@/hooks/usePagination";
 import { RecordPagination } from "@/components/RecordPagination";
 import { todayDateInput } from "@/lib/formatters";
+import { todayLocal, nowLocalISO } from "@/lib/date-utils";
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--success))', 'hsl(var(--warning))', 'hsl(var(--destructive))', '#8884d8', '#82ca9d'];
 
@@ -48,11 +50,11 @@ export default function Relatorios() {
   };
 
   const fetchAll = async () => {
-    setLoading(true);
-    try {
-      const startDate = getStartDate();
-      const [osRes, finRes, clientesRes, estoqueRes] = await Promise.all([
-        supabase.from('ordens_servico').select('*').gte('created_at', startDate.toISOString()),
+      setLoading(true);
+      try {
+        const startDate = getStartDate();
+        const [osRes, finRes, clientesRes, estoqueRes] = await Promise.all([
+          supabase.from('ordens_servico').select('*').gte('created_at', nowLocalISO()),
         supabase.from('financeiro').select('*').gte('data_transacao', todayDateInput(startDate)),
         supabase.from('clientes').select('*', { count: 'exact', head: true }),
         supabase.from('itens_estoque').select('*'),
@@ -156,14 +158,14 @@ export default function Relatorios() {
       <div className="space-y-6" id="report-content">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
+            <h1 data-tour="relatorios-page" className="text-2xl font-bold flex items-center gap-2">
               <BarChart3 className="h-6 w-6 text-primary" />Relatórios
             </h1>
             <p className="text-sm text-muted-foreground">Análises e relatórios gerenciais com dados reais</p>
           </div>
           <div className="flex items-center gap-3">
             <Select value={periodo} onValueChange={setPeriodo}>
-              <SelectTrigger className="w-40"><Calendar className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger>
+              <SelectTrigger data-tour="relatorios-periodo" className="w-40"><Calendar className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="semana">Última Semana</SelectItem>
                 <SelectItem value="mes">Este Mês</SelectItem>
@@ -171,14 +173,19 @@ export default function Relatorios() {
                 <SelectItem value="ano">Este Ano</SelectItem>
               </SelectContent>
             </Select>
-            <Button className="gradient-primary shadow-medium" onClick={handleExport}>
+            <Button data-tour="relatorios-exportar" className="gradient-primary shadow-medium" onClick={handleExport}>
               <Download className="mr-2 h-4 w-4" />Exportar
             </Button>
           </div>
         </div>
 
-        <FechamentoDia />
+        <PainelOrdenavel tela="relatorios">
 
+        <div data-bloco="fechamento" data-rotulo="Fechamento do dia">
+        <FechamentoDia />
+        </div>
+
+        <div data-bloco="analises" data-rotulo="Análises do período" className="space-y-6">
         {loading ? (
           <div className="flex items-center justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
         ) : (
@@ -308,8 +315,12 @@ export default function Relatorios() {
             </div>
           </>
         )}
+        </div>
 
+        <div data-bloco="personalizado" data-rotulo="Relatório personalizado">
         <RelatorioPersonalizado />
+        </div>
+        </PainelOrdenavel>
       </div>
     </MainLayout>
   );

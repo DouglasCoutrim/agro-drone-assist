@@ -23,4 +23,19 @@ describe('OS print and sharing HTML', () => {
     expect(html).toContain('Bateria &amp; conexão');
     expect(html).toContain('João'); expect(html).toContain('window.print()');
   });
+  it('inclui as fotos anexadas, com legenda escapada', () => {
+    const html = generateOSPDF({ numero: 'OS-2', status: 'aberta', descricao_problema: 'x',
+      observacoes: '', clientes: { nome: 'Maria' }, data_entrada: null } as any, [],
+      { nome_empresa: 'Oficina' } as any, undefined, undefined,
+      [{ imagem: 'data:image/jpeg;base64,AAA', descricao: 'dano <b>na hélice</b>' }]);
+    expect(html).toContain('Fotos Anexadas');
+    expect(html).toContain('data:image/jpeg;base64,AAA');
+    expect(html).toContain('dano &lt;b&gt;na hélice&lt;/b&gt;');
+  });
+  it('omite a seção de fotos quando a OS não tem anexos', () => {
+    const html = generateOSPDF({ numero: 'OS-3', status: 'aberta', descricao_problema: 'x',
+      observacoes: '', clientes: { nome: 'Maria' }, data_entrada: null } as any, [],
+      { nome_empresa: 'Oficina' } as any);
+    expect(html).not.toContain('Fotos Anexadas');
+  });
 });

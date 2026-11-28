@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Crown, Loader2, MoreHorizontal, Search, Ban, CheckCircle2, Package, User, Key, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/formatters';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Org {
   id: string; name: string; status: string; plan: string; plan_id: string | null;
@@ -25,6 +26,7 @@ type Filter = 'all' | 'active' | 'overdue' | 'vip' | 'canceled';
 const PAGE_SIZE = 10;
 
 export default function TenantsTab() {
+  const { user } = useAuth();
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +42,9 @@ export default function TenantsTab() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [passwordDialog, setPasswordDialog] = useState<{ userId: string; email: string } | null>(null);
   const [newPassword, setNewPassword] = useState('');
+  const [passwordResetReason, setPasswordResetReason] = useState('');
+  const [statusDialog, setStatusDialog] = useState<{ org: Org; block: boolean } | null>(null);
+  const [statusReason, setStatusReason] = useState('');
 
   const fetchData = async () => {
     const [o, p] = await Promise.all([
@@ -84,31 +89,51 @@ export default function TenantsTab() {
   };
 
   const handleResetPassword = async () => {
-    if (!passwordDialog || !newPassword) return;
-    
-    // In a real app with Supabase Admin Auth, we'd use a service role in an edge function.
-    // Since we are in the client, we'll suggest using the built-in Supabase reset if available 
-    // or simulate/point out this needs administrative privileges.
-    toast.info("A funcionalidade de reset de senha administrativa requer integração com Edge Functions.");
+    if (!passwordDialog || newPassword.length < 8 || !passwordResetReason.trim()) return;
+    const { error } = await supabase.functions.invoke('admin-reset-tenant-password', {
+      body: {
+        target_user_id: passwordDialog.userId,
+        new_password: newPassword,
+        reason: passwordResetReason.trim(),
+      },
+    });
+    if (error) {
+      toast.error(error.message || 'Não foi possível resetar a senha.');
+      return;
+    }
+    toast.success('Senha redefinida com sucesso.');
     setPasswordDialog(null);
     setNewPassword('');
+    setPasswordResetReason('');
   };
 
   const toggleVip = (org: Org) =>
     update(org, { is_vip: !org.is_vip }, !org.is_vip ? 'Liberação VIP ativada' : 'Liberação VIP removida');
 
-  const toggleBlock = (org: Org) => {
-    const block = org.status !== 'blocked';
-    return update(
+  const confirmStatusChange = async () => {
+    if (!statusDialog || !statusReason.trim()) return;
+    const { org, block } = statusDialog;
+    const ok = await update(
       org,
       {
         status: block ? 'blocked' : 'active',
         subscription_status: block ? 'canceled' : 'active',
         blocked_at: block ? new Date().toISOString() : null,
-        blocked_reason: block ? 'Bloqueado manualmente pelo Super Admin' : null,
+        blocked_reason: block ? statusReason.trim() : null,
       },
       block ? 'Empresa bloqueada' : 'Empresa desbloqueada'
     );
+    if (ok) {
+      await supabase.from('admin_audit_log' as any).insert({
+        action: block ? 'tenant_blocked_manual' : 'tenant_unblocked_manual',
+        organization_id: org.id,
+        target_id: org.id,
+        performed_by: user?.id || null,
+        details: { reason: statusReason.trim(), previous_status: org.status },
+      });
+      setStatusDialog(null);
+      setStatusReason('');
+    }
   };
 
   const applyPlanChange = async () => {
@@ -227,11 +252,11 @@ export default function TenantsTab() {
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             {o.status === 'blocked' ? (
-                              <DropdownMenuItem onClick={() => toggleBlock(o)}>
+                              <DropdownMenuItem onClick={() => { setStatusDialog({ org: o, block: false }); setStatusReason(''); }}>
                                 <CheckCircle2 className="h-4 w-4 mr-2" />Desbloquear acesso
                               </DropdownMenuItem>
                             ) : (
-                              <DropdownMenuItem className="text-destructive" onClick={() => toggleBlock(o)}>
+                              <DropdownMenuItem className="text-destructive" onClick={() => { setStatusDialog({ org: o, block: true }); setStatusReason(''); }}>
                                 <Ban className="h-4 w-4 mr-2" />Suspender/Bloquear
                               </DropdownMenuItem>
                             )}
@@ -328,7 +353,13 @@ export default function TenantsTab() {
       </Dialog>
 
       {/* Password Reset Dialog */}
-      <Dialog open={!!passwordDialog} onOpenChange={(o) => !o && setPasswordDialog(null)}>
+      <Dialog open={!!passwordDialog} onOpenChange={(o) => {
+        if (!o) {
+          setPasswordDialog(null);
+          setNewPassword('');
+          setPasswordResetReason('');
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Resetar Senha Administrativa</DialogTitle>
@@ -338,17 +369,29 @@ export default function TenantsTab() {
           </DialogHeader>
           <div className="space-y-3 py-4">
             <Label htmlFor="new-password">Nova Senha</Label>
-            <Input 
+            <Input
               id="new-password" 
               type="password" 
               placeholder="Digite a nova senha" 
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
             />
+            <Label htmlFor="password-reset-reason">Motivo do reset</Label>
+            <Input
+              id="password-reset-reason"
+              placeholder="Ex.: solicitação do responsável da empresa"
+              value={passwordResetReason}
+              onChange={(e) => setPasswordResetReason(e.target.value)}
+              maxLength={240}
+            />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPasswordDialog(null)}>Cancelar</Button>
-            <Button onClick={handleResetPassword} disabled={!newPassword}>Confirmar Reset</Button>
+            <Button variant="outline" onClick={() => {
+              setPasswordDialog(null);
+              setNewPassword('');
+              setPasswordResetReason('');
+            }}>Cancelar</Button>
+            <Button onClick={handleResetPassword} disabled={newPassword.length < 8 || !passwordResetReason.trim()}>Confirmar Reset</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -371,6 +414,30 @@ export default function TenantsTab() {
             <Button variant="outline" onClick={() => setPlanDialog({ org: null, planId: '' })}>Cancelar</Button>
             <Button onClick={applyPlanChange} disabled={!planDialog.planId || busy === planDialog.org?.id}>
               {busy === planDialog.org?.id && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!statusDialog} onOpenChange={(o) => !o && setStatusDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{statusDialog?.block ? 'Bloquear tenant' : 'Desbloquear tenant'}</DialogTitle>
+            <DialogDescription>
+              {statusDialog?.block
+                ? `O acesso de ${statusDialog.org.name} será suspenso imediatamente.`
+                : `O acesso de ${statusDialog?.org.name} será reativado. Confirme a exceção financeira quando necessário.`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="status-reason">Motivo obrigatório</Label>
+            <Input id="status-reason" value={statusReason} onChange={(event) => setStatusReason(event.target.value)} placeholder={statusDialog?.block ? 'Ex.: inadimplência ou solicitação do cliente' : 'Ex.: pagamento confirmado ou cortesia aprovada'} maxLength={240} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStatusDialog(null)}>Cancelar</Button>
+            <Button variant={statusDialog?.block ? 'destructive' : 'default'} onClick={confirmStatusChange} disabled={!statusReason.trim() || busy === statusDialog?.org.id}>
+              {busy === statusDialog?.org.id && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Confirmar {statusDialog?.block ? 'bloqueio' : 'desbloqueio'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -7,26 +7,37 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Save, Globe, Phone, Mail, Instagram, MapPin, Sparkles, LayoutList } from 'lucide-react';
 import { toast } from 'sonner';
+import { EstadoErro } from '@/components/listagem/EstadoErro';
 
 export default function SiteTab() {
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hero, setHero] = useState<any>(null);
   const [contact, setContact] = useState<any>(null);
 
-  useEffect(() => {
-    async function fetchConfig() {
-      const { data } = await supabase.from('site_config').select('*');
+  const fetchConfig = async () => {
+    setLoading(true);
+    setErro(false);
+    try {
+      const { data, error } = await supabase.from('site_config').select('*');
+      if (error) throw error;
       if (data) {
         const heroData = data.find(c => c.key === 'landing_hero')?.value;
         const contactData = data.find(c => c.key === 'site_contact')?.value;
         setHero(heroData || {});
         setContact(contactData || {});
       }
+    } catch (err) {
+      console.error("Erro ao carregar configurações do site:", err);
+      toast.error("Não foi possível carregar as configurações do site. Tente novamente.");
+      setErro(true);
+    } finally {
       setLoading(false);
     }
-    fetchConfig();
-  }, []);
+  };
+
+  useEffect(() => { fetchConfig(); }, []);
 
   const handleSaveHero = async () => {
     setSaving(true);
@@ -61,6 +72,7 @@ export default function SiteTab() {
   };
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-muted-foreground" /></div>;
+  if (erro) return <EstadoErro mensagem="Não foi possível carregar as configurações do site." aoTentarNovamente={fetchConfig} />;
 
   return (
     <div className="space-y-6">

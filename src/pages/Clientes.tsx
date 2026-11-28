@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { validarClienteFiscal } from "@/lib/fiscal-validation";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -199,7 +200,7 @@ export default function Clientes() {
     <MainLayout>
       <div className="space-y-4" data-tour="clientes-page">
         {/* Header */}
-        <PremiumCard className="p-4" delay={0}>
+        <PremiumCard className="p-4" delay={0} rotulo="Clientes">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-primary/10">
@@ -210,7 +211,7 @@ export default function Clientes() {
                 <p className="text-xs text-muted-foreground">Cadastro e gestão de clientes</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div data-tour="clientes-csv" className="flex items-center gap-2">
               <CsvImportExport
                 tableName="clientes"
                 organizationId={organization?.id}
@@ -237,7 +238,7 @@ export default function Clientes() {
               />
               <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
                 <DialogTrigger asChild>
-                  <Button size="sm" className="gradient-primary"><Plus className="mr-1.5 h-3.5 w-3.5" />Novo Cliente</Button>
+                  <Button data-tour="clientes-novo" size="sm" className="gradient-primary"><Plus className="mr-1.5 h-3.5 w-3.5" />Novo Cliente</Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
                   <DialogHeader className="shrink-0">
@@ -335,8 +336,10 @@ export default function Clientes() {
           </div>
         </PremiumCard>
 
+        <PainelOrdenavel tela="clientes">
+
         {/* KPIs */}
-        <div className="grid gap-3 grid-cols-3 sm:grid-cols-4">
+        <div data-bloco="indicadores" data-rotulo="Indicadores" className="grid gap-3 grid-cols-3 sm:grid-cols-4">
           <KpiCard label="Total Clientes" value={totalClientes} icon={Users} color="blue" trend={`${syncedCount} sincronizados com Asaas`} delay={0} />
           <KpiCard label="Com CPF/CNPJ" value={withDocCount} icon={Building} color="green" delay={100} />
           <KpiCard label="Sincronizados" value={syncedCount} icon={Mail} color="purple" delay={200} />
@@ -344,9 +347,10 @@ export default function Clientes() {
         </div>
 
         {/* Search + Table */}
+        <div data-bloco="lista" data-rotulo="Buscar e listar clientes" data-tour="clientes-lista">
         <PremiumCard delay={100}>
           <div className="p-4 border-b border-border">
-            <div className="relative max-w-xs">
+            <div data-tour="clientes-busca" className="relative max-w-xs">
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Buscar por nome, telefone, e-mail ou documento..." className="pl-9 h-9 text-xs bg-muted/30 border-border/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
@@ -420,6 +424,8 @@ export default function Clientes() {
             }}
           />
         </PremiumCard>
+        </div>
+        </PainelOrdenavel>
 
         {/* View Client Dialog */}
         <Dialog open={!!viewingCliente} onOpenChange={(open) => { if (!open) setViewingCliente(null); }}>

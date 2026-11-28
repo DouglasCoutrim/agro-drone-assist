@@ -2,7 +2,8 @@
 -- Corrige a criacao da fatura de saque: remove o indice unico que impede mais
 -- de uma OS na mesma fatura.
 --
--- STATUS: AGUARDANDO APROVACAO. Nada deste arquivo foi executado no banco.
+-- STATUS: APLICADO em 2026-11-21. Este arquivo fica como registro; o mesmo SQL
+-- esta em drizzle/migrations/0026_remove_indice_unico_fatura_saque.sql.
 --
 -- SINTOMA RELATADO
 --   Ao gerar a fatura de saque o sistema nao salva e responde que o registro

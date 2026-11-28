@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Papa from "papaparse";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -360,7 +361,7 @@ export default function Auditoria() {
     const desfazer = async (linha: Trilha) => {
       setDesfazendoId(linha.id);
       try {
-        const { error } = await supabase.rpc("reverter_alteracao", { audit_id: linha.id });
+        const { error } = await supabase.rpc("reverter_alteracao" as never, { audit_id: linha.id } as never);
         if (error) throw error;
         toast.success("Alteração desfeita com sucesso");
         setConfirmarDesfazer(null);
@@ -386,7 +387,7 @@ export default function Auditoria() {
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
+            <h1 data-tour="auditoria-page" className="text-2xl font-bold flex items-center gap-2">
               <History className="h-6 w-6 text-primary" />
               Auditoria
             </h1>
@@ -410,6 +411,9 @@ export default function Auditoria() {
           </div>
         </div>
 
+        <PainelOrdenavel tela="auditoria">
+
+        <div data-bloco="filtros" data-rotulo="Filtros">
         <Card className="shadow-soft">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Filtros</CardTitle>
@@ -489,7 +493,9 @@ export default function Auditoria() {
             </p>
           </CardContent>
         </Card>
+        </div>
 
+        <div data-bloco="registros" data-rotulo="Registros de auditoria">
         <Card className="shadow-soft overflow-hidden">
           <CardContent className="p-0">
             {carregando ? (
@@ -591,6 +597,8 @@ export default function Auditoria() {
             )}
           </CardContent>
         </Card>
+        </div>
+        </PainelOrdenavel>
       </div>
 
       <Dialog open={!!detalhe} onOpenChange={(aberto) => !aberto && setDetalhe(null)}>

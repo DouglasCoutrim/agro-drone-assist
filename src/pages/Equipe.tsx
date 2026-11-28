@@ -68,6 +68,7 @@ const PERMISSION_LABELS: Record<Exclude<keyof UserPermissions, 'rotas_bloqueadas
   acesso_equipe: 'Equipe', acesso_empresa: 'Empresa', acesso_configuracoes: 'Configurações',
   acesso_checklist: 'Checklist de OS', acesso_notificacoes: 'Notificações', acesso_wiki: 'Central de Ajuda',
   acesso_suporte: 'Suporte',
+  pode_finalizar_os: 'Pode finalizar OS de outros técnicos',
 };
 type AccessSuggestion = { roles: AppRole[]; permissions: (keyof UserPermissions)[]; justification: string };
 
@@ -305,7 +306,7 @@ export default function Equipe() {
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
+            <h1 data-tour="equipe-page" className="text-3xl font-bold flex items-center gap-2">
               <Users className="h-8 w-8 text-primary" />Gerenciamento de Equipe
             </h1>
             <p className="text-muted-foreground">Gerencie membros da equipe e suas permissões de acesso</p>
@@ -313,7 +314,7 @@ export default function Equipe() {
 
           {isAdmin && (
             <div className="flex flex-col items-end gap-1">
-              <Button className="gradient-primary shadow-medium" onClick={() => {
+              <Button data-tour="equipe-novo" className="gradient-primary shadow-medium" onClick={() => {
                 if (!canInviteUser) { setShowUpgrade(true); return; }
                 setAddDialogOpen(true);
               }}>
@@ -376,7 +377,7 @@ export default function Equipe() {
                 </div>
                 <DialogFooter className="shrink-0 border-t bg-background">
                   <div className="flex justify-end gap-2 w-full p-4">
-                    <Button className="w-full gradient-primary" onClick={handleAddMember} disabled={addLoading}>
+                    <Button data-tour="equipe-adicionar" className="w-full gradient-primary" onClick={handleAddMember} disabled={addLoading}>
                       {addLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
                       Adicionar à Equipe
                     </Button>

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, createContext, useCo
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 type AppRole = 'admin' | 'tecnico' | 'consulta';
 
@@ -30,10 +31,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchUserRole = async (userId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', userId);
+
+    if (error) {
+      console.error('Erro ao carregar papéis do usuário:', error);
+      toast.error("Não foi possível carregar seu perfil. Tente novamente.");
+      // Sem papéis confiáveis: não assume nenhum papel.
+      setRoles([]);
+      setRole(null);
+      return;
+    }
 
     const assignedRoles = (data || []).map((item) => item.role as AppRole);
     const effectiveRole = (['admin', 'tecnico', 'consulta'] as AppRole[]).find((candidate) => assignedRoles.includes(candidate)) ?? null;

@@ -15,6 +15,7 @@ import { useOrganization } from "@/hooks/useOrganization";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { EstadoErro } from "@/components/listagem/EstadoErro";
 
 type Ticket = {
   id: string;
@@ -44,6 +45,7 @@ export default function Suporte() {
   const [selected, setSelected] = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState(false);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
   const [openNew, setOpenNew] = useState(false);
@@ -55,12 +57,22 @@ export default function Suporte() {
 
   const loadTickets = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("support_tickets" as any)
-      .select("*")
-      .order("updated_at", { ascending: false });
-    setTickets((data as any) || []);
-    setLoading(false);
+    setErro(false);
+    try {
+      const { data, error } = await supabase
+        .from("support_tickets" as any)
+        .select("*")
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      setTickets((data as any) || []);
+    } catch (err) {
+      console.error("Erro ao carregar tickets:", err);
+      toast.error("Não foi possível carregar os tickets. Tente novamente.");
+      setErro(true);
+      setTickets([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadMessages = async (ticketId: string) => {
@@ -138,14 +150,14 @@ export default function Suporte() {
       <div className="p-4 lg:p-6 max-w-[1400px] mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
+            <h1 data-tour="suporte-page" className="text-2xl font-bold flex items-center gap-2">
               <LifeBuoy className="h-6 w-6 text-primary" /> Suporte
             </h1>
             <p className="text-sm text-muted-foreground">Abra tickets e converse com nossa equipe</p>
           </div>
           <Dialog open={openNew} onOpenChange={setOpenNew}>
             <DialogTrigger asChild>
-              <Button><Plus className="h-4 w-4 mr-2" />Novo Ticket</Button>
+              <Button data-tour="suporte-novo-ticket"><Plus className="h-4 w-4 mr-2" />Novo Ticket</Button>
             </DialogTrigger>
             <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
               <DialogHeader className="shrink-0"><DialogTitle>Abrir novo ticket</DialogTitle><DialogDescription className="sr-only">Formulário para abrir um novo ticket de suporte</DialogDescription></DialogHeader>
@@ -190,6 +202,8 @@ export default function Suporte() {
           <Card className="overflow-y-auto">
             {loading ? (
               <div className="p-6 flex justify-center"><Loader2 className="animate-spin" /></div>
+            ) : erro ? (
+              <EstadoErro mensagem="Não foi possível carregar os tickets." aoTentarNovamente={loadTickets} />
             ) : tickets.length === 0 ? (
               <div className="p-6 text-center text-muted-foreground text-sm">
                 <MessageSquare className="h-10 w-10 mx-auto mb-2 opacity-30" />

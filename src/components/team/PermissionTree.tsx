@@ -1,7 +1,7 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { navSections } from "@/components/layout/navConfig";
+import { extraPermissionItems, navSections, permissionItems } from "@/components/layout/navConfig";
 import { toggleHrefs } from "@/lib/permissionTree";
 
 interface Props {
@@ -14,7 +14,11 @@ interface Props {
 /** Espelha o menu principal: cada módulo e item tem um checkbox (marcado = tem acesso). */
 export function PermissionTree({ roles, blocked, onChange, disabled }: Props) {
   const allowedByRole = (itemRoles: string[]) => roles.some((r) => itemRoles.includes(r));
-  const allHrefs = navSections.flatMap((s) => s.items.filter((i) => allowedByRole(i.roles)).map((i) => i.href));
+  const allHrefs = permissionItems.filter((i) => allowedByRole(i.roles)).map((i) => i.href);
+  // Telas que saíram do menu continuam podendo ser bloqueadas: entram num grupo próprio.
+  const grupos = extraPermissionItems.length
+    ? [...navSections, { title: "Fora do menu", items: extraPermissionItems }]
+    : navSections;
 
   return (
     <div className="space-y-2">
@@ -26,7 +30,7 @@ export function PermissionTree({ roles, blocked, onChange, disabled }: Props) {
         </div>
       </div>
       <div className="grid gap-2 md:grid-cols-2">
-        {navSections.map((section) => {
+        {grupos.map((section) => {
           const usable = section.items.filter((i) => allowedByRole(i.roles)).map((i) => i.href);
           const on = usable.filter((h) => !blocked.includes(h)).length;
           const state = usable.length === 0 || on === 0 ? false : on === usable.length ? true : "indeterminate";

@@ -1,7 +1,8 @@
 -- ============================================================================
 -- Revoga as concessoes desnecessarias do papel 'anon' em public.subscription_plans.
 --
--- STATUS: AGUARDANDO APROVACAO. Nada deste arquivo foi executado no banco.
+-- STATUS: APLICADO em 2026-11-21 (anon ficou apenas com SELECT). Este arquivo
+-- fica como registro.
 --
 -- Contexto: o papel 'anon' (requisicao sem login, via Data API) tem hoje
 -- SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER e MAINTAIN

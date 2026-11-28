@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { useOrganization } from '@/hooks/useOrganization';
 import type { CustomType } from '@/lib/equipment-segments';
 
@@ -18,17 +19,24 @@ export function useOrgSegments() {
   const load = useCallback(async () => {
     if (!organization) { setLoading(false); return; }
     setLoading(true);
-    const { data: row } = await supabase
-      .from('organizations' as any)
-      .select('settings')
-      .eq('id', organization.id)
-      .maybeSingle();
-    const s = ((row as any)?.settings || {}) as any;
-    setData({
-      segmentos: Array.isArray(s.segmentos) ? s.segmentos : [],
-      tipos_custom: Array.isArray(s.tipos_custom) ? s.tipos_custom : [],
-    });
-    setLoading(false);
+    try {
+      const { data: row, error } = await supabase
+        .from('organizations' as any)
+        .select('settings')
+        .eq('id', organization.id)
+        .maybeSingle();
+      if (error) throw error;
+      const s = ((row as any)?.settings || {}) as any;
+      setData({
+        segmentos: Array.isArray(s.segmentos) ? s.segmentos : [],
+        tipos_custom: Array.isArray(s.tipos_custom) ? s.tipos_custom : [],
+      });
+    } catch (err) {
+      console.error("Erro ao carregar segmentos da empresa:", err);
+      toast.error("Não foi possível carregar os segmentos da empresa.");
+    } finally {
+      setLoading(false);
+    }
   }, [organization]);
 
   useEffect(() => { load(); }, [load]);

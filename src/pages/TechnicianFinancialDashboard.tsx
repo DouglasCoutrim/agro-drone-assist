@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -360,7 +361,7 @@ export default function TechnicianFinancialDashboard() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="flex items-center gap-2 text-3xl font-bold">
+            <h1 data-tour="financeiro-tecnico-page" className="flex items-center gap-2 text-3xl font-bold">
               <Wallet className="h-8 w-8 text-primary" />
               Painel Financeiro
             </h1>
@@ -371,7 +372,10 @@ export default function TechnicianFinancialDashboard() {
           <PeriodFilterBar period={period} onChange={setPeriod} />
         </div>
 
+        <PainelOrdenavel tela="tecnico-financeiro">
+
         {/* Chave PIX */}
+        <div data-bloco="pix" data-rotulo="Chave PIX para recebimento">
         <PremiumCard delay={0}>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -408,12 +412,13 @@ export default function TechnicianFinancialDashboard() {
             </p>
           )}
         </PremiumCard>
+        </div>
 
         {/* Totais por período */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div data-bloco="totais" data-rotulo="Totais do período" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
             label="Comissão produzida no período"
-            value={formatCurrency(Number(financialData?.comissao_periodo || 0))}
+            value={empresa.commission_hidden ? "Valores em revisão" : formatCurrency(Number(financialData?.comissao_periodo || 0))}
             icon={DollarSign}
             color="green"
             trend={{ value: financialData?.comissao_periodo_count || 0, label: `${financialData?.comissao_periodo_count || 0} OS(s) concluída(s)` }}
@@ -442,14 +447,14 @@ export default function TechnicianFinancialDashboard() {
             color={Number(financialData?.saldo_liquido || 0) >= 0 ? "green" : "red"}
             trend={{
               value: financialData?.comissao_pendente || 0,
-              label: `Em andamento: ${formatCurrency(Number(financialData?.comissao_pendente || 0))}`,
+              label: empresa.commission_hidden ? "Valores em revisão" : `Em andamento: ${formatCurrency(Number(financialData?.comissao_pendente || 0))}`,
             }}
             delay={150}
           />
         </div>
 
         {/* Quatro situações */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div data-bloco="situacoes" data-rotulo="Situações das comissões" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {SITUACOES.map((s) => {
             const Icone = s.icon;
             const valor = Number((situacoes as Record<string, unknown>)[s.valor] || 0);
@@ -469,7 +474,7 @@ export default function TechnicianFinancialDashboard() {
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">{s.label}</p>
                     <p className={cn("mt-2 font-mono text-xl font-semibold tabular-nums", s.cor)}>
-                      {formatCurrency(valor)}
+                      {empresa.commission_hidden ? "Valores em revisão" : formatCurrency(valor)}
                     </p>
                   </div>
                   <div className={cn("shrink-0 rounded-lg bg-muted/60 p-2.5", s.cor)}>
@@ -483,6 +488,7 @@ export default function TechnicianFinancialDashboard() {
         </div>
 
         {/* Gráfico */}
+        <div data-bloco="grafico" data-rotulo="Comissão por dia">
         <PremiumCard delay={0}>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -515,8 +521,10 @@ export default function TechnicianFinancialDashboard() {
             )}
           </CardContent>
         </PremiumCard>
+        </div>
 
         {/* Extrato */}
+        <div data-bloco="extrato" data-rotulo="Extrato de OS" className="space-y-6">
         {situacaoFiltro && (
           <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-2 text-sm">
             <span>
@@ -535,6 +543,7 @@ export default function TechnicianFinancialDashboard() {
             })
           }
         />
+        </div>
 
         {/* Ajustes de comissão */}
         {adjustments.length > 0 && (
@@ -563,6 +572,7 @@ export default function TechnicianFinancialDashboard() {
         )}
 
         {/* Faturas */}
+        <div data-bloco="faturas" data-rotulo="Faturas de saque">
         <PremiumCard delay={0}>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -623,8 +633,10 @@ export default function TechnicianFinancialDashboard() {
             )}
           </CardContent>
         </PremiumCard>
+        </div>
 
         {/* Despesas */}
+        <div data-bloco="despesas" data-rotulo="Minhas despesas">
         <PremiumCard delay={0}>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -727,6 +739,8 @@ export default function TechnicianFinancialDashboard() {
             />
           </CardContent>
         </PremiumCard>
+        </div>
+        </PainelOrdenavel>
 
         <PayoutInvoiceDialog
           open={!!faturaAberta}

@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -17,12 +18,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useOrganization } from "@/hooks/useOrganization";
 import { formatCurrency, formatDate, parseDate, todayDateInput } from "@/lib/formatters";
+import { somarReceitas, somarDespesas, somarComissoes } from "@/lib/financeiro-helpers";
 import { CobrancaClienteDialog } from "@/components/financeiro/CobrancaClienteDialog";
-import { fetchOsComValores, OsCobranca } from "@/lib/os-billing";
+import { fetchOsComValores, registrarRecebimentoOS, OsCobranca } from "@/lib/os-billing";
 import { PremiumCard } from "@/components/premium/PremiumCard";
 import { KpiCard } from "@/components/premium/KpiCard";
 import { PremiumTable } from "@/components/premium/PremiumTable";
 import { SearchableInput } from "@/components/ui/searchable-input";
+import { EstadoErro } from "@/components/listagem/EstadoErro";
 
 type Transacao = Tables<"financeiro">;
 
@@ -41,7 +44,12 @@ export default function Financeiro() {
   const [cobrancaOpen, setCobrancaOpen] = useState(false);
   const [cobrancaCliente, setCobrancaCliente] = useState<string | undefined>(undefined);
   const [osAbertas, setOsAbertas] = useState<OsCobranca[]>([]);
+  const [erroOS, setErroOS] = useState(false);
   const [categorias, setCategorias] = useState<string[]>([]);
+  const [receberOS, setReceberOS] = useState<OsCobranca | null>(null);
+  const [receberValor, setReceberValor] = useState(0);
+  const [receberForma, setReceberForma] = useState("pix");
+  const [receberLoading, setReceberLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     tipo: "receita" as Enums<"tipo_transacao">,
@@ -49,14 +57,26 @@ export default function Financeiro() {
     data_transacao: todayDateInput(), observacoes: ""
   });
 
+  const carregarOSAbertas = useCallback(async () => {
+    if (!organization?.id) return;
+    setErroOS(false);
+    try {
+      const list = await fetchOsComValores(organization.id);
+      setOsAbertas(list.filter(o => o.saldo > 0.005 && o.valor > 0));
+    } catch (err) {
+      console.error("Erro ao carregar OS em aberto:", err);
+      toast.error("Não foi possível carregar as ordens de serviço em aberto. Tente novamente.");
+      setErroOS(true);
+      setOsAbertas([]);
+    }
+  }, [organization?.id]);
+
   useEffect(() => {
       if (!organization?.id) return;
       fetchTransacoes();
-      fetchOsComValores(organization.id)
-        .then(list => setOsAbertas(list.filter(o => !o.pago && o.valor > 0)))
-        .catch(() => { /* silent */ });
+      carregarOSAbertas();
       fetchCategorias();
-    }, [organization?.id]);
+    }, [organization?.id, carregarOSAbertas]);
   
     const fetchCategorias = async () => {
       if (!organization?.id) return;
@@ -143,10 +163,10 @@ export default function Financeiro() {
   const { receitaMensal, despesaMensal, comissoesMensal, lucroLiquido } = useMemo(() => {
     const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
     const thisMonth = transacoes.filter(t => parseDate(t.data_transacao) >= startOfMonth);
-    const r = thisMonth.filter(t => t.tipo === 'receita').reduce((acc, t) => acc + Number(t.valor), 0);
-    const d = thisMonth.filter(t => t.tipo === 'despesa' || t.tipo === 'salario').reduce((acc, t) => acc + Number(t.valor), 0);
-    const c = thisMonth.filter(t => t.tipo === 'comissao').reduce((acc, t) => acc + Number(t.valor), 0);
-    return { receitaMensal: r, despesaMensal: d, comissoesMensal: c, lucroLiquido: r - d - c };
+    const r = somarReceitas(thisMonth);
+    const d = somarDespesas(thisMonth);
+    const c = somarComissoes(thisMonth);
+    return { receitaMensal: r, despesaMensal: d, comissoesMensal: c, lucroLiquido: r - d };
   }, [transacoes]);
 
   const getTipoConfig = (tipo: string) => {
@@ -168,15 +188,44 @@ export default function Financeiro() {
     );
   }, [transacoes, searchTerm]);
 
-  const totalAReceber = useMemo(() => osAbertas.reduce((s, o) => s + o.valor, 0), [osAbertas]);
+  const totalAReceber = useMemo(() => osAbertas.reduce((s, o) => s + (o.saldo ?? o.valor), 0), [osAbertas]);
 
   const abrirCobranca = (clienteId?: string) => { setCobrancaCliente(clienteId); setCobrancaOpen(true); };
+
+
+  const abrirReceber = (os: OsCobranca) => {
+    setReceberOS(os);
+    setReceberValor(os.saldo ?? os.valor);
+    setReceberForma("pix");
+  };
+
+  const confirmarReceber = async () => {
+    if (!receberOS) return;
+    const valor = Number(receberValor) || 0;
+    if (valor <= 0) { toast.error("Informe um valor válido"); return; }
+    setReceberLoading(true);
+    try {
+      const res = await registrarRecebimentoOS({ osId: receberOS.id, valor, formaPagamento: receberForma });
+      if (res.saldo > 0.005) {
+        toast.success("Recebimento parcial registrado", { description: `Saldo em aberto: ${formatCurrency(res.saldo)}.` });
+      } else {
+        toast.success("Saldo quitado!");
+      }
+      setReceberOS(null);
+      fetchTransacoes();
+      carregarOSAbertas();
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao registrar recebimento");
+    } finally {
+      setReceberLoading(false);
+    }
+  };
 
   return (
     <MainLayout>
       <div className="space-y-4" data-tour="financeiro-page">
         {/* Header */}
-        <PremiumCard delay={0}>
+        <PremiumCard delay={0} rotulo="Financeiro">
           <div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
               <div>
@@ -184,12 +233,12 @@ export default function Financeiro() {
                 <p className="text-xs text-muted-foreground">Controle de receitas, despesas e cobranças</p>
               </div>
               <div className="flex gap-2 w-full sm:w-auto">
-                <Button size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => abrirCobranca()}>
+                <Button data-tour="financeiro-cobrar" size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => abrirCobranca()}>
                   <MessageCircle className="mr-1.5 h-3.5 w-3.5" />Cobrar Cliente
                 </Button>
                 <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
                   <DialogTrigger asChild>
-                    <Button size="sm" className="gradient-primary shadow-soft"><Plus className="mr-1.5 h-3.5 w-3.5" />Nova Transação</Button>
+                    <Button data-tour="financeiro-nova" size="sm" className="gradient-primary shadow-soft"><Plus className="mr-1.5 h-3.5 w-3.5" />Nova Transação</Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
                     <DialogHeader className="shrink-0">
@@ -237,8 +286,10 @@ export default function Financeiro() {
           </div>
         </PremiumCard>
 
+        <PainelOrdenavel tela="financeiro">
+
         {/* KPI Cards */}
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+        <div data-bloco="indicadores" data-rotulo="Indicadores" className="grid gap-3 grid-cols-2 lg:grid-cols-5">
           <KpiCard
             label="Receita do Mês"
             value={formatCurrency(receitaMensal)}
@@ -283,8 +334,14 @@ export default function Financeiro() {
         </div>
 
         {/* OS em aberto para cobrança */}
+        {erroOS && (
+          <PremiumCard delay={100} rotulo="OS em aberto para cobrança">
+            <EstadoErro mensagem="Não foi possível carregar as ordens de serviço em aberto." aoTentarNovamente={carregarOSAbertas} />
+          </PremiumCard>
+        )}
         {osAbertas.length > 0 && (
-          <PremiumCard delay={100}>
+          <div data-tour="financeiro-os-abertas">
+          <PremiumCard delay={100} rotulo="OS aguardando pagamento">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
               <div className="flex items-center gap-1.5">
                 <ClipboardList className="h-4 w-4 text-primary" />
@@ -297,10 +354,16 @@ export default function Financeiro() {
                 <div key={os.id} className="flex items-center justify-between gap-2 p-3 border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors">
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{os.cliente_nome}</p>
-                    <p className="text-[11px] text-muted-foreground font-mono">#{os.numero} · {os.equipamento}</p>
+                    <p className="text-[11px] text-muted-foreground font-mono">
+                      #{os.numero} · {os.equipamento}
+                      {os.totalPago > 0 && <span> · pago {formatCurrency(os.totalPago)}</span>}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-sm font-bold">{formatCurrency(os.valor)}</span>
+                    <span className="text-sm font-bold text-amber-600">{formatCurrency(os.saldo)}</span>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => abrirReceber(os)}>
+                      <CreditCard className="mr-1 h-3 w-3" />Receber
+                    </Button>
                     <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => abrirCobranca(os.cliente_id)}>
                       <MessageCircle className="mr-1 h-3 w-3" />Cobrar
                     </Button>
@@ -312,9 +375,11 @@ export default function Financeiro() {
               )}
             </div>
           </PremiumCard>
+          </div>
         )}
 
         {/* Search */}
+        <div data-bloco="busca" data-rotulo="Buscar transações">
         <PremiumCard delay={200}>
           <div className="p-4 border-b border-border">
             <div className="relative max-w-xs">
@@ -323,8 +388,10 @@ export default function Financeiro() {
             </div>
           </div>
         </PremiumCard>
+        </div>
 
         {/* Transações Table */}
+        <div data-bloco="transacoes" data-rotulo="Transações recentes">
         <PremiumCard delay={300}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -402,6 +469,8 @@ export default function Financeiro() {
             )}
           </div>
         </PremiumCard>
+        </div>
+        </PainelOrdenavel>
 
         {/* View Transaction Dialog */}
         <Dialog open={!!viewingTransacao} onOpenChange={(open) => { if (!open) setViewingTransacao(null); }}>
@@ -431,6 +500,50 @@ export default function Financeiro() {
                 </DialogFooter>
               </>
             )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!receberOS} onOpenChange={(open) => { if (!open) setReceberOS(null); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><CreditCard className="h-5 w-5 text-primary" />Receber saldo</DialogTitle>
+              <DialogDescription>{receberOS ? `OS #${receberOS.numero} — ${receberOS.cliente_nome}` : ""}</DialogDescription>
+            </DialogHeader>
+            {receberOS && (
+              <div className="space-y-3 py-2">
+                <div className="rounded-lg border bg-muted/30 px-3 py-2 text-sm space-y-1">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Total da OS</span><span className="font-semibold">{formatCurrency(receberOS.valor)}</span></div>
+                  {receberOS.totalPago > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Já recebido</span><span>{formatCurrency(receberOS.totalPago)}</span></div>}
+                  <div className="flex justify-between border-t pt-1"><span className="text-muted-foreground">Em aberto</span><span className="font-semibold">{formatCurrency(receberOS.saldo)}</span></div>
+                </div>
+                <div>
+                  <Label>Valor recebido (R$)</Label>
+                  <NumberInput value={receberValor} onChange={(v) => setReceberValor(v)} />
+                </div>
+                <div>
+                  <Label>Forma de pagamento</Label>
+                  <Select value={receberForma} onValueChange={setReceberForma}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                      <SelectItem value="pix">PIX</SelectItem>
+                      <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
+                      <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                      <SelectItem value="transferencia">Transferência</SelectItem>
+                      <SelectItem value="boleto">Boleto</SelectItem>
+                      <SelectItem value="outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setReceberOS(null)} disabled={receberLoading}>Cancelar</Button>
+              <Button onClick={confirmarReceber} disabled={receberLoading} className="gradient-primary">
+                {receberLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CreditCard className="h-4 w-4 mr-2" />}
+                Confirmar recebimento
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 

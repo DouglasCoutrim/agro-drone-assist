@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { PainelOrdenavel } from "@/components/layout/PainelOrdenavel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,12 +27,20 @@ import { QuickClientModal } from "@/components/os/QuickClientModal";
 import { LegalTermsFooter, getLegalTermsHTML } from "@/components/os/LegalTermsFooter";
 import { SmartSelect, SmartSelectOption } from "@/components/ui/smart-select";
 import { StatusPipeline, getNextStatus, getStatusLabel } from "@/components/os/StatusPipeline";
+import {
+  LOCK_CLOSED_STATUSES,
+  MENSAGEM_OS_SEM_EDICAO,
+  aplicarStatusOs,
+  listarChecklistObrigatorioPendente,
+} from "@/lib/os-status-update";
 import { OSItemsSection, OSItem } from "@/components/os/OSItemsSection";
 import { dateOnlyToIso, formatCurrency, formatDate, getErrorMessage, todayDateInput } from "@/lib/formatters";
 import { gerarReciboRecebimentoOS, baixarReciboRecebimentoOS } from "@/lib/recibo-os";
+import { nowLocalISO } from "@/lib/date-utils";
 import { whatsappTemplates, openWhatsApp, WhatsAppOS } from "@/lib/whatsapp-templates";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { generateOSPDF } from "@/components/ordens-servico/OSPDFGenerator";
+import { carregarAnexosParaPdf } from "@/lib/os-anexos";
 import { imprimirEtiquetaOS } from "@/components/ordens-servico/EtiquetaOS58";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useOrgSegments } from "@/hooks/useOrgSegments";
@@ -45,8 +54,11 @@ import { CommissionBreakdown, rateioDaOS } from "@/components/os/CommissionBreak
 import { CommissionOverrideDialog } from "@/components/os/CommissionOverrideDialog";
 import { OSAnexosDialog } from "@/components/os/OSAnexosDialog";
 import { calcularRateio } from "@/lib/commission";
+import { calcularPrazoOS, rotuloPrazo } from "@/lib/os-prazo";
 import { useNfseAliquota } from "@/hooks/useNfseAliquota";
 import { PaymentConfirmDialog, PaymentData } from "@/components/os/PaymentConfirmDialog";
+import { registrarRecebimentoOS, type RecebimentoResult, type RecebimentoParams } from "@/lib/os-billing";
+import { classificarRecebimentoOS, valorCobradoOS } from "@/lib/os-valor";
 import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 
 
@@ -101,7 +113,6 @@ const TIPO_EQUIPAMENTO: Record<string, string> = {
 };
 
 const MOBILITY_CATEGORIES = ["patinete_eletrico", "bicicleta_eletrica", "moto_eletrica", "outros_autopropelidos"];
-const LOCK_CLOSED_STATUSES = new Set(["pronto_retirada", "concluida", "entregue", "finalizada"]);
 
 // Helper: verifica se o usuário pode editar esta OS
 // Admin pode tudo; Técnico só se for o responsável (tecnico_id === user.id)
@@ -161,6 +172,8 @@ export default function OrdensServico() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
     const [viewingOS, setViewingOS] = useState<OrdemServico | null>(null);
     const [anexosDialogOpen, setAnexosDialogOpen] = useState(false);
+  const [prazoHoras, setPrazoHoras] = useState(48);
+  const [salvandoPrazo, setSalvandoPrazo] = useState(false);
   const [commissionDialogOpen, setCommissionDialogOpen] = useState(false);
   const [editingOS, setEditingOS] = useState<OrdemServico | null>(null);
   const [formLoading, setFormLoading] = useState(false);
@@ -177,11 +190,18 @@ export default function OrdensServico() {
     open: boolean;
     osId: string | null;
     osNumero: string;
-    valorSugerido: number;
+    valorTotal: number;
+    valorJaPago: number;
+    osEquipamento: string;
     nextStatus: string | null;
     saving: boolean;
-  }>({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
+    parcial: boolean;
+  }>({ open: false, osId: null, osNumero: "", valorTotal: 0, valorJaPago: 0, osEquipamento: "", nextStatus: null, saving: false, parcial: false });
   const [pagoOSIds, setPagoOSIds] = useState<Set<string>>(new Set());
+  // OS com recebimento parcial (tem receita lançada e ainda tem saldo em aberto).
+  const [parcialOSIds, setParcialOSIds] = useState<Set<string>>(new Set());
+  const [osConta, setOsConta] = useState<{ saldo: number; valor: number; valor_recebido: number; vencimento: string | null; condicoes_pagamento: string | null; equipamento: string | null; status: string } | null>(null);
+  const [osJaPago, setOsJaPago] = useState(0);
 
   // Wizard step
   const [wizardStep, setWizardStep] = useState(0);
@@ -214,6 +234,7 @@ export default function OrdensServico() {
     diagnostico: "",
     prioridade: "media",
     data_previsao: "",
+    prazo_diagnostico_horas: 48,
     desconto: 0,
     valor_orcamento: 0,
     observacoes: "",
@@ -274,11 +295,51 @@ export default function OrdensServico() {
   
     const fetchPaidOS = async () => {
       try {
-        let query = supabase.from("financeiro").select("ordem_servico_id");
-        if (organization?.id && !isPlatformAdmin) query = query.eq("organization_id", organization.id);
-        const { data, error } = await query;
+        // Só receita conta como recebimento: `financeiro` também guarda despesas e
+        // comissões que apontam para a OS (antes qualquer linha marcava a OS como paga).
+        let recQuery = supabase.from("financeiro").select("ordem_servico_id, valor").eq("tipo", "receita").not("ordem_servico_id", "is", null);
+        if (organization?.id && !isPlatformAdmin) recQuery = recQuery.eq("organization_id", organization.id);
+        const recebidoPorOS = new Map<string, number>();
+        const { data, error } = await recQuery;
         if (error) { console.error("Erro ao buscar OS pagas:", error); return; }
-        setPagoOSIds(new Set((data || []).map((r: any) => r.ordem_servico_id).filter(Boolean)));
+        (data || []).forEach((r: any) => {
+          if (!r?.ordem_servico_id) return;
+          recebidoPorOS.set(r.ordem_servico_id, (recebidoPorOS.get(r.ordem_servico_id) || 0) + Number(r.valor || 0));
+        });
+
+        // `contas_receber` é a fonte do saldo por OS (valor total e recebido oficiais).
+        let contasQuery = supabase.from("contas_receber" as any).select("ordem_servico_id, valor, valor_recebido, saldo");
+        if (organization?.id && !isPlatformAdmin) contasQuery = contasQuery.eq("organization_id", organization.id);
+        const { data: contas, error: contasError } = await contasQuery;
+        // Falha (RLS/rede/tabela) não pode virar "sem contas": sem a fonte do saldo não
+        // classificamos nada, para não marcar como paga uma OS que talvez não esteja.
+        if (contasError) { console.error("Erro ao buscar contas a receber:", contasError); return; }
+        const contaPorOS = new Map<string, any>();
+        (contas || []).forEach((c: any) => { if (c?.ordem_servico_id) contaPorOS.set(c.ordem_servico_id, c); });
+
+        // Recebimentos antigos (sem linha em contas_receber): o total da OS precisa dos
+        // itens. Buscamos direto do banco em vez de depender de `ordens` (que pode ainda
+        // não estar carregada quando este efeito roda em paralelo com fetchData).
+        const ids = [...new Set<string>([...recebidoPorOS.keys(), ...contaPorOS.keys()])];
+        const semConta = ids.filter((osId) => !contaPorOS.has(osId));
+        const totalPorOS = new Map<string, number>();
+        if (semConta.length) {
+          const [{ data: osRows, error: osErr }, { data: itensRows, error: itensErr }] = await Promise.all([
+            supabase.from("ordens_servico").select("id, valor_final, valor_orcamento, desconto").in("id", semConta),
+            supabase.from("itens_os").select("ordem_servico_id, valor_total").in("ordem_servico_id", semConta),
+          ]);
+          if (osErr || itensErr) { console.error("Erro ao buscar valores das OS:", osErr || itensErr); return; }
+          const itensPorOS = new Map<string, number>();
+          (itensRows || []).forEach((i: any) => {
+            if (!i?.ordem_servico_id) return;
+            itensPorOS.set(i.ordem_servico_id, (itensPorOS.get(i.ordem_servico_id) || 0) + Number(i.valor_total || 0));
+          });
+          (osRows || []).forEach((o: any) => totalPorOS.set(o.id, valorCobradoOS(o, itensPorOS.get(o.id) || 0)));
+        }
+
+        const { pago, parcial } = classificarRecebimentoOS(recebidoPorOS, contaPorOS, totalPorOS);
+        setPagoOSIds(pago);
+        setParcialOSIds(parcial);
       } catch (err) {
         console.error("Erro ao buscar OS pagas:", err);
       }
@@ -355,20 +416,11 @@ export default function OrdensServico() {
     return mapped;
   }, [organization?.id, isPlatformAdmin]);
 
-  const getPendingRequiredChecklist = useCallback(async (osId: string, osOrgId?: string | null): Promise<string[]> => {
-    const checklistClient = supabase as any;
-    let query = checklistClient
-      .from("os_checklist_itens")
-      .select("marcado, item:checklist_equipamento_itens(label, obrigatorio)")
-      .eq("ordem_servico_id", osId);
-    const orgId = osOrgId || organization?.id;
-    if (orgId && !isPlatformAdmin) query = query.eq("organization_id", orgId);
-    const { data, error } = await query;
-    if (error) return [];
-    return ((data as any[]) || [])
-      .filter(r => r?.item?.obrigatorio && !r.marcado)
-      .map(r => r.item.label as string);
-  }, [organization?.id, isPlatformAdmin]);
+  const getPendingRequiredChecklist = useCallback(
+    (osId: string, osOrgId?: string | null): Promise<string[]> =>
+      listarChecklistObrigatorioPendente(osId, osOrgId || organization?.id, isPlatformAdmin),
+    [organization?.id, isPlatformAdmin],
+  );
 
   const loadChecklistResponses = useCallback(async (osId: string, osOrgId?: string | null): Promise<Record<string, boolean>> => {
     const checklistClient = supabase as any;
@@ -392,7 +444,7 @@ export default function OrdensServico() {
   }));
 
   const selectedCliente = clientes.find(c => c.id === formData.cliente_id);
-  const readOnlyOsMessage = "Seu perfil tem acesso de consulta ao módulo de OS, mas não pode criar ou alterar ordens de serviço.";
+  const readOnlyOsMessage = MENSAGEM_OS_SEM_EDICAO;
   const readOnlyFecharMessage = "Seu perfil só pode finalizar (fechar) ordens de serviço — não pode criar, editar nem reabrir OS.";
 
   /** Quem pode fechar a OS: admin, o técnico responsável ou quem tem a permissão "Pode finalizar OS". */
@@ -499,6 +551,7 @@ export default function OrdensServico() {
         observacoes: observacoesWithMobility || null,
         valor_orcamento: valorOrcamentoFinal,
         data_previsao: formData.data_previsao ? dateOnlyToIso(formData.data_previsao) : null,
+        prazo_diagnostico_horas: formData.prazo_diagnostico_horas > 0 ? formData.prazo_diagnostico_horas : 48,
         diagnostico: formData.diagnostico || null,
         // Campos UUID nunca podem ir como string vazia (erro 22P02 no Postgres).
         // Sem técnico escolhido, só assume o usuário logado se ele realmente executa serviço
@@ -663,6 +716,7 @@ export default function OrdensServico() {
       diagnostico: os.diagnostico || "",
       prioridade: os.prioridade,
       data_previsao: os.data_previsao ? os.data_previsao.split("T")[0] : "",
+      prazo_diagnostico_horas: (os as any).prazo_diagnostico_horas ?? 48,
       desconto: (os as any).desconto || 0,
       valor_orcamento: os.valor_orcamento || 0,
       observacoes: cleanObs,
@@ -698,11 +752,15 @@ export default function OrdensServico() {
 
   const handleView = async (os: OrdemServico) => {
     setViewingOS(os);
+    setPrazoHoras((os as any).prazo_diagnostico_horas ?? 48);
     setViewOsItems([]);
     setViewOsItemsLoading(true);
     setViewConfigChecklist([]);
     setCommissionDialogOpen(false);
+    setOsConta(null);
+    setOsJaPago(0);
     setViewDialogOpen(true);
+    carregarContaOS(os.id);
     try {
       setViewOsItems(await fetchOSItems(os.id, os.organization_id));
       const checklistClient = supabase as any;
@@ -728,6 +786,30 @@ export default function OrdensServico() {
     }
   };
 
+  /** O técnico ajusta o prazo de diagnóstico desta OS, sem sair do diálogo. */
+  const salvarPrazoDiagnostico = async () => {
+    if (!viewingOS) return;
+    if (!canEdit) { toast.error(readOnlyOsMessage); return; }
+    const horas = Math.max(1, Math.round(prazoHoras));
+    setSalvandoPrazo(true);
+    try {
+      const { error } = await supabase
+        .from("ordens_servico")
+        .update({ prazo_diagnostico_horas: horas } as any)
+        .eq("id", viewingOS.id);
+      if (error) throw error;
+      const atualizada = { ...viewingOS, prazo_diagnostico_horas: horas } as OrdemServico;
+      setViewingOS(atualizada);
+      setOrdens(prev => prev.map(o => (o.id === atualizada.id ? ({ ...o, prazo_diagnostico_horas: horas } as OrdemServico) : o)));
+      setPrazoHoras(horas);
+      toast.success(`Prazo de diagnóstico atualizado para ${horas}h.`);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setSalvandoPrazo(false);
+    }
+  };
+
   /** Relê a OS aberta (o rateio já vem com o ajuste) e atualiza a lista. */
   const recarregarOSVisualizada = async (osId: string) => {
     const { data, error } = await supabase
@@ -739,7 +821,10 @@ export default function OrdensServico() {
       toast.error(getErrorMessage(error));
       return;
     }
-    if (data) setViewingOS(data as OrdemServico);
+    if (data) {
+      setViewingOS(data as OrdemServico);
+      setPrazoHoras((data as any).prazo_diagnostico_horas ?? 48);
+    }
     fetchData();
   };
 
@@ -788,63 +873,62 @@ export default function OrdensServico() {
     return Math.max(0, total - (Number((os as any).desconto) || 0));
   };
 
+  /** Carrega a conta a receber (saldo em aberto) desta OS, se houver. */
+  const carregarContaOS = async (osId: string) => {
+    try {
+      const [{ data: conta }, { data: fin }] = await Promise.all([
+        (supabase.from as any)("contas_receber")
+          .select("saldo, valor, valor_recebido, vencimento, condicoes_pagamento, equipamento, status")
+          .eq("ordem_servico_id", osId)
+          .maybeSingle(),
+        supabase.from("financeiro").select("valor").eq("ordem_servico_id", osId).eq("tipo", "receita"),
+      ]);
+      setOsConta(conta || null);
+      setOsJaPago((fin || []).reduce((s: number, f: any) => s + Number(f.valor || 0), 0));
+    } catch {
+      setOsConta(null);
+      setOsJaPago(0);
+    }
+  };
+
   const openPaymentForOS = async (os: OrdemServico, nextStatus: string | null) => {
-    const sugerido = await computeSuggestedValue(os);
+    const total = await computeSuggestedValue(os);
+    const { data: fin } = await supabase
+      .from("financeiro")
+      .select("valor")
+      .eq("ordem_servico_id", os.id)
+      .eq("tipo", "receita");
+    const jaPago = (fin || []).reduce((s: number, f: any) => s + Number(f.valor || 0), 0);
     setPaymentDialog({
       open: true,
       osId: os.id,
       osNumero: os.numero,
-      valorSugerido: sugerido,
+      valorTotal: total,
+      valorJaPago: jaPago,
+      osEquipamento: [(os as any).modelo_equipamento, (os as any).numero_serie].filter(Boolean).join(" — ") || (os as any).tipo_equipamento || "",
       nextStatus,
       saving: false,
+      parcial: false,
     });
   };
 
   const applyStatusUpdate = async (osId: string, newStatus: string) => {
     const os = ordens.find(o => o.id === osId);
-    // Perfil sem permissão de editar OS: fecha pelo RPC `finalizar_os` (só status e datas).
-    const viaRpc = !canEdit;
-    if (viaRpc) {
-      if (!podeFinalizarOs) throw new Error(readOnlyOsMessage);
-      if (!LOCK_CLOSED_STATUSES.has(newStatus)) throw new Error("Sua permissão permite apenas finalizar (fechar) a OS.");
-    } else if (os && !canUserManageOS(os, user?.id, isAdmin)) {
+    // Quem edita só altera status de OS designada a si (admin altera qualquer uma).
+    if (canEdit && os && !canUserManageOS(os, user?.id, isAdmin)) {
       throw new Error("Você só pode alterar status de OSs designadas a você.");
     }
-    if (LOCK_CLOSED_STATUSES.has(newStatus)) {
-      const pending = await getPendingRequiredChecklist(osId, os?.organization_id || organization?.id);
-      if (pending.length > 0) {
-        throw new Error(`Itens obrigatórios pendentes no checklist de revisão: ${pending.slice(0, 3).join("; ")}${pending.length > 3 ? "…" : ""}.`);
-      }
-    }
-    if (viaRpc) {
-      // O RPC valida a permissão, grava status/datas, congela a comissão e escreve o histórico.
-      const { error } = await supabase.rpc("finalizar_os", { _os_id: osId, _status: newStatus });
-      if (error) throw error;
-      if (newStatus === "finalizada") setPagoOSIds(prev => new Set(prev).add(osId));
-      return;
-    }
-
-    const updateData: any = { status: newStatus };
-    if (newStatus === "pronto_retirada" || newStatus === "concluida" || newStatus === "finalizada") updateData.data_conclusao = new Date().toISOString();
-    if (newStatus === "entregue") updateData.data_entrega = new Date().toISOString();
-    const { error } = await supabase.from("ordens_servico").update(updateData).eq("id", osId);
-    if (error) throw error;
-    try {
-      await supabase.rpc('calculate_os_commission' as any, { _os_id: osId });
-    } catch (err: any) {
-      console.error("Erro ao recalcular comissão na mudança de status:", err);
-    }
-    if (user) {
-      await supabase.from("os_historico").insert({
-        ordem_servico_id: osId,
-        usuario_id: user.id,
-        acao: `Status alterado para ${getStatusLabel(newStatus)}`,
-      }).then(() => {});
-    }
-    // Atualizar o set de OS pagas quando a OS for finalizada
-    if (newStatus === "finalizada") {
-      setPagoOSIds(prev => new Set(prev).add(osId));
-    }
+    // As regras de status (RPC `finalizar_os`, checklist obrigatório, datas, comissão e
+    // histórico) ficam em `@/lib/os-status-update`, compartilhadas com o painel do técnico.
+    await aplicarStatusOs({
+      osId,
+      novoStatus: newStatus,
+      organizationId: os?.organization_id || organization?.id,
+      isPlatformAdmin,
+      userId: user?.id,
+      podeEditar: canEdit,
+      podeFinalizarOs,
+    });
   };
 
   const handleStatusChange = async (osId: string, newStatus: string): Promise<boolean> => {
@@ -905,93 +989,75 @@ export default function OrdensServico() {
     }
   };
 
+  const fecharPaymentDialog = () =>
+    setPaymentDialog({ open: false, osId: null, osNumero: "", valorTotal: 0, valorJaPago: 0, osEquipamento: "", nextStatus: null, saving: false, parcial: false });
+
   const handleConfirmPayment = async (data: PaymentData) => {
-    if (!paymentDialog.osId) return;
-    if (!canEdit) { toast.error(readOnlyOsMessage); return; }
-    setPaymentDialog(p => ({ ...p, saving: true }));
-    try {
-      const os = ordens.find(o => o.id === paymentDialog.osId);
-      const orgId = os?.organization_id || organization?.id;
-      if (!orgId) throw new Error("Organização não identificada.");
-
-      // 1) Insert financeiro
-      const { error: finErr } = await supabase.from("financeiro").insert({
-        organization_id: orgId,
-        ordem_servico_id: paymentDialog.osId,
-        usuario_id: user?.id || null,
-        tipo: "receita" as any,
-        categoria: "Serviços",
-        descricao: `Recebimento OS ${formatOSNumber(paymentDialog.osNumero)}`,
-        valor: data.valor,
-        data_transacao: todayDateInput(),
-        observacoes: [`Forma: ${data.forma_pagamento}`, data.observacoes].filter(Boolean).join(" | "),
-      });
-      if (finErr) throw finErr;
-
-      // 2) Update OS with valor_final + status
-      const updateData: any = { valor_final: data.valor };
-      if (paymentDialog.nextStatus) {
-        updateData.status = paymentDialog.nextStatus;
-        if (paymentDialog.nextStatus === "entregue") updateData.data_entrega = new Date().toISOString();
-        if (paymentDialog.nextStatus === "pronto_retirada" || paymentDialog.nextStatus === "concluida" || paymentDialog.nextStatus === "finalizada")
-          updateData.data_conclusao = new Date().toISOString();
-      }
-      const { error: osErr } = await supabase
-        .from("ordens_servico")
-        .update(updateData)
-        .eq("id", paymentDialog.osId);
-      if (osErr) throw osErr;
-
-      if (user && paymentDialog.nextStatus) {
-        await supabase.from("os_historico").insert({
-          ordem_servico_id: paymentDialog.osId,
-          usuario_id: user.id,
-          acao: `Recebimento registrado (${data.forma_pagamento}) e status alterado para ${getStatusLabel(paymentDialog.nextStatus)}`,
-        }).then(() => {});
-      }
-
-      toast.success("Recebimento registrado no Financeiro!");
-      
-            // Gera e baixa o PDF do Recibo de Recebimento
-            try {
-              const os = ordens.find(o => o.id === paymentDialog.osId);
-              if (os) {
-                await baixarReciboRecebimentoOS({
-                  osId: paymentDialog.osId,
-                  osNumero: os.numero,
-                  clienteNome: os.clientes?.nome || "Cliente",
-                  clienteTelefone: os.clientes?.telefone,
-                  clienteCpfCnpj: undefined,
-                  valor: data.valor,
-                  formaPagamento: data.forma_pagamento,
-                  dataPagamento: todayDateInput(),
-                  organizationId: os.organization_id || organization?.id || "",
-                });
+      if (!paymentDialog.osId) return;
+      if (!canEdit) { toast.error(readOnlyOsMessage); return; }
+      setPaymentDialog(p => ({ ...p, saving: true }));
+      try {
+        const osId = paymentDialog.osId;
+        // O RPC registrar_recebimento_os lança a receita no Financeiro, cria/atualiza a
+        // conta a receber do saldo e retorna o novo saldo e status. Possui chave de
+        // idempotencia: se ja existir lancamento com mesma chave (OS+valor+forma+data),
+        // retorna o existente sem gravar outro. Nao altera valor_final da OS.
+        const params: RecebimentoParams = {
+                osId: osId,
+                valor: data.valor,
+                formaPagamento: data.forma_pagamento,
+                equipamento: data.equipamento,
+                condicoesPagamento: data.condicoes_pagamento,
+                vencimento: data.vencimento ?? null,
+                observacoes: data.observacoes,
+                chaveIdempotencia: `${osId}-${data.valor}-${data.forma_pagamento}-${data.vencimento ?? ''}`,
+              };
+              const res: RecebimentoResult = await registrarRecebimentoOS(params);
+  
+        // Usa o status retornado pela funcao: pago, parcial ou pendente.
+        const statusPagamento = res.status_pagamento;
+        const quitada = statusPagamento === 'pago';
+  
+        // Atualiza os sets de OS pagas/parciais baseado no status retornado.
+        setPagoOSIds(prev => {
+          const n = new Set(prev);
+          if (quitada) {
+            n.add(osId);
+          } else {
+            n.delete(osId);
+          }
+          return n;
+        });
+        setParcialOSIds(prev => {
+          const n = new Set(prev);
+          if (quitada) {
+            n.delete(osId);
+          } else {
+            n.add(osId);
+          }
+          return n;
+        });
+        const eraVista = viewingOS?.id === osId;
+                fecharPaymentDialog();
+                fetchData();
+                if (eraVista) { await Promise.all([carregarContaOS(osId), recarregarOSVisualizada(osId)]); }
+                toast.success("Recebimento registrado no Financeiro!");
+              } catch (err: any) {
+                toast.error(getErrorMessage(err));
+                setPaymentDialog(p => ({ ...p, saving: false }));
               }
-            } catch (err: any) {
-              console.error("Erro ao gerar recibo:", err);
-              // O recibo é opcional; o pagamento já foi registrado com sucesso
-            }
-      
-                  setPagoOSIds(prev => new Set(prev).add(paymentDialog.osId!));
-            setPaymentDialog({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
-            fetchData();
-    } catch (err: any) {
-      toast.error(getErrorMessage(err));
-      setPaymentDialog(p => ({ ...p, saving: false }));
-    }
-  };
+            };
 
   const handleSkipPayment = async () => {
     if (!paymentDialog.osId || !paymentDialog.nextStatus) {
-      setPaymentDialog({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
+      fecharPaymentDialog();
       return;
     }
     setPaymentDialog(p => ({ ...p, saving: true }));
     try {
       await applyStatusUpdate(paymentDialog.osId, paymentDialog.nextStatus);
       toast.success(`Status atualizado sem cobrança.`);
-      setPaymentDialog({ open: false, osId: null, osNumero: "", valorSugerido: 0, nextStatus: null, saving: false });
+      fecharPaymentDialog();
       fetchData();
     } catch (err: any) {
       toast.error(getErrorMessage(err));
@@ -1000,13 +1066,16 @@ export default function OrdensServico() {
   };
 
   const handleRegisterPaymentForExisting = async (os: OrdemServico) => {
-    const { data: existing } = await supabase
+    // Permite registrar um novo recebimento enquanto houver saldo em aberto.
+    const { data: fin } = await supabase
       .from("financeiro")
-      .select("id")
+      .select("valor")
       .eq("ordem_servico_id", os.id)
-      .limit(1);
-    if (existing && existing.length > 0) {
-      toast.info("Esta OS já possui um recebimento registrado no Financeiro.");
+      .eq("tipo", "receita");
+    const jaPago = (fin || []).reduce((s: number, f: any) => s + Number(f.valor || 0), 0);
+    const total = await computeSuggestedValue(os);
+    if (jaPago >= total - 0.005 && total > 0) {
+      toast.info("Esta OS já está quitada — nenhum saldo em aberto.");
       return;
     }
     await openPaymentForOS(os, null);
@@ -1046,15 +1115,16 @@ export default function OrdensServico() {
       return;
     }
 
-    const t = toast.loading("Carregando itens da OS para o PDF...");
+    const t = toast.loading("Carregando itens e fotos da OS para o PDF...");
     try {
       const itemsForPdf = await fetchOSItems(viewingOS.id, viewingOS.organization_id);
       setViewOsItems(itemsForPdf);
       const empresaForPdf = { ...empresa, nome_empresa: empresa.nome_empresa || organization?.name || "Nome da Empresa" };
-      console.log("Dados da Empresa para PDF:", empresaForPdf);
       // Look up técnico name from tecnicos array
       const técnico = tecnicos.find(t => t.id === viewingOS.tecnico_id);
-      const html = generateOSPDF(viewingOS, itemsForPdf, empresaForPdf, técnico?.nome);
+      const anexosForPdf = await carregarAnexosParaPdf(viewingOS.id, viewingOS.organization_id)
+        .catch((e) => { console.warn("Fotos não entraram no PDF:", e); return []; });
+      const html = generateOSPDF(viewingOS, itemsForPdf, empresaForPdf, técnico?.nome, undefined, anexosForPdf);
       printWindow.document.write(html);
       printWindow.document.close();
     } finally {
@@ -1120,10 +1190,11 @@ export default function OrdensServico() {
       if (viewingOS?.id === os.id) setViewOsItems(itemsForPdf);
       const osComCliente = { ...os, clientes: os.clientes || { nome: cliente.nome, telefone: cliente.telefone } };
       const empresaForPdf = { ...empresa, nome_empresa: empresa.nome_empresa || organization?.name || "Nome da Empresa" };
-      console.log("Dados da Empresa para PDF (share):", empresaForPdf);
       // Look up técnico name from tecnicos array
       const técnico = tecnicos.find(t => t.id === os.tecnico_id);
-      const html = generateOSPDF(osComCliente, itemsForPdf, empresaForPdf, técnico?.nome);
+      const anexosForPdf = await carregarAnexosParaPdf(os.id, os.organization_id)
+        .catch((e) => { console.warn("Fotos não entraram no PDF:", e); return []; });
+      const html = generateOSPDF(osComCliente, itemsForPdf, empresaForPdf, técnico?.nome, undefined, anexosForPdf);
       const { htmlToPdfBlob, sharePdfOnWhatsApp } = await import("@/lib/os-pdf-share");
       const filename = `OS_${formatOSNumber(os.numero)}.pdf`;
       const blob = await htmlToPdfBlob(html);
@@ -1198,7 +1269,7 @@ export default function OrdensServico() {
   const resetMobilityData = () => setMobilityData({ voltagem: "", capacidade_bateria: "", odometro: "", chave_ignicao: false, carregador_entregue: false, check_display: false, check_acelerador: false, check_freios: false, check_pneus: false, check_controladora: false, check_iluminacao: false, check_carenagem: false });
 
   const resetForm = () => {
-    setFormData({ cliente_id: "", tipo_equipamento: "bateria", marca: "", modelo_equipamento: "", numero_serie: "", descricao_problema: "", diagnostico: "", prioridade: "media", data_previsao: "", desconto: 0, valor_orcamento: 0, observacoes: "", tecnico_id: "", checklist_bateria: false, checklist_carregador: false, checklist_controle: false, checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "", ciclos_carga_entrada: 0, ciclos_carga_saida: 0, tipo_os: "normal", checklist_equipamento_tipo_id: "", nfe_emitida: false });
+    setFormData({ cliente_id: "", tipo_equipamento: "bateria", marca: "", modelo_equipamento: "", numero_serie: "", descricao_problema: "", diagnostico: "", prioridade: "media", data_previsao: "", prazo_diagnostico_horas: 48, desconto: 0, valor_orcamento: 0, observacoes: "", tecnico_id: "", checklist_bateria: false, checklist_carregador: false, checklist_controle: false, checklist_cabos: false, checklist_helices: false, checklist_outros: false, condicao_visual: "", ciclos_carga_entrada: 0, ciclos_carga_saida: 0, tipo_os: "normal", checklist_equipamento_tipo_id: "", nfe_emitida: false });
     setUiCategory("bateria");
     resetMobilityData();
     setConfigCheckbox({});
@@ -1270,7 +1341,7 @@ export default function OrdensServico() {
     <MainLayout>
       <div className="space-y-4" data-tour="os-page">
         {/* Header */}
-        <PremiumCard className="p-4" delay={0}>
+        <PremiumCard className="p-4" delay={0} rotulo="Ordens de Serviço">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               {empresa.logo_url && (
@@ -1283,10 +1354,10 @@ export default function OrdensServico() {
             </div>
             <div className="flex flex-col items-end gap-1">
               <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => setAgruparOpen(true)}>
+              <Button data-tour="os-agrupar" size="sm" variant="outline" onClick={() => setAgruparOpen(true)}>
                 <FileText className="mr-1.5 h-3.5 w-3.5" />Agrupar em orçamento
               </Button>
-              <Button size="sm" className="gradient-primary shadow-soft" onClick={() => {
+              <Button data-tour="os-nova" size="sm" className="gradient-primary shadow-soft" onClick={() => {
                 if (!canEdit) { toast.error(readOnlyOsMessage); return; }
                 if (!canCreateOS) { setShowUpgrade(true); return; }
                 resetForm(); setDialogOpen(true);
@@ -1305,24 +1376,26 @@ export default function OrdensServico() {
         </PremiumCard>
         <UpgradePlanModal open={showUpgrade} onOpenChange={setShowUpgrade} reason="os" currentPlan={plan} />
 
+        <PainelOrdenavel tela="ordens-servico">
+
         {/* Stats */}
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+        <div data-bloco="indicadores" data-rotulo="Indicadores" className="grid gap-3 grid-cols-2 sm:grid-cols-4">
           <KpiCard label="Recebidas" value={stats.recebidas} icon={Clock} color="blue" delay={0} />
           <KpiCard label="Em Reparo" value={stats.emReparo} icon={Wrench} color="yellow" delay={100} />
           <KpiCard label="Aguardando" value={stats.aguardando} icon={Clock} color="orange" delay={200} />
           <KpiCard label="Prontas" value={stats.prontas} icon={CheckCircle2} color="green" delay={300} />
         </div>
 
-
         {/* OS List */}
+        <div data-bloco="lista" data-rotulo="Ordens de serviço" data-tour="os-lista">
         <PremiumCard delay={200}>
           <div className="p-4 border-b border-border">
             <div className="flex flex-wrap gap-2 items-center">
-            <div className="relative max-w-xs flex-1 min-w-[200px]">
+            <div data-tour="os-busca" className="relative max-w-xs flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Buscar por número, cliente ou defeito..." className="pl-9 h-9 text-xs bg-muted/30 border-border/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
-            <Button size="sm" variant={tecFilter === "meus" ? "default" : "outline"} className="h-9" onClick={() => setTecFilter(tecFilter === "meus" ? "todos" : "meus")}>Minhas OS</Button>
+            <Button data-tour="os-filtros" size="sm" variant={tecFilter === "meus" ? "default" : "outline"} className="h-9" onClick={() => setTecFilter(tecFilter === "meus" ? "todos" : "meus")}>Minhas OS</Button>
             <select aria-label="Filtrar por técnico" className="h-9 rounded-md border border-border bg-background px-2 text-xs" value={tecFilter} onChange={(e) => setTecFilter(e.target.value)}>
               <option value="todos">Todos os técnicos</option>
               <option value="meus">Minhas OS</option>
@@ -1356,7 +1429,7 @@ export default function OrdensServico() {
                   return <span className="font-bold text-primary text-sm">{formatOSNumber(os.numero)}</span>;
                 case "status":
                                   return (
-                                    <div className="flex items-center gap-1.5">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
                                       <Badge variant={statusConfig.variant} className="text-[10px] whitespace-nowrap">
                                         {statusConfig.label}
                                       </Badge>
@@ -1365,6 +1438,23 @@ export default function OrdensServico() {
                                           Pago
                                         </span>
                                       )}
+                                      {parcialOSIds.has(os.id) && (
+                                        <span
+                                          className="inline-flex shrink-0 items-center rounded-full bg-amber-500 px-1.5 py-px text-[9px] font-semibold leading-none text-white"
+                                          title="Recebimento parcial — ainda há saldo em aberto"
+                                        >
+                                          Parcial
+                                        </span>
+                                      )}
+                                      {(() => {
+                                        const prazo = calcularPrazoOS(os as any);
+                                        if (!prazo.emAtraso) return null;
+                                        return (
+                                          <Badge variant="destructive" className="text-[9px] whitespace-nowrap" title={rotuloPrazo(prazo)}>
+                                            Atrasada
+                                          </Badge>
+                                        );
+                                      })()}
                                     </div>
                                   );
                 case "cliente":
@@ -1442,6 +1532,8 @@ export default function OrdensServico() {
             }}
           />
         </PremiumCard>
+        </div>
+        </PainelOrdenavel>
 
         {/* ===== OS FORM DIALOG (single-scroll) ===== */}
         <Dialog open={dialogOpen} onOpenChange={handleOSDialogOpenChange}>
@@ -1688,6 +1780,19 @@ export default function OrdensServico() {
                     </div>
                     <div className="space-y-1.5"><Label className="text-xs">Previsão de Entrega</Label><Input type="date" value={formData.data_previsao} onChange={(e) => setFormData({ ...formData, data_previsao: e.target.value })} className="h-9" /></div>
                   </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Prazo de diagnóstico (horas)</Label>
+                    <div className="flex items-center gap-2">
+                      <NumberInput
+                        value={formData.prazo_diagnostico_horas}
+                        onChange={(v) => setFormData({ ...formData, prazo_diagnostico_horas: v })}
+                        min={1}
+                        className="h-9 w-28"
+                      />
+                      <span className="text-xs text-muted-foreground">padrão 48h</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">Tempo para concluir o diagnóstico. A OS só entra em atraso se o status não mudar dentro desse prazo.</p>
+                  </div>
                   <Separator />
                   {legacyBudget && <p className="text-xs text-muted-foreground">Esta OS tem um orçamento salvo de {formatCurrency(formData.valor_orcamento)}, mas não possui peças ou serviços detalhados. Cadastre os lançamentos reais para substituir esse valor.</p>}
                   <OSItemsSection items={osItems} onChange={setOsItems} organizationId={editingOS?.organization_id || organization?.id} />
@@ -1788,6 +1893,7 @@ export default function OrdensServico() {
                                   OS {formatOSNumber(viewingOS?.numero)}
                                   {viewingOS && <Badge className={STATUS_CONFIG[viewingOS.status]?.variant === 'destructive' ? 'bg-destructive' : 'bg-primary'}>{getStatusLabel(viewingOS.status)}</Badge>}
                                   {viewingOS && pagoOSIds.has(viewingOS.id) && <Badge className="bg-green-600 text-white text-[10px]">Pago</Badge>}
+                                  {viewingOS && parcialOSIds.has(viewingOS.id) && <Badge className="bg-amber-500 text-white text-[10px]">Parcial</Badge>}
                                 </DialogTitle>
                   <DialogDescription className="text-xs">
                     Criada em {formatDate(viewingOS?.created_at || null)}
@@ -1828,7 +1934,7 @@ export default function OrdensServico() {
                         const { error } = await supabase.rpc("confirmar_recebimento_os" as any, { _os_id: viewingOS.id });
                         if (error) { toast.error(error.message); return; }
                         toast.success("Recebimento confirmado");
-                        setViewingOS({ ...viewingOS, recebida_em: new Date().toISOString() } as any);
+                        setViewingOS({ ...viewingOS, recebida_em: nowLocalISO() } as any);
                       }}>Confirmar recebimento</Button>
                     )}
                   </div>
@@ -1916,10 +2022,56 @@ export default function OrdensServico() {
                           <div><p className="text-[10px] text-muted-foreground">Diagnóstico</p><p className="text-sm">{viewingOS.diagnostico || "-"}</p></div>
                           <div className="flex items-center justify-between rounded-md bg-muted/30 border border-border/50 px-3 py-2">
                             <p className="text-xs text-muted-foreground uppercase font-medium">{viewOsItems.length ? "Total da OS" : "Orçamento salvo"}</p>
-                            <p className="text-base font-bold text-primary">{formatCurrency(viewItemsTotal > 0 ? viewItemsTotal - ((viewingOS as any).desconto || 0) : viewingOS.valor_orcamento)}</p>
+                            <p className="text-base font-bold text-primary">{formatCurrency(valorCobradoOS(viewingOS as any, viewItemsTotal))}</p>
                           </div>
                         </div>
                       </div>
+                      <Separator />
+                      {/* Recebimento: total, o que já foi pago e o saldo em aberto (conta a receber). */}
+                      {(() => {
+                        const valorTotalOs = valorCobradoOS(viewingOS as any, viewItemsTotal);
+                        const saldoOs = Math.max(0, Math.round((valorTotalOs - osJaPago) * 100) / 100);
+                        return (
+                          <div>
+                            <h3 className="text-xs font-semibold text-primary uppercase mb-2">Recebimento</h3>
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between rounded-md bg-muted/30 border border-border/50 px-3 py-2">
+                                <p className="text-xs text-muted-foreground uppercase font-medium">Total da OS</p>
+                                <p className="text-sm font-semibold">{formatCurrency(valorTotalOs)}</p>
+                              </div>
+                              {osJaPago > 0 && (
+                                <div className="flex items-center justify-between rounded-md bg-muted/30 border border-border/50 px-3 py-2">
+                                  <p className="text-xs text-muted-foreground uppercase font-medium">Já recebido</p>
+                                  <p className="text-sm font-semibold">{formatCurrency(osJaPago)}</p>
+                                </div>
+                              )}
+                              <div className={`flex items-center justify-between rounded-md border px-3 py-2 ${saldoOs > 0.005 ? "border-amber-500/40 bg-amber-500/5" : "border-border/50 bg-muted/30"}`}>
+                                <p className={`text-xs uppercase font-medium ${saldoOs > 0.005 ? "text-amber-700" : "text-muted-foreground"}`}>
+                                  {saldoOs > 0.005 ? "Saldo em aberto" : "Quitado"}
+                                </p>
+                                <p className={`text-sm font-bold ${saldoOs > 0.005 ? "text-amber-600" : "text-muted-foreground"}`}>{formatCurrency(saldoOs)}</p>
+                              </div>
+                              {osConta?.vencimento && (
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="text-muted-foreground">Vencimento</span>
+                                  <span>{formatDate(osConta.vencimento)}</span>
+                                </div>
+                              )}
+                              {osConta?.condicoes_pagamento && (
+                                <div className="text-xs"><span className="text-muted-foreground">Condições: </span>{osConta.condicoes_pagamento}</div>
+                              )}
+                              {osConta?.equipamento && (
+                                <div className="text-xs"><span className="text-muted-foreground">Equipamento retirado: </span>{osConta.equipamento}</div>
+                              )}
+                              {saldoOs > 0.005 && canEdit && (
+                                <Button size="sm" variant="outline" className="w-full" onClick={() => openPaymentForOS(viewingOS, null)}>
+                                  <CreditCard className="mr-1.5 h-3.5 w-3.5" />Receber saldo
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
                       <Separator />
                       {/* Rateio da comissão: o valor da OS é o que o técnico vai receber */}
                       {(() => {
@@ -2013,6 +2165,40 @@ export default function OrdensServico() {
                         <div><p className="text-[10px] text-muted-foreground">Conclusão</p><p className="text-sm">{formatDate(viewingOS.data_conclusao)}</p></div>
                         <div><p className="text-[10px] text-muted-foreground">Entrega</p><p className="text-sm">{formatDate(viewingOS.data_entrega)}</p></div>
                       </div>
+                      {(() => {
+                        const prazo = calcularPrazoOS(viewingOS as any);
+                        return (
+                          <div className="rounded-md border border-border/60 bg-muted/30 p-3 space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs font-medium flex items-center gap-1.5">
+                                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                                {prazo.fase === "diagnostico"
+                                  ? "Prazo de diagnóstico"
+                                  : prazo.fase === "entrega"
+                                    ? "Prazo de entrega"
+                                    : prazo.fase === "aprovacao"
+                                      ? "Aguardando aprovação do cliente"
+                                      : "OS encerrada"}
+                              </p>
+                              {prazo.emAtraso ? (
+                                <Badge variant="destructive" className="text-[10px]">Atrasada</Badge>
+                              ) : prazo.venceEm ? (
+                                <Badge variant="outline" className="text-[10px]">No prazo</Badge>
+                              ) : null}
+                            </div>
+                            <p className="text-xs text-muted-foreground">{rotuloPrazo(prazo)}</p>
+                            {canEdit && (
+                              <div className="flex items-center gap-2 pt-1">
+                                <Label className="text-[11px] text-muted-foreground">Prazo de diagnóstico (h)</Label>
+                                <NumberInput value={prazoHoras} onChange={setPrazoHoras} min={1} className="h-8 w-20 text-xs" />
+                                <Button size="sm" variant="outline" className="h-8" onClick={salvarPrazoDiagnostico} disabled={salvandoPrazo}>
+                                  {salvandoPrazo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Salvar"}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                       {cleanObs && <><Separator /><div><p className="text-[10px] text-muted-foreground">Observações</p><p className="text-sm">{cleanObs}</p></div></>}
                       <LegalTermsFooter />
                     </>
@@ -2096,7 +2282,9 @@ export default function OrdensServico() {
           open={paymentDialog.open}
           onOpenChange={(o) => setPaymentDialog(p => ({ ...p, open: o }))}
           osNumero={paymentDialog.osNumero}
-          valorSugerido={paymentDialog.valorSugerido}
+          valorTotal={paymentDialog.valorTotal}
+          valorJaPago={paymentDialog.valorJaPago}
+          osEquipamento={paymentDialog.osEquipamento}
           loading={paymentDialog.saving}
           onConfirm={handleConfirmPayment}
           onSkip={paymentDialog.nextStatus ? handleSkipPayment : undefined}

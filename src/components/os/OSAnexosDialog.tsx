@@ -39,6 +39,7 @@ export function OSAnexosDialog({
   onAnexosChange,
 }: OSAnexosDialogProps) {
   const [anexos, setAnexos] = useState<Anexo[]>([]);
+  const [urlsAssinadas, setUrlsAssinadas] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -64,13 +65,38 @@ export function OSAnexosDialog({
 
       const { data, error } = await query;
       if (error) throw error;
-      setAnexos((data || []) as Anexo[]);
+
+      const lista = (data || []) as Anexo[];
+      setAnexos(lista);
+
+      // Anexos novos guardam só o caminho do objeto dentro do bucket privado
+      // `os-anexos` em `url`; a URL de leitura é assinada aqui, na hora, e não
+      // fica salva no banco (assinatura que expira não deve virar dado).
+      const caminhos = lista
+        .map((a) => a.url)
+        .filter((u) => u && !/^https?:\/\//i.test(u));
+
+      if (caminhos.length === 0) {
+        setUrlsAssinadas({});
+      } else {
+        const { data: assinadas } = await supabase.storage
+          .from("os-anexos")
+          .createSignedUrls(caminhos, 60 * 60 * 24 * 7);
+        const mapa: Record<string, string> = {};
+        (assinadas || []).forEach((item) => {
+          if (item?.path && item?.signedUrl) mapa[item.path] = item.signedUrl;
+        });
+        setUrlsAssinadas(mapa);
+      }
     } catch (e: any) {
       toast.error("Erro ao carregar anexos: " + e.message);
     } finally {
       setLoading(false);
     }
   }, [ordemServicoId, organizationId, isPlatformAdmin]);
+
+  /** Caminho no bucket vira URL assinada; URL http de anexo antigo continua valendo. */
+  const urlDe = (anexo: Anexo) => urlsAssinadas[anexo.url] || anexo.url;
 
   /** Redimensiona e comprime a foto no navegador para reduzir o tamanho do arquivo. */
   const compressImage = (file: File): Promise<string> => {
@@ -188,7 +214,14 @@ export function OSAnexosDialog({
       fetchAnexos();
       onAnexosChange?.();
     } catch (err: any) {
-      toast.error("Erro ao anexar imagem: " + err.message);
+      // TypeError aqui é falha de rede: o navegador não deixou a requisição sair
+      // (conexão ou CORS) e o servidor não chegou a responder. "Failed to fetch"
+      // sozinho não diz nada a quem está usando o app.
+      const mensagem =
+        err instanceof TypeError
+          ? "não foi possível falar com o servidor (conexão ou bloqueio de CORS). Tente novamente."
+          : err.message;
+      toast.error("Erro ao anexar imagem: " + mensagem);
     } finally {
       setUploading(false);
     }
@@ -199,8 +232,18 @@ export function OSAnexosDialog({
     if (!ok) return;
 
     try {
+      const alvo = anexos.find((a) => a.id === anexoId);
       const { error } = await supabase.from("os_anexos").delete().eq("id", anexoId);
       if (error) throw error;
+
+      // Best-effort: tira o arquivo do bucket para não deixar objeto órfão.
+      // Só vale para anexo novo (guardado como caminho); URL http antiga não
+      // é objeto de Storage e não tem o que remover aqui.
+      if (alvo?.url && !/^https?:\/\//i.test(alvo.url)) {
+        const { error: removeError } = await supabase.storage.from("os-anexos").remove([alvo.url]);
+        if (removeError) console.warn("Anexo excluído, mas o arquivo ficou no Storage:", removeError.message);
+      }
+
       toast.success("Anexo excluído");
       fetchAnexos();
       onAnexosChange?.();
@@ -329,10 +372,10 @@ export function OSAnexosDialog({
                     <CardContent className="p-2">
                       <div className="aspect-square relative overflow-hidden rounded bg-muted">
                         <img
-                          src={anexo.url}
+                          src={urlDe(anexo)}
                           alt={anexo.nome_arquivo}
                           className="w-full h-full object-cover cursor-pointer"
-                          onClick={() => openPreview(anexo.url, anexo.descricao)}
+                          onClick={() => openPreview(urlDe(anexo), anexo.descricao)}
                         />
                         {anexo.descricao && (
                           <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-1.5 truncate">

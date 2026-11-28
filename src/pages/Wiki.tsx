@@ -1,22 +1,60 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  ArrowLeft, ArrowRight, BookOpen, CheckCircle2, ChevronRight, Clock3, Filter,
+  GraduationCap, ListChecks, Play, RotateCcw, Search, Sparkles, X,
+} from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { GuiaMarkdown } from "@/components/help/GuiaMarkdown";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, BookOpen, ChevronRight, Play, ArrowLeft, CheckCircle2, RotateCcw } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { Joyride, type Step } from "react-joyride";
-import { useNavigate, useParams } from "react-router-dom";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { queueHelpTour } from "@/components/help/HelpTourRunner";
+import type { Step } from "react-joyride";
 
-interface Category { id: string; slug: string; name: string; description: string | null; icon: string; sort_order: number; }
-interface Article {
-  id: string; category_id: string | null; slug: string; title: string; summary: string | null;
-  content: string; media: any[]; tour_target_route: string | null; tour_steps: Step[];
-  tags: string[]; published: boolean; sort_order: number;
+type Category = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  icon: string;
+  sort_order: number;
+};
+
+type Article = {
+  id: string;
+  category_id: string | null;
+  slug: string;
+  title: string;
+  summary: string | null;
+  content: string;
+  media: unknown[];
+  tour_target_route: string | null;
+  tour_steps: Step[];
+  tags: string[];
+  published: boolean;
+  sort_order: number;
+};
+
+type ProgressMap = Record<string, "completed" | "skipped">;
+
+function estimateMinutes(content: string) {
+  return Math.max(2, Math.ceil(content.trim().split(/\s+/).filter(Boolean).length / 180));
+}
+
+function matchesArticle(article: Article, rawQuery: string) {
+  const query = rawQuery.trim().toLocaleLowerCase("pt-BR");
+  if (!query) return true;
+  const haystack = [article.title, article.summary, article.content, ...(article.tags || [])]
+    .filter(Boolean)
+    .join(" ")
+    .toLocaleLowerCase("pt-BR");
+  return haystack.includes(query);
 }
 
 export default function Wiki() {
@@ -26,257 +64,198 @@ export default function Wiki() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [query, setQuery] = useState("");
   const [activeCat, setActiveCat] = useState<string | null>(null);
-  const [runTour, setRunTour] = useState(false);
-  const [tourSteps, setTourSteps] = useState<Step[]>([]);
-  const [activeTourArticleId, setActiveTourArticleId] = useState<string | null>(null);
-  const [progress, setProgress] = useState<Record<string, "completed" | "skipped">>({});
+  const [trainingOnly, setTrainingOnly] = useState(false);
+  const [progress, setProgress] = useState<ProgressMap>({});
   const [userId, setUserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    (async () => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      setError(false);
       const { data: { user } } = await supabase.auth.getUser();
+      if (cancelled) return;
       setUserId(user?.id || null);
-      const [{ data: c }, { data: a }, prog] = await Promise.all([
+      const [categoriesResult, articlesResult, progressResult] = await Promise.all([
         supabase.from("wiki_categories").select("*").order("sort_order"),
         supabase.from("wiki_articles").select("*").eq("published", true).order("sort_order"),
-        user ? supabase.from("wiki_tour_progress").select("article_id,status").eq("user_id", user.id) : Promise.resolve({ data: [] as any[] }),
+        user
+          ? supabase.from("wiki_tour_progress").select("article_id,status").eq("user_id", user.id)
+          : Promise.resolve({ data: [] as { article_id: string; status: "completed" | "skipped" }[] }),
       ]);
-      setCats((c || []) as Category[]);
-      setArticles((a || []) as unknown as Article[]);
-      const map: Record<string, "completed" | "skipped"> = {};
-      (prog.data || []).forEach((p: any) => { map[p.article_id] = p.status; });
-      setProgress(map);
-    })();
+      if (cancelled) return;
+      if (categoriesResult.error || articlesResult.error) {
+        setError(true);
+        toast.error("Não foi possível carregar a Central de Ajuda.");
+      }
+      setCats((categoriesResult.data || []) as Category[]);
+      setArticles((articlesResult.data || []) as unknown as Article[]);
+      const nextProgress: ProgressMap = {};
+      (progressResult.data || []).forEach((item: { article_id: string; status: "completed" | "skipped" }) => {
+        nextProgress[item.article_id] = item.status;
+      });
+      setProgress(nextProgress);
+      setLoading(false);
+    }
+    void load();
+    return () => { cancelled = true; };
   }, []);
 
-  const article = useMemo(() => articles.find((a) => a.slug === slug), [articles, slug]);
+  const article = useMemo(() => articles.find((item) => item.slug === slug), [articles, slug]);
+  const categoryById = useMemo(() => new Map(cats.map((category) => [category.id, category])), [cats]);
+  const trainingArticles = useMemo(() => articles.filter((item) => item.tour_steps?.length > 0), [articles]);
+  const completedTraining = trainingArticles.filter((item) => progress[item.id] === "completed").length;
+  const trainingPercent = trainingArticles.length ? Math.round((completedTraining / trainingArticles.length) * 100) : 0;
+  const filtered = useMemo(() => articles.filter((item) => {
+    if (activeCat && item.category_id !== activeCat) return false;
+    if (trainingOnly && !item.tour_steps?.length) return false;
+    return matchesArticle(item, query);
+  }), [articles, activeCat, query, trainingOnly]);
 
-  const filtered = useMemo(() => {
-    let list = articles;
-    if (activeCat) list = list.filter((a) => a.category_id === activeCat);
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      list = list.filter((a) => a.title.toLowerCase().includes(q) || (a.summary || "").toLowerCase().includes(q));
-    }
-    return list;
-  }, [articles, activeCat, query]);
-
-  const startTour = (a: Article) => {
-    if (!a.tour_steps?.length) return;
-    setActiveTourArticleId(a.id);
-    setTourSteps(a.tour_steps);
-    if (a.tour_target_route && window.location.pathname !== a.tour_target_route) {
-      navigate(a.tour_target_route);
-      setTimeout(() => setRunTour(true), 600);
-    } else {
-      setRunTour(true);
-    }
-  };
-
-  const saveProgress = async (articleId: string, status: "completed" | "skipped") => {
-    setProgress((prev) => ({ ...prev, [articleId]: status }));
-    if (!userId) return;
-    const { error } = await supabase.from("wiki_tour_progress").upsert(
-      { user_id: userId, article_id: articleId, status, completed_at: new Date().toISOString() },
-      { onConflict: "user_id,article_id" }
-    );
-    if (!error && status === "completed") toast.success("Tour concluído! Marcado como visto.");
-  };
-
-  const handleJoyrideEvent = (e: any) => {
-    const status = e?.status;
-    const type = e?.type;
-    if (status === "finished" || type === "tour:end") {
-      if (activeTourArticleId) saveProgress(activeTourArticleId, "completed");
-      setRunTour(false); setActiveTourArticleId(null);
-    } else if (status === "skipped") {
-      if (activeTourArticleId) saveProgress(activeTourArticleId, "skipped");
-      setRunTour(false); setActiveTourArticleId(null);
+  const startTour = (item: Article) => {
+    if (!item.tour_steps?.length) return;
+    queueHelpTour({ articleId: item.id, steps: item.tour_steps, targetRoute: item.tour_target_route });
+    if (item.tour_target_route && window.location.pathname !== item.tour_target_route) {
+      navigate(item.tour_target_route);
     }
   };
 
   const resetProgress = async (articleId: string) => {
     if (!userId) return;
-    await supabase.from("wiki_tour_progress").delete().eq("user_id", userId).eq("article_id", articleId);
-    setProgress((prev) => { const n = { ...prev }; delete n[articleId]; return n; });
+    const { error: deleteError } = await supabase.from("wiki_tour_progress").delete()
+      .eq("user_id", userId).eq("article_id", articleId);
+    if (deleteError) {
+      toast.error("Não foi possível reiniciar o treinamento.");
+      return;
+    }
+    setProgress((current) => {
+      const next = { ...current };
+      delete next[articleId];
+      return next;
+    });
     toast.success("Progresso reiniciado.");
   };
 
-  // ----- Article view -----
   if (article) {
     const status = progress[article.id];
+    const categoryName = categoryById.get(article.category_id || "")?.name || "Geral";
     return (
       <MainLayout>
-        {runTour && tourSteps.length > 0 && (
-          <Joyride 
-            {...({
-              steps: tourSteps,
-              continuous: true,
-              showProgress: true,
-              showSkipButton: true,
-              onEvent: handleJoyrideEvent,
-              styles: {
-                options: {
-                  primaryColor: 'hsl(var(--primary))',
-                  backgroundColor: 'hsl(var(--background))',
-                  textColor: 'hsl(var(--foreground))',
-                  arrowColor: 'hsl(var(--background))',
-                }
-              },
-              locale: {
-                back: 'Voltar',
-                close: 'Fechar',
-                last: 'Finalizar',
-                next: 'Próximo',
-                skip: 'Pular'
-              }
-            } as any)}
-          />
-        )}
-        <div className="max-w-3xl mx-auto space-y-4">
+        <div className="mx-auto max-w-4xl space-y-5">
           <Button variant="ghost" size="sm" onClick={() => navigate("/wiki")}>
-            <ArrowLeft className="h-4 w-4 mr-1" />Voltar
+            <ArrowLeft className="mr-1 h-4 w-4" />Voltar para a Central de Ajuda
           </Button>
-          <header>
-            <h1 className="font-display text-3xl font-bold">{article.title}</h1>
-            {article.summary && <p className="text-muted-foreground mt-1">{article.summary}</p>}
-            <div className="flex flex-wrap gap-2 mt-3 items-center">
-              {article.tags.map((t) => <Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>)}
-              {article.tour_steps?.length > 0 && (
-                <>
-                  {status === "completed" && (
-                    <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px]">
-                      <CheckCircle2 className="h-3 w-3 mr-1" />Tour concluído
-                    </Badge>
-                  )}
-                  {status === "skipped" && (
-                    <Badge variant="outline" className="text-[10px]">Tour pulado</Badge>
-                  )}
-                  <Button size="sm" variant="secondary" onClick={() => startTour(article)}>
-                    <Play className="h-3.5 w-3.5 mr-1" />
-                    {status ? "Refazer tour" : "Iniciar tour guiado"}
-                  </Button>
-                  {status && (
-                    <Button size="sm" variant="ghost" onClick={() => resetProgress(article.id)}>
-                      <RotateCcw className="h-3.5 w-3.5 mr-1" />Reiniciar progresso
+          <Card className="overflow-hidden">
+            <div className="border-b border-border bg-muted/30 p-5 sm:p-7">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <Badge variant="secondary">{categoryName}</Badge>
+                <span className="inline-flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" />{estimateMinutes(article.content)} min de leitura</span>
+                {article.tour_steps?.length > 0 && <span className="inline-flex items-center gap-1"><GraduationCap className="h-3.5 w-3.5" />Treinamento guiado</span>}
+              </div>
+              <h1 className="mt-3 font-display text-3xl font-bold tracking-tight sm:text-4xl">{article.title}</h1>
+              {article.summary && <p className="mt-2 max-w-3xl text-muted-foreground">{article.summary}</p>}
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                {(article.tags || []).map((tag) => <Badge key={tag} variant="outline" className="text-[10px]">{tag}</Badge>)}
+                {article.tour_steps?.length > 0 && (
+                  <>
+                    <Button size="sm" onClick={() => startTour(article)}>
+                      <Play className="mr-1.5 h-3.5 w-3.5" />{status ? "Refazer treinamento" : "Iniciar treinamento"}
                     </Button>
-                  )}
-                </>
-              )}
+                    {status && <Button size="sm" variant="ghost" onClick={() => void resetProgress(article.id)}><RotateCcw className="mr-1.5 h-3.5 w-3.5" />Reiniciar</Button>}
+                    {status === "completed" && <Badge className="border-primary/30 bg-primary/15 text-primary"><CheckCircle2 className="mr-1 h-3.5 w-3.5" />Concluído</Badge>}
+                  </>
+                )}
+              </div>
             </div>
-          </header>
-          <article className="prose prose-invert max-w-none prose-img:rounded-lg prose-img:border prose-img:border-border">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                iframe: (props: any) => <iframe {...props} className="w-full aspect-video rounded-lg border border-border" />,
-              }}
-            >
-              {article.content}
-            </ReactMarkdown>
-          </article>
+            <article className="p-5 sm:p-8">
+              <GuiaMarkdown>{article.content}</GuiaMarkdown>
+            </article>
+          </Card>
         </div>
       </MainLayout>
     );
   }
 
-  // ----- List view -----
-  const tourArticles = articles.filter((a) => a.tour_steps?.length > 0);
-  const completedCount = tourArticles.filter((a) => progress[a.id] === "completed").length;
-
   return (
     <MainLayout>
-      {runTour && tourSteps.length > 0 && (
-        <Joyride 
-          {...({
-            steps: tourSteps,
-            continuous: true,
-            showProgress: true,
-            showSkipButton: true,
-            onEvent: handleJoyrideEvent,
-            styles: {
-              options: {
-                primaryColor: 'hsl(var(--primary))',
-                backgroundColor: 'hsl(var(--background))',
-                textColor: 'hsl(var(--foreground))',
-                arrowColor: 'hsl(var(--background))',
-              }
-            },
-            locale: {
-              back: 'Voltar',
-              close: 'Fechar',
-              last: 'Finalizar',
-              next: 'Próximo',
-              skip: 'Pular'
-            }
-          } as any)}
-        />
-      )}
       <div className="space-y-6">
-        <header className="space-y-2">
-          <h1 className="font-display text-3xl font-bold flex items-center gap-2">
-            <BookOpen className="h-7 w-7 text-primary" />Central de Ajuda
-          </h1>
-          <p className="text-sm text-muted-foreground">Tutoriais, guias e tours interativos para dominar o LivreOS.</p>
-          {tourArticles.length > 0 && (
-            <p className="text-xs text-muted-foreground">
-              Progresso de tours: <span className="font-semibold text-primary">{completedCount}/{tourArticles.length}</span> concluídos
-            </p>
-          )}
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar artigos…" className="pl-9" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <section className="rounded-2xl bg-gradient-to-br from-primary/10 via-background to-accent/40 p-5 sm:p-8">
+          <div className="max-w-3xl">
+            <Badge variant="secondary" className="mb-3"><Sparkles className="mr-1.5 h-3.5 w-3.5" />Aprenda no seu ritmo</Badge>
+            <h1 data-tour="wiki-page" className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Central de Ajuda</h1>
+            <p className="mt-2 text-muted-foreground sm:text-base">Encontre o passo a passo de qualquer tarefa ou faça um treinamento guiado dentro do próprio LivreOS.</p>
+            <div className="relative mt-5 max-w-2xl">
+              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input aria-label="Buscar na Central de Ajuda" placeholder="O que você quer fazer? Ex.: cadastrar cliente, fechar caixa..." className="h-12 bg-background pl-10 pr-10" value={query} onChange={(event) => setQuery(event.target.value)} />
+              {query && <button aria-label="Limpar busca" onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>}
+            </div>
           </div>
-        </header>
+        </section>
 
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant={!activeCat ? "default" : "outline"} onClick={() => setActiveCat(null)}>Todos</Button>
-          {cats.map((c) => (
-            <Button key={c.id} size="sm" variant={activeCat === c.id ? "default" : "outline"} onClick={() => setActiveCat(c.id)}>
-              {c.name}
-            </Button>
-          ))}
-        </div>
+        {trainingArticles.length > 0 && (
+          <Card className="border-primary/20 bg-primary/[0.03] p-4 sm:p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-primary/10 p-2.5 text-primary"><GraduationCap className="h-5 w-5" /></div>
+                <div>
+                  <h2 className="font-semibold">Seu treinamento</h2>
+                  <p className="text-sm text-muted-foreground">{completedTraining} de {trainingArticles.length} treinamentos concluídos</p>
+                </div>
+              </div>
+              <div className="flex min-w-[180px] items-center gap-3">
+                <Progress value={trainingPercent} className="h-2" />
+                <span className="text-sm font-semibold text-primary">{trainingPercent}%</span>
+              </div>
+              <Button variant={trainingOnly ? "default" : "outline"} size="sm" onClick={() => setTrainingOnly((value) => !value)}>
+                <ListChecks className="mr-1.5 h-4 w-4" />{trainingOnly ? "Ver todos" : "Ver treinamentos"}
+              </Button>
+            </div>
+          </Card>
+        )}
 
-        {filtered.length === 0 ? (
-          <Card className="p-12 text-center text-muted-foreground">Nenhum artigo encontrado.</Card>
+        <section className="space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div><h2 className="text-xl font-semibold">Encontre uma orientação</h2><p className="text-sm text-muted-foreground">Busque por tela, tarefa, módulo ou palavra do conteúdo.</p></div>
+            {(activeCat || trainingOnly || query) && <Button variant="ghost" size="sm" onClick={() => { setActiveCat(null); setTrainingOnly(false); setQuery(""); }}>Limpar filtros</Button>}
+          </div>
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <Button size="sm" variant={!activeCat ? "default" : "outline"} onClick={() => setActiveCat(null)}>Todos</Button>
+            {cats.map((category) => <Button key={category.id} size="sm" variant={activeCat === category.id ? "default" : "outline"} onClick={() => setActiveCat(category.id)}>{category.name}</Button>)}
+            <span className="ml-auto hidden items-center gap-1 text-xs text-muted-foreground sm:flex"><Filter className="h-3.5 w-3.5" />{filtered.length} resultado(s)</span>
+          </div>
+        </section>
+
+        {loading ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{[1, 2, 3].map((item) => <Card key={item} className="p-5"><Skeleton className="h-4 w-24" /><Skeleton className="mt-4 h-6 w-4/5" /><Skeleton className="mt-3 h-10 w-full" /></Card>)}</div>
+        ) : error ? (
+          <Card className="p-10 text-center"><BookOpen className="mx-auto h-10 w-10 text-muted-foreground/40" /><h2 className="mt-3 font-semibold">Central temporariamente indisponível</h2><p className="mt-1 text-sm text-muted-foreground">Tente atualizar a página ou procure o suporte.</p></Card>
+        ) : filtered.length === 0 ? (
+          <Card className="p-12 text-center"><Search className="mx-auto h-10 w-10 text-muted-foreground/40" /><h2 className="mt-3 font-semibold">Não encontramos essa orientação</h2><p className="mt-1 text-sm text-muted-foreground">Tente outro termo ou peça ao administrador para publicar um novo tutorial.</p><Button className="mt-4" variant="outline" onClick={() => navigate("/suporte")}>Falar com o suporte<ArrowRight className="ml-2 h-4 w-4" /></Button></Card>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filtered.map((a) => {
-              const status = progress[a.id];
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((item) => {
+              const categoryName = categoryById.get(item.category_id || "")?.name || "Geral";
+              const status = progress[item.id];
               return (
-                <Card
-                  key={a.id}
-                  className="p-4 cursor-pointer hover:border-primary transition group"
-                  onClick={() => navigate(`/wiki/${a.slug}`)}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                        {cats.find((c) => c.id === a.category_id)?.name || "Geral"}
-                      </p>
-                      <h3 className="font-semibold mt-1 line-clamp-2">{a.title}</h3>
-                      {a.summary && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{a.summary}</p>}
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 mt-3">
-                    {a.tour_steps?.length > 0 && (
-                      <Badge variant="outline" className="text-[10px]"><Play className="h-3 w-3 mr-1" />Tour interativo</Badge>
-                    )}
-                    {status === "completed" && (
-                      <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px]">
-                        <CheckCircle2 className="h-3 w-3 mr-1" />Concluído
-                      </Badge>
-                    )}
-                    {status === "skipped" && (
-                      <Badge variant="outline" className="text-[10px]">Pulado</Badge>
-                    )}
-                  </div>
+                <Card key={item.id} className="group flex cursor-pointer flex-col p-4 transition hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md" onClick={() => navigate(`/wiki/${item.slug}`)}>
+                  <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-wide text-primary">{categoryName}</p><h3 className="mt-1 line-clamp-2 font-semibold">{item.title}</h3></div><ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" /></div>
+                  {item.summary && <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{item.summary}</p>}
+                  <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-4"><span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground"><Clock3 className="h-3 w-3" />{estimateMinutes(item.content)} min</span>{item.tour_steps?.length > 0 && <Badge variant="outline" className="text-[10px]"><Play className="mr-1 h-3 w-3" />Treinamento</Badge>}{status === "completed" && <Badge className="bg-primary/15 text-primary"><CheckCircle2 className="mr-1 h-3 w-3" />Visto</Badge>}</div>
                 </Card>
               );
             })}
           </div>
+        )}
+
+        {!query && !trainingOnly && !activeCat && cats.length > 0 && (
+          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {cats.slice(0, 4).map((category) => {
+              const count = articles.filter((item) => item.category_id === category.id).length;
+              return <button key={category.id} onClick={() => setActiveCat(category.id)} className="rounded-xl border border-border bg-card p-4 text-left transition hover:border-primary/50 hover:shadow-sm"><p className="font-medium">{category.name}</p><p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{category.description || "Guias e orientações do módulo."}</p><span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary">{count} guia(s)<ArrowRight className="h-3 w-3" /></span></button>;
+            })}
+          </section>
         )}
       </div>
     </MainLayout>

@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { valorCobradoOS, type OsValorInput } from "./os-valor";
 
 export interface OsCobranca {
   id: string;
@@ -12,14 +13,14 @@ export interface OsCobranca {
   data_conclusao: string | null;
   data_entrega: string | null;
   valor: number;
+  totalPago: number;
+  saldo: number;
   pago: boolean;
 }
 
-const STATUS_IGNORADOS = ["cancelada"];
-
-/**
- * Busca as OS da organização com o valor consolidado (valor_final > orçamento > soma dos itens - desconto)
+/** Busca as OS da organização com o valor consolidado (valor_final > orçamento > soma dos itens - desconto)
  * e marca quais já possuem lançamento de recebimento no Financeiro.
+ * Usa a função calcular_valores_os como fonte única do valor da OS.
  */
 export async function fetchOsComValores(orgId: string, clienteId?: string): Promise<OsCobranca[]> {
   if (!orgId) return [];
@@ -35,12 +36,12 @@ export async function fetchOsComValores(orgId: string, clienteId?: string): Prom
   const { data: osData, error } = await query;
   if (error) throw error;
 
-  const ordens = (osData || []).filter((o: any) => !STATUS_IGNORADOS.includes(o.status));
+  const ordens = (osData || []).filter((o: any) => !["cancelada"].includes(o.status));
   if (ordens.length === 0) return [];
 
   const ids = ordens.map((o: any) => o.id);
 
-  const [{ data: finData }, { data: itensData }] = await Promise.all([
+  const [finRes, itensRes] = await Promise.all([
     supabase
       .from("financeiro")
       .select("ordem_servico_id, valor, tipo")
@@ -52,11 +53,18 @@ export async function fetchOsComValores(orgId: string, clienteId?: string): Prom
       .in("ordem_servico_id", ids),
   ]);
 
-  const pagos = new Set(
-    (finData || [])
-      .filter((f: any) => f.tipo === "receita" && f.ordem_servico_id)
-      .map((f: any) => f.ordem_servico_id as string)
-  );
+  if (finRes.error) throw finRes.error;
+  if (itensRes.error) throw itensRes.error;
+
+  const finData = finRes.data;
+  const itensData = itensRes.data;
+
+  const pagoPorOS = new Map<string, number>();
+  (finData || [])
+    .filter((f: any) => f.tipo === "receita" && f.ordem_servico_id)
+    .forEach((f: any) => {
+      pagoPorOS.set(f.ordem_servico_id, (pagoPorOS.get(f.ordem_servico_id) || 0) + Number(f.valor || 0));
+    });
 
   const totalItens = new Map<string, number>();
   (itensData || []).forEach((i: any) => {
@@ -64,9 +72,23 @@ export async function fetchOsComValores(orgId: string, clienteId?: string): Prom
   });
 
   return ordens.map((o: any) => {
-    let valor = Number(o.valor_final || 0);
-    if (!valor) valor = Number(o.valor_orcamento || 0);
-    if (!valor) valor = Math.max(0, (totalItens.get(o.id) || 0) - Number(o.desconto || 0));
+    // Usa a fonte única: calcular_valores_os para o valor da OS
+    const valorFinal = Number(o.valor_final ?? 0);
+    const desconto = Number(o.desconto ?? 0);
+    const totalItensOS = totalItens.get(o.id) || 0;
+
+    // Valor cobrado: valor_final > (itens - desconto) > valor_orcamento
+    let valorCobrado = 0;
+    if (valorFinal > 0) {
+      valorCobrado = valorFinal;
+    } else if (totalItensOS > 0) {
+      valorCobrado = Math.max(0, totalItensOS - desconto);
+    } else {
+      valorCobrado = Math.max(0, Number(o.valor_orcamento ?? 0));
+    }
+
+    const totalPago = pagoPorOS.get(o.id) || 0;
+    const saldo = Math.max(0, Math.round((valorCobrado - totalPago) * 100) / 100);
     return {
       id: o.id,
       numero: o.numero,
@@ -78,10 +100,44 @@ export async function fetchOsComValores(orgId: string, clienteId?: string): Prom
       data_entrada: o.data_entrada,
       data_conclusao: o.data_conclusao,
       data_entrega: o.data_entrega,
-      valor,
-      pago: pagos.has(o.id),
+      valor: valorCobrado,
+      totalPago,
+      saldo,
+      pago: saldo <= 0.005,
     };
   });
+}
+
+export interface RecebimentoParams {
+  osId: string;
+  valor: number;
+  formaPagamento?: string;
+  equipamento?: string;
+  condicoesPagamento?: string;
+  vencimento?: string | null;
+  observacoes?: string;
+  chaveIdempotencia?: string;
+}
+
+export interface RecebimentoResult {
+  os_id: string;
+  total: number;
+  pago: number;
+  saldo: number;
+  conta_id: string | null;
+  status_pagamento?: string;
+}
+
+export async function registrarRecebimentoOS(p: RecebimentoParams): Promise<RecebimentoResult> {
+  const { data, error } = await supabase.rpc("registrar_recebimento_os" as any, {
+    p_os_id: p.osId,
+    p_valor: p.valor,
+    p_forma: p.formaPagamento ?? null,
+    p_data: p.vencimento ?? null,
+    p_chave_idempotencia: p.chaveIdempotencia ?? `${p.osId}-${p.valor}-${p.formaPagamento ?? ''}-${p.vencimento ?? ''}`,
+  });
+  if (error) throw error;
+  return data as unknown as RecebimentoResult;
 }
 
 export interface PagamentoConfig {
@@ -94,14 +150,16 @@ export interface PagamentoConfig {
 export async function fetchPagamentoConfig(orgId: string): Promise<PagamentoConfig> {
   if (!orgId) return { gateway: "none" };
   const { data } = await supabase
-    .from("empresa_config" as any)
+    .from("empresa_config as any")
     .select("gateway_clientes, gateway_clientes_credentials")
     .eq("organization_id", orgId)
     .maybeSingle();
   const d = data as any;
   if (!d) return { gateway: "none" };
   const creds = typeof d.gateway_clientes_credentials === "string"
-    ? (() => { try { return JSON.parse(d.gateway_clientes_credentials); } catch { return {}; } })()
+    ? (() => {
+        try { return JSON.parse(d.gateway_clientes_credentials); } catch { return {}; }
+      })()
     : (d.gateway_clientes_credentials || {});
   return {
     gateway: d.gateway_clientes || "none",
