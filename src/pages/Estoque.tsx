@@ -379,7 +379,7 @@ export default function Estoque() {
             <Button variant="outline" onClick={() => { window.location.href = "/estoque/importar-xml"; }}>
               Importar XML (NF-e)
             </Button>
-            <Button className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold" onClick={handleOpenNewDialog}>
+            <Button data-tour="estoque-novo" className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold" onClick={handleOpenNewDialog}>
               <Plus className="mr-2 h-4 w-4" />Novo Item
             </Button>
           </div>
@@ -416,7 +416,7 @@ export default function Estoque() {
         <PainelOrdenavel tela="estoque">
 
         {/* KPI Grid */}
-        <div data-bloco="indicadores" data-rotulo="Indicadores" className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+        <div data-bloco="indicadores" data-rotulo="Indicadores" data-tour="estoque-indicadores" className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
           <KpiCard
             label="Total de Itens"
             value={itens.length}
@@ -449,7 +449,7 @@ export default function Estoque() {
         </div>
 
         {/* Search + finalidade */}
-        <div data-bloco="filtros" data-rotulo="Busca e filtros" className="flex flex-col sm:flex-row gap-2 max-w-2xl">
+        <div data-bloco="filtros" data-rotulo="Busca e filtros" data-tour="estoque-filtros" className="flex flex-col sm:flex-row gap-2 max-w-2xl">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input

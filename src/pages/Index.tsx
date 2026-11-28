@@ -333,7 +333,7 @@ const Index = () => {
             {/* Blocos do painel: cada usuário reorganiza na ordem que preferir */}
             <PainelOrdenavel tela="inicio">
             {/* Indicadores */}
-            <div data-bloco="indicadores" data-rotulo="Indicadores" className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-5">
+            <div data-bloco="indicadores" data-rotulo="Indicadores" data-tour="dashboard-kpis" className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-5">
               {kpis.map((k, idx) => (
                 <button key={k.label} onClick={() => navigate(k.href)}
                   className="group relative overflow-hidden rounded-2xl border border-border bg-card p-3 pb-12 text-left shadow-sm transition-shadow hover:shadow-md sm:p-5 sm:pb-14">
@@ -464,7 +464,7 @@ const Index = () => {
 
             {/* Alertas */}
             {totalAlertas > 0 && (
-              <section data-bloco="alertas" data-rotulo="Requer atenção" className="space-y-2 rounded-2xl border border-destructive/30 bg-card p-4 shadow-sm">
+              <section data-bloco="alertas" data-rotulo="Requer atenção" data-tour="dashboard-alertas" className="space-y-2 rounded-2xl border border-destructive/30 bg-card p-4 shadow-sm">
                 <h2 className="flex items-center gap-2 font-semibold text-destructive"><AlertTriangle className="h-4 w-4" />Requer atenção ({totalAlertas})</h2>
                 {dados.osAtrasadas.map(o => (
                   <button key={o.id} className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-sm hover:bg-muted" onClick={() => setOsId(o.id)}>
@@ -479,7 +479,7 @@ const Index = () => {
               </section>
             )}
 
-            <div data-bloco="os-atividades" data-rotulo="OS e atividades recentes" className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
+            <div data-bloco="os-atividades" data-rotulo="OS e atividades recentes" data-tour="dashboard-os" className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
               {/* Ordens recentes */}
               <section className="rounded-2xl border border-border bg-card p-4 shadow-sm lg:col-span-2 lg:p-6">
                 <div className="mb-3 flex items-center justify-between">

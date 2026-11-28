@@ -39,13 +39,19 @@ export function HelpTourRunner() {
   const [tour, setTour] = useState<PendingTour | null>(null);
   const [run, setRun] = useState(false);
   const timerRef = useRef<number | null>(null);
+  // O treinamento só conta como visto se pelo menos um destaque apareceu na tela.
+  const exibiuDestaque = useRef(false);
+  const destaquesNaoEncontrados = useRef(0);
 
   const tryStart = useCallback(() => {
     const pending = readPendingTour();
     if (!pending) return;
     if (pending.targetRoute && pending.targetRoute !== location.pathname) return;
     if (timerRef.current) window.clearTimeout(timerRef.current);
+    // Espera a tela terminar de montar antes de procurar os destaques.
     timerRef.current = window.setTimeout(() => {
+      exibiuDestaque.current = false;
+      destaquesNaoEncontrados.current = 0;
       setTour(pending);
       setRun(true);
     }, 450);
@@ -63,26 +69,60 @@ export function HelpTourRunner() {
 
   const finish = async (status: "completed" | "skipped") => {
     const articleId = tour?.articleId;
+    const apareceu = exibiuDestaque.current;
+    const pulados = destaquesNaoEncontrados.current;
+
     clearPendingTour();
     setRun(false);
     setTour(null);
+
     if (!articleId) return;
+
+    // Nenhum destaque foi exibido: a tela mudou ou os elementos não existem mais.
+    // Não registra como visto para não dar o treinamento por concluído por engano.
+    if (status === "completed" && !apareceu) {
+      toast.error("Não encontramos os destaques deste treinamento nesta tela. Tente novamente.");
+      return;
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+
     const { error } = await supabase.from("wiki_tour_progress").upsert(
       { user_id: user.id, article_id: articleId, status, completed_at: new Date().toISOString() },
       { onConflict: "user_id,article_id" },
     );
-    if (!error && status === "completed") toast.success("Treinamento concluído e marcado como visto.");
+
+    if (error) {
+      toast.error("Não foi possível registrar o treinamento.");
+      return;
+    }
+
+    if (status === "completed") {
+      toast.success(
+        pulados > 0
+          ? "Treinamento concluído. Alguns destaques não estavam na tela e foram pulados."
+          : "Treinamento concluído e marcado como visto.",
+      );
+    }
   };
 
   const handleCallback = (event: EventData) => {
-    if (event.status === "finished") void finish("completed");
-    if (event.status === "skipped") void finish("skipped");
-    if (event.action === "close") void finish("skipped");
+    if (event.type === "tooltip" || event.type === "beacon") {
+      exibiuDestaque.current = true;
+      return;
+    }
+    if (event.type === "error:target_not_found") {
+      destaquesNaoEncontrados.current += 1;
+      return;
+    }
+    if (event.type === "tour:end") {
+      void finish(event.status === "finished" ? "completed" : "skipped");
+    }
   };
 
   if (!tour || !run) return null;
+
   return (
     <Joyride
       steps={tour.steps}
@@ -93,6 +133,7 @@ export function HelpTourRunner() {
       options={{
         showProgress: true,
         buttons: ["back", "close", "primary", "skip"],
+        closeButtonAction: "skip",
         primaryColor: "hsl(var(--primary))",
       }}
       styles={{
