@@ -43,14 +43,24 @@ Deno.serve(async (req) => {
     if (!invoice) return new Response('invoice not found', { headers: corsHeaders });
 
     if (event === 'PAYMENT_CONFIRMED' || event === 'PAYMENT_RECEIVED') {
+      if (invoice.status === 'pago') {
+        return new Response(JSON.stringify({ ok: true, idempotent: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       await admin.from('tenant_invoices').update({
         status: 'pago', pago_em: new Date().toISOString(),
         asaas_charge_id: payment.id,
       }).eq('id', invoice.id);
 
-      // Advance next_due_date and unblock
+      // Advance next_due_date according to the purchased billing cycle and unblock.
+      const { data: organization } = await admin.from('organizations')
+        .select('billing_cycle')
+        .eq('id', invoice.organization_id)
+        .maybeSingle();
       const next = new Date();
-      next.setMonth(next.getMonth() + 1);
+      const cycleMonths = organization?.billing_cycle === 'anual' ? 12 : organization?.billing_cycle === 'semestral' ? 6 : 1;
+      next.setMonth(next.getMonth() + cycleMonths);
       await admin.from('organizations').update({
         status: 'active', blocked_at: null, blocked_reason: null,
         next_due_date: next.toISOString().slice(0, 10),
