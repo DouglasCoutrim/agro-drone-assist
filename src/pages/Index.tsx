@@ -20,7 +20,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import { formatCurrency, parseDate, todayDateInput } from "@/lib/formatters";
+import { todayLocal, nowLocalISO } from "@/lib/date-utils";
 import { fetchOsComValores } from "@/lib/os-billing";
+import { somarReceitas, somarDespesas } from "@/lib/financeiro-helpers";
 import { osEmAtraso } from "@/lib/os-prazo";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -120,12 +122,12 @@ const Index = () => {
   }, [organization?.id, orgLoading, user, periodo]);
 
   const carregar = async (orgId: string) => {
-    setLoading(true);
-    const inicio = inicioPeriodo(periodo);
-    const inicioIso = inicio.toISOString();
-    const dias = periodo === "hoje" ? 1 : Number(periodo);
-    const inicioAnt = new Date(inicio); inicioAnt.setDate(inicioAnt.getDate() - dias);
-    const inicioAntIso = inicioAnt.toISOString();
+      setLoading(true);
+      const inicio = inicioPeriodo(periodo);
+      const inicioIso = nowLocalISO();
+      const dias = periodo === "hoje" ? 1 : Number(periodo);
+      const inicioAnt = new Date(inicio); inicioAnt.setDate(inicioAnt.getDate() - dias);
+      const inicioAntIso = nowLocalISO();
     try {
       const r = await Promise.allSettled([
         supabase.from("financeiro").select("valor, tipo, data_transacao").eq("organization_id", orgId).gte("data_transacao", todayDateInput(inicio)),
@@ -161,8 +163,8 @@ const Index = () => {
       const perfis = new Map<string, string>((v(7)?.data || []).map((p: any) => [p.id, p.nome || "Sem nome"]));
       const osValores: any[] = v(8) || [];
 
-      const receitaFin = fin.filter(f => f.tipo === "receita").reduce((a, f) => a + Number(f.valor || 0), 0);
-      const despesas = fin.filter(f => f.tipo === "despesa").reduce((a, f) => a + Number(f.valor || 0), 0);
+      const receitaFin = somarReceitas(fin);
+      const despesas = somarDespesas(fin);
       const osAberto = osValores.filter(o => !o.pago && o.valor > 0 && FINALIZADAS.includes(o.status));
       const osFaturadasPeriodo = osAberto.filter(o => {
         const ref = o.data_entrega || o.data_conclusao;
@@ -202,7 +204,7 @@ const Index = () => {
       const finAnt: any[] = v(9)?.data || [];
       const receitaAnt = finAnt.filter(f => f.tipo === "receita").reduce((a, f) => a + Number(f.valor || 0), 0)
         + (v(10)?.data || []).reduce((a: number, s: any) => a + Number(s.valor_total || 0), 0);
-      const despesaAnt = finAnt.filter(f => f.tipo === "despesa").reduce((a, f) => a + Number(f.valor || 0), 0);
+      const despesaAnt = somarDespesas(finAnt);
       const chavesSerie = Array.from(buckets.keys());
       const contarPor = (lista: any[]) => {
         const m = new Map(chavesSerie.map(k => [k, 0]));

@@ -418,7 +418,7 @@ export default function TechnicianFinancialDashboard() {
         <div data-bloco="totais" data-rotulo="Totais do período" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
             label="Comissão produzida no período"
-            value={formatCurrency(Number(financialData?.comissao_periodo || 0))}
+            value={empresa.commission_hidden ? "Valores em revisão" : formatCurrency(Number(financialData?.comissao_periodo || 0))}
             icon={DollarSign}
             color="green"
             trend={{ value: financialData?.comissao_periodo_count || 0, label: `${financialData?.comissao_periodo_count || 0} OS(s) concluída(s)` }}
@@ -447,7 +447,7 @@ export default function TechnicianFinancialDashboard() {
             color={Number(financialData?.saldo_liquido || 0) >= 0 ? "green" : "red"}
             trend={{
               value: financialData?.comissao_pendente || 0,
-              label: `Em andamento: ${formatCurrency(Number(financialData?.comissao_pendente || 0))}`,
+              label: empresa.commission_hidden ? "Valores em revisão" : `Em andamento: ${formatCurrency(Number(financialData?.comissao_pendente || 0))}`,
             }}
             delay={150}
           />
@@ -474,7 +474,7 @@ export default function TechnicianFinancialDashboard() {
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">{s.label}</p>
                     <p className={cn("mt-2 font-mono text-xl font-semibold tabular-nums", s.cor)}>
-                      {formatCurrency(valor)}
+                      {empresa.commission_hidden ? "Valores em revisão" : formatCurrency(valor)}
                     </p>
                   </div>
                   <div className={cn("shrink-0 rounded-lg bg-muted/60 p-2.5", s.cor)}>

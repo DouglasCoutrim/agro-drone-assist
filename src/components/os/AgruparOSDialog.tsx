@@ -114,18 +114,28 @@ export function AgruparOSDialog({ open, onOpenChange }: { open: boolean; onOpenC
   const cliente = clientes.find(c => c.id === clienteId);
 
   const grupos: ConsolidadoGrupo[] = useMemo(() => osList.filter(o => selected.has(o.id)).map(o => {
-    const its = itemsByOS[o.id] || [];
-    // Mesma definição de valor da OS usada na cobrança e na comissão (src/lib/os-valor.ts):
-    // o desconto da própria OS entra UMA vez sobre o bruto do grupo — nunca sobre um valor
-    // já líquido, o que fazia a OS sem itens cobrar a menos.
-    const { itens, desconto: descontoOS } = valoresDoGrupoOS(o, its);
-    return { os_numero: o.numero, equipamento: equipLabel(o), defeito: o.descricao_problema, diagnostico: o.diagnostico || undefined, itens, desconto: descontoOS, _id: o.id } as any;
-  }), [osList, selected, itemsByOS]);
+      // Total do orçamento = soma dos valores finais das OS, não soma de itens.
+      // Usa valor_final da OS (ou valor_orcamento se valor_final for nulo/zero).
+      const valorFinalOS = Number(o.valor_final ?? o.valor_orcamento ?? 0);
+      const descontoOS = Number(o.desconto ?? 0);
+      // Itens são opcionais para exibição; o valor usado é o da OS.
+      const its = itemsByOS[o.id] || [];
+      const itensDisplay = its.length > 0
+        ? its.map((i) => ({
+            tipo: i.tipo || "servico",
+            descricao: i.descricao || "Item",
+            quantidade: Number(i.quantidade) || 1,
+            valor_unitario: Number(i.valor_unitario) || 0,
+            valor_total: Number(i.valor_total) || 0,
+          }))
+        : [];
+      return { os_numero: o.numero, equipamento: equipLabel(o), defeito: o.descricao_problema, diagnostico: o.diagnostico || undefined, itens: itensDisplay, desconto: descontoOS, _id: o.id, valorBase: valorFinalOS } as any;
+    }), [osList, selected, itemsByOS]);
 
-  const subtotal = grupos.reduce((s, g) => s + grupoSubtotal(g), 0);
-  const descontoOs = grupos.reduce((s, g) => s + (Number(g.desconto) || 0), 0);
-  const subtotalBruto = subtotal + descontoOs;
-  const total = Math.max(0, subtotal - desconto);
+  const subtotal = grupos.reduce((s, g) => s + (Number(g.valorBase) || 0), 0);
+    const descontoOs = grupos.reduce((s, g) => s + (Number(g.desconto) || 0), 0);
+    const subtotalBruto = subtotal;
+    const total = Math.max(0, subtotal - desconto);
 
   const toggle = (id: string) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 

@@ -17,6 +17,8 @@ export interface ConsolidadoGrupo {
   itens: ConsolidadoItem[];
   /** Desconto da própria OS sobre a soma dos itens (inclui valor_final negociado). */
   desconto?: number;
+  /** Valor final da OS (valor_final ou valor_orcamento). Usado como base do subtotal. */
+  valorBase?: number;
 }
 
 export interface ConsolidadoPDFData {
@@ -57,9 +59,15 @@ export function groupsFromStoredItems(itens: GroupedStoredItem[]): ConsolidadoGr
   return [...map.values()];
 }
 
-/** Soma dos itens do grupo menos o desconto da própria OS. */
-export const grupoSubtotal = (g: ConsolidadoGrupo) =>
-  Math.max(0, g.itens.reduce((s, i) => s + (Number(i.valor_total) || 0), 0) - (Number(g.desconto) || 0));
+/** Soma dos itens do grupo menos o desconto da própria OS.
+ * Se valorBase estiver presente (valor_final da OS), usa ele como base.
+ */
+export const grupoSubtotal = (g: ConsolidadoGrupo) => {
+  if (typeof g.valorBase === "number" && g.valorBase > 0) {
+    return Math.max(0, g.valorBase);
+  }
+  return Math.max(0, g.itens.reduce((s, i) => s + (Number(i.valor_total) || 0), 0) - (Number(g.desconto) || 0));
+};
 
 export async function loadImageAsDataUrl(url?: string): Promise<string | undefined> {
   if (!url) return undefined;

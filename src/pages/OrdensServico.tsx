@@ -35,6 +35,7 @@ import {
 } from "@/lib/os-status-update";
 import { OSItemsSection, OSItem } from "@/components/os/OSItemsSection";
 import { dateOnlyToIso, formatCurrency, formatDate, getErrorMessage, todayDateInput } from "@/lib/formatters";
+import { nowLocalISO } from "@/lib/date-utils";
 import { whatsappTemplates, openWhatsApp, WhatsAppOS } from "@/lib/whatsapp-templates";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { generateOSPDF } from "@/components/ordens-servico/OSPDFGenerator";
@@ -55,7 +56,7 @@ import { calcularRateio } from "@/lib/commission";
 import { calcularPrazoOS, rotuloPrazo } from "@/lib/os-prazo";
 import { useNfseAliquota } from "@/hooks/useNfseAliquota";
 import { PaymentConfirmDialog, PaymentData } from "@/components/os/PaymentConfirmDialog";
-import { registrarRecebimentoOS, type RecebimentoResult } from "@/lib/os-billing";
+import { registrarRecebimentoOS, type RecebimentoResult, type RecebimentoParams } from "@/lib/os-billing";
 import { classificarRecebimentoOS, valorCobradoOS } from "@/lib/os-valor";
 import { PremiumCard, KpiCard, PremiumTable, AlertBox } from "@/components/premium";
 
@@ -991,75 +992,60 @@ export default function OrdensServico() {
     setPaymentDialog({ open: false, osId: null, osNumero: "", valorTotal: 0, valorJaPago: 0, osEquipamento: "", nextStatus: null, saving: false, parcial: false });
 
   const handleConfirmPayment = async (data: PaymentData) => {
-    if (!paymentDialog.osId) return;
-    if (!canEdit) { toast.error(readOnlyOsMessage); return; }
-    setPaymentDialog(p => ({ ...p, saving: true }));
-    try {
-      const osId = paymentDialog.osId;
-      // O RPC lança a receita no Financeiro, cria/atualiza a conta a receber do
-      // saldo e valida a organização. Vale para pagamento parcial ou total.
-      const res: RecebimentoResult = await registrarRecebimentoOS({
-        osId,
-        valor: data.valor,
-        formaPagamento: data.forma_pagamento,
-        equipamento: data.equipamento,
-        condicoesPagamento: data.condicoes_pagamento,
-        vencimento: data.vencimento ?? null,
-        observacoes: data.observacoes,
-      });
-
-      if (data.parcial && res.saldo > 0) {
-        // Recebimento parcial: a OS fica em aberto até quitar (não muda o status).
-        if (user) {
-          await supabase.from("os_historico").insert({
-            ordem_servico_id: osId,
-            usuario_id: user.id,
-            acao: `Recebimento parcial de ${formatCurrency(data.valor)} (${data.forma_pagamento}) — saldo em aberto ${formatCurrency(res.saldo)}`,
-          }).then(() => {});
-        }
-        toast.success("Recebimento parcial registrado", {
-          description: `Saldo em aberto: ${formatCurrency(res.saldo)}. A OS segue em aberto até quitar.`,
-        });
-      } else {
-        // Pagamento total: aplica o status escolhido, se houver.
-        if (paymentDialog.nextStatus) {
-          const updateData: any = { status: paymentDialog.nextStatus };
-          if (paymentDialog.nextStatus === "entregue") updateData.data_entrega = new Date().toISOString();
-          if (paymentDialog.nextStatus === "pronto_retirada" || paymentDialog.nextStatus === "concluida" || paymentDialog.nextStatus === "finalizada")
-            updateData.data_conclusao = new Date().toISOString();
-          const { error: osErr } = await supabase.from("ordens_servico").update(updateData).eq("id", osId);
-          if (osErr) throw osErr;
-          if (user) {
-            await supabase.from("os_historico").insert({
-              ordem_servico_id: osId,
-              usuario_id: user.id,
-              acao: `Recebimento registrado (${data.forma_pagamento}) e status alterado para ${getStatusLabel(paymentDialog.nextStatus)}`,
-            }).then(() => {});
+      if (!paymentDialog.osId) return;
+      if (!canEdit) { toast.error(readOnlyOsMessage); return; }
+      setPaymentDialog(p => ({ ...p, saving: true }));
+      try {
+        const osId = paymentDialog.osId;
+        // O RPC registrar_recebimento_os lança a receita no Financeiro, cria/atualiza a
+        // conta a receber do saldo e retorna o novo saldo e status. Possui chave de
+        // idempotencia: se ja existir lancamento com mesma chave (OS+valor+forma+data),
+        // retorna o existente sem gravar outro. Nao altera valor_final da OS.
+        const params: RecebimentoParams = {
+                osId: osId,
+                valor: data.valor,
+                formaPagamento: data.forma_pagamento,
+                equipamento: data.equipamento,
+                condicoesPagamento: data.condicoes_pagamento,
+                vencimento: data.vencimento ?? null,
+                observacoes: data.observacoes,
+                chaveIdempotencia: `${osId}-${data.valor}-${data.forma_pagamento}-${data.vencimento ?? ''}`,
+              };
+              const res: RecebimentoResult = await registrarRecebimentoOS(params);
+  
+        // Usa o status retornado pela funcao: pago, parcial ou pendente.
+        const statusPagamento = res.status_pagamento;
+        const quitada = statusPagamento === 'pago';
+  
+        // Atualiza os sets de OS pagas/parciais baseado no status retornado.
+        setPagoOSIds(prev => {
+          const n = new Set(prev);
+          if (quitada) {
+            n.add(osId);
+          } else {
+            n.delete(osId);
           }
-        }
+          return n;
+        });
+        setParcialOSIds(prev => {
+          const n = new Set(prev);
+          if (quitada) {
+            n.delete(osId);
+          } else {
+            n.add(osId);
+          }
+          return n;
+        });
+        const eraVista = viewingOS?.id === osId;
+        fecharPaymentDialog();
+        fetchData();
+        if (eraVista) { await Promise.all([carregarContaOS(osId), recarregarOSVisualizada(osId)]); }
         toast.success("Recebimento registrado no Financeiro!");
+      } catch (err: any) {
+        toast.error(getErrorMessage(err));
+        setPaymentDialog(p => ({ ...p, saving: false }));
       }
-
-      const quitada = res.saldo <= 0.005;
-      setPagoOSIds(prev => {
-        const n = new Set(prev);
-        if (quitada) n.add(osId); else n.delete(osId);
-        return n;
-      });
-      setParcialOSIds(prev => {
-        const n = new Set(prev);
-        if (quitada) n.delete(osId); else n.add(osId);
-        return n;
-      });
-      const eraVista = viewingOS?.id === osId;
-      fecharPaymentDialog();
-      fetchData();
-      if (eraVista) { await Promise.all([carregarContaOS(osId), recarregarOSVisualizada(osId)]); }
-    } catch (err: any) {
-      toast.error(getErrorMessage(err));
-      setPaymentDialog(p => ({ ...p, saving: false }));
-    }
-  };
+    };
 
   const handleSkipPayment = async () => {
     if (!paymentDialog.osId || !paymentDialog.nextStatus) {
@@ -1947,7 +1933,7 @@ export default function OrdensServico() {
                         const { error } = await supabase.rpc("confirmar_recebimento_os" as any, { _os_id: viewingOS.id });
                         if (error) { toast.error(error.message); return; }
                         toast.success("Recebimento confirmado");
-                        setViewingOS({ ...viewingOS, recebida_em: new Date().toISOString() } as any);
+                        setViewingOS({ ...viewingOS, recebida_em: nowLocalISO() } as any);
                       }}>Confirmar recebimento</Button>
                     )}
                   </div>

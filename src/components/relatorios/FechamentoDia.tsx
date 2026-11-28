@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CalendarDays, CheckCircle2, CircleDollarSign, Clock, Loader2, ShoppingCart } from "lucide-react";
 import { formatCurrency, getErrorMessage } from "@/lib/formatters";
+import { todayLocal } from "@/lib/date-utils";
 import { toast } from "sonner";
 
 const FORMA_LABELS: Record<string, string> = {
@@ -55,9 +56,7 @@ interface FormaRow {
 }
 
 const hojeISO = () => {
-  const agora = new Date();
-  const local = new Date(agora.getTime() - agora.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 10);
+  return todayLocal();
 };
 
 const parseValor = (texto: string) => {

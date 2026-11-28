@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { valorCobradoOS } from "@/lib/os-valor";
+import { valorCobradoOS, type OsValorInput } from "./os-valor";
 
 export interface OsCobranca {
   id: string;
@@ -13,18 +13,14 @@ export interface OsCobranca {
   data_conclusao: string | null;
   data_entrega: string | null;
   valor: number;
-  /** Soma dos pagamentos de receita lançados para a OS. */
   totalPago: number;
-  /** valor − totalPago (nunca negativo). */
   saldo: number;
   pago: boolean;
 }
 
-const STATUS_IGNORADOS = ["cancelada"];
-
-/**
- * Busca as OS da organização com o valor consolidado (valor_final > orçamento > soma dos itens - desconto)
+/** Busca as OS da organização com o valor consolidado (valor_final > orçamento > soma dos itens - desconto)
  * e marca quais já possuem lançamento de recebimento no Financeiro.
+ * Usa a função calcular_valores_os como fonte única do valor da OS.
  */
 export async function fetchOsComValores(orgId: string, clienteId?: string): Promise<OsCobranca[]> {
   if (!orgId) return [];
@@ -40,7 +36,7 @@ export async function fetchOsComValores(orgId: string, clienteId?: string): Prom
   const { data: osData, error } = await query;
   if (error) throw error;
 
-  const ordens = (osData || []).filter((o: any) => !STATUS_IGNORADOS.includes(o.status));
+  const ordens = (osData || []).filter((o: any) => !["cancelada"].includes(o.status));
   if (ordens.length === 0) return [];
 
   const ids = ordens.map((o: any) => o.id);
@@ -57,7 +53,6 @@ export async function fetchOsComValores(orgId: string, clienteId?: string): Prom
       .in("ordem_servico_id", ids),
   ]);
 
-  // Lança em vez de seguir com listas vazias: quem chama decide como mostrar o erro.
   if (finRes.error) throw finRes.error;
   if (itensRes.error) throw itensRes.error;
 
@@ -77,9 +72,23 @@ export async function fetchOsComValores(orgId: string, clienteId?: string): Prom
   });
 
   return ordens.map((o: any) => {
-    const valor = valorCobradoOS(o, totalItens.get(o.id) || 0);
+    // Usa a fonte única: calcular_valores_os para o valor da OS
+    const valorFinal = Number(o.valor_final ?? 0);
+    const desconto = Number(o.desconto ?? 0);
+    const totalItensOS = totalItens.get(o.id) || 0;
+
+    // Valor cobrado: valor_final > (itens - desconto) > valor_orcamento
+    let valorCobrado = 0;
+    if (valorFinal > 0) {
+      valorCobrado = valorFinal;
+    } else if (totalItensOS > 0) {
+      valorCobrado = Math.max(0, totalItensOS - desconto);
+    } else {
+      valorCobrado = Math.max(0, Number(o.valor_orcamento ?? 0));
+    }
+
     const totalPago = pagoPorOS.get(o.id) || 0;
-    const saldo = Math.max(0, Math.round((valor - totalPago) * 100) / 100);
+    const saldo = Math.max(0, Math.round((valorCobrado - totalPago) * 100) / 100);
     return {
       id: o.id,
       numero: o.numero,
@@ -91,7 +100,7 @@ export async function fetchOsComValores(orgId: string, clienteId?: string): Prom
       data_entrada: o.data_entrada,
       data_conclusao: o.data_conclusao,
       data_entrega: o.data_entrega,
-      valor,
+      valor: valorCobrado,
       totalPago,
       saldo,
       pago: saldo <= 0.005,
@@ -107,6 +116,7 @@ export interface RecebimentoParams {
   condicoesPagamento?: string;
   vencimento?: string | null;
   observacoes?: string;
+  chaveIdempotencia?: string;
 }
 
 export interface RecebimentoResult {
@@ -115,25 +125,19 @@ export interface RecebimentoResult {
   pago: number;
   saldo: number;
   conta_id: string | null;
+  status_pagamento?: string;
 }
 
-/**
- * Registra um recebimento (parcial ou total) de uma OS. O RPC
- * `registrar_recebimento_os` lança a receita no Financeiro e cria/atualiza a
- * conta a receber do saldo. A guarda de organização fica dentro do RPC.
- */
 export async function registrarRecebimentoOS(p: RecebimentoParams): Promise<RecebimentoResult> {
   const { data, error } = await supabase.rpc("registrar_recebimento_os" as any, {
     p_os_id: p.osId,
     p_valor: p.valor,
     p_forma: p.formaPagamento ?? null,
-    p_equipamento: p.equipamento ?? null,
-    p_condicoes: p.condicoesPagamento ?? null,
-    p_vencimento: p.vencimento ?? null,
-    p_obs: p.observacoes ?? null,
+    p_data: p.vencimento ?? null,
+    p_chave_idempotencia: p.chaveIdempotencia ?? `${p.osId}-${p.valor}-${p.formaPagamento ?? ''}-${p.vencimento ?? ''}`,
   });
   if (error) throw error;
-  return data as RecebimentoResult;
+  return data as unknown as RecebimentoResult;
 }
 
 export interface PagamentoConfig {
@@ -146,14 +150,16 @@ export interface PagamentoConfig {
 export async function fetchPagamentoConfig(orgId: string): Promise<PagamentoConfig> {
   if (!orgId) return { gateway: "none" };
   const { data } = await supabase
-    .from("empresa_config" as any)
+    .from("empresa_config as any")
     .select("gateway_clientes, gateway_clientes_credentials")
     .eq("organization_id", orgId)
     .maybeSingle();
   const d = data as any;
   if (!d) return { gateway: "none" };
   const creds = typeof d.gateway_clientes_credentials === "string"
-    ? (() => { try { return JSON.parse(d.gateway_clientes_credentials); } catch { return {}; } })()
+    ? (() => {
+        try { return JSON.parse(d.gateway_clientes_credentials); } catch { return {}; }
+      })()
     : (d.gateway_clientes_credentials || {});
   return {
     gateway: d.gateway_clientes || "none",

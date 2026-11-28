@@ -13,6 +13,8 @@ export interface EmpresaConfig {
   termos_servico: string;
   /** Taxa cobrada sobre a parte do técnico quando a OS sai sem nota (%). */
   commission_no_note_fee: number;
+  /** TODO: PENDENTE - Ocultar comissão no painel do técnico durante a correção (ativado por padrão). */
+  commission_hidden: boolean;
 }
 
 const emptyConfig: EmpresaConfig = {
@@ -25,6 +27,8 @@ const emptyConfig: EmpresaConfig = {
   logo_url: "",
   termos_servico: "",
   commission_no_note_fee: 3.5,
+  // TODO: PENDENTE - Ocultar comissão no painel do técnico durante a correção (ativado por padrão).
+  commission_hidden: true,
 };
 
 const EmpresaConfigContext = createContext<{
@@ -64,6 +68,8 @@ export function EmpresaConfigProvider({ children }: { children: ReactNode }) {
           logo_url: d.logo_url ?? "",
           termos_servico: d.termos_servico ?? "",
           commission_no_note_fee: Number(d.commission_no_note_fee ?? 3.5),
+          // TODO: PENDENTE - Ocultar comissão no painel do técnico durante a correção (ativado por padrão).
+          commission_hidden: d.commission_hidden ?? true,
         });
       } else {
         setConfig(emptyConfig);

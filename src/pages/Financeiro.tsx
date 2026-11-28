@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useOrganization } from "@/hooks/useOrganization";
 import { formatCurrency, formatDate, parseDate, todayDateInput } from "@/lib/formatters";
+import { somarReceitas, somarDespesas, somarComissoes } from "@/lib/financeiro-helpers";
 import { CobrancaClienteDialog } from "@/components/financeiro/CobrancaClienteDialog";
 import { fetchOsComValores, registrarRecebimentoOS, OsCobranca } from "@/lib/os-billing";
 import { PremiumCard } from "@/components/premium/PremiumCard";
@@ -162,10 +163,10 @@ export default function Financeiro() {
   const { receitaMensal, despesaMensal, comissoesMensal, lucroLiquido } = useMemo(() => {
     const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
     const thisMonth = transacoes.filter(t => parseDate(t.data_transacao) >= startOfMonth);
-    const r = thisMonth.filter(t => t.tipo === 'receita').reduce((acc, t) => acc + Number(t.valor), 0);
-    const d = thisMonth.filter(t => t.tipo === 'despesa' || t.tipo === 'salario').reduce((acc, t) => acc + Number(t.valor), 0);
-    const c = thisMonth.filter(t => t.tipo === 'comissao').reduce((acc, t) => acc + Number(t.valor), 0);
-    return { receitaMensal: r, despesaMensal: d, comissoesMensal: c, lucroLiquido: r - d - c };
+    const r = somarReceitas(thisMonth);
+    const d = somarDespesas(thisMonth);
+    const c = somarComissoes(thisMonth);
+    return { receitaMensal: r, despesaMensal: d, comissoesMensal: c, lucroLiquido: r - d };
   }, [transacoes]);
 
   const getTipoConfig = (tipo: string) => {

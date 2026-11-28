@@ -1,14 +1,14 @@
 /**
  * Prévia do rateio da comissão. A fórmula oficial vive no banco
- * (`public.os_commission_calc` / `os_commission_core`) e esta função existe só para
+ * (`public.calcular_valores_os` / `os_commission_core`) e esta função existe só para
  * mostrar o mesmo número na tela antes de salvar. `src/lib/commission.test.ts` trava os
  * dois lados nos mesmos exemplos: se um divergir, o teste quebra.
  *
  * Regra (por OS):
  *   valor_cobrado  = valor_final, ou (total dos itens - desconto) quando valor_final é 0
- *   base           = total dos serviços x (valor_cobrado / total dos itens)
+ *   base           = valor_cobrado (valor final da OS, após desconto)
  *   imposto        = com nota ? base x aliquota/100 : 0
- *   saldo          = max(base - imposto - custo do serviço, 0)
+ *   saldo          = max(base - imposto - custo do serviço - despesas adicionais, 0)
  *   loja           = saldo / 2            (parte do técnico é o resto, para somar exato)
  *   comissão       = com nota ? parte do técnico
  *                             : parte do técnico x (100 - taxa sem nota)/100
@@ -100,13 +100,12 @@ export function calcularRateio(input: RateioInput): Rateio {
   const valorFinalC = centavos(input.valorOs);
   const descontoC = centavos(input.desconto);
 
+  // Base = valor final da OS (após desconto). Se valor_final for nulo/zero, usar itens - desconto.
   let cobradoC = valorFinalC !== 0 ? valorFinalC : totalItensC - descontoC;
   if (cobradoC < 0) cobradoC = 0;
 
-  let baseC = 0;
-  if (totalItensC > 0) {
-    baseC = arredonda((totalServicosC * cobradoC) / totalItensC);
-  }
+  // Base da comissão = valor cobrado (valor final da OS)
+  let baseC = cobradoC;
   if (baseC < 0) baseC = 0;
 
   const nfeEmitida = !!input.nfeEmitida;

@@ -18,6 +18,7 @@ import { RelatorioPersonalizado } from "@/components/relatorios/RelatorioPersona
 import { usePagination } from "@/hooks/usePagination";
 import { RecordPagination } from "@/components/RecordPagination";
 import { todayDateInput } from "@/lib/formatters";
+import { todayLocal, nowLocalISO } from "@/lib/date-utils";
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--success))', 'hsl(var(--warning))', 'hsl(var(--destructive))', '#8884d8', '#82ca9d'];
 
@@ -49,11 +50,11 @@ export default function Relatorios() {
   };
 
   const fetchAll = async () => {
-    setLoading(true);
-    try {
-      const startDate = getStartDate();
-      const [osRes, finRes, clientesRes, estoqueRes] = await Promise.all([
-        supabase.from('ordens_servico').select('*').gte('created_at', startDate.toISOString()),
+      setLoading(true);
+      try {
+        const startDate = getStartDate();
+        const [osRes, finRes, clientesRes, estoqueRes] = await Promise.all([
+          supabase.from('ordens_servico').select('*').gte('created_at', nowLocalISO()),
         supabase.from('financeiro').select('*').gte('data_transacao', todayDateInput(startDate)),
         supabase.from('clientes').select('*', { count: 'exact', head: true }),
         supabase.from('itens_estoque').select('*'),
