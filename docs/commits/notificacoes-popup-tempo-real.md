@@ -29,7 +29,9 @@ A infraestrutura de notificações já existia no banco (`notifications`, `notif
 
 - `src/lib/notification-sound.ts` (novo) — preferência de som por aparelho
   (`livreos:sound-muted`, compatível com o que o sino já usava), `desbloquearAudio()`,
-  `tocarSomNotificacao()` e `destravarSomNoPrimeiroToque()` (política de autoplay).
+  `tocarSomNotificacao()` e `destravarSomNoPrimeiroToque()` (política de autoplay). O arquivo
+  `src/assets/som-notificacao.mp3` (som suave de interface) é o áudio dos avisos; o antigo
+  `notification.mp3.asset.json` foi removido.
 - `src/hooks/useNotificacoesAoVivo.ts` (novo) — assinatura Realtime em
   `notifications` filtrada por `user_id`, com log de erro de canal.
 - `src/components/notifications/PopupNotificacao.tsx` (novo) — cartão de aviso com ícone por

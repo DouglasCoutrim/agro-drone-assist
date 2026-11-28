@@ -1,4 +1,4 @@
-import soundAsset from "@/assets/notification.mp3.asset.json";
+import somNotificacao from "@/assets/som-notificacao.mp3";
 
 // Preferência por aparelho. O valor gravado é o "silenciado" (compatível com o
 // botão do sino, que já usava a mesma chave).
@@ -15,7 +15,7 @@ let audio: HTMLAudioElement | null = null;
 
 function getAudio() {
   if (!audio) {
-    audio = new Audio(soundAsset.url);
+    audio = new Audio(somNotificacao);
     audio.preload = "auto";
     audio.volume = 0.85;
   }
