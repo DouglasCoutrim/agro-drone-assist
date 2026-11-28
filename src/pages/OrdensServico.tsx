@@ -26,6 +26,12 @@ import { QuickClientModal } from "@/components/os/QuickClientModal";
 import { LegalTermsFooter, getLegalTermsHTML } from "@/components/os/LegalTermsFooter";
 import { SmartSelect, SmartSelectOption } from "@/components/ui/smart-select";
 import { StatusPipeline, getNextStatus, getStatusLabel } from "@/components/os/StatusPipeline";
+import {
+  LOCK_CLOSED_STATUSES,
+  MENSAGEM_OS_SEM_EDICAO,
+  aplicarStatusOs,
+  listarChecklistObrigatorioPendente,
+} from "@/lib/os-status-update";
 import { OSItemsSection, OSItem } from "@/components/os/OSItemsSection";
 import { dateOnlyToIso, formatCurrency, formatDate, getErrorMessage, todayDateInput } from "@/lib/formatters";
 import { whatsappTemplates, openWhatsApp, WhatsAppOS } from "@/lib/whatsapp-templates";
@@ -104,7 +110,6 @@ const TIPO_EQUIPAMENTO: Record<string, string> = {
 };
 
 const MOBILITY_CATEGORIES = ["patinete_eletrico", "bicicleta_eletrica", "moto_eletrica", "outros_autopropelidos"];
-const LOCK_CLOSED_STATUSES = new Set(["pronto_retirada", "concluida", "entregue", "finalizada"]);
 
 // Helper: verifica se o usuário pode editar esta OS
 // Admin pode tudo; Técnico só se for o responsável (tecnico_id === user.id)
@@ -408,20 +413,11 @@ export default function OrdensServico() {
     return mapped;
   }, [organization?.id, isPlatformAdmin]);
 
-  const getPendingRequiredChecklist = useCallback(async (osId: string, osOrgId?: string | null): Promise<string[]> => {
-    const checklistClient = supabase as any;
-    let query = checklistClient
-      .from("os_checklist_itens")
-      .select("marcado, item:checklist_equipamento_itens(label, obrigatorio)")
-      .eq("ordem_servico_id", osId);
-    const orgId = osOrgId || organization?.id;
-    if (orgId && !isPlatformAdmin) query = query.eq("organization_id", orgId);
-    const { data, error } = await query;
-    if (error) return [];
-    return ((data as any[]) || [])
-      .filter(r => r?.item?.obrigatorio && !r.marcado)
-      .map(r => r.item.label as string);
-  }, [organization?.id, isPlatformAdmin]);
+  const getPendingRequiredChecklist = useCallback(
+    (osId: string, osOrgId?: string | null): Promise<string[]> =>
+      listarChecklistObrigatorioPendente(osId, osOrgId || organization?.id, isPlatformAdmin),
+    [organization?.id, isPlatformAdmin],
+  );
 
   const loadChecklistResponses = useCallback(async (osId: string, osOrgId?: string | null): Promise<Record<string, boolean>> => {
     const checklistClient = supabase as any;
@@ -445,7 +441,7 @@ export default function OrdensServico() {
   }));
 
   const selectedCliente = clientes.find(c => c.id === formData.cliente_id);
-  const readOnlyOsMessage = "Seu perfil tem acesso de consulta ao módulo de OS, mas não pode criar ou alterar ordens de serviço.";
+  const readOnlyOsMessage = MENSAGEM_OS_SEM_EDICAO;
   const readOnlyFecharMessage = "Seu perfil só pode finalizar (fechar) ordens de serviço — não pode criar, editar nem reabrir OS.";
 
   /** Quem pode fechar a OS: admin, o técnico responsável ou quem tem a permissão "Pode finalizar OS". */
@@ -915,45 +911,21 @@ export default function OrdensServico() {
 
   const applyStatusUpdate = async (osId: string, newStatus: string) => {
     const os = ordens.find(o => o.id === osId);
-    // Perfil sem permissão de editar OS: fecha pelo RPC `finalizar_os` (só status e datas).
-    const viaRpc = !canEdit;
-    if (viaRpc) {
-      if (!podeFinalizarOs) throw new Error(readOnlyOsMessage);
-      if (!LOCK_CLOSED_STATUSES.has(newStatus)) throw new Error("Sua permissão permite apenas finalizar (fechar) a OS.");
-    } else if (os && !canUserManageOS(os, user?.id, isAdmin)) {
+    // Quem edita só altera status de OS designada a si (admin altera qualquer uma).
+    if (canEdit && os && !canUserManageOS(os, user?.id, isAdmin)) {
       throw new Error("Você só pode alterar status de OSs designadas a você.");
     }
-    if (LOCK_CLOSED_STATUSES.has(newStatus)) {
-      const pending = await getPendingRequiredChecklist(osId, os?.organization_id || organization?.id);
-      if (pending.length > 0) {
-        throw new Error(`Itens obrigatórios pendentes no checklist de revisão: ${pending.slice(0, 3).join("; ")}${pending.length > 3 ? "…" : ""}.`);
-      }
-    }
-    if (viaRpc) {
-      // O RPC valida a permissão, grava status/datas, congela a comissão e escreve o histórico.
-      const { error } = await supabase.rpc("finalizar_os", { _os_id: osId, _status: newStatus });
-      if (error) throw error;
-      // Finalizar não é receber: o selo "Pago" só vem de recebimento lançado (fetchPaidOS).
-      return;
-    }
-
-    const updateData: any = { status: newStatus };
-    if (newStatus === "pronto_retirada" || newStatus === "concluida" || newStatus === "finalizada") updateData.data_conclusao = new Date().toISOString();
-    if (newStatus === "entregue") updateData.data_entrega = new Date().toISOString();
-    const { error } = await supabase.from("ordens_servico").update(updateData).eq("id", osId);
-    if (error) throw error;
-    try {
-      await supabase.rpc('calculate_os_commission' as any, { _os_id: osId });
-    } catch (err: any) {
-      console.error("Erro ao recalcular comissão na mudança de status:", err);
-    }
-    if (user) {
-      await supabase.from("os_historico").insert({
-        ordem_servico_id: osId,
-        usuario_id: user.id,
-        acao: `Status alterado para ${getStatusLabel(newStatus)}`,
-      }).then(() => {});
-    }
+    // As regras de status (RPC `finalizar_os`, checklist obrigatório, datas, comissão e
+    // histórico) ficam em `@/lib/os-status-update`, compartilhadas com o painel do técnico.
+    await aplicarStatusOs({
+      osId,
+      novoStatus: newStatus,
+      organizationId: os?.organization_id || organization?.id,
+      isPlatformAdmin,
+      userId: user?.id,
+      podeEditar: canEdit,
+      podeFinalizarOs,
+    });
   };
 
   const handleStatusChange = async (osId: string, newStatus: string): Promise<boolean> => {

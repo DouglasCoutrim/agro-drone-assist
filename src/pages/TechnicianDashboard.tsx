@@ -3,15 +3,19 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Coins, CheckCircle2, ListChecks, Clock, AlertTriangle, TrendingUp, Calculator, ChevronDown } from "lucide-react";
+import { Loader2, Coins, CheckCircle2, ListChecks, Clock, AlertTriangle, TrendingUp, Calculator, ChevronDown, ArrowRightLeft } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
-import { formatCurrency, todayDateInput } from "@/lib/formatters";
+import { useOrganization } from "@/hooks/useOrganization";
+import { formatCurrency, getErrorMessage, todayDateInput } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { osEmAtraso } from "@/lib/os-prazo";
+import { LOCK_CLOSED_STATUSES, aplicarStatusOs } from "@/lib/os-status-update";
 import { TechnicianAnalytics } from "@/components/os/TechnicianAnalytics";
 import { OSSummaryDialog } from "@/components/os/OSSummaryDialog";
 import { getPeriodRange } from "@/hooks/useTechnicianFinancials";
@@ -60,6 +64,25 @@ const KANBAN_COLUMNS: { key: string; label: string }[] = [
 // Quantidade de itens mostrados antes de o cartão ser expandido.
 const LIMITE_PREVIA = 3;
 
+// Coluna do painel -> status real gravado em `ordens_servico.status`. Os agrupamentos são os
+// mesmos usados pela RPC `get_technician_dashboard` (via `os_status_grupo`).
+const STATUS_POR_COLUNA: Record<string, string> = {
+  aguardando_avaliacao: "aguardando_diagnostico",
+  em_analise: "aguardando_aprovacao",
+  aguardando_peca: "aguardando_peca",
+  em_execucao: "em_reparo",
+  concluido: "concluida",
+};
+
+/** Em qual coluna a OS aparece hoje, a partir do status real dela. */
+const colunaDoStatus = (status: string): string => {
+  if (LOCK_CLOSED_STATUSES.has(status)) return "concluido";
+  if (["recebido", "aberta", "aguardando_diagnostico"].includes(status)) return "aguardando_avaliacao";
+  if (["aguardando_aprovacao", "aprovado"].includes(status)) return "em_analise";
+  if (status === "aguardando_peca") return "aguardando_peca";
+  return "em_execucao";
+};
+
 const prioridadeVariant = (p: string) => {
   const v = (p || "normal").toLowerCase();
   if (v === "alta" || v === "urgente") return "destructive" as const;
@@ -93,17 +116,25 @@ function KpiCard({ label, value, sub, icon: Icon, color }: any) {
 }
 
 export default function TechnicianDashboard() {
-  const { user, roles } = useAuth();
-  const { blocked } = usePermissions();
+  const { user, roles, canEdit } = useAuth();
+  const { permissions, blocked } = usePermissions();
+  const { organization, isPlatformAdmin } = useOrganization();
+  const podeFinalizarOs = permissions?.pode_finalizar_os === true;
+  // Arrastar só faz sentido para quem consegue gravar: edição da OS ou permissão de fechar.
+  const podeMoverOs = canEdit || podeFinalizarOs;
   const [data, setData] = useState<DashboardPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
   const [verTodasAtrasadas, setVerTodasAtrasadas] = useState(false);
   const [verTodasComissoes, setVerTodasComissoes] = useState(false);
+  const [arrastando, setArrastando] = useState<string | null>(null);
+  const [colunaAlvo, setColunaAlvo] = useState<string | null>(null);
+  const [movendo, setMovendo] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  // `silent` recarrega os dados sem trocar a tela pelo spinner (usado ao mover um cartão).
+  const load = useCallback(async (silent = false) => {
     if (!user) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       // Sobrecarga explícita de 3 argumentos (a de 1 argumento foi removida).
       const mes = getPeriodRange("mes");
@@ -116,7 +147,7 @@ export default function TechnicianDashboard() {
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [user]);
 
@@ -146,6 +177,46 @@ export default function TechnicianDashboard() {
 
   const atrasadasVisiveis = verTodasAtrasadas ? overdueOs : overdueOs.slice(0, LIMITE_PREVIA);
   const comissoesVisiveis = verTodasComissoes ? pendingCommissionOs : pendingCommissionOs.slice(0, LIMITE_PREVIA);
+
+  /**
+   * Move a OS para a coluna escolhida aplicando o status correspondente. As validações de
+   * permissão, checklist obrigatório, datas, comissão e histórico ficam em
+   * `@/lib/os-status-update` — as mesmas usadas pela tela de Ordens de Serviço.
+   */
+  const moverOs = async (os: OSKanban, destino: string) => {
+    const novoStatus = STATUS_POR_COLUNA[destino];
+    if (!novoStatus || colunaDoStatus(os.status) === destino) return;
+    setMovendo(os.id);
+    try {
+      await aplicarStatusOs({
+        osId: os.id,
+        novoStatus,
+        organizationId: organization?.id,
+        isPlatformAdmin,
+        userId: user?.id,
+        podeEditar: canEdit,
+        podeFinalizarOs,
+      });
+      const label = KANBAN_COLUMNS.find(c => c.key === destino)?.label || destino;
+      toast.success(`OS ${os.numero} movida para "${label}"`);
+      // Recarrega sem esconder o quadro atrás do spinner.
+      await load(true);
+    } catch (e) {
+      console.error("Erro ao mover OS no painel do técnico:", e);
+      toast.error(getErrorMessage(e));
+    } finally {
+      setMovendo(null);
+    }
+  };
+
+  const soltarNaColuna = async (destino: string) => {
+    const osId = arrastando;
+    setArrastando(null);
+    setColunaAlvo(null);
+    if (!osId) return;
+    const os = allOs.find(o => o.id === osId);
+    if (os) await moverOs(os, destino);
+  };
 
   return (
     <MainLayout>
@@ -285,12 +356,30 @@ export default function TechnicianDashboard() {
               </Card>
             </div>
 
-            {/* Kanban */}
+            {/* Kanban — arraste o cartão para outra coluna para mudar o status da OS */}
             <div className="grid gap-4 lg:grid-cols-5">
               {KANBAN_COLUMNS.map(col => {
                 const list = data.kanban?.[col.key] || [];
+                const destacada = colunaAlvo === col.key && arrastando !== null;
+                // Quem só tem a permissão de fechar só pode soltar na coluna "Concluído".
+                const aceita = canEdit || LOCK_CLOSED_STATUSES.has(STATUS_POR_COLUNA[col.key]);
                 return (
-                  <div key={col.key} className="rounded-2xl border border-border bg-muted/30 flex flex-col">
+                  <div
+                    key={col.key}
+                    onDragOver={(e) => {
+                      if (!arrastando) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = aceita ? "move" : "none";
+                      setColunaAlvo(atual => (atual === col.key ? atual : col.key));
+                    }}
+                    onDragLeave={() => setColunaAlvo(atual => (atual === col.key ? null : atual))}
+                    onDrop={(e) => { e.preventDefault(); void soltarNaColuna(col.key); }}
+                    className={cn(
+                      "rounded-2xl border border-border bg-muted/30 flex flex-col transition-colors",
+                      destacada && aceita && "border-primary/60 bg-primary/5 ring-2 ring-primary/30",
+                      destacada && !aceita && "border-destructive/50 bg-destructive/5",
+                    )}
+                  >
                     <div className="px-3 py-2.5 flex items-center justify-between border-b border-border">
                       <p className="text-xs font-semibold uppercase tracking-wide">{col.label}</p>
                       <span className="text-xs bg-background border border-border rounded-full px-2 py-0.5">{list.length}</span>
@@ -300,7 +389,23 @@ export default function TechnicianDashboard() {
                         <p className="text-xs text-muted-foreground text-center py-6">Sem OS</p>
                       )}
                       {list.map(os => (
-                        <div key={os.id} onClick={() => setOpenId(os.id)} className="bg-card border border-border rounded-xl p-3 space-y-1.5 shadow-sm cursor-pointer hover:bg-accent/50">
+                        <div
+                          key={os.id}
+                          draggable={podeMoverOs}
+                          onDragStart={(e) => {
+                            setArrastando(os.id);
+                            e.dataTransfer.effectAllowed = "move";
+                            e.dataTransfer.setData("text/plain", os.id);
+                          }}
+                          onDragEnd={() => { setArrastando(null); setColunaAlvo(null); }}
+                          onClick={() => setOpenId(os.id)}
+                          className={cn(
+                            "bg-card border border-border rounded-xl p-3 space-y-1.5 shadow-sm cursor-pointer hover:bg-accent/50",
+                            podeMoverOs && "active:cursor-grabbing",
+                            arrastando === os.id && "opacity-40",
+                            movendo === os.id && "opacity-60 pointer-events-none",
+                          )}
+                        >
                           <div className="flex items-center justify-between">
                             <span className="font-mono text-xs font-semibold">{os.numero}</span>
                             <Badge variant={prioridadeVariant(os.prioridade)} className="capitalize">{os.prioridade}</Badge>
@@ -309,7 +414,36 @@ export default function TechnicianDashboard() {
                           <p className="text-xs text-muted-foreground truncate">{os.equipamento || "—"}</p>
                           <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
                             <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{formatBenchTime(os.tempo_em_bancada_min)} em bancada</span>
-                            {os.commission_total ? <span className="text-green-600 font-medium">{formatCurrency(os.commission_total)}</span> : null}
+                            <div className="flex items-center gap-1">
+                              {os.commission_total ? <span className="text-green-600 font-medium">{formatCurrency(os.commission_total)}</span> : null}
+                              {/* Alternativa ao arrastar: funciona no toque (celular) e no teclado. */}
+                              {podeMoverOs && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button
+                                      type="button"
+                                      aria-label={`Mover OS ${os.numero} para outra coluna`}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                                    >
+                                      <ArrowRightLeft className="h-3.5 w-3.5" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                    <DropdownMenuLabel>Mover para</DropdownMenuLabel>
+                                    {KANBAN_COLUMNS.filter(c => c.key !== col.key).map(c => (
+                                      <DropdownMenuItem
+                                        key={c.key}
+                                        disabled={movendo === os.id || (!canEdit && !LOCK_CLOSED_STATUSES.has(STATUS_POR_COLUNA[c.key]))}
+                                        onSelect={() => void moverOs(os, c.key)}
+                                      >
+                                        {c.label}
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
