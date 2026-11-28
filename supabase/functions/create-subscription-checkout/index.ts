@@ -6,8 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const ASAAS_BASE = 'https://api.asaas.com/v3';
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -34,6 +32,17 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
+    const { data: platformConfig } = await admin
+      .from('platform_config')
+      .select('value')
+      .eq('key', 'asaas')
+      .maybeSingle();
+    const configured = platformConfig?.value && typeof platformConfig.value === 'object'
+      ? platformConfig.value as { asaas_api_key?: string; asaas_environment?: 'sandbox' | 'production' }
+      : {};
+    const asaasBase = configured.asaas_environment === 'sandbox'
+      ? 'https://api-sandbox.asaas.com/v3'
+      : 'https://api.asaas.com/v3';
 
     const { data: profile } = await admin.from('profiles').select('organization_id, email, nome').eq('id', userId).maybeSingle();
     if (!profile?.organization_id) return json({ error: 'Sem organização' }, 400);
@@ -69,18 +78,20 @@ Deno.serve(async (req) => {
     if (invErr) throw invErr;
 
     // 2) Asaas
-    const ASAAS_KEY = Deno.env.get('PLATFORM_ASAAS_API_KEY') || Deno.env.get('ASAAS_API_KEY');
+    const ASAAS_KEY = configured.asaas_api_key?.trim()
+      || Deno.env.get('PLATFORM_ASAAS_API_KEY')
+      || Deno.env.get('ASAAS_API_KEY');
     if (!ASAAS_KEY) return json({ error: 'Asaas não configurado' }, 500);
 
     // Buscar ou criar customer
     let customerId: string | null = null;
-    const custSearch = await fetch(`${ASAAS_BASE}/customers?email=${encodeURIComponent(profile.email)}`, {
+    const custSearch = await fetch(`${asaasBase}/customers?email=${encodeURIComponent(profile.email)}`, {
       headers: { 'access_token': ASAAS_KEY },
     }).then(r => r.json());
     if (custSearch?.data?.[0]?.id) {
       customerId = custSearch.data[0].id;
     } else {
-      const newCust = await fetch(`${ASAAS_BASE}/customers`, {
+      const newCust = await fetch(`${asaasBase}/customers`, {
         method: 'POST',
         headers: { 'access_token': ASAAS_KEY, 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: profile.nome || profile.email, email: profile.email }),
@@ -89,7 +100,7 @@ Deno.serve(async (req) => {
     }
 
     // Criar charge
-    const charge = await fetch(`${ASAAS_BASE}/payments`, {
+    const charge = await fetch(`${asaasBase}/payments`, {
       method: 'POST',
       headers: { 'access_token': ASAAS_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -107,7 +118,7 @@ Deno.serve(async (req) => {
     // Buscar PIX QR
     let pixQr: any = {};
     try {
-      pixQr = await fetch(`${ASAAS_BASE}/payments/${charge.id}/pixQrCode`, {
+      pixQr = await fetch(`${asaasBase}/payments/${charge.id}/pixQrCode`, {
         headers: { 'access_token': ASAAS_KEY },
       }).then(r => r.json());
     } catch (_) {}
