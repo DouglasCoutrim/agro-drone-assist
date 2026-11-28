@@ -42,6 +42,7 @@ export default function TenantsTab() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [passwordDialog, setPasswordDialog] = useState<{ userId: string; email: string } | null>(null);
   const [newPassword, setNewPassword] = useState('');
+  const [passwordResetReason, setPasswordResetReason] = useState('');
   const [statusDialog, setStatusDialog] = useState<{ org: Org; block: boolean } | null>(null);
   const [statusReason, setStatusReason] = useState('');
 
@@ -88,14 +89,22 @@ export default function TenantsTab() {
   };
 
   const handleResetPassword = async () => {
-    if (!passwordDialog || !newPassword) return;
-    
-    // In a real app with Supabase Admin Auth, we'd use a service role in an edge function.
-    // Since we are in the client, we'll suggest using the built-in Supabase reset if available 
-    // or simulate/point out this needs administrative privileges.
-    toast.info("A funcionalidade de reset de senha administrativa requer integração com Edge Functions.");
+    if (!passwordDialog || newPassword.length < 8 || !passwordResetReason.trim()) return;
+    const { error } = await supabase.functions.invoke('admin-reset-tenant-password', {
+      body: {
+        target_user_id: passwordDialog.userId,
+        new_password: newPassword,
+        reason: passwordResetReason.trim(),
+      },
+    });
+    if (error) {
+      toast.error(error.message || 'Não foi possível resetar a senha.');
+      return;
+    }
+    toast.success('Senha redefinida com sucesso.');
     setPasswordDialog(null);
     setNewPassword('');
+    setPasswordResetReason('');
   };
 
   const toggleVip = (org: Org) =>
@@ -344,7 +353,13 @@ export default function TenantsTab() {
       </Dialog>
 
       {/* Password Reset Dialog */}
-      <Dialog open={!!passwordDialog} onOpenChange={(o) => !o && setPasswordDialog(null)}>
+      <Dialog open={!!passwordDialog} onOpenChange={(o) => {
+        if (!o) {
+          setPasswordDialog(null);
+          setNewPassword('');
+          setPasswordResetReason('');
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Resetar Senha Administrativa</DialogTitle>
@@ -354,17 +369,29 @@ export default function TenantsTab() {
           </DialogHeader>
           <div className="space-y-3 py-4">
             <Label htmlFor="new-password">Nova Senha</Label>
-            <Input 
+            <Input
               id="new-password" 
               type="password" 
               placeholder="Digite a nova senha" 
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
             />
+            <Label htmlFor="password-reset-reason">Motivo do reset</Label>
+            <Input
+              id="password-reset-reason"
+              placeholder="Ex.: solicitação do responsável da empresa"
+              value={passwordResetReason}
+              onChange={(e) => setPasswordResetReason(e.target.value)}
+              maxLength={240}
+            />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPasswordDialog(null)}>Cancelar</Button>
-            <Button onClick={handleResetPassword} disabled={!newPassword}>Confirmar Reset</Button>
+            <Button variant="outline" onClick={() => {
+              setPasswordDialog(null);
+              setNewPassword('');
+              setPasswordResetReason('');
+            }}>Cancelar</Button>
+            <Button onClick={handleResetPassword} disabled={newPassword.length < 8 || !passwordResetReason.trim()}>Confirmar Reset</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
