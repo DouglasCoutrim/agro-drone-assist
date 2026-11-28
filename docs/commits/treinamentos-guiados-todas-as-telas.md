@@ -105,8 +105,33 @@ financeiro, estoque, OS, orçamentos e configurações usam as categorias existe
   administradores — o passeio é o mesmo, mas a rota pode redirecionar quem não tem permissão.
 - Nada foi alterado em cálculos, filtros de organização, RLS, permissões ou valores.
 
+## Correção de formatação (mesma sessão)
+
+Os textos dos guias apareciam sem formatação: títulos gigantes, tabelas sem borda e listas sem
+marcadores. Causa: o corpo do artigo usava as classes `prose` do Tailwind Typography, mas o plugin
+`@tailwindcss/typography` está instalado e **não** habilitado no `tailwind.config.ts` — as classes
+não geravam nenhum estilo.
+
+Correções:
+
+- `src/components/help/GuiaMarkdown.tsx` (novo): renderiza o markdown com estilos explícitos de
+  Tailwind para títulos (h1/h2/h3/h4), parágrafos, negrito, links, listas com marcador, código,
+  citação, linha horizontal, imagens, iframe e **tabelas** (cabeçalho em `bg-muted`, bordas e
+  rolagem horizontal em telas pequenas). Usa só tokens de tema, funcionando em claro e escuro.
+- `src/pages/Wiki.tsx`: passou a usar o `GuiaMarkdown`; as classes `prose` foram removidas (não
+  faziam efeito) e as importações de `react-markdown`/`remark-gfm` saíram do arquivo.
+- `src/components/help/HelpTourRunner.tsx`: o botão de avançar aparecia em inglês ("Next (2 of 9)").
+  Foram adicionados os rótulos de progresso em português (`nextWithProgress`,
+  `lastWithProgress`, `skipWithProgress`, `open`) e o balão do passeio ganhou largura fixa,
+  cantos arredondados, título e texto em tamanhos próprios e botões alinhados à direita.
+- Os destaques mais longos dos passeios antigos (OS, Estoque, Pedidos de Compra, Painel do
+  Técnico) foram reescritos em frases curtas, para caberem no balão sem parecer um bloco de texto.
+
 ## Como testar
 
 1. Abra Central de Ajuda (`/wiki`) e busque por uma tela, por exemplo "PDV".
-2. Entre no artigo e inicie o passeio guiado: a rota é aberta e cada área é destacada.
-3. Confira se o rodapé do passeio avisa quando um passo é pulado (alvo ausente).
+2. Entre no artigo: confira os títulos em tamanho de seção, a tabela com cabeçalho e bordas e as
+   listas com marcadores.
+3. Inicie o passeio guiado: a rota é aberta, cada área é destacada e o rodapé mostra
+   "Próximo (2 de 9)" em português.
+4. Confira se o rodapé do passeio avisa quando um passo é pulado (alvo ausente).

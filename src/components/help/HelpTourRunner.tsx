@@ -135,15 +135,37 @@ export function HelpTourRunner() {
         buttons: ["back", "close", "primary", "skip"],
         closeButtonAction: "skip",
         primaryColor: "hsl(var(--primary))",
+        width: 360,
       }}
       styles={{
         floater: { zIndex: 1100 },
         tooltip: {
           backgroundColor: "hsl(var(--background))",
           color: "hsl(var(--foreground))",
+          borderRadius: 16,
+          padding: 18,
+          boxShadow: "0 18px 40px -12px rgba(15, 23, 42, 0.35)",
         },
+        tooltipContainer: { textAlign: "left" },
+        tooltipTitle: { fontSize: 17, fontWeight: 700, marginBottom: 6 },
+        tooltipContent: { fontSize: 13.5, lineHeight: 1.6, padding: 0 },
+        tooltipFooter: { marginTop: 14, alignItems: "center" },
+        buttonNext: { borderRadius: 10, padding: "8px 14px", fontSize: 13, fontWeight: 600 },
+        buttonBack: { borderRadius: 10, fontSize: 13, marginRight: 8, color: "hsl(var(--muted-foreground))" },
+        buttonSkip: { borderRadius: 10, fontSize: 13, color: "hsl(var(--muted-foreground))" },
+        buttonClose: { width: 12, height: 12, top: 12, right: 12 },
       }}
-      locale={{ back: "Voltar", close: "Fechar", last: "Finalizar", next: "Próximo", skip: "Pular" }}
+      locale={{
+        back: "Voltar",
+        close: "Fechar",
+        last: "Finalizar",
+        lastWithProgress: "Finalizar ({current} de {total})",
+        next: "Próximo",
+        nextWithProgress: "Próximo ({current} de {total})",
+        skip: "Pular",
+        skipWithProgress: "Pular ({current} de {total})",
+        open: "Abrir",
+      }}
     />
   );
 }

@@ -4,9 +4,8 @@ import {
   ArrowLeft, ArrowRight, BookOpen, CheckCircle2, ChevronRight, Clock3, Filter,
   GraduationCap, ListChecks, Play, RotateCcw, Search, Sparkles, X,
 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { GuiaMarkdown } from "@/components/help/GuiaMarkdown";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -170,15 +169,8 @@ export default function Wiki() {
                 )}
               </div>
             </div>
-            <article className="prose prose-slate max-w-none p-5 dark:prose-invert sm:p-8 prose-headings:font-display prose-img:rounded-lg prose-img:border prose-img:border-border prose-a:text-primary">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  iframe: (props: React.ComponentProps<"iframe">) => <iframe {...props} title={props.title || "Conteúdo incorporado"} className="aspect-video w-full rounded-lg border border-border" />,
-                }}
-              >
-                {article.content}
-              </ReactMarkdown>
+            <article className="p-5 sm:p-8">
+              <GuiaMarkdown>{article.content}</GuiaMarkdown>
             </article>
           </Card>
         </div>
