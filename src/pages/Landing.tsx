@@ -22,20 +22,20 @@ interface Plan {
 }
 
 const FEATURES = [
-  { icon: ClipboardList, title: 'Ordens de Serviço', desc: 'Pipeline visual, status automáticos, fotos, assinatura digital e PDF white-label.' },
-  { icon: Package, title: 'Estoque Inteligente', desc: 'Controle de peças, código sequencial e preços de venda definidos por você.' },
-  { icon: DollarSign, title: 'Financeiro & Cobranças', desc: 'Integração com Asaas e Mercado Pago. Gere PIX e Boleto direto da OS.' },
-  { icon: Users, title: 'CRM de Clientes', desc: 'Cadastro completo, histórico de atendimentos e infraestrutura técnica do cliente.' },
-  { icon: BarChart3, title: 'Relatórios em Tempo Real', desc: 'KPIs de faturamento, OS, técnicos e estoque. Tudo num único painel.' },
+  { icon: ClipboardList, title: 'Operação organizada', desc: 'Orçamentos, tarefas, ordens de serviço e atendimentos em um fluxo claro para sua equipe.' },
+  { icon: Package, title: 'Estoque e produtos', desc: 'Controle entradas, saídas, compras e preços sem depender de planilhas espalhadas.' },
+  { icon: DollarSign, title: 'Financeiro integrado', desc: 'Acompanhe contas, recebimentos e cobranças Pix ou boleto em um só lugar.' },
+  { icon: Users, title: 'Clientes e relacionamento', desc: 'Tenha histórico, contatos, pedidos e próximos passos de cada cliente.' },
+  { icon: BarChart3, title: 'Visão do negócio', desc: 'Indicadores de vendas, serviços, estoque e caixa para decidir com mais segurança.' },
 ];
 
 const BENEFITS = [
   'Mobile-first, funciona em qualquer celular',
-  'White-label: sua logo nas OS e cobranças',
+  'Módulos que acompanham seu negócio',
   '7 dias grátis sem cartão de crédito',
   'Cancele quando quiser, sem multa',
   'Suporte humanizado por WhatsApp',
-  'Integração com WhatsApp e PIX nativos',
+  'Integrações para vender e cobrar melhor',
 ];
 
 export default function Landing() {
@@ -97,11 +97,11 @@ export default function Landing() {
             </Badge>
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
               {hero?.title?.split(hero?.highlight || '')[0]}
-              <span className="text-primary">{hero?.highlight || 'assistência técnica'}</span>
+              <span className="text-primary">{hero?.highlight || 'operação organizada'}</span>
               {hero?.title?.split(hero?.highlight || '')[1]}
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground">
-              {hero?.description || 'Pare de perder tempo com papel ou sistemas antigos. O LivreOS foi pensado para a nova geração de assistências — perfeito para oficinas de eletrônica, drones, mobilidade urbana e prestadores de serviços que buscam faturamento, estoque e OS organizados em poucos cliques.'}
+              {hero?.description || 'O LivreOS reúne operação, clientes, estoque, vendas e financeiro em um sistema modular para lojas, empresas agropecuárias, prestadores de serviço e assistências técnicas.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
               <Button asChild size="lg" className="gap-2">
@@ -121,9 +121,9 @@ export default function Landing() {
         <div className="container mx-auto px-4">
           <div className="text-center mb-12 space-y-3">
             <Badge variant="outline">Recursos</Badge>
-            <h2 className="text-3xl md:text-4xl font-bold">Tudo que sua oficina precisa</h2>
+            <h2 className="text-3xl md:text-4xl font-bold">Tudo para sua operação funcionar melhor</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Substitua planilhas, cadernos e mensagens soltas por um sistema profissional.
+              Comece com os módulos essenciais e evolua conforme o seu negócio crescer.
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -148,9 +148,9 @@ export default function Landing() {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-4">
               <Badge variant="outline">Por que LivreOS?</Badge>
-              <h2 className="text-3xl md:text-4xl font-bold">Feito para quem coloca a mão na massa</h2>
+              <h2 className="text-3xl md:text-4xl font-bold">Um sistema que se adapta ao seu jeito de trabalhar</h2>
               <p className="text-muted-foreground">
-                Não é mais um ERP genérico. Cada tela foi pensada para o dia a dia de uma assistência técnica real.
+                O LivreOS é genérico na base e modular na prática: você contrata o que precisa hoje e adiciona recursos quando fizer sentido.
               </p>
               <div className="grid sm:grid-cols-2 gap-3 pt-4">
                 {BENEFITS.map((b) => (
@@ -167,7 +167,7 @@ export default function Landing() {
               {[
                 { icon: Smartphone, label: 'Mobile First' },
                 { icon: ShieldCheck, label: 'Dados Seguros' },
-                { icon: Wrench, label: 'Pronto p/ Oficina' },
+                { icon: Wrench, label: 'Modular' },
                 { icon: Zap, label: 'Rápido & Leve' },
               ].map((i) => (
                 <Card key={i.label} className="aspect-square flex items-center justify-center">
@@ -211,7 +211,7 @@ export default function Landing() {
                       </p>
                     </div>
                     <Button asChild className="w-full" variant={featured ? 'default' : 'outline'}>
-                      <Link to="/cadastro-empresa">Começar agora</Link>
+                      <Link to={`/cadastro-empresa?plan=${encodeURIComponent(p.slug)}`}>Começar agora</Link>
                     </Button>
                     <ul className="space-y-2 text-sm pt-2">
                       {featureList.slice(0, 8).map((f: string) => (
@@ -234,8 +234,8 @@ export default function Landing() {
         <div className="container mx-auto px-4">
           <Card className="max-w-3xl mx-auto bg-primary text-primary-foreground">
             <CardContent className="pt-10 pb-10 text-center space-y-4">
-              <h2 className="text-3xl md:text-4xl font-bold">Pronto para profissionalizar sua oficina?</h2>
-              <p className="opacity-90">Cadastre sua empresa agora e teste todos os recursos por 7 dias grátis.</p>
+              <h2 className="text-3xl md:text-4xl font-bold">Pronto para organizar seu negócio?</h2>
+              <p className="opacity-90">Cadastre sua empresa e teste o LivreOS por 7 dias, sem cartão de crédito.</p>
               <Button asChild size="lg" variant="secondary" className="mt-2">
                 <Link to="/cadastro-empresa">Criar conta grátis <ArrowRight className="h-4 w-4 ml-2" /></Link>
               </Button>

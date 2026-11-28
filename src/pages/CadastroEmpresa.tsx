@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,11 +20,13 @@ interface Plan {
 
 export default function CadastroEmpresa() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
-  const [form, setForm] = useState({
-    empresa: '', cnpj: '', nome: '', email: '', telefone: '', password: '', plan_slug: 'basic',
-  });
+  const [form, setForm] = useState(() => ({
+    empresa: '', cnpj: '', nome: '', email: '', telefone: '', password: '',
+    plan_slug: ['bronze', 'prata', 'ouro'].includes(searchParams.get('plan') || '') ? searchParams.get('plan')! : 'bronze',
+  }));
 
   useEffect(() => {
     supabase.from('subscription_plans' as any).select('*').eq('active', true).order('monthly_price')

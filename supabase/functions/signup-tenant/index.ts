@@ -38,6 +38,13 @@ Deno.serve(async (req) => {
       });
     }
 
+    const requestedSlug = (plan_slug || 'trial').toLowerCase();
+    if (requestedSlug !== 'trial' && !VALID_PLAN_SLUGS.includes(requestedSlug)) {
+      return new Response(JSON.stringify({ ok: false, error: 'Plano inválido. Escolha Bronze, Prata ou Ouro.' }), {
+        status: 400, headers: { ...corsHeadersRestricted, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Rate limiting por IP e email
     const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
     if (!checkRateLimit(`signup_ip_${ip}`)) {
@@ -90,8 +97,7 @@ Deno.serve(async (req) => {
     const userId = created.user.id;
 
     // 2. Get plan
-    const requestedSlug = (plan_slug || 'trial').toLowerCase();
-    const isTrial = !VALID_PLAN_SLUGS.includes(requestedSlug);
+    const isTrial = requestedSlug === 'trial';
     const lookupSlug = isTrial ? 'bronze' : requestedSlug;
 
     const { data: planRow, error: planErr } = await admin
